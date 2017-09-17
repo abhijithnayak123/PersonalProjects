@@ -1,0 +1,49 @@
+﻿@using (Html.BeginForm("InitiateCustomerSession", "CustomerSearch", FormMethod.Post))
+{
+	<div id="dyntext">
+		<p class="row_shift12"> Confirm identification by verifying Govt issued ID </p>
+	</div>
+	<div class="shift25">
+		<ul>
+            <li class="popUpCancelBtnWidth">
+                    <input type="button" value="Cancel" id="btnCancel" style="background-color: #ad2525;" />
+            </li>
+			<li class="popUpConfrmBtnWidth">
+				<input type="submit" value="Continue" id="btnContinue" />
+			</li>
+		</ul>
+	</div>
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+
+        $('#btnCancel').click(function () {
+            showSpinner();
+
+            $.ajax({
+                url: '@Url.Action("ClearCustomerSession", "CustomerSearch")',
+                type: 'GET',
+                datatype: 'json',
+                success: function (jsonData) {
+                    if (jsonData.success) {
+                        //$('#IDConfirmMessage').dialog('destroy').remove();
+                        RemovePopUp();
+                        hideSpinner();
+                    }
+                    else {
+                        hideSpinner();
+                        showExceptionPopupMsg(jsonData.data);
+                    }
+                },
+                error: function (err) {
+                    showExceptionPopupMsg(err);
+                    hideSpinner();
+                }
+            });
+
+        });
+
+        $('#btnContinue').focus();
+    });
+</script>

@@ -1,0 +1,51 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Locations
+@{
+    ViewBag.Title = "Location Summary";
+}
+
+<script language="javascript" type="text/javascript">
+    $(document).ready(function () {
+        $("#divUserSessionId").css("display", "");
+        // $('table#tblLocation').scrollableTable();
+    });
+</script>
+@using (Html.BeginForm())
+{
+    <div>
+        <ul class="page_head product_head">
+            <li class="float_left">Location Summary</li>
+        </ul>
+        <br/>
+        <br/>
+        <br/>
+        <div id="tableContainer" class="tableContainer">
+            <table id="tblLocation" class="loc_sum_wrap">
+                <thead>
+                    <tr class="sum_grid_head grid_head_wrap">
+                        <td class="grid_head"> Location Name </td>
+                        <td class="grid_head"> Location Status </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (TCF.Channel.Zeo.Web.ServiceClient.ZeoService.Location location in Model.LocationLists)
+                    {           
+                        <tr class="grid_body">
+                            <td class="loc_name_wrap">
+                                <a id="aDescription" href="@Url.Action("EditLocation", "Locations", new { locationId = @location.LocationIdentifier })" title="Edit"> @location.LocationName</a>
+                            </td>
+                            <td class="loc_active"> @(location.IsActive == true ? "Active" : "Inactive") </td>
+                        </tr>                       
+                    }
+                </tbody>
+            </table>
+        </div>
+        <br />
+        <div class="new_loc_wrap">
+            <ul>
+                <li>
+                    @Html.ActionLink("Back", "EnterNewLocation", "Locations", null, new { @class = "anc_link_btn"})
+                </li>
+            </ul>
+        </div>
+    </div>
+}

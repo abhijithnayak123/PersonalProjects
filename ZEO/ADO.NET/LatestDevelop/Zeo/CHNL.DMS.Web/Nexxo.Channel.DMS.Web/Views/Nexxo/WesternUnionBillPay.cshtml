@@ -1,0 +1,75 @@
+﻿@model TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel
+@{
+    ViewBag.Title = "BillPayment";
+    Layout = "~/Views/Shared/_Common.cshtml";
+}
+<script src="@Url.Content("~/Scripts/Billpay/WUBillpay.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+<script type="text/javascript">
+    var URL_AutoCompleteBillPayee = '@Url.Action("AutoCompleteBillPayee", "WesternUnionBillPayment")';
+    var URL_PopulateBillPayeeLocation = '@Url.Action("PopulateBillPayeeLocation", "WesternUnionBillPayment")';
+    var URL_PopulateBillDeliveryMethod = '@Url.Action("PopulateBillDeliveryMethod", "WesternUnionBillPayment")';
+    var URL_PopulateBillFee = '@Url.Action("PopulateBillFee", "WesternUnionBillPayment")';
+    var URL_PopulateBillerMessage = '@Url.Action("GetBillerInfo", "WesternUnionBillPayment")';
+    var URL_GetProviderAttributes = '@Url.Action("GetProviderAttributes", "WesternUnionBillPayment")';
+    var URL_PopulateBillpayee = '@Url.Action("PopulateBillpayee", "WesternUnionBillPayment")';
+    var URL_ImportPastBiller = '@Url.Action("ImportPastBiller", "WesternUnionBillPayment")';
+
+    var Model_AccountAuthMask = '@Model.AccountAuthMask';
+    var ViewBag_ErrorMessage = '@ViewBag.ErrorMessage';
+
+    var defaultErrorMessage = "Unknown error occured while getting data";
+</script>
+@using (Html.BeginForm("BillPayment", "WesternUnionBillPayment"))
+{
+    @Html.Partial("_partialSpinner")
+    if (@ViewBag.ErrorMessage != null)
+    {
+        <center>
+            <div id="divViewBag" class="erro_txt">@ViewBag.ErrorMessage</div><br />
+        </center>
+    }
+    <div>
+        <ul class="page_head product_head">
+            <li class="fav_payee_banner_txt">Favorite Billers</li>
+            @if (ViewBag.IsWUEnrolledCustomer == true)
+            {
+                <li class="import_payee_button">
+                    <a href="#">
+                        <img src="@Url.Content("~/Content/Images/Import-Frequent-BillPayee-Button.png")" onclick="ImportPastBiller()" id="Import_Fav_Biller" alt="" class="import_payee_img opaqueButtonShadow" />
+                    </a>
+                </li>
+            }
+            <li class="txt_right">
+                <a href="@Url.Action("EnrollWesternUnionGoldCard", "EnrollWesternUnion", new { editgoldcardfrom = "billpay" })">
+                    <img src="@Url.Content("~/Content/Images/Edit-WU-Card-Button.png")" alt="" class="edit_gold_card_img opaqueButtonShadow" />
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div id="FrequentBillers">
+        @Html.Partial("_partialFrequentPayees", Model)
+    </div>
+    <div>
+        <ul class="page_head product_head">
+            <li>Select New Biller</li>
+        </ul>
+    </div>
+    <div class="bill_pay_desc">
+        <p id="billerMessage">
+        </p>
+    </div>
+    <div id="Div_BillPayment">
+        @Html.Partial("_WesternUnionBillPay", Model)
+        <div class="bill_payment_btn_wrap">
+            <ul>
+                <li>
+                    @*<input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText" id="CancelTransaction" /></li>*@
+                <li class="row_width60"><input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText" tabindex="16" onclick="_showCancelTransaction()" class="red_btn" /></li>
+                <li>
+                    <input type="submit" value="Next" class="anc_link_btn" id="Submit" tabindex="15" />
+                </li>
+            </ul>
+        </div>
+    </div>
+}

@@ -1,0 +1,99 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CardMaintenanceViewModel
+
+<script src="@Url.Content("~/Scripts/Fund/Visa.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Fund/Gprs.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/encryption.js" language="JavaScript" type="text/javascript" id="pie_script"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/tcf/getkey.js" language="JavaScript" type="text/javascript"></script>
+
+<script>
+	var url = '@Url.Action("CardReplacementConfirmation", "VISAProductCredential")';
+	var newMessage = "Message";
+	var customerSessionId = '@Model.CustomerSession.CustomerSessionId';
+	$(function () {
+		$('#pan_div').hide();
+	});
+	var charges = 0.0;
+	$.validator.unobtrusive.parse("#frmmaintain");
+</script>
+
+@using (Html.BeginForm("CardMaintenance", "VISAProductCredentialController", FormMethod.Post, new { id = "frmmaintain" }))
+{
+	<div class="cFont">
+		<div style="margin-bottom:10px;">
+			<div class="cart_maintenance">
+				<div class="cart_maintenance_lable">
+					Card Status :
+				</div>
+				<div>
+					<b><span class="leftDropDown">@Html.Label(Model.CardBalance.CardStatus, new { @class = "cart_maintenance_status"})</span></b>
+					@Html.HiddenFor(model => Model.CardBalance.CardStatusId)
+				</div>
+			</div>
+			<div class="cart_maintenance">
+				<div>
+					<div class="cart_maintenance_lable">
+						Action :
+					</div>
+					<div>
+						<span class="leftDropDown">@Html.DropDownListFor(m => m.PrepaidAction, Model.ActionForCardReplace, new { @class = "dropdown_box_cart_mantenance", autocomplete = "off" })</span>
+					</div>
+				</div>
+				<div class="visa_message_txt" id="visa_message">
+				</div>
+				<div class="visa_message_txt" id="visa_message_error">
+				</div>
+			</div>
+			<div class="cart_maintenance">
+				<div>
+					<div class="cart_maintenance_lable">
+						Shipping Type  :
+					</div>
+					<div>
+						@Html.DropDownListFor(m => m.CardShippingType, Model.ShippingTypes, new { @class = "dropdown_box_cart_mantenance", autocomplete = "off" })
+					</div>
+				</div>
+				<div class="visa_message_txt" id="shipping_message">
+				</div>
+				<div class="visa_message_txt" id="shipping_message_error">
+				</div>
+			</div>
+
+		<div class="cart_maintenance" id="pan_div">
+			<div>
+				<div class="cart_maintenance_lable">
+					Card Number :
+				</div>
+				<div>
+					@Html.TextBoxFor(model => model.MaskCardNumber, new { @class = "visa_pan_txt", autocomplete = "off", @maxlength = "19", autofocus = "" })
+					@Html.HiddenFor(model => model.CardNumber)
+					@Html.HiddenFor(model => model.CVV)
+					<a class="anc_link_btn width_fix100" href="" onclick="return showSwipeMsg()" style="margin-top:0px">Swipe Card</a>
+				</div>
+			</div>
+			<div class="visa_message_txt" id="pan_message">
+			</div>
+			<div class="visa_message_txt" id="pan_validationMessage">
+				@Html.ValidationMessageFor(model => model.MaskCardNumber)
+			</div>
+		</div>	
+		<div class="cart_maintenance">
+			@Html.ValidationMessageFor(model => model.PrepaidAction)
+			@Html.ValidationMessageFor(model => model.CardShippingType)
+			@*@Html.ValidationMessageFor(model => model.MaskCardNumber)*@
+			<div class="cart_maintenance_error" id="visa_error_txt">
+			</div>
+		</div>
+	</div>
+	<div style=" text-align: center; margin-bottom:0px">
+		<ul>
+			<li>
+				<input type="button" value="Cancel" class="red_btn width_fix100" onclick="RemovePopUp();" id="cardCancel"/>
+			</li>
+			<li>
+				<input type="button" value="Submit" class="green_input width_fix100" onclick="CardMaintenanceValidation();" id="cardSubmit"/>
+			</li>
+		</ul>
+	</div>
+</div>
+<input type="hidden" value="true" id="NewCustomer" />
+}

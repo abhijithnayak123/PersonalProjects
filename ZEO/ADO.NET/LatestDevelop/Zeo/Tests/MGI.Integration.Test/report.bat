@@ -1,0 +1,1 @@
+c:\MGI\Alloy\mitra\packages\ReportGenerator.2.3.2.0\tools\reportgenerator.exe -reports:results.xml -targetdir:coverage

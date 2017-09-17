@@ -1,0 +1,1 @@
+﻿& .\Nexxo.CXN.BP.CheckFree.Database.exe | Write-Host

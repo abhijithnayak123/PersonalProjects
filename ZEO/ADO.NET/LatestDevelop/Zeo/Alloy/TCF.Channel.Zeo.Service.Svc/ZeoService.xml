@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns:tx="http://www.springframework.net/tx"
+          xmlns:db="http://www.springframework.net/database"
+          xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <object id="serviceEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+    <property name="Target">
+      <object type=" TCF.Channel.Zeo.Service.Impl.ZeoServiceImpl, TCF.Channel.Zeo.Service.Impl">
+      </object>
+    </property>
+    <property name="InterceptorNames">
+      <list>
+        <value>TraceAroundAdvice</value>
+      </list>
+    </property>
+  </object>
+  <object id="TraceAroundAdvice" type="TCF.Channel.Zeo.Service.Svc.Advice.TraceAroundAdvice, TCF.Channel.Zeo.Service.Svc">
+    <property name="LogIgnoreMethodList">
+      <object type="System.Collections.Generic.List&lt;string&gt;">
+        <constructor-arg>
+          <list element-type="string">
+            <value>Authenticate</value>
+            <value>ChangePassword</value>
+            <value>GetCountries</value>
+            <value>GetIdStates</value>
+            <value>GetIdTypes</value>
+            <value>GetProvidersbyChannelPartnerName</value>
+            <value>ChannelPartnerConfigByName</value>
+            <value>GetTerminalByName</value>
+            <value>GetChannelPartnerCertificateInfo</value>
+            <value>GetStates</value>
+            <value>GetUSStates</value>
+            <value>GetMasterCountries</value>
+            <value>GetOccupations</value>
+            <value>GetIdCountries</value>
+            <value>GetZeoContextForAgent</value>
+            <value>GetXfrCountries</value>
+            <value>GetXfrCities</value>
+            <value>GetXfrStates</value>
+            <value>GetShoppingCart</value>
+            <value>GetTipsAndOffers</value>
+            <value>GetCheckProcessorInfo</value>
+            <value>GetAgentMessages</value>
+          </list>
+        </constructor-arg>
+      </object>
+    </property>
+    <property name="IgnorePropertyList">
+      <object type="System.Collections.Generic.List&lt;string&gt;">
+        <constructor-arg>
+          <list element-type="string">
+            <value>frontimage</value>
+            <value>backimage</value>
+            <value>printdata</value>
+            <value>frontimagetiff</value>
+            <value>backimagetiff</value>
+            <value>imagefront</value>
+            <value>imageback</value>
+          </list>
+        </constructor-arg>
+      </object>
+    </property>
+    <property name="PCIList">
+      <object type="System.Collections.Generic.List&lt;string&gt;">
+        <constructor-arg>
+          <list element-type="string">
+            <value>governmentidnumber</value>
+            <value>ssn</value>
+            <value>cardnumber</value>
+            <value>alloyid</value>
+            <value>accountnumber</value>
+            <value>governmentid</value>
+            <value>partneraccountnumber</value>
+            <value>pin</value>
+            <value>printdata</value>
+          </list>
+        </constructor-arg>
+      </object>
+    </property>
+  </object>
+</objects>

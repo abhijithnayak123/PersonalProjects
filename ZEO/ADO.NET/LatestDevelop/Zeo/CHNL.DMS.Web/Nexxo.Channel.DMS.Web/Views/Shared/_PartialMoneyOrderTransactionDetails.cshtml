@@ -1,0 +1,38 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyOrderTransactionModel
+@{
+    Layout = null;
+}
+<div class="row5">
+    <h1 class="font_17 txt_left" >
+        @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MoneyOrderTranHistoryTitle
+		@if (Model.TransactionStatus.ToLower() == "committed")
+		{ 
+			<span>
+				<input type="button" value="Reprint Receipt" class="green_input" id="btnPrintReceipt" />
+			</span>
+		}
+    </h1>
+</div>
+<div class="row5">
+    @Html.LabelFor(model => model.CheckNumber, new { @class = "font_15" })
+    <span class="font_15 shift_left1">@Html.DisplayFor(model => model.CheckNumber)</span>
+</div>
+<div class="row5">
+    @Html.LabelFor(model => model.Amount, new { @class = "font_15" })
+    <span class="font_15 shift_left1">@Html.DisplayFor(model => model.Amount)</span>
+</div>
+<div class="row5">
+    @Html.LabelFor(model => model.Fee, new { @class = "font_15" })
+    <span class="font_15 shift_left1">$@Html.DisplayFor(model => model.Fee)</span>
+</div>
+<div class="float_left row_shift30"><input type="button" value="Close" onclick="javascript:$('#divPrepaid').dialog('destroy').remove();" class="green_input"/></div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#btnPrintReceipt').click(function () {
+            var btnprint = $(this);
+            var reprintSummary = $("#chkbox_reprintSummaryReceipt")[0].checked;
+            PrintTrxAndSummaryReceipt(btnprint, '@Model.TransactionId', '@Model.TransactionType', reprintSummary);
+        });
+    });    
+</script>

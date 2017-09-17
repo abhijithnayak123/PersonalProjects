@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!-- create table 'tFoo' with rowguid as primary key; auto rollback supported -->
+	<changeSet author="liquibase" id="foo-add-tbl">
+        <createTable tableName="tFoo">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(20)"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="liquibase" id="create-foo-pk">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tFoo" tableName="tFoo"/>
+    </changeSet>
+	
+	<!-- add column 'Value1' to table 'tFoo' using XML with explicit rollback; auto rollback supported -->
+	<changeSet author="liquibase" id="foo-add-col-value1">
+		<addColumn tableName="tFoo">
+			<column name="Value1" type="varchar(255)"/>
+		</addColumn>
+		<rollback>
+            <dropColumn columnName="Value1" tableName="tFoo"/>
+        </rollback>
+	</changeSet>
+
+	<!-- add column 'Value2' to table 'tFoo' using SQL with explicit rollback; auto rollback supported -->
+	<changeSet author="liquibase" id="foo-add-col-value2">
+		<sql dbms="mssql">
+			ALTER TABLE tFoo ADD Value2 NVARCHAR(255)
+		</sql>
+		<rollback>
+			<sql dbms="mssql">
+				ALTER TABLE tFoo DROP COLUMN Value2
+			</sql>
+        </rollback>
+	</changeSet>
+	
+</databaseChangeLog>

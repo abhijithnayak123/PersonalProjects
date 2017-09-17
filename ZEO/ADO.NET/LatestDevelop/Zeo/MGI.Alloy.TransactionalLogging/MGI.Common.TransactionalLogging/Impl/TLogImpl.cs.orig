@@ -1,0 +1,152 @@
+<<<<<<< HEAD
+using System;
+=======
+﻿using System;
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using MGI.Common.TransactionalLogging.Contract;
+using MGI.Common.TransactionalLogging.Data;
+<<<<<<< HEAD
+using System.Configuration;
+using MongoDB.Driver;
+=======
+using MongoDB.Bson;
+using MongoDB;
+using MongoDB.Driver.Linq;
+using MongoDB.Driver;
+using System.Configuration;
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+
+namespace MGI.Common.TransactionalLogging.Impl
+{
+    public class TLogImpl : ITLogger
+    {
+        //IMongoDatabase database;
+        //private IMongoCollection<TLogEntry> collection;
+        MongoDatabase database;
+        private MongoCollection<TLogEntry> collection;
+
+        //public TLogImpl()
+        //{
+        //    const string connectionString = "mongodb://localhost:27017";
+        //    // Create a MongoClient object by using the connection string
+        //    var client = new MongoClient(connectionString);
+        //     database = client.GetDatabase("testNamit");
+
+        //}
+
+
+        public TLogImpl()
+        {
+            GetDatabase();
+            GetCollection();
+        }
+
+        private void GetDatabase()
+        {
+            var client = new MongoClient(GetConnectionString());
+
+            var server = client.GetServer();
+            
+             database = server.GetDatabase(GetDatabaseName());
+            
+        }
+
+        private void GetCollection()
+        {
+            collection = database.GetCollection<TLogEntry>("testLogs");
+        }
+
+        private string GetDatabaseName()
+        {
+<<<<<<< HEAD
+            return ConfigurationManager.AppSettings.Get("MongoDbDatabaseName");
+=======
+            return "TlogsDb";
+            //return ConfigurationManager.AppSettings.Get("MongoDbDatabaseName");
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+        }
+
+        private string GetConnectionString()
+        {
+<<<<<<< HEAD
+            return ConfigurationManager.AppSettings.Get("MongoDbConnectionString").Replace("{DB_NAME}", GetDatabaseName());
+=======
+            return "mongodb://localhost:27017/TlogsDb?safe=true";
+            //return ConfigurationManager.AppSettings.Get("MongoDbConnectionString").Replace("{DB_NAME}", GetDatabaseName());
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+        }
+
+
+        /// <summary>
+        /// Savelogs the specified object.
+        /// </summary>
+        /// <param name="obj">The object.</param>
+        public void Savelog(TLogEntry obj)
+        {
+
+            try
+            {
+               
+                collection.Insert(obj);
+                // var collection = database.GetCollection<TLogEntry>("testLogs");
+                // .NET Framework 4.5 code with async await
+                                 //await collection.InsertOneAsync(obj);
+                //var list = await collection.Find(x => x.FunctionName == "Test fail").ToListAsync();
+
+                //foreach (var excp in list)
+                //{
+                //    Console.WriteLine(excp.FunctionName);
+                //}
+<<<<<<< HEAD
+				
+                ///  Task.Factory.StartNew(() => collection.Insert(obj));                 
+=======
+
+
+              //  Task.Factory.StartNew(() => collection.Insert(obj));                 
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+                ////var collections = collection.Insert(obj);
+                //Task _taskCollection = new Task(collection.Insert(obj));
+                //_taskCollection.Wait();
+            }
+
+            catch (Exception ex)
+            {
+<<<<<<< HEAD
+				throw ex;
+=======
+                Console.WriteLine(ex.Data);
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+            }
+
+        }
+
+        /// <summary>
+        /// Readlogs this instance.
+        /// </summary>
+        /// <returns></returns>
+        public TLogEntry ReadSinglelog()
+        {
+
+<<<<<<< HEAD
+			TLogEntry result = collection.FindOne(); //.ToListAsync();
+=======
+          TLogEntry result = collection.FindOne(); //.ToListAsync();
+>>>>>>> d9562a59eafaa43807461226f66435aefe320186
+            
+            return result;
+        }
+
+        public List<TLogEntry> Readlog()
+        {
+
+            List<TLogEntry> result = collection.FindAll().ToList(); //.ToListAsync();
+
+            return result;
+        }
+    }
+}

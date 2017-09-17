@@ -1,0 +1,32 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyGramReceiveMoneyViewModel
+@{
+    ViewBag.Title = "MoneyGramReceiveMoney";
+}
+@using (Html.BeginForm("ReceiveMoney", "MoneyGramReceiveMoney"))
+{
+    <div>
+        <ul class="page_head product_head">
+            <li class="banner_txt">Receive Money</li>
+        </ul>
+    </div>
+    
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MGramRMReferenceNumber)</label>
+                @Html.TextBoxFor(model => model.ReferenceNumber, null, new { @class = "input_box", @maxlength = "8" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.ReferenceNumber)
+        </div>
+    </div>
+    <div class="receive_money_btn">
+        <ul>
+            <li class="row_width30">
+                <input type="submit" value="Submit" />
+            </li>
+        </ul>
+    </div>	
+    <div class="clear_both">
+    </div>
+}

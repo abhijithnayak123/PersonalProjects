@@ -1,0 +1,1 @@
+& .\MGI.Cxn.Customer.TCIS.Database.exe | Write-Host

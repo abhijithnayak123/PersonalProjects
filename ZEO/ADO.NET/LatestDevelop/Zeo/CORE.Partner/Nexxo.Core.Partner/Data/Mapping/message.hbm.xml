@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+  <class name="Message" table="tMessageStore">
+    <id name="rowguid" column="MessageStorePK">
+      <generator class="guid"/>
+    </id>
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="MessageStoreID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="MessageKey"/>
+    <property name="Language"/>
+    <property name="Content"/>
+    <property name="Partner" column="PartnerPK"/>
+    <!-- <many-to-one name="Partner" class="ChannelPartner" column="PartnerPK"/> -->
+    <property name="DTServerCreate" not-null="true" update="false"/>
+    <property name="DTServerLastModified" not-null="false" insert="false"/>
+    <property name="AddlDetails" not-null ="false" />
+    <property name="Processor" not-null ="false"/>
+    <property name="ErrorType" column="Type" />
+  </class>
+</hibernate-mapping>

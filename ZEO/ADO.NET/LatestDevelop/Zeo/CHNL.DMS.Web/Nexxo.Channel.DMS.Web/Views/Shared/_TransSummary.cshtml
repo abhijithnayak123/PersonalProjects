@@ -1,0 +1,49 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckTransaction
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ApprovedCheckTransaction;
+    Layout = null;
+}
+<script src="@Url.Content("~/Scripts/Check/Check.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/ShoppingItemDisplay.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<div align="center">
+    <img id="CheckFrontImage" src="" class="check_img" alt="" />
+    <script language="javascript" type="text/javascript">
+    $(document).ready(function () {
+        ShowCheckFrontImage("@Model.CheckFrontImage");
+    });
+        var DeleteURL = '@Url.Action("DeleteCartItem", "CancelTransaction")'
+    </script>
+</div>
+<center class="status_msg">
+    <br />
+    Check is @Model.CheckStatus
+    <br />
+</center>
+<div class="row">
+    <div class="txt_center">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AmountCreditedAccount
+        <span class="row"><strong>$</strong>@Model.AmountCredited.ToString()
+        </span>
+    </div>
+</div>
+<div class="row">
+    <div class="txt_center">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckCashingFee
+        <span class="row"><strong>$</strong>@Model.CheckCashingFee.ToString()
+        </span>
+    </div>
+</div>
+<img src='@Url.Content("~/Content/images/Line2.jpg")' alt="" class="row_shift20" />
+<div class="row">
+    <div class="txt_center row_shift12">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NetAmount
+        <span class="row"><strong>$</strong>@Model.NetAmount.ToString() </span>
+    </div>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.StatusDescription)) {
+<div class="txt_left ">
+    @Html.LabelFor(model => model.StatusDescription, new { style = "width:170px;" })
+    @Html.TextBoxFor(model => model.StatusDescription, new { readOnly = "true", style = "background-color:#EEEEEE" })
+</div>
+}
+<br />
+<div class="float_left row_shift30">
+    <input type="button" id="submitLink" value="Close" onclick="closethis();" />
+</div>

@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+  <import resource="assembly://MGI.Cxn.Customer.CCIS/MGI.Cxn.Customer.CCIS.Impl/Cxn.Customer.CCIS.Impl.Spring.xml"/>
+
+  <import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+
+  <object id ="CarverClientCustomerService" type="MGI.Biz.Carver.Impl.CarverCustomer, MGI.Biz.Carver">
+    <property name ="CxnClientCustomerService" ref="CCISGateway"/>
+  </object>
+
+  <object id="CarverEventListenerDictionary" type="System.Collections.Generic.Dictionary&lt;string, MGI.Biz.Events.Contract.INexxoBizEventListener&gt;, mscorlib">
+    <constructor-arg>
+      <dictionary key-type="string" value-type="MGI.Biz.Events.Contract.INexxoBizEventListener">
+       <entry key="Customer-Registration">
+          <ref object="CarverCustomerRegistrationEventListener"/>
+        </entry>
+        <entry key="Customer-Edit">
+          <ref object="CarverCustomerEditEventListener"/>
+        </entry>
+      </dictionary>
+    </constructor-arg>
+  </object>
+
+  <object id="CarverCustomerRegistrationEventListener" type="MGI.Biz.Carver.Impl.CarverCustomerRegistrationEventListener, MGI.Biz.Carver">
+    <property name ="CXNClientCustomerSvc" ref="CCISGateway"/>
+    <property name="ClientCustomerSvc" ref ="ClientCustomerService"/>
+    <property name ="CCISAccountRepo" ref="CCISAccountRepo"/>
+    <property name="PartnerCustomerService" ref="Core.Partner.CustomerService"/>
+    <property name="CXECustomerService" ref="CXECustomerService"/>
+  </object>
+
+  <object id="CarverCustomerEditEventListener" type="MGI.Biz.Carver.Impl.CarverCustomerEditEventListener, MGI.Biz.Carver">
+    <property name ="CXNClientCustomerSvc" ref="CCISGateway"/>
+    <property name="ClientCustomerSvc" ref ="ClientCustomerService"/>
+    <property name ="CCISAccountRepo" ref="CCISAccountRepo"/>
+    <property name="PTNRCustomerService" ref="Core.Partner.CustomerService"/>
+    <property name="CXECustomerService" ref="CXECustomerService"/>
+  </object>
+
+</objects>

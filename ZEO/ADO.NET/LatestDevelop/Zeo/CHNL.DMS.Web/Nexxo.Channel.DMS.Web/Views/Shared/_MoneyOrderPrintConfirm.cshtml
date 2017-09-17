@@ -1,0 +1,31 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyOrderDetails
+<div class="row">
+	<div>
+		<h3>Confirm that Money Order has printed correctly and the amount and check number match the below details.</h3>
+	</div>
+</div>
+<div class="row txt_center">
+	<div class="push_top10_fix">
+		<h3>Money Order Check&nbsp;&nbsp;#&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;@Model.CheckNumber</h3>
+	</div>
+	<div class="push_top10_fix">
+		<h3>Money Order Amount&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;$@Model.Amount</h3>
+	</div>
+	<div class="error_align_left"> @Html.ValidationMessageFor(model => model.Amount) </div>
+</div>
+<div id="dyntext" class="row5 txt_center">
+	<div class="moneyorder_img_wrap height_200 overflow_hidden" style="overflow:hidden; height:200px;">
+		<img id="MoneyOrderImage" class="checkImg" src="" alt="MoneyOrderImage" />
+	</div>
+</div>
+<div class="push_top5">
+	<div class="popUpCancelBtnWidth float_left">
+		<input type="button" value="Re-Issue" onclick="ReplaceMoneyOrder();" />
+	</div>
+	<div class="popUpConfrmBtnWidth">
+		<input type="button" value="Confirm" id="btnMoConfirm" onclick="MOConfirm();" class="confirmButton" />
+	</div>
+</div>
+<script language="javascript" type="text/javascript">
+	$(document).ready(function () { SetMoneyOrderImages("@Model.FrontImage"); });
+</script>

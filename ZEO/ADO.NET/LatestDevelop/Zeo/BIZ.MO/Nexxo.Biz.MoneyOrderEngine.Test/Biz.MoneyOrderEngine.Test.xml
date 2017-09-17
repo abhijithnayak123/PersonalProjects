@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object id="NLoggerRef" type="MGI.Common.Util.NLoggerCommon, MGI.Common"/>
+	
+  <import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+  <import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+  <import resource="assembly://MGI.Biz.Compliance/MGI.Biz.Compliance/Biz.Compliance.Services.Spring.xml"/>
+
+  <object id="ThrowsBizMoneyOrderEngineExceptionAdvice" type="MGI.Biz.MoneyOrderEngine.Impl.Advice.ThrowsBizMoneyOrderEngineExceptionAdvice, MGI.Biz.MoneyOrderEngine"/>
+
+  <object id="transactionManager"
+    type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+    <property name="TransactionSynchronization" value="Always"/>
+  </object>
+  <tx:attribute-driven transaction-manager="transactionManager"/>
+
+  <object id="CheckPrintRepo" type="MGI.Biz.MoneyOrderEngine.Impl.MoneyOrderCheckPrintTemplateRepo, MGI.Biz.MoneyOrderEngine">
+    <constructor-arg index="0" value= "${ReceiptServerURL}"/>
+    <constructor-arg index="1" value="${ReceiptServerDBName}" />
+    <constructor-arg index="2" value="${ReceiptServerBucketName}" />
+
+  </object>
+
+
+  <object id="MoneyOrderEngineServiceTest" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+    <property name="Target">
+      <object type="MGI.Biz.MoneyOrderEngine.Impl.MoneyOrderEngineServiceImpl, MGI.Biz.MoneyOrderEngine">
+        <property name="SessionSvc" ref="CustomerSessionService"/>
+        <property name="CxeCustSvc" ref="CXECustomerService"/>
+        <property name="AcctSvc" ref="AccountService"/>
+        <property name="PTNRMoneyOrderSvc" ref="PartnerMoneyOrderService"/>
+        <property name="CxeMoneyOrderSvc" ref="CXEMoneyOrderService"/>
+        <property name="CustomerService" ref="Core.Partner.CustomerService"/>
+        <property name="FeeSvc" ref="PartnerFeeService"/>
+        <property name="NexxoIdTypeService" ref ="CoreNexxoDataStructuresService" />
+        <property name="LimitService" ref="BIZLimitService" />
+        <property name="ChannelPartnerSvc" ref="CorePartnerChannelPartnerService"/>
+        <property name="CheckPrintRepo" ref="CheckPrintRepo"/>
+      </object>
+    </property>
+    <property name="InterceptorNames">
+      <list>
+        <value>ThrowsBizMoneyOrderEngineExceptionAdvice</value>
+      </list>
+    </property>
+  </object>
+</objects>

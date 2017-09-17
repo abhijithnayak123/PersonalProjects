@@ -1,0 +1,120 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CustomerDetails
+<div class="">
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.FirstName)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.FirstName) &nbsp;@Html.DisplayFor(model => model.LastName)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.DateOfBirth)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.DateOfBirth)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.Address)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.Address)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.GovermentId)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.GovermentId)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.PhoneNumber)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.PhoneNumber)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.SSN)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.SSN)
+        </div>
+    </div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.CardNumber)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.CardNumber)
+        </div>
+    </div>
+
+    @Html.TextBoxFor(model => model.ActualSSN, new { @class = "hide" })
+    @Html.TextBoxFor(model => model.CustomerId, new { @class = "hide" })
+    <div class="row_shift12 margin_top_eight">
+        <ul>
+            <li class="">
+                <input type="button" value="Cancel" id="" class="red_btn" onclick="RemovePopUp()" />
+            </li>
+            @if (Model.IsRcifCustomer)
+            {
+                <li class="">
+                    <input type="submit" value="Continue to Registration" style="width:140px !important; font-size:11.5px !important" id="regipagebtn" />
+                </li>
+            }
+            else
+            {
+                <li class="">
+                    <input type="submit" value="Continue" id="govIdbtn" />
+                </li>
+            }
+
+        </ul>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#govIdbtn").click(function () {
+            RemovePopUp();
+            ShowPopUp(idConfirmationURL, 'Message', 373, 150);
+        });
+        $("#regipagebtn").click(function () {
+            validateAndPopulateCustomerDetails($("#CustomerId").val(), $("#ActualSSN").val());
+        });
+
+        function validateAndPopulateCustomerDetails(Id, SSN) {
+            var isCompanionSearch = 'false';//$('#IsCompanionSearch').val();
+            $.ajax({
+                url: PopulateCustomerDetailsUrl,
+                data: { "id": Id, "ssn": SSN, "IsCompanionSearch": isCompanionSearch }, //parameters go here in object literal form 
+                type: 'POST',
+                datatype: 'json',
+                success: function (data) {
+                    if (data.success == undefined) {
+                        if (data == "True") {
+                            window.location.href = ProfileSummaryNavigationURL + '?IsException=false&ExceptionMessage=""';
+                        }
+                        else {
+                            window.location.href = PersonalInfoNavigationURL + '?IsException=false&ExceptionMessage=""';
+                        }
+                    }
+                    else {
+                        showExceptionPopupMsg(data.data);
+                    }
+                },
+                error: function (err) {
+                    showExceptionPopupMsg(err);
+                }
+            });
+        }
+    });
+</script>

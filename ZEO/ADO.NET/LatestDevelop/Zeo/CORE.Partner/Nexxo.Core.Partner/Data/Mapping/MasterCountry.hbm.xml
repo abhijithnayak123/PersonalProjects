@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Core.Partner" namespace="MGI.Core.Partner.Data" xmlns="urn:nhibernate-mapping-2.2">
+	<class name="MasterCountry" table="tMasterCountries" lazy="true" >
+		<id name="Rowguid" column="MasterCountriesPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="MasterCountriesID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="Abbr2">
+			<column name="Abbr2" sql-type="char" not-null="false" />
+		</property>
+		<property name="Abbr3">
+			<column name="Abbr3" sql-type="char" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<bag name="ChannelPartnerMasterCountryMappings" inverse="true" cascade="none">
+			<key column="MasterCountryId" />
+			<one-to-many class="ChannelPartnerMasterCountryMapping" />
+		</bag>
+	</class>
+</hibernate-mapping>

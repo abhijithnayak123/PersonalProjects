@@ -1,0 +1,65 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SendMoney
+<script src="@Url.Content("~/Scripts/ShoppingCart/ShoppingItemDisplay.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<div>
+    <h2> Send Money</h2>
+</div>
+<div>
+    <div class="row">
+        @Html.LabelFor(model => model.ReceiverName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.ReceiverName, new { @class = "disable_txt", readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.PickUpLocation, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.PickUpLocation, new { @class="disable_txt",readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.PickUpMethod, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.PickUpMethod, new { @class="disable_txt",readOnly = "true", @disabled = "disabled"})
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.PickUpOptions, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.PickUpOptions, new { @class="disable_txt",readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.TransferAmount, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.TransferAmount, new {@class="disable_txt", readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.TransferFee, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.TransferFee, new {@class="disable_txt", readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.TransferTax, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.TransferTax, new {@class="disable_txt", readOnly = "true", @disabled = "disabled" })
+    </div>
+    <div class="row">
+        @Html.LabelFor(model => model.TotalAmount, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.Amount, new { @class="disable_txt",readOnly = "true", @disabled = "disabled" })
+    </div>
+    @if (Model.CountryCode.ToLower() != "us" && Model.CountryCode.ToLower() != "usa")
+    {
+        <div class="row">
+            @Html.LabelFor(model => model.ExchangeRate, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.ExchangeRate, new { @class="disable_txt",readOnly = "true", @disabled = "disabled"})
+        </div>
+        <div class="row">
+            @Html.LabelFor(model => model.OtherFees, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.OtherFees, new {@class="disable_txt", readOnly = "true", @disabled = "disabled" })
+        </div>
+    }
+    <div class="row">
+        @Html.LabelFor(model => model.TotalToRecipient, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.TotalToRecipient, new { @class="disable_txt",readOnly = "true", @disabled = "disabled" })
+    </div>
+    @if(Model.StatusDescription != null)
+{
+        <div class="row">
+            @Html.LabelFor(model => model.StatusDescription, new { @class = "row_label_txt"})
+            @Html.TextBoxFor(model => model.StatusDescription, new { @class="disable_txt",readOnly = "true" })
+        </div>  
+}
+</div>
+<br />
+<div class="float_left row_shift40">
+    <input type="button" id="submitLink" value="Close" onclick="closethis();" />
+</div>

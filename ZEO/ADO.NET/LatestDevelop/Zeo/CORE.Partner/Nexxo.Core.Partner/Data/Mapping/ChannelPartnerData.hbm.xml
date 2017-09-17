@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+	<class name="UserDetails" table="tAgentDetails" lazy="false" >
+		<id name="Rowguid" column="AgentPK" >
+		</id>
+		<property name="Id" column="AgentID" generated="insert" update="false" insert="false"/>
+		<property name="UserName" column="UserName"/>
+		<property name="FirstName" column="FirstName"/>
+		<property name="LastName" column="LastName"/>
+		<property name="IsEnabled" column="IsEnabled"/>
+		<property name="ManagerId" column="ManagerId"/>
+		<property name="LocationId" column="PrimaryLocationId"/>
+		<property name="UserRoleId" column="UserRoleId"/>
+		<property name="UserStatusId" column="UserStatusId"/>
+		<property name="PhoneNumber" column="PhoneNumber"/>
+		<property name="ChannelPartnerId" column="ChannelPartnerId"/>
+		<property name="Email" column="Email"/>
+		<property name="Notes" column="Notes"/>
+		<property name="DtLastlogin" column="DTLastLogin"/>
+		<property name="DTServerCreate" column="DTServerCreate" update="false"/>
+		<property name="DTServerLastModified" column="DTServerLastModified" insert="false"/>
+		<property name="ClientAgentIdentifier" column="ClientAgentIdentifier"/>
+	</class>
+
+	<class name="UserStatus" table="tUserStatuses" lazy="true" >
+		<id name="Id" column="UserStatusesID" >
+		</id>
+		<property name="Status" column="Status"/>
+
+	</class>
+
+	<class name="UserRole" table="tUserRoles" lazy="true" >
+		<id name="Id" column="UserRolesID" >
+		</id>
+		<property name="role" column="Role"/>
+		<set name="RolesPermissions" inverse="true" table="tUserRolesPermissionsMapping">
+			<key column="RoleId"/>
+			<one-to-many class="UserRolePermission"/>
+		</set>
+	</class>
+
+	<class name="UserLocation" table="tAgentLocationMapping" lazy="true" >
+		<id name="AgentLocationPK" column="AgentLocationPK" >
+			<generator class="guid"/>
+		</id>
+		<property name="AgentId" column="AgentId"/>
+		<property name="LocationId" column="LocationId"/>
+		<many-to-one name="AgentPK" class ="UserDetails" column="AgentPK"/>
+		<many-to-one name="LocationPK" class ="Location" column="LocationPK"/>
+	</class>
+
+	<class name="ChannelPartnerSMTPDetails" table="tChannelPartnerSMTPDetails"  lazy="true">
+		<id name="ChannelPartnerSMTPPK" column="ChannelPartnerSMTPPK" >
+			<generator class="guid"/>
+		</id>
+		<!--<property name="Id" column="ChannelPartnerSMTPId" />-->
+		<property name="Id" type="long" >
+			<column name="ChannelPartnerSMTPId" sql-type="bigint" not-null="true"></column>
+
+		</property>
+		<property name="ChannelPartnerId" column="ChannelPartnerId" />
+		<property name="SmtpHost" column="SmtpHost" />
+		<property name="SmtpPort" column="SmtpPort" />
+		<property name="SenderEmail" column="SenderEmail" />
+		<property name="SenderPassword" column="SenderPwd" />
+		<property name="Subject" column="Subject" />
+		<property name="Body" column="Body" />
+		<property name="DTServerCreate" column="DTServerCreate" not-null="true" update="false"/>
+		<property name="DTServerLastModified" column="DTServerLastModified" not-null="false" insert="false"/>
+	</class>
+
+</hibernate-mapping>
+
+

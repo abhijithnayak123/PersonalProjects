@@ -1,0 +1,76 @@
+﻿@model TCF.Channel.Zeo.Web.Models.TransactionHistoryModel
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CustomerTransactionHistory;
+   
+}
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-grid/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.9.2.custom.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/grid.locale-en.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/jquery.jqGrid.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/TransactionHistory/TransactionHistory.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/PrintReceipt.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+ 
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        var jqDataUrl = '@Url.Action("GetTransactionHistory", "TransactionHistory", new { alloyId = @Model.CustomerSession.Customer.CustomerId })';
+        LoadTransactionHistoryGrid(jqDataUrl);
+        $('#TransactionType').focus();
+    });
+
+    
+
+</script>
+@using (Html.BeginForm())
+{
+    <div class="trans_his_wrap">
+        <div>
+            <ul class="page_head product_head trans_head">
+                <li>Customer Transaction History</li>
+            </ul>
+        </div>
+        <br />
+        <div class="trans_head">
+            <div class="trans_column">
+                @Html.LabelFor(model => model.TransactionType)
+                @Html.DropDownListFor(model => model.TransactionType, Model.TransactionTypes, new { @class = "trans_input",tabindex = "2" })
+            </div>
+            <div class="trans_column_short">
+                @Html.LabelFor(model => model.Location)
+                @Html.DropDownListFor(model => model.Location, Model.Locations, new { @class = "trans_input", tabindex = "3" })
+            </div>
+            <div class="trans_top_clear">
+                <div class="trans_column">
+                    @Html.LabelFor(model => model.DateRange)
+                    @Html.DropDownListFor(model => model.DateRange, Model.DateRanges, new { @class = "trans_input trans_date", tabindex = "4" })
+                </div>
+                <div class="cust_trans_search_btn">
+                    <ul>
+                        <li>
+                            <input type="submit" id="map" tabindex="5" value="Search" />
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    @Html.Partial("_partialSpinner")
+    <div class="trans_head">
+        <ul class="page_head product_head trans_head">
+            <li>Last @Model.DateRange Days of Transactions </li>
+        </ul>
+    </div>    
+}
+<div id="griddiv" class="trans_grid_tab_wrap">
+    <div id="divJqTable" class="trans_grid_tab">
+        <table id="jqTable1" class="scroll">
+        </table>
+        <div id="jqTablePager" />
+    </div>
+</div>
+<div>
+    &nbsp;</div>

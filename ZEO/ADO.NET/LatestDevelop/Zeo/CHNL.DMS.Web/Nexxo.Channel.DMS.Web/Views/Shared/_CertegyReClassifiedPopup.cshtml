@@ -1,0 +1,29 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckAmount
+<div class="check_reclassified_wrap">
+    <hgroup>
+        <h1>@Html.Raw(ViewBag.Certegymessage)</h1>
+    </hgroup>
+    <div>
+        <ul>
+            <li>@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReClassifiedCheckFeeConfirmationMessage</li>
+        </ul>
+    </div>
+    <div class="push_top5 popMessageLabel txt_red txt_black" style="margin-left:20px">
+        <ul>
+            <li style="padding-left:30px">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.OldFee $@Html.Raw(Model.BaseFee.ToString("0.00"))</li>
+            <li style="padding-left:70px">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NewFee $@Html.Raw(Model.NetFee.ToString("0.00"))</li>
+        </ul>
+    </div>
+
+    <div class="cancel_check_wrap" style="margin-left:40px">
+        <ul>
+            <li>
+                @Html.ActionLink("Cancel", "CancelCheck", "CheckReClassified", new { checkId = @Model.CheckId }, new { @class = "anc_link_btn cancel_btn_color" })
+            </li>
+            <li>
+                <input type="submit" name="Source" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SubmitButtonText" onclick="$('#removeCheckPopup').dialog('destroy').remove()" />
+            </li>
+        </ul>
+    </div>
+</div>
+    <script src="@Url.Content("~/Scripts/Check/Check.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>

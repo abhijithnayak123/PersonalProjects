@@ -1,0 +1,1 @@
+& .\Nexxo.Core.CXE.Database.exe | Write-Host

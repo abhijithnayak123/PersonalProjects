@@ -1,0 +1,271 @@
+﻿@model TCF.Channel.Zeo.Web.Models.BaseModel
+@{
+    Layout = null;
+    System.Collections.Hashtable HtLocaluse = (System.Collections.Hashtable)Session["HTSessions"];
+    TCF.Channel.Zeo.Web.ServiceClient.ZeoService.AgentSession agentSession = ((TCF.Channel.Zeo.Web.ServiceClient.ZeoService.AgentSession)(HtLocaluse["TempSessionAgent"]));
+
+    string peripheralServiceUrl = string.Empty;
+    if (agentSession.TerminalId != 0 )
+    {
+        if (!string.IsNullOrWhiteSpace(agentSession.PeripheralServiceUrl))
+        {
+            peripheralServiceUrl = agentSession.PeripheralServiceUrl;
+        }
+    }
+    string isAgentSessionId = string.Empty;
+    if (agentSession.SessionId != null)
+    {
+        isAgentSessionId = agentSession.SessionId;
+    }
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+	<meta http-equiv="Pragma" content="no-cache" />
+	<meta http-equiv="Expires" content="0" />
+    <title>Home</title>
+    
+    <link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/jquery-grid/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.8.14.custom.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.9.2.custom.css")" rel="stylesheet" type="text/css" />
+
+    <link href="@Url.Content("~/Content/css/Common/base-state-rule.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/css/Common/layout-rule.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/css/Common/module-rule.css")" rel="stylesheet" type="text/css" />
+  
+    <script src="@Url.Content("~/Scripts/Common/lib/jquery-1.7.1.min.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.min.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/NexxoCustomValidations.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+	<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/jquery-ui.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/Cashing.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/AgentMenu.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+	<script src="@Url.Content("~/Scripts/Common/BrowserCustomisation.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/json2.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/helper.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+	<script src="@Url.Content("~/Scripts/Common/Common.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/Common/lib/jquery.clearable.js")" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript">
+
+		var sessionTimeoutWarning = @System.Configuration.ConfigurationSettings.AppSettings["SessionWarning"].ToString();
+        var sessionTimeout = @Session.Timeout;
+        
+		var rotate = null;
+		var rotateSession = null;
+
+        function redirectAfterTimeout() 
+        {
+			clearTimeout(rotate);
+            var redirectTimeout = @(HttpContext.Current.Session.Timeout * 60 * 1000);
+            rotate =   setTimeout("location.href = '@Url.Action("Logout", "SSO")'",redirectTimeout);            
+          redirectSessionWarning();        
+        }
+
+        function redirectSessionWarning()
+        {
+			clearTimeout(rotateSession);
+		    var sTimeout = parseInt(sessionTimeoutWarning) * 60 * 1000;         
+            rotateSession = setTimeout('showSessionWarningPopup()', sTimeout);
+        }		
+
+		function showSessionWarningPopup() {   			
+			var SessionWarningURL='@Url.Action("ShowSessionWarningPopup", "CancelTransaction")';
+   			var $confirm = $("<div id='divTimer'></div>");
+   			$confirm.empty();
+   			$confirm.dialog({
+   				autoOpen: false,
+   				title: '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SessionTimeout',
+   				width: 400,
+   				draggable: false,
+   				resizable: false,
+				closeOnEscape: false,
+   				modal: true,
+   				height: 200,
+   				cache: false,
+   				open: function (event, ui) {
+   					$confirm.load(SessionWarningURL);   			
+   				}
+   			});
+
+   			$confirm.dialog("open");
+   			return false;
+		}
+
+        var cancelURL = '@Url.Action("CancelTransaction", "CancelTransaction")';
+        var ExceptionMsgPopupURL = '@Url.Action("DisplaySystemMessage", "CancelTransaction")';
+        var NPSbaseURL = '@peripheralServiceUrl';
+       
+       $(document).ready(function () {
+            
+            $("input.input_box").addClass("clearable");
+            $("input.customerlookup_txt").addClass("clearable"); //For Carver new customer screen
+            $("input.disable_txt").removeClass("clearable");
+            $("input.row_input_bg").removeClass("clearable");
+            $('.clearable').clearable();
+            $('input.input_box:disabled').each(function () {
+                $('#' + $(this).attr('id')).siblings('a').hide();
+            });
+            var msg = '@ViewBag.ExceptionMessage';
+            var showExceptionPopup = '@ViewBag.IsException';
+            if (showExceptionPopup == 'True')
+                showExceptionPopupMsg(msg);
+        });
+
+
+    </script>
+</head>
+<body onload="Javascript:redirectAfterTimeout();">
+    <div id="layout_container_wrap">
+        @{
+            bool isTellerRole = (Convert.ToInt32(HttpContext.Current.Session["UserRoleId"]) == (int)TCF.Zeo.Common.Util.Helper.UserRoles.Teller);
+        }
+        <center>
+            <div id="layout_primary_head">
+                <div class="logo_bg">
+                    @if (Session["ChannelPartnerName"] != null)
+                    {
+                        string logoUrl = Url.Content(string.Format("~/Content/images/{0}.png", @Model.ChannelPartnerName));
+                        <img class="logo_agent" alt=" " src=@logoUrl />
+                        if (Model.channelPartner.IsMGIAlloyLogoEnable)
+                        { 
+						<img class="logo_nexxo" alt=" " src="~/Content/images/MGiAlloylogo.png" />
+                        }
+					}
+                </div>
+                <div class="page_head">
+                    @{
+                        string customer = ViewBag.Title;
+                    }
+                    @if (Model.CustomerSession != null)
+                    {
+                        customer = Model.CustomerSession.Customer.FirstName + " " + Model.CustomerSession.Customer.LastName + ">";
+                    }
+                    <div class="bread_head">
+                        @Html.ActionLink("Home", "CustomerSearch", "CustomerSearch", null, new { @class = "menu" })
+                        @*@Html.MvcSiteMap().SiteMapPath()
+                        @Html.Raw(ViewBag.Navigation)*@
+                    </div>
+                    <ul id="layout_sec_nav">
+                    @if (!Request.IsAuthenticated) {
+                        @Html.ActionLink("Log On", "Create", "Login", new { @class ="hide"})
+                    }
+                    @if (HttpContext.Current.Session["UserRoleId"].ToString() == "4") { 
+                        <li>
+                            <img src="@Url.Content("~/Content/Images/Sys-Admin-Icon.png")" alt="Agent" height="25px;" class="icon_agent" />
+                        </li>
+                    }
+                    @if (HttpContext.Current.Session["UserRoleId"].ToString() == "2") { 
+                        <li>
+                            <img src="@Url.Content("~/Content/Images/ManageUsersIconGreen.png")" alt="Agent" height="25px;" class="icon_agent" />
+                        </li>
+                    }
+                    @if (HttpContext.Current.Session["UserRoleId"].ToString() == "3") { 
+                        <li>
+                            <img src="@Url.Content("~/Content/Images/Agent.png")" alt="Agent" height="25px;" class="icon_agent" />
+                        </li>
+                    }
+                    <li id="dropdown" class="nav_txt"><a href="#" class="nav_breadcrumb">@HttpContext.Current.Session["UserNameText"].ToString()</a>
+                        @if (TempData["IsTempData"] != null && (bool)TempData["IsTempData"]) {
+                            <div class="hide">
+                                <ul class="sub_navigation">
+                                    <li class="drop_down">@Html.ActionLink("My Profile", "DisplayComingSoon", "ComingSoon", null, new { @class = "hover_menu "})</li>
+                                    <li class="drop_down">@Html.ActionLink("My Reports", "DisplayLandingPage", "Report", null, new { @class = "hover_menu "})</li>
+                                </ul>
+                            </div>
+                        }
+                        else {
+                            <div class="show">
+                                <ul class="sub_navigation">
+                                    @if (isTellerRole) { 
+                                        <li class="drop_down">@Html.ActionLink("Diagnostics", "DiagnosticInfo", "DiagnosticInfo", null, new { @class = "hover_menu"})</li>
+                                    }
+                                    <li class="drop_down">@Html.ActionLink("My Profile", "DisplayComingSoon", "ComingSoon", null, new { @class = "hover_menu "})</li>
+                                    <li class="drop_down">@Html.ActionLink("My Reports", "DisplayLandingPage", "Report", null, new { @class = "hover_menu "})</li>
+                                </ul>
+                            </div>
+                        }
+                    </li>
+                    <li class="nav_txt nav_divider">|</li>
+                    <li>       
+                           <a href="@Url.Content("~/Help.html")" class="nav_txt nav_txt_adj" onclick="window.open(this.href, 'Help','left=20,top=20,width=800,height=600,toolbar=1,resizable=0'); return false;" > Help? </a>
+                             </li>
+                        <li class="nav_txt nav_divider">|</li>
+                        <li class="nav_txt_adj">@Html.ActionLink("Logout", "Logout", "SSO", null, new { @class = "nav_txt" })</li>
+                    </ul>
+                    </div>
+                    <div>
+                    </div>
+                    <div class="clear_both"> </div>
+                </div>
+                <div id="layout_primary_content">
+                    <div class="main_content_wrap">
+                        <div id="layout_left_pane">
+                            <div id="layout_primary_nav">
+                                <ul class="menuClass" id="selection">
+                                    <li class="nav_head nav_icon_home">
+                                        @Html.ActionLink("Home", "CustomerSearch", "CustomerSearch", null, new { @class = "disableLink" })
+                                    </li>
+                                    @if (Session["activeButton"] != null && Session["activeButton"] == "cashreport") {
+                                    <li class="nav_item show_cash_active">
+                                            @Html.ActionLink("Cash Management", "ShowCashManagementReports", "Report", new { }, new { @class = "nav_name"})
+                                        </li>
+                                }
+                                else {
+                                    <li class="nav_item">
+                                            @Html.ActionLink("Cash Management", "ShowCashManagementReports", "Report", new { }, new { @class = "nav_name"})
+                                        </li>
+                                }
+                                </ul>
+                            </div>
+
+                            <div class="tips rep_tip align_radio" >
+                                <hgroup>
+                                    <h1 class="head">Tips / Offers </h1>
+                                </hgroup>
+                                <div class="msg_bg">
+                                    <div class="msg">
+                                        @* Nexxo's Everyday Financial Services (EFS) platform enables retail banks, as well as
+					other providers, to expand their alternative financial services. Nexxo's platform,
+					which is proven in self-serve kiosk, teller-assisted desktop, and mobile.*@
+                                        @Html.Raw(ViewBag.TipsAndOffersMessage)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="layout_center_pane">
+                            @RenderBody()
+                        </div>
+                    </div>
+
+                    <div id="layout_right_pane">
+                        <div id="divTable" class="product_head">
+                            <div class="head">
+                                Active Customer Session
+                                <div class="cust_sesssion">
+                                    <table width="99%">
+                                        <tr>
+                                            <td> Name </td>
+                                            <td> Status </td>
+                                            <td> Amount </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </center>
+        <div class="version_userSessiondiv">
+            <div class="label_txt version_userSessionId"><span>Version: @System.Configuration.ConfigurationManager.AppSettings["VersionInfo"]</span></div>
+            <div id="divUserSessionId" style="display:none" class="label_txt version_userSessionId"><span>User Session ID:@isAgentSessionId &nbsp; |</span></div>
+        </div>
+        </div>
+        <input type ="hidden" id = "CheckScanError" value = "@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckScanError" />
+        <input type ="hidden" id = "PrintError" value = "@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PrintError" />
+    </body>
+    </html>

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.CXE"
+                   namespace="MGI.Core.CXE.Data">
+  <class name="CheckImages" table="tCheckImages">
+    <id name="id" column="CheckPK">
+      <generator class="foreign">
+        <param name="property">Check</param>
+      </generator>
+    </id>
+    <many-to-one name="Check" class="MGI.Core.CXE.Data.Transactions.Stage.Check" column="CheckPK" insert="false" update="false"/>
+    <property name="Front" length="2147483647"/>
+    <property name="Back" length="2147483647"/>
+    <property name="Format"/>
+    <property name="DTServerCreate" update="false"/>
+  </class>
+</hibernate-mapping>

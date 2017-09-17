@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping assembly="MGI.Cxn.MoneyTransfer.MG" namespace="MGI.Cxn.MoneyTransfer.MG.Data" xmlns="urn:nhibernate-mapping-2.2">
+	<class name="Country" table="tMGram_Countries" lazy="true" >
+		<id name="rowguid" column="MGCountryPK" />
+		<property name="Id">
+			<column name="MGCountryID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="Code">
+			<column name="Code" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Legacycode">
+			<column name="LegacyCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Sendactive">
+			<column name="SendActive" sql-type="bit" not-null="false" />
+		</property>
+		<property name="Receiveactive">
+			<column name="ReceiveActive" sql-type="bit" not-null="false" />
+		</property>
+		<property name="Directedsendcountry">
+			<column name="DirectedSendCountry" sql-type="bit" not-null="false" />
+		</property>
+		<property name="Mgdirectedsendcountry">
+			<column name="MGDirectedSendCountry" sql-type="bit" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="State" table="tMGram_States" lazy="true" >
+		<id name="rowguid" column="MGStatePK" />
+		<property name="Id">
+			<column name="MGStateID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="Code">
+			<column name="Code" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Countrycode">
+			<column name="CountryCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="Currency" table="tMGram_Currencies" lazy="true" >
+		<id name="rowguid" column="MGCurrencyPK" />
+		<property name="Id">
+			<column name="MGCurrencyID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="Code">
+			<column name="Code" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Currencyprecision">
+			<column name="CurrencyPrecision" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="CountryCurrency" table="tMGram_CountryCurrencies" lazy="true" >
+		<id name="rowguid" column="MGCountryCurrencyPK" />
+		<property name="Id">
+			<column name="MGCountryCurrencyID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="CountryCode">
+			<column name="CountryCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Basecurrency">
+			<column name="BaseCurrency" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Localcurrency">
+			<column name="LocalCurrency" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Receivecurrency">
+			<column name="ReceiveCurrency" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Indicativerateavailable">
+			<column name="IndicativeRateAvailable" sql-type="bit" not-null="false" />
+		</property>
+		<property name="Deliveryoption">
+			<column name="DeliveryOption" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="DeliveryOption" table="tMGram_DeliveryOptions" lazy="true" >
+		<id name="rowguid" column="MGDeliveryOptionPK" />
+		<property name="Id">
+			<column name="MGDeliveryOptionID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="OptionId">
+			<column name="OptionId" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Deliveryoption">
+			<column name="DeliveryOption" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="StateRegulator" table="tMGram_StateRegulators" lazy="true" >
+		<id name="rowguid" column="MGStateRegulatorPK" />
+		<property name="Id">
+			<column name="MGStateRegulatorID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="Dfjurisdiction">
+			<column name="DFJurisdiction" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Stateregulatorurl">
+			<column name="StateRegulatorURL" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Stateregulatorphone">
+			<column name="StateRegulatorPhone" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Languagecode">
+			<column name="LanguageCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Translation">
+			<column name="Translation" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+</hibernate-mapping>

@@ -1,0 +1,226 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SendMoneyReceiver
+@{
+    ViewBag.Title = "SendMoneyReceiver";
+    Layout = "~/Views/Shared/_Common.cshtml";
+    string AddEdit = Model.AddEdit;
+}
+
+@{
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverPickUpState = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpState<span
+		style='color: red; display: none' id="pickUpStateRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverPickUpCity = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpCity<span
+		style='color: red; display: none' id="pickUpCityRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverAddress = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverAddress<span
+		class="requiredfield-label" name="ContactDetailRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverCity = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverCity<span
+		class="requiredfield-label" name="ContactDetailRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverStateProvince = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverStateProvince<span
+		class="requiredfield-label" name="ContactDetailRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverZipCode = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverZipCode<span
+		class="requiredfield-label" name="ContactDetailRequiredStar">*</span>
+	</text>;
+    Func<TCF.Channel.Zeo.Web.Models.SendMoneyReceiver, object> ReceiverPhone = 
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPhone<span
+		class="requiredfield-label" name="ContactDetailRequiredStar">*</span>
+	</text>;
+}
+<script src="@Url.Content("~/Scripts/SendMOney/Receivers.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script type="text/javascript">
+
+    
+
+    $(document).ready(function () {
+        $('#FirstName').focus();
+    });
+
+</script>
+@Html.Partial("_partialSpinner")
+@using (Html.BeginForm("AddEditReceiver", "SendMoney", FormMethod.Post))
+{
+    @Html.ValidationSummary(true)  
+    <div>
+        <ul class="menuHeading productBand">
+            @if (AddEdit == "Add")
+            {
+                <li style="display: inline-block; float: left">
+                    Add Receiver
+                </li>
+            }
+            else
+            {
+                <li style="display: inline-block; float: left">
+                    Edit Receiver
+                </li>
+            }
+        </ul>
+    </div> 
+    <div class="row">
+        <p class="cFont sndMnySideHdngs">
+            Receiver's Name:
+        </p>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverFirstName)</label>
+            @Html.TextBoxFor(model => model.FirstName, new { @class = "input_box", @maxlength = "20", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_FirstName, tabindex = "3" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.FirstName)
+        </div>
+    </div>
+   <div class="row">
+        <div>
+            <label class="labelText">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverLastName)</label>
+            @Html.TextBoxFor(model => model.LastName, new { @class = "input_box", @maxlength = "30", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_LastName, tabindex = "4" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.LastName)
+        </div>
+    </div>
+   <div class="row">
+        <div>
+            @Html.LabelFor(model => model.SecondLastName, new { @class = "labelText" })
+            @Html.TextBoxFor(model => model.SecondLastName, new { @class = "input_box", @maxlength = "30", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_SecondLastName, tabindex = "5" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.SecondLastName)
+        </div>
+    </div>
+    <div class="row">
+        <p class="cFont sndMnySideHdngs">
+            Pickup Details:
+        </p>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText OptDropDownLblWidth">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpCountry)</label>
+            @Html.DropDownListFor(model => model.PickUpCountry, Model.LPickUpCountry, new { @class = "optDropDown", tabindex = "6" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.PickUpCountry)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText OptDropDownLblWidth">@ReceiverPickUpState(@Model)</label>
+            @Html.DropDownListFor(model => model.PickUpState, Model.LPickUpState, new { @class = "optDropDown", tabindex = "7" })
+        </div>
+        <div class="errorDisplay" id="PickUpState">
+            @Html.ValidationMessageFor(model => model.PickUpState)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText OptDropDownLblWidth">@ReceiverPickUpCity(@Model)</label>
+            @Html.DropDownListFor(model => model.PickUpCity, Model.LPickUpCity, new { @class = "optDropDown", tabindex = "8" })
+</div>
+        <div class="errorDisplay" id="PickUpCity">
+            @Html.ValidationMessageFor(model => model.PickUpCity)
+        </div>
+    </div>
+    <div>
+        <p class="cFont sndMnySideHdngs">
+            Delivery Details:
+        </p>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText OptDropDownLblWidth">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverDeliveryMethod)</label>
+            @Html.DropDownListFor(model => model.DeliveryMethod, Model.LDeliveryMethods, new { @class = "optDropDown", tabindex = "9" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.DeliveryMethod)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.DeliveryOptions, new { @class = "labelText OptDropDownLblWidth" })
+            @Html.DropDownListFor(model => model.DeliveryOptions, Model.LDeliveryOptions, new { @class = "optDropDown", tabindex = "10" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.DeliveryOptions)
+        </div>
+    </div>
+    <div class="row">
+        <p class="cFont sndMnySideHdngs">
+            Receiver's Contact Details:
+        </p>
+    </div>
+    <div>
+        <p class="cFont10 sndMnySideHdngs">
+            (Required if Phone Notification is selected as Delivery Option)
+        </p>
+    </div>
+    
+    <div class="row">
+        <div>
+            <label class="labelText">@ReceiverAddress(@Model)</label>
+            @Html.TextBoxFor(model => model.Address, new { @class = "input_box", tabindex = "11" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.Address)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText">@ReceiverCity(@Model)</label>
+            @Html.TextBoxFor(model => model.City, new { @class = "input_box", tabindex = "12" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.City)
+        </div>
+    </div>
+        <div class="row">
+        <div>
+            <label class="labelText">@ReceiverStateProvince(@Model)</label>
+            @Html.TextBoxFor(model => model.StateProvince, new { @class = "input_box", @maxlength = "40", tabindex = "13" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.StateProvince)
+        </div>
+    </div>
+        <div class="row">
+        <div>
+            <label class="labelText">@ReceiverZipCode(@Model)</label>
+            @Html.TextBoxFor(model => model.ZipCode, new { @class = "input_box", @maxlength = 10, tabindex = "14" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.ZipCode)
+        </div>  
+    </div>
+    <div class="row">
+        <div>
+            <label class="labelText">@ReceiverPhone(@Model)</label>
+            @Html.TextBoxFor(model => model.Phone, new { @class = "input_box", Maxlength = 13, tabindex = "15" })
+        </div>
+        <div class="errorDisplay">
+            @Html.ValidationMessageFor(model => model.Phone)
+        </div>
+    </div>
+	@Html.HiddenFor(model => model.ReceiverId)  
+	@Html.HiddenFor(model => model.Id)
+    <div  class="addreceiver_btn_wrap">
+        <ul>
+            <li><input type="button" id="CancelReceiver" value="Cancel" tabindex="17" /></li>
+            <li><input type="submit" value="Save" tabindex="16"  /></li>
+        </ul>
+    </div>
+}

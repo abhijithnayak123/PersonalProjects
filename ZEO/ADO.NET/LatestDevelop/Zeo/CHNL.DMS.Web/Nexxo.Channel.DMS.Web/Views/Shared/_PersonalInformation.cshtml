@@ -1,0 +1,111 @@
+﻿@model TCF.Channel.Zeo.Web.Models.PersonalInformation
+<div class='new_customer'>
+@if (Model.channelPartner.AuthenticationType == "Card") { 
+    @Html.Partial("_PersonalInfoCard", Model)
+}
+@Html.Partial("_PersonalDetail", Model)
+@Html.Partial("_ContactDetail", Model)
+<div class="row float_left ref_no">
+    <div>
+        @Html.LabelFor(model => model.ReferralNumber, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.ReferralNumber, new { @class = "input_box", tabindex = 26, maxLength = 8, @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_ReferralNumber })
+    </div>
+    <div class="error_align_left cust_error_dis"> @Html.ValidationMessageFor(model => model.ReferralNumber) </div> 
+</div>
+<div class="row row_space_fix">
+    <div>
+        @Html.LabelFor(model => model.WoodForestAccountHolder, new { @class = "row_label_txt" })
+        @Html.CheckBoxFor(m => Model.WoodForestAccountHolder, new { tabindex = 27 })
+    </div>
+    <div class="error_align_left cust_error_dis"> @Html.ValidationMessageFor(model => model.WoodForestAccountHolder) </div> 
+</div>
+@Html.HiddenFor(model => model.IsCompanionSearch)
+
+
+@Html.Partial("_Preference", Model)
+
+
+<div  class="row" style="clear:left;">
+	<div>
+		<label class="row_label_txt">@Html.LabelFor(model=>model.Group1)</label>
+		<span class="leftDropDown">@Html.DropDownListFor(m => m.Group1, Model.LGroup1, new { @class = "dropdown_box", autocomplete = "off", tabindex = 31, })</span>		
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.Group1)
+	</div>
+</div>
+<div  class="row" style="clear:left;">
+	<div>
+		<label class="row_label_txt">@*@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Group1)*@</label>
+		<span class="leftDropDown">@Html.DropDownListFor(m => m.Group2, Model.LGroup2, new { @class = "dropdown_box", autocomplete = "off", tabindex = 32, })</span>
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.Group2)
+	</div>
+</div>
+@*@Html.Partial("_WesternUnionDetails", Model.westernUnionDetails)*@
+	@if (ViewBag.IsNotesEnable)
+	{ 
+	<div class="row" style="clear:left;">
+		<div>
+			<label class="row_label_txt">Notes</label>
+			<span class="leftDropDown">@Html.TextAreaFor(model => model.Notes, 4, 69, new { @class = "textarea",  tabindex = 33, @maxlength = "250", placeholder = "Max 250 characters", id = "Notes", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_Notes })</span>
+		</div>
+		<div class="error_align_left cust_error_dis">
+			@Html.ValidationMessageFor(model => model.Notes)
+		</div>
+	</div>
+	}
+</center>
+
+<script type="text/javascript">
+	$(document).ready(function () {
+		$('#Notes').placeholder();
+	});
+	if ($.browser.msie) {
+		if ($.browser.version == 7.0) {
+			$("#checkBoxStatus").css("marginright", "35%");
+		}
+}
+
+//Handle Enter Key Press, since the submit button is not there
+$(document).keypress(function (e) {
+    if (e.which == 13) {
+        $('#frmPersonalInfo').submit();
+    }
+});
+
+var customerInactiveStatusPopupURL = '@Url.Action("ConfirmCustomerInactiveStatus", "CustomerRegistration")';
+function checkCustomerInactiveStatus() {
+    if ($('#CXEStatus').val() == "True" && $('#CustomerProfileStatus').attr("checked") != "checked" && $('#CustomerProfileStatus').attr("disabled") != "disabled") {
+        var newtitle = 'Message';
+        var $confirm = $("<div id='divcustomerinactivestatus'></div>");
+        $confirm.empty();
+        $confirm.dialog({
+            autoOpen: false,
+            title: newtitle,
+            width: 420,
+            draggable: false,
+            resizable: false,
+            closeOnEscape: false,
+            modal: true,
+            height: 200,
+            open: function (event, ui) {
+                var url = customerInactiveStatusPopupURL;
+                $confirm.load(url);
+            }
+        });
+        $confirm.dialog("open");
+    }
+    else {
+        SubmitPersonalInfoForm();
+    }
+
+}
+
+function SubmitPersonalInfoForm() {
+    $('#divcustomerinactivestatus').dialog('destroy').remove();
+    $('#frmPersonalInfo').submit();
+}
+
+</script>

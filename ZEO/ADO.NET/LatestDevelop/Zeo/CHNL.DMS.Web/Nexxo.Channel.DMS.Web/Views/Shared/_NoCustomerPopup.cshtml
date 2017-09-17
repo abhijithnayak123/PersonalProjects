@@ -1,0 +1,74 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SystemMessage
+<div class="system_msg_wrap">
+    <div class="m_type">
+        @Html.LabelFor(model => model.Type)
+        <span class="m_type_span">@Html.DisplayFor(model => model.Type, new { @disabled = "disabled" })</span>
+    </div>
+    <div class="m_num">
+        @Html.LabelFor(model => model.Number)
+        <span class="m_num_span">@Html.DisplayFor(model => model.Number, new { @disabled = "disabled" })</span>
+    </div>
+    <br />
+    <br />
+    <div class="float_left">
+        @Html.LabelFor(model => model.Message)
+        @{
+            string errorimgUrl = Url.Content(string.Format("~/Content/images/{0}.jpg", @Model.ErrorType));
+            <img width="23" height="23" alt=" " src="@errorimgUrl" class="m_err_img">
+        }
+    </div>
+    <div class="m_msg_wrap">
+        @Model.Message
+    </div>
+    <br />
+    <br />
+    <div class="clear_both float_left">
+        @Html.LabelFor(model => model.AddlDetails, new { @class = "m_add_det" })
+    </div>
+    <div class="m_add_det_lbl">
+        @MvcHtmlString.Create(Model.AddlDetails.Replace("\r\n", "<br />"))
+    </div>
+    <br />
+    <br />
+    <div class="push_top13_fix txt_center">
+        <ul>
+            @if (Model.Number.Contains("1001.100.6018") || Model.Number.Contains("602"))
+            {
+                <li class="SrchButtonWidth">
+                    <input type="button" value="Cancel" id="btnOk" onclick="clearCustomerSearchSession();"
+                           class="red_btn push_top10_fix" />
+                </li>
+                <li class="SrchButtonWidth">
+                    <input type="submit" value="Continue to Registration" style="width:140px !important; font-size:11.5px !important" id="registrationbtn" />
+                </li>
+            }
+            else
+            {
+                <li class="SrchButtonWidth">
+                    <input type="button" value="Ok" id="btnOk" onclick="clearCustomerSearchSession();"
+                           class="green_input push_top10_fix" />
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<script>
+    $("#registrationbtn").click(function () {
+        window.location.href = PersonalInfoNavigationURL + '?IsException=false&ExceptionMessage=""';
+    });
+
+    function clearCustomerSearchSession() {
+        RemovePopUp();
+        $.ajax({
+            url: clearCustomerSearchSessionUrl,
+            type: 'GET',
+            datatype: 'json',
+            success: function (jsonData) {
+            },
+            error: function (err) {
+                showExceptionPopupMsg(err.data);
+            }
+        });
+    }
+</script>

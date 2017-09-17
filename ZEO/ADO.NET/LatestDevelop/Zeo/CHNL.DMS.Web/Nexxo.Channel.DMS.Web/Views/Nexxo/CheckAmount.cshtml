@@ -1,0 +1,159 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckAmount
+@{
+	ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckAmountTitle;
+}
+
+<script src="@Url.Content("~/Scripts/Check/DropdownScriptCheckType.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Check/PromotionCodeValidation.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+
+<script language="javascript" type="text/javascript">
+	$(document).ready(function () {
+	    $("#CheckDate").mask("99/99/9999");
+	    $("#CheckDate").focus();
+	});
+	var base_url_GetCheckFee = '@Url.Action("GetCheckFee", "CheckAmount")';
+
+    function OnlyNumeric(e) {
+		if ((e.which < 48 || e.which > 57)) {
+			if (e.which == 8 || e.which == 46 || e.which == 0) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	var isValid = false;
+	var errMsg = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromotionCodeValidation';
+
+</script>
+
+@using (Html.BeginForm("CheckAmount", "CheckAmount", new { id = "checkform" }))
+{
+	<div class="check_amt_wrap">
+		<div>
+			<ul class="page_head product_head">
+				<li>Process Check</li>
+			</ul>
+		</div>
+		<br />
+		@Html.Partial("_partialSpinner")
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckDate)</label>
+				@Html.TextBoxFor(model => model.CheckDate, new { @class = "input_box", id = "CheckDate", @placeholder = "MM/DD/YYYY" , tabindex = 2 })
+			</div>
+			<div class="error_align_left"> @Html.ValidationMessageFor(model => model.CheckDate)</div>
+		</div>
+
+		<div class="row">
+			<div>
+				<input type="hidden" id="PanelStatus" value="1" />
+				<label class="row_label_txt">@Html.DollarMandatoryField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ProcessCheckAmount)</label>
+				@Html.TextBoxFor(model => model.CheckAmount, new { @class = "input_box", @onkeypress = "return OnlyNumeric(event);", onblur = "changeAmountPrecision(this)", tabindex = 3, @maxlength = "15" })
+			</div>
+			<div class="error_align_left"> @Html.ValidationMessageFor(model => model.CheckAmount) </div>
+		</div>
+
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckCheckType)</label>
+				@Html.DropDownListFor(model => model.CheckType, Model.LCheckTypes, new { @class = "dropdown_box", tabindex = 4 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.CheckType)
+				<span id="msgCheckTypeSelection" class="error_txt"></span>
+			</div>
+		</div>
+
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.EstimatedBaseFee)</label>
+				@Html.TextBoxFor(model => model.BaseFeeWithCurrency, new { @class = "input_box disable_txt", readOnly = "true" })
+			</div>
+			<div class="error_align_left ieCheckValidation">
+				@Html.ValidationMessageFor(model => model.BaseFee)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.LabelFor(model => model.PromotionCode)</label>
+				@Html.TextBoxFor(model => model.PromotionCode, new { @class = "input_box", tabindex = 5})
+			</div>
+			<div id="promodiv" class="error_align_left">
+				<span id="promocode" class="error_txt"></span>
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.LabelFor(model => model.DiscountName)</label>
+				@Html.TextAreaFor(model => model.DiscountName, 4, 69, new { @class = "textarea disable_txt", readOnly = "true" })
+			</div>
+			<div class="errorDisplay ieCheckValidation">
+				@Html.ValidationMessageFor(model => model.DiscountName)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.LabelFor(model => model.DiscountApplied)</label>
+				@Html.TextBoxFor(model => model.DiscountAppliedWithCurrency, new { @class = "input_box disable_txt", readOnly = "true" })
+			</div>
+			<div class="error_align_left ieCheckValidation">
+				@Html.ValidationMessageFor(model => model.DiscountApplied)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@Html.LabelFor(model => model.NetFee)</label>
+				@Html.TextBoxFor(model => model.NetFeeWithCurrency, new { @class = "input_box disable_txt", readOnly = "true" })
+			</div>
+			<div class="errorDisplay ieCheckValidation">
+				@Html.ValidationMessageFor(model => model.NetFee)
+			</div>
+		</div>
+
+		<div class="row" style="visibility:hidden;">
+			<div>
+				<label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckEstablishmentFee)</label>
+				@Html.TextBoxFor(model => model.CheckEstablishmentFee, new { @class = "input_box disable_txt", readOnly = "true" })
+			</div>
+			<div class="error_align_left"> @Html.ValidationMessageFor(model => model.CheckEstablishmentFee) </div>
+		</div>
+
+
+
+		@Html.TextBoxFor(model => model.BaseFee, new { style = "display:none" })
+		@Html.TextBoxFor(model => model.NetFee, new { style = "display:none" })
+		@Html.TextBoxFor(model => model.DiscountApplied, new { style = "display:none" })
+		@Html.HiddenFor(model => model.IsSystemApplied)
+		@Html.HiddenFor(model => model.RoutingNumber)
+		@Html.HiddenFor(model => model.AccountNumber)
+		@Html.HiddenFor(model => model.CheckNumber)
+        @Html.HiddenFor(model => model.FeeAdjustmentId)
+
+		<input id="SystemPromotionCode" type="hidden" value="@Model.PromotionCode" />
+		<div class="nextAndBackButton hide">
+			<ul>
+				<li>
+					<input id="ok" type="submit" value="ok" />
+				</li>
+			</ul>
+			@Html.Partial("_CheckDetails", Model)
+		</div>
+		<div class="show_popup_wrap">
+           
+			<ul>
+				<li><input id="CancelTransaction" value="Cancel" class="hide red_btn" type="button" tabindex="7"/></li>
+				<li class="row_width30"><input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText" onclick="_showCancelTransaction()" class="red_btn" tabindex="7" /></li>
+				<li class="row_width30">
+					<input type="button" value="Submit" id="btnSubmit" style="background-color: rgb(0, 105, 55)" tabindex="6" />
+
+				</li>
+			</ul>
+		</div>
+	</div>
+}
+
+
+

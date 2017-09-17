@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+
+	<class name="ChannelPartner" table="tChannelPartners" lazy="false">
+		<id name="rowguid" column="ChannelPartnerPK" >
+		</id>
+		<property name="Id" column="ChannelPartnerId"></property>
+		<property name="Name" column="Name"  />
+		<property name="FeesFollowCustomer" column="FeesFollowCustomer"  />
+		<property name="CashFeeDescriptionEN" column="CashFeeDescriptionEN"  />
+		<property name="CashFeeDescriptionES" column="CashFeeDescriptionES"  />
+		<property name="DebitFeeDescriptionEN" column="DebitFeeDescriptionEN"  />
+		<property name="DebitFeeDescriptionES" column="DebitFeeDescriptionES"  />
+		<property name="ConvenienceFeeCash" column="ConvenienceFeeCash"  />
+		<property name="ConvenienceFeeDebit" column="ConvenienceFeeDebit"  />
+		<property name="ConvenienceFeeDescriptionEN" column="ConvenienceFeeDescriptionEN"  />
+		<property name="ConvenienceFeeDescriptionES" column="ConvenienceFeeDescriptionES"  />
+		<property name="CanCashCheckWOGovtId" column="CanCashCheckWOGovtId"  />
+		<property name="LogoFileName" column="LogoFileName"  />
+		<property name="IsEFSPartner" column="IsEFSPartner"  />
+		<property name="EFSClientId" column="EFSClientId"  />
+		<property name="UsePINForNonGPR" column="UsePINForNonGPR"  />
+		<property name="IsCUPartner" column="IsCUPartner"  />
+		<property name="TIM" column="TIM"  />
+		<property name="HasNonGPRCard" column="HasNonGPRCard"  />
+		<property name="ManagesCash" column="ManagesCash"  />
+		<property name="AllowPhoneNumberAuthentication" column="AllowPhoneNumberAuthentication"  />
+		<property name="CardPresenceVerificationConfig" column="CardPresenceVerificationConfig"/>
+		<one-to-one name="ChannelPartnerConfig" class="ChannelPartnerConfig" constrained="false" cascade="all-delete-orphan"/>
+		<property name="ComplianceProgramName"  />
+		<set name="Providers" inverse="true" cascade="all-delete-orphan" order-by="Sequence asc">
+			<key column="ChannelPartnerPK"/>
+			<one-to-many class="ChannelPartnerProductProvider"/>
+		</set>
+		<bag name="Prospects" inverse="true" cascade="none">
+			<key column="ChannelPartnerPK" />
+			<one-to-many class="Prospect" />
+		</bag>
+		<!--<bag name="ChannelPartnerConfigs" inverse="true" cascade="none">
+			<key column="ChannelPartnerPK" />
+			<one-to-many class="ChannelPartnerConfig" />
+		</bag>-->
+		<bag name="Customers" inverse="true" cascade="none">
+			<key column="ChannelPartnerPK" />
+			<one-to-many class="Customer" />
+		</bag>
+	</class>
+
+	<class name ="ChannelPartnerConfig" table ="tChannelPartnerConfig" lazy="false">
+		<id name="ChannelPartnerID" column="ChannelPartnerPK">
+			<generator class="foreign">
+				<param name="property">channelpartner</param>
+			</generator>
+		</id>
+		<many-to-one name="ChannelPartner" class="ChannelPartner" column="ChannelPartnerPK" insert="false" update="false"/>
+		<property name="DisableWithdrawCNP" column="DisableWithdrawCNP"  />
+		<property name="CashOverCounter" column="CashOverCounter"/>
+		<property name="FrankData" column="FrankData"/>
+		<property name="IsCheckFrank" column="IsCheckFrank" />
+		<property name="IsNotesEnable" column="IsNotesEnable" />
+		<property name="IsReferralSectionEnable" column="IsReferralSectionEnable"/>
+		<property name="IsMGIAlloyLogoEnable">
+			<column name="IsMGIAlloyLogoEnable" sql-type="bit" not-null="true" />
+		</property>
+		<property name="MasterSSN" column="MasterSSN"/>		
+		<property name="IsMailingAddressEnable" column="IsMailingAddressEnable" />
+		<property name="CanEnableProfileStatus" column="CanEnableProfileStatus" />
+		<property name="CustomerMinimumAge" column="CustomerMinimumAge" />
+	</class>
+	
+	<class name="TipsAndOffers" table="tTipsAndOffers" lazy="false">
+		<id name="Id" column="TipAndOfferPK">
+		</id>
+		<property name="ViewName" column="ViewName" />
+		<property name="ChannelPartnerName" column="ChannelPartnerName" />
+		<property name="TipsAndOffersEn" column="TipsAndOffersEn" />
+		<property name="TipsAndOffersEs" column="TipsAndOffersEs" />
+		<property name="OptionalFilter" column="OptionalFilter" />
+		<property name="DTServerCreate" column="DTServerCreate" not-null="true" update="false" />
+		<property name="DTServerLastModified" column="DTServerLastModified" not-null="false" insert="false" />
+	</class>
+
+	<class name="ChannelPartnerGroup" table="tChannelPartnerGroups" lazy="false">
+		<id name="ChannelPartnerGroupPK" column="ChannelPartnerGroupPK">
+			<generator class="guid"></generator>
+		</id>
+		<many-to-one name="channelPartner" class="ChannelPartner" column="ChannelPartnerPK" />
+		<property name="Name" />
+		<property name="DTServerCreate" not-null="true" update="false" />
+		<property name="DTServerLastModified" not-null="false" insert="false" />
+		<property name="Id" column="ChannelPartnerGroupId">
+		</property>
+	</class>
+
+	<class name="ChannelPartnerCertificate" table="tChannelPartnerCertificate" lazy="true" >
+		<id name="ChannelPartnerCertificatePK" column="ChannelPartnerCertificatePK">
+			<generator class="guid"/>
+		</id>
+		<property name="ChannelPartnerCertificateId" generated="insert" update="false" insert="false">
+			<column name="ChannelPartnerCertificateId" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<many-to-one name="ChannelPartner" class="ChannelPartner" column="ChannelPartnerPK" insert="false" update="false"/>
+		<property name="Issuer">
+			<column name="Issuer" sql-type="nvarchar" not-null="true" />
+		</property>
+		<property name="ThumbPrint">
+			<column name="ThumbPrint" sql-type="nvarchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate" not-null="true" update="false" />
+		<property name="DTServerLastModified" not-null="false" insert="false" />
+	</class>
+
+</hibernate-mapping>

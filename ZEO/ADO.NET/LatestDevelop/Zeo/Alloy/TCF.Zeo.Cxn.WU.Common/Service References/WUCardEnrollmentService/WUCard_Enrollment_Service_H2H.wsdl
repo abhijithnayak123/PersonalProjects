@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.westernunion.com/WUCard_Enrollment_Service_H2H" xmlns:xrsi="http://www.westernunion.com/schema/xrsi" name="WUCard_Enrollment_Service_H2H" targetNamespace="http://www.westernunion.com/WUCard_Enrollment_Service_H2H" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema xmlns:mrm="http://www.westernunion.com/WUCard_Enrollment_Service_H2H" targetNamespace="http://www.westernunion.com/WUCard_Enrollment_Service_H2H">
+      <xsd:import schemaLocation="../schema/XRSIWUCardEnrollmentRequest.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+      <xsd:import schemaLocation="../schema/XRSIWUCardEnrollmentReply.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+      <xsd:import schemaLocation="../schema/XRSIErrorReply.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="WUCardEnrollment_in">
+    <wsdl:part name="wu-card-enrollment-request" element="xrsi:wu-card-enrollment-request" />
+  </wsdl:message>
+  <wsdl:message name="WUCardEnrollment_out">
+    <wsdl:part name="wu-card-enrollment-reply" element="xrsi:wu-card-enrollment-reply" />
+  </wsdl:message>
+  <wsdl:message name="WUCardEnrollment_fault1">
+    <wsdl:part name="error-reply" element="xrsi:error-reply" />
+  </wsdl:message>
+  <wsdl:portType name="WUCardEnrollmentPortType">
+    <wsdl:operation name="WUCardEnrollment">
+      <wsdl:input name="WUCardEnrollment_Input" message="tns:WUCardEnrollment_in" />
+      <wsdl:output name="WUCardEnrollment_Output" message="tns:WUCardEnrollment_out" />
+      <wsdl:fault name="WUCardEnrollment_Fault" message="tns:WUCardEnrollment_fault1" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="WUCardEnrollment_H2H_SOAP_HTTP_Binding" type="tns:WUCardEnrollmentPortType">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="WUCardEnrollment">
+      <soap:operation soapAction="WUCardEnrollmentAction" />
+      <wsdl:input name="WUCardEnrollment_Input">
+        <soap:body use="literal" parts="wu-card-enrollment-request" />
+      </wsdl:input>
+      <wsdl:output name="WUCardEnrollment_Output">
+        <soap:body use="literal" parts="wu-card-enrollment-reply" />
+      </wsdl:output>
+      <wsdl:fault name="WUCardEnrollment_Fault">
+        <soap:fault use="literal" name="WUCardEnrollment_Fault" namespace="" />
+      </wsdl:fault>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="WUCard_Enrollment_Service_H2H">
+    <wsdl:port name="SOAP_HTTP_Port" binding="tns:WUCardEnrollment_H2H_SOAP_HTTP_Binding">
+      <soap:address location="http://www.westernunion.com/WUCard_Enrollment_Service_H2H" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

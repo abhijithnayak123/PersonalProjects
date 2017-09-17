@@ -1,0 +1,298 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SendMoney
+@{
+	ViewBag.Title = "SendMoneyDetails";
+}
+
+<script type="text/javascript">
+    var sendMoneyDetTestQuestion = '@Model.TestQuestionOption';
+    var sendMoneyDetIsAmountValid = '@ViewBag.isAmountValid';
+    var sendMoneyDetCountry = '@Model.Country';
+    var sendMoneyDetWUDeliveryOptions = '@Url.Action("WUDeliveryOptions", "SendMoney")';
+    var lpmtHasError = '@Model.HasLPMTError';
+	var lpmtDialog = '@Url.Action("ShowLPMTDialog", "SendMoney")';
+	var invalidPromoCode = '@ViewBag.invalidPromoCode';
+</script>
+
+
+<script src="@Url.Content("~/Scripts/SendMoney/SendMoneyDetails.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/SendMoney/CancelMoneytransfer.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+@{
+	Func<TCF.Channel.Zeo.Web.Models.SendMoney, object> TestQuestion = 
+    @<text>
+    @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyTestQuestion<span class="mandatory hide" id="testQuestionmandatory">*</span>
+    </text>;
+	Func<TCF.Channel.Zeo.Web.Models.SendMoney, object> TestAnswer = 
+    @<text>
+    @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyTestAnswer<span class="mandatory hide" id="testAnswermandatory">*</span>
+    </text>;
+}
+@using (Html.BeginForm("SendMoneyDetails", "SendMoney"))
+{
+    
+    <div>
+        <ul class="page_head product_head">
+            <li>Send Money Details</li>
+        </ul>
+    </div>
+    <div>
+        @Html.ValidationSummary(true)
+        @if (@ViewBag.ErrorMessage != null)
+		{
+            <div id="divErrorMsg">
+                <div class="field-validation-error error_txt">@ViewBag.ErrorMessage</div>
+            </div>			
+		}
+    </div>
+    <div class="send_money_wrap send_money_det_wrap">
+        <div class="row float_left name_wrap">
+            <div>
+                <label class="row_label_txt send_money_txt"> @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.FirstName</label>
+                @Html.TextBoxFor(model => model.FirstName, null, new { @class = "disable_txt float_left first_name_wrap", readOnly = "true" })
+            </div>
+            <div class="error_align_left"> @Html.ValidationMessageFor(model => model.FirstName) </div>
+        </div>
+        <div class="row float_left last_name_wrap">
+            <div>
+                <label class="row_label_txt send_money_Scn_txt"> @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.LastName</label>
+                @Html.TextBoxFor(model => model.LastName, null, new { @class = "disable_txt float_left first_name_wrap", readOnly = "true" })
+                @Html.HiddenFor(model => model.SecondLastName, new { @class = "disable_txt float_left first_name_wrap hide", readOnly = "true" })
+            </div>
+            <div class="error_align_left"> @Html.ValidationMessageFor(model => model.LastName) </div>
+        </div>
+    </div>	
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DeliveryMethod)</label>
+            @Html.DropDownListFor(model => model.DeliveryMethod, Model.LDelivertyMethods, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.DeliveryMethod)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.LabelFor(model => model.DeliveryOptions, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyDeliveryOptions)</label>
+            @Html.DropDownListFor(model => model.DeliveryOptions, Model.LDeliveryOptions, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.DeliveryOptions)
+        </div>
+    </div>	    	
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyTotalAmount)</label>
+            @Html.TextBoxFor(model => model.AmountWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.Amount)
+        </div>
+    </div>
+    <div class="row clear_both">
+        <div>
+            @Html.LabelFor(model => model.TransferFeeWithAllFees, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TransferFeeWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TransferFee)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TransferTax, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TransferTaxWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TransferTax)
+        </div>
+    </div>
+    	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.MessageFee, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.MessageFeeWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.MessageFee)
+		</div>
+	</div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.CouponPromoCode, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.CouponPromoCode, null, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.CouponPromoCode)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.PromoDiscount, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.PromoDiscountWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.PromoDiscount)
+        </div>
+    </div>	
+    <div class="row hide" id="transamt">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyTransferAmount)</label>
+            @Html.TextBoxFor(model => model.TransferAmount, null, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TransferAmount)
+        </div>
+    </div>		
+    <div class="row" id="transamtwithSymbols">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyTransferAmount)</label>
+            @Html.TextBoxFor(model => model.TransferAmountWithCurrency, null, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TransferAmount)
+        </div>
+    </div>		
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.ExchangeRateConversion, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.ExchangeRateConversion, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+    </div>
+        
+<div class="row">
+		<div>
+			<label class="row_label_txt">
+				@Html.LabelFor(model => model.CurrencyType, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CurrencyType)</label>
+			@Html.DropDownListFor(model => model.CurrencyType, Model.LCountryCurrencies, new { @class = "dropdown_box" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.CurrencyType)
+		</div>
+	</div>
+    <div class="row hide" id="destAmount">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyDestinationAmount)</label>
+            @Html.TextBoxFor(model => model.DestinationAmount, null, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.DestinationAmount)
+        </div>
+    </div>
+
+    <div class="row" id="destAmountSymbols">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyDestinationAmount)</label>
+            @Html.TextBoxFor(model => model.DestinationAmountWithCurrency1, null, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.DestinationAmount)
+        </div>
+    </div>
+    <div>
+        <div>
+            @Html.LabelFor(model => model.OtherFees, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.OtherFeesWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.OtherFees)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TotalToRecipient, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TotalToRecipientWithCurrency, null, new { @class = "disable_txt", readOnly = "true" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TotalToRecipient)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@TestQuestion(@Model)</label>
+            @Html.TextBoxFor(model => model.TestQuestion, null, new { @class = "input_box", @maxlength = "100" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestQuestion)
+        </div>
+    </div>	
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@TestAnswer(@Model)</label>
+            @Html.TextBoxFor(model => model.TestAnswer, null, new { @class = "input_box", @maxlength = "100" })
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestAnswer)
+        </div>
+    </div>	
+    <div class="row">
+		<div>
+			<label class="row_label_txt">
+				@Html.Raw(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyPersonalMessage)</label>
+			    @Html.TextAreaFor(model => model.PersonalMessage, 4, 69, new { @class = "textarea", @maxlength = "966", placeholder = "Max. 966 characters" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PersonalMessage)
+		</div>
+	</div>	
+	<div class="send_many_btn_shift">        
+	<ul>
+            <li class="add_rec_btn_wrap">
+                <input type="submit" id="btnUpdate" value="Update Trans" name="updateTrans" class="send_money_search_btn" />
+            </li>
+            <li class="row_width30">
+                @Html.ActionLink("Cancel", "CancelSendMoneyDetails", "SendMoney", new { id = Model.TransactionId }, new { @class = "anc_link_btn cancelMoneyTransfer red_btn", id = Model.TransactionId, name = "SendMoneyDetails" })</li>
+            <li class="next_btn_wrap">
+                <input type="hidden" id="PanelStatus" value="1" />	
+				<input type="submit" id="btnSubmit" value="Next" name="next" />
+            </li>
+        </ul>
+    </div>
+	
+    @Html.TextBoxFor(model => model.ReceiverID, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransactionId, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.ExchangeRate, new { style = "display:none" }) 
+    @Html.TextBoxFor(model => model.TestQuestionOption, new { style = "display:none" }) 
+    @Html.TextBoxFor(model => model.CurrencyType, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.isDomesticTransfer, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TotalToRecipient, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.Amount, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransferFee, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.TransferTax, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromoDiscount, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.OtherFees, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TotalToRecipient, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.Country, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.City, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.StateProvince, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.DestinationAmountWithCurrency1, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.CountryCode, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.StateProvinceCode, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.CityID, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TestQuestionOption, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromoDiscount, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.DestinationAmountFromFeeEnquiry, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.CityName, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransactionId, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.IsFixedOnSend, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.CouponPromoCode, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromoCodeDescription, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromoName, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromoMessage, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PromotionError, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.IsFixedOnSend, new { style = "display:none" })	
+    @Html.TextBoxFor(model => model.ReferenceNo, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.MessageFee, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.OriginalFee, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransferFee, new { style = "display:none" })	
+	@Html.TextBoxFor(model => model.PickupCountry, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.PickupState, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.PickupCity, new { style = "display:none" })
+
+
+}

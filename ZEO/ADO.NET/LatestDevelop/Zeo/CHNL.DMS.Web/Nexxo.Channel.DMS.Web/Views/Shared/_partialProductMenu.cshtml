@@ -1,0 +1,75 @@
+﻿@model TCF.Channel.Zeo.Web.Models.BaseModel
+<script type="text/javascript">
+    var SSNValidationWarningUrl = '@Url.Action("ShowSSNValidationWarning", "Product", new { })';
+    $(document).ready(function () {
+        var hdnCashierAgree = '@Session["isCashierAgree"]';
+        $('#hdnCashierAgree').val(hdnCashierAgree);
+        $(".ClosedProfile").each(function () {
+            $(this).addClass("DisableButtons").attr('disabled', 'disabled');
+            $('.nav_item').addClass('disable_pointer_nav_item');
+        });
+        $(".DisableButtons").each(function () {
+            $(this).attr('disabled', 'disabled');
+            $('.nav_item').addClass('disable_pointer_nav_item');
+        });
+        @*Disabling product menu in crome,firefox etc.. browsers if the customer status is closed*@
+        $('a').bind("click", function (e) {
+            if ($(this).attr('disabled') == 'disabled') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                //$(this).attr('href', '');
+            }
+        }); @* AL-378 changes end*@
+    });
+</script>
+<script src="@Url.Content("~/Scripts/Common/ProductMenu.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<input type="hidden" id="hdnCashierAgree" value="" />
+<ul class="menuClass" id="selection">
+    <li class="nav_head">
+        @*<a href="#">Products</a>*@
+        @Html.ActionLink("Products", "ProductInformation", "Product")
+    </li>
+    @* This is the condition to display product menu other than compliance manager*@
+    @if ((int)Session["UserRoleId"] != (int)TCF.Zeo.Common.Util.Helper.UserRoles.ComplianceManager && (int)Session["UserRoleId"] != (int)TCF.Zeo.Common.Util.Helper.UserRoles.Tech)
+    {
+        string closedProfile = HttpContext.Current.Session["ClosedCustomerProfile"] == "true" ? " ClosedProfile" : string.Empty;
+        foreach (var provider in Model.Providers)
+        {
+            string ssnValidationClass = provider.IsSSNRequired ? " SSN" : string.Empty;
+            string swbValidationClass = provider.IsSWBRequired ? " SWB" : string.Empty;
+            string cannotTransact = !provider.CanCustomerTransact ? " DisableButtons" : string.Empty;
+
+            if (Session["activeButton"] != null && (string)Session["activeButton"] == provider.Name.ToLower())
+            {
+                <li class="nav_item_select nav_icon_@provider.Name.ToLower()">
+                    @Html.ActionLink(provider.ProductDisplayName, provider.ActionName, provider.ControllerName, new { }, new { @id = provider.ActionName, @class = "nav_name" + ssnValidationClass + swbValidationClass + " validate " })
+                </li>}
+            else
+            {
+                if (!String.IsNullOrEmpty(closedProfile) || !provider.CanCustomerTransact)
+                {
+                    <li class="nav_item nav_icon_@provider.Name.ToLower()_disable">
+                        @Html.ActionLink(provider.ProductDisplayName, provider.ActionName, provider.ControllerName, new { }, new { @id = provider.ActionName, @class = "nav_name" + closedProfile + ssnValidationClass + swbValidationClass + cannotTransact + " validate " })
+                    </li>    }
+                else
+                {
+                    <li class="nav_item nav_icon_@provider.Name.ToLower()_dis">
+                        @Html.ActionLink(provider.ProductDisplayName, provider.ActionName, provider.ControllerName, new { }, new { @id = provider.ActionName, @class = "nav_name" + ssnValidationClass + swbValidationClass + " validate " })
+                    </li>    }
+            }
+        }
+    }
+    @* Transaction history is not a product and its required to show all agents *@
+    @if (Session["activeButton"] != null && (string)Session["activeButton"] == "transactionhistory")
+    {
+        <li class="nav_item_select nav_icon_transactionhistory">
+            @Html.ActionLink(TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.TransactionHistory, "TransactionHistory", "TransactionHistory", new { }, new { @class = "nav_name" })
+        </li>
+    }
+    else
+    {
+        <li class="nav_item nav_icon_transactionhistory_dis">
+            @Html.ActionLink(TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.TransactionHistory, "TransactionHistory", "TransactionHistory", new { }, new { @class = "nav_name" })
+        </li>
+    }
+</ul>

@@ -1,0 +1,25 @@
+﻿@model TCF.Channel.Zeo.Web.Models.IdentificationInformation
+
+<div class="identify_btn_wrap profile_det_shift">
+    <ul>
+@{
+	Dictionary<string, string> actionControllers = TCF.Channel.Zeo.Web.Common.WebHelper.GetRelatedActionController();
+}
+		<li>
+			@if (Model.IsCompanionSearch)
+			{
+				@Html.ActionLink(TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText.ToString(), "ProductCredential", "VISAProductCredential", null, new { @class = "anc_link_btn red_btn" });
+			}
+			else
+			{
+				@Html.ActionLink("Cancel", actionControllers["actionMethod"], actionControllers["controller"], null, new { @class = "anc_link_btn red_btn", tabindex = "14" })
+			}
+
+		</li>
+<li>@Html.ActionLink("Back", "PersonalInformation", "CustomerRegistration", null, new { @class = "anc_link_btn" , id="btnBack", tabindex="13"})</li>
+        <li class="ieCustNavInfoBtn"><input type="submit" value="Next" tabindex="12"/></li>
+    </ul>
+</div>
+
+
+

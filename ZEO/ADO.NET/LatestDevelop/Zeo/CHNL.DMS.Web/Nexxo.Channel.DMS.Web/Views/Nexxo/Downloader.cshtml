@@ -1,0 +1,44 @@
+﻿@model TCF.Channel.Zeo.Web.Models.DownloaderModel
+@{
+    ViewBag.Title = "Downloader";
+	Layout = "~/Views/Shared/_menu.cshtml";
+}
+@using (Html.BeginForm("NpsTerminalMapping", "NpsTerminalMapping"))
+{
+<div>
+		<ul class="page_head product_head">
+			<li>Downloader</li>
+		</ul>
+	</div>
+<div class="downloader">
+<span class="itemsHeader">INSTALLERS</span><br />
+<ul class="listItem">
+@foreach (var item in Model.Installers)
+{ 
+    <li>
+	    @Html.ActionLink(item, "", "", null, new { id = "psInstaller_up_doc", @class = "instalation_instructions_doc", href = @Url.Content(string.Format("~/Common/PSInstaller/{0}", item)) })
+    </li>
+}
+</ul>
+<br />
+<span class="itemsHeader">UPGRADES</span><br />
+<ul class="listItem">
+@foreach (var item in Model.Upgrades)
+{ 
+    <li>
+	    @Html.ActionLink(item, "", "", null, new { id = "psInstaller_up_doc", @class = "instalation_instructions_doc", href = @Url.Content(string.Format("~/Common/PSInstaller/{0}", item)) })
+    </li>
+}
+</ul>
+<br>
+<span class="itemsHeader">INSTRUCTIONS</span><br />
+<ul class="listItem">
+@foreach (var item in Model.Documents)
+{ 
+    <li class="listItems">
+	    @Html.ActionLink(item, "", "", null, new { id = "psInstaller_up_doc", @class = "instalation_instructions_doc", href = @Url.Content(string.Format("~/Common/PSInstaller/{0}", item)) })
+    </li>
+}
+</ul>
+</div>
+}

@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:db="http://www.springframework.net/database"
+  xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<import resource="assembly://MGI.Cxn.WU.Common/MGI.Cxn.WU.Common/MGI.Cxn.WU.Common.Services.Spring.xml"/>
+  <import resource="assembly://MGI.Common/MGI.Common/MGICommon.xml"/>
+
+  <db:provider id="WUCXNDbProvider"
+		  provider="SqlServer-2.0"
+		  connectionString="${PTNRDBConnection.connectionString}"/>
+
+	<object id="SessionFactoryCXNWU" type="Spring.Data.NHibernate.LocalSessionFactoryObject, Spring.Data.NHibernate32">
+		<property name="DbProvider" ref="WUCXNDbProvider"/>
+		<property name="MappingAssemblies">
+			<list>
+				<value>MGI.Cxn.MoneyTransfer</value>
+				<value>MGI.Cxn.MoneyTransfer.WU</value>
+				<value>MGI.Cxn.WU.Common</value>
+			</list>
+		</property>
+		<property name="HibernateProperties">
+			<dictionary>
+				<entry key="connection.provider" value="NHibernate.Connection.DriverConnectionProvider" />
+				<entry key="dialect" value="NHibernate.Dialect.MsSql2008Dialect" />
+				<entry key="connection.driver_class" value="NHibernate.Driver.SqlClientDriver" />
+				<entry key="show_sql" value="true" />
+			</dictionary>
+		</property>
+		<property name="ExposeTransactionAwareSessionFactory" value="true"/>
+	</object>
+
+	<object id="CXNMoneyTransferProcessor" type="MGI.Cxn.MoneyTransfer.WU.Impl.WUGateway, MGI.Cxn.MoneyTransfer.WU">
+		<!--<property name="ReceiverRepo" ref="ReceiverRepo" />-->
+		<property name="WUReceiverRepo" ref="WUReceiverRepo" />
+		<property name="WUTransactionLogRepo" ref="WUTransactionLogRepo" />
+		<property name="WUAccountRepo" ref="WUAccountRepo" />
+		<property name="WUCityRepo" ref="WUCityRepo"/>
+		<property name="WUCommon" ref="WesternUnionIO"/>
+		<property name="WUIO" ref="WUIO"/>
+		<property name="AllowDuplicateTrxWU" value="${AllowDuplicateTrxWU}"/>
+		<property name="WUCountryRepo" ref="WUCountryRepo" />
+		<property name="WUStateRepo" ref="WUStateRepo" />
+		<property name="WUCityRepo" ref="WUCityRepo" />
+		<property name="WUDeliveryMethodRepo" ref="WUDeliveryMethodRepo" />
+		<property name="WUDeliveryOptionRepo" ref="WUDeliveryOptionRepo" />
+		<property name="WUPaymentMethodRepo" ref="WUPaymentMethodRepo" />
+		<property name="WUPickupMethodRepo" ref="WUPickupMethodRepo" />
+		<property name="WUPickupDetailRepo" ref="WUPickupDetailRepo" />
+		<property name="WUCountryCurrencyRepo" ref="WUCountryCurrencyRepo" />
+		<property name="WUCountryTransalationRepo" ref="WUCountryTransalationRepo"/>
+		<property name="WUDeliveryServiceTransalationRepo" ref="WUDeliveryServiceTransalationRepo"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="IsHardCodedCounterId" value="${IsHardCodedCounterId}" />
+    <property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+
+	<object id="WUTransactionLogRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUTransaction&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUReceiverRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUReceiver&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUAccountRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUAccount&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUCountryRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUCountry&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUStateRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUState&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUCityRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUCity&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUDeliveryMethodRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUCountryCurrencyDeliveryMethod&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUDeliveryOptionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUDeliveryOption&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUPaymentMethodRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUPaymentMethod&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUPickupMethodRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUPickupMethod&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUPickupDetailRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUPickupDetail&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUCountryCurrencyRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.WUCountryCurrency&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUCredentialRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.WU.Common.Data.WUCredential&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="Cxn.WU.Common.SessionFactory"></property>
+	</object>
+
+	<object id="WUCountryTransalationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.CountryTransalation&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUDeliveryServiceTransalationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.MoneyTransfer.WU.Data.DeliveryServiceTransalation&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCXNWU"></property>
+	</object>
+
+	<object id="WUIO" type ="MGI.Cxn.MoneyTransfer.WU.Impl.${ProviderIO}, MGI.Cxn.MoneyTransfer.WU">
+		<property name="WUCredentialRepo" ref="WUCredentialRepo" />
+		<property name="WUStateRepo" ref="WUStateRepo" />
+		<property name="WUCountryRepo" ref="WUCountryRepo" />
+		<property name="AllowDuplicateTrxWU" value="${AllowDuplicateTrxWU}"/>
+		<property name="WUCommon" ref="WesternUnionIO" />
+		<property name="IsHardCodedCounterId"  value="${IsHardCodedCounterId}" />
+		<property name="LPMTErrorMessage"  value="${LPMTErrorMessage}" />
+    <property name="MongoDBLogger" ref="TLoggerRef"/>
+		<property name="ExceptionHelper" ref="MTExceptionHelper"/>
+	
+	</object>
+
+	<object id="MTExceptionHelper" type="MGI.Cxn.MoneyTransfer.WU.Data.MoneyTransferProviderException, MGI.Cxn.MoneyTransfer.WU"></object>
+
+</objects>

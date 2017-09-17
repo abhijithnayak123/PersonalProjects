@@ -1,0 +1,67 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SendMoney
+<center>
+    <div class="select_rec_wrap" id="gallery-wrap">
+        <ul id="gallery">
+            @if (@Model.FrequentReceivers != null)
+            {
+                var frqRecevierCSS = "";
+                var receiverLogo = "";
+
+                foreach (var Receivers in Model.FrequentReceivers)
+                {
+
+                    string targetUrl = Url.Content("~/SendMoney/SelectReceiver");
+                    targetUrl = targetUrl + "?ReceiverID=" + Receivers.Id;
+
+
+                    if (Model.ReceiverID != null)
+                    {
+
+                        if (Receivers.Id == Model.ReceiverID)
+                        {
+                            frqRecevierCSS = "freq_items sel_freq_item";
+                            receiverLogo = Url.Content("~/Content/images/selectedfrequentReceiverLogo.png");
+                        }
+                        else
+                        {
+                            frqRecevierCSS = "freq_items non_sel_freq_item";
+                            receiverLogo = Url.Content("~/Content/images/frequentReceiverLogo.png");
+                        }
+                    }
+                    else
+                    {
+                        frqRecevierCSS = "freq_items non_sel_freq_item";
+                        receiverLogo = Url.Content("~/Content/images/frequentReceiverLogo.png");
+                    }
+                <li><a id = "fqRcvr_@Receivers.Id.ToString()" class='@frqRecevierCSS' onclick="SelectReceiver('@Receivers.Id')">
+                    @{                    
+                        string receiverCancelImageUrl = @Url.Content("~/Content/Images/Declined.png");	
+                     }
+
+                    <img id="fqRcrLogo" src ="@receiverLogo" alt='@Receivers.Id' height=50px width=50px class="float_left" />
+                    <span class="bold">@Html.EllipsisWhenOverflow(Receivers.FirstName + " " + Receivers.LastName, 10)</span><br />
+                    <img id="fqBlrRemove_@Receivers.Id.ToString()" alt="Remove Receiver" src='@receiverCancelImageUrl' height=15px width=15px class="float_right" onclick="btnFavReceiverDeleteClick(this);" style="margin-top: -20px;" />
+                    @{
+                        if (!(string.IsNullOrWhiteSpace(Receivers.City) && string.IsNullOrWhiteSpace(Receivers.State_Province)))
+                        {
+                            <span>@Html.EllipsisWhenOverflow(Receivers.City + "," + Receivers.State_Province, 15)</span><br />
+                        }
+                    }
+                    @*This condition was added for Past Receivers User Story # US1645.*@
+                    <span>@Html.EllipsisWhenOverflow(Receivers.PickupCountry, 15)</span> </a></li>
+                }
+            }
+        </ul>
+    </div>
+</center>
+<div id="gallery-controls">
+    <a href="#" id="gallery-prev" class="gallery_btn">
+        <img src="~/Content/Images/LeftArrow.jpg" alt="left" /></a> <a href="#" id="gallery-next"
+            class="gallery_btn">
+            <img src="~/Content/Images/RightArrow.jpg" alt="right" /></a>
+</div>
+<div>
+    <ul class="page_head product_head">
+        <li id="divheader">Select Receiver</li>
+    </ul>
+</div>

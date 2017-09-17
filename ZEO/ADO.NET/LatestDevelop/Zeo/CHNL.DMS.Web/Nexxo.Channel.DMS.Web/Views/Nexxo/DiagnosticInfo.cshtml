@@ -1,0 +1,63 @@
+﻿@model TCF.Channel.Zeo.Web.Models.NpsDiagnosticModel
+@{
+	ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SystemStatus;
+	Layout = "~/Views/Shared/_menu.cshtml"; 
+}
+@using (Html.BeginForm("DiagnosticInfo", "DiagnosticInfo"))
+{
+    @Html.Partial("_partialSpinner")
+	<div>
+		<ul class="page_head product_head">
+			<li class="flaot_left">System Status Information</li>@*The name must be from resource file*@
+		</ul>
+	</div>
+	if (@ViewBag.Message != null)
+	{
+	<center>
+		<div id="divViewBag" align="center" class="error_txt">@ViewBag.Message</div>
+		<br />
+	</center>
+	}
+	else
+	{
+	<div class="diagnos_info">
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.TerminalName) </div>
+			<div class="info">@Model.TerminalName</div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.StationId) </div>
+			<div class="info">@Model.StationId</div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.LocationId) </div>
+			<div class="info">@Model.LocationId</div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.NexxoPeripheralService) </div>
+			<div class="info" id="dvPeripheralService">@Model.NexxoPeripheralService</div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.Version, new { @class = "shift_left" }) </div>
+			<div class="info" id="dvVersion">@Model.Version</div>
+		</div>
+		<div class="report_row">
+            <div id="divDeviceName" class="name"> Device: </div>
+			<div class="info"> <label> @Model.Status </label> </div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.Serial, new { @class = "shift_left" }) </div>
+			<div class="info" id="dvSerial">@Model.Serial</div>
+		</div>
+		<div class="report_row">
+			<div class="name"> @Html.LabelFor(model => model.Firmware, new { @class = "shift_left" }) </div>
+			<div class="info" id="dvFirmware">@Model.Firmware</div>
+		</div>
+		<div class="report_row">
+            <div class="name" id="divDeviceStatus">	<label> Device Status: </label> </div>
+			<div class="info" id="dvDeviceStatus"> @Model.DeviceStatus </div>
+		</div>
+	</div> 
+	}
+}
+<script src="@Url.Content("~/Scripts/PeripheralServices/Diagnostics.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
