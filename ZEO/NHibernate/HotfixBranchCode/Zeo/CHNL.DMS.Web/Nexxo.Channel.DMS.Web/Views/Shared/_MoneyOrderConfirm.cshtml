@@ -1,0 +1,32 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyOrderDetails
+@{
+    ViewBag.Title = "MoneyOrderConfirm";
+}
+<div class="moneyorder_img_wrap">
+    <img id="MoneyOrderImage" class="moneyorder_img" src="" alt="MoneyOrderImage" />
+</div>
+<div class="row">
+    <div>
+        <label class="row_label_txt">@Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CheckNumber) </label>
+        @Html.TextBoxFor(model => model.CheckNumber, null, new { @class = "txt_box disable_txt", id = "txtCheckNumber", @readonly = "readonly" })
+    </div>
+    <div class="error_align_left hide" id="divCheckNumberValidation">
+       <p class="error_txt">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MoneyOrderCheckNumberRequired</p>
+    </div>
+</div>
+<div class="row">
+    <div>
+        <label class="row_label_txt">@Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MoneyOrderAmount) </label>
+        @Html.TextBoxFor(model => model.Amount, null, new { @class = "txt_box disable_txt", id = "txtAmount", Value = String.Format("{0:0.00}", Model.Amount), @readonly = "readonly" })
+    </div>
+    <div class="error_align_left" > @Html.ValidationMessageFor(model => model.Amount) </div>
+</div>
+<div class="txt_center">
+    <ul>
+        <li> <input type="button" id="btnRescan" value="Re-Scan" onclick="ReScanMO();" /> </li>
+        <li> <input type="button" id="btnNext" value="Next" onclick="MoneyOrderPrintPopup();" class="confirmButton" /> </li>
+    </ul>
+</div>
+<script language="javascript" type="text/javascript">
+    ShowMoneyOrderImage("@Model.MoneyOrderFrontImage");
+</script>

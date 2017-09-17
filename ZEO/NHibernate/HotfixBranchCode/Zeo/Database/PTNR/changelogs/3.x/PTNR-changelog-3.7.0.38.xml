@@ -1,0 +1,1656 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <changeSet author="maxl (generated)" id="1426183724931-1">
+        <createTable tableName="SchemaVersions">
+            <column autoIncrement="true" name="Id" type="INT">
+                <constraints primaryKey="true" primaryKeyName="PK_SchemaVersions_Id"/>
+            </column>
+            <column name="ScriptName" type="NVARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Applied" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-2">
+        <createTable tableName="tAcceptedIdentifications">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CountryCode" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="StateId" type="UNIQUEIDENTIFIER"/>
+            <column name="Name" type="NVARCHAR(75)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="IdType" type="INT"/>
+            <column name="WCSTypeId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Mask" type="NVARCHAR(25)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="HasExpirationDate" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChexarIdType" type="INT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-3">
+        <createTable tableName="tAccounts">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="CustomerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ProviderId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-4">
+        <createTable tableName="tAgentAuthentication">
+            <column name="AgentId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="UserName" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PasswordHash" type="NVARCHAR(100)"/>
+            <column name="Salt" type="NVARCHAR(100)"/>
+            <column defaultValueNumeric="0" name="AuthenticationFailures" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TemporaryPassword" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastPasswordUpdate" type="datetime"/>
+            <column name="LastPasswordUpdateBy" type="NVARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-5">
+        <createTable tableName="tAgentDetails">
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="UserName" type="NVARCHAR(255)"/>
+            <column name="FirstName" type="NVARCHAR(20)"/>
+            <column name="LastName" type="NVARCHAR(20)"/>
+            <column name="FullName" type="NVARCHAR(50)"/>
+            <column name="IsEnabled" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ManagerId" type="INT"/>
+            <column name="PrimaryLocationId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="UserRoleId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="UserStatusId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerId" type="INT"/>
+            <column name="PhoneNumber" type="NVARCHAR(20)"/>
+            <column name="Email" type="NVARCHAR(50)"/>
+            <column name="Notes" type="NVARCHAR(500)"/>
+            <column name="DTLastLogin" type="datetime"/>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-6">
+        <createTable tableName="tAgentLocationMapping">
+            <column name="AgentId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LocationId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-7">
+        <createTable tableName="tAgentSessions">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AgentId" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TerminalPK" type="UNIQUEIDENTIFIER"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-8">
+        <createTable tableName="tChannelPartnerConfig">
+            <column name="ChannelPartnerID" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="DisableWithdrawCNP" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="CashOverCounter" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FrankData" type="VARCHAR(200)"/>
+            <column name="IsCheckFrank" type="BIT"/>
+            <column name="IsNotesEnable" type="BIT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-9">
+        <createTable tableName="tChannelPartnerFeeAdjustments">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TransactionType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Description" type="NVARCHAR(100)"/>
+            <column name="DTStart" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTEnd" type="datetime"/>
+            <column name="SystemApplied" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="AdjustmentRate" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="AdjustmentAmount" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-10">
+        <createTable tableName="tChannelPartnerFees_Check">
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CheckType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FeeRate" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FeeMinimum" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-11">
+        <createTable tableName="tChannelPartnerFees_Funds">
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FundsType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Fee" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-12">
+        <createTable tableName="tChannelPartnerFees_MoneyOrder">
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Fee" type="MONEY">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-13">
+        <createTable tableName="tChannelPartnerGroups">
+            <column autoIncrement="true" name="Id" type="INT">
+                <constraints primaryKey="true" primaryKeyName="PK_tChannelPartnerGroups"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-14">
+        <createTable tableName="tChannelPartnerSMTPDetails">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_tChannelPartnerSMTPDetails"/>
+            </column>
+            <column name="ChannelPartnerId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="SmtpHost" type="NVARCHAR(50)"/>
+            <column name="SmtpPort" type="INT"/>
+            <column name="SenderEmail" type="NVARCHAR(50)"/>
+            <column name="SenderPwd" type="NVARCHAR(50)"/>
+            <column name="Subject" type="NVARCHAR(255)"/>
+            <column name="Body" type="NVARCHAR(1000)"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-15">
+        <createTable tableName="tChannelPartners">
+            <column name="id" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="FeesFollowCustomer" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CashFeeDescriptionEN" type="NVARCHAR(500)"/>
+            <column name="CashFeeDescriptionES" type="NVARCHAR(500)"/>
+            <column name="DebitFeeDescriptionEN" type="NVARCHAR(500)"/>
+            <column name="DebitFeeDescriptionES" type="NVARCHAR(500)"/>
+            <column name="ConvenienceFeeCash" type="MONEY"/>
+            <column name="ConvenienceFeeDebit" type="MONEY"/>
+            <column name="ConvenienceFeeDescriptionEN" type="NVARCHAR(500)"/>
+            <column name="ConvenienceFeeDescriptionES" type="NVARCHAR(500)"/>
+            <column name="CanCashCheckWOGovtId" type="BIT"/>
+            <column name="LogoFileName" type="NVARCHAR(50)"/>
+            <column name="IsEFSPartner" type="BIT"/>
+            <column name="EFSClientId" type="INT"/>
+            <column name="UsePINForNonGPR" type="BIT"/>
+            <column name="IsCUPartner" type="BIT"/>
+            <column name="HasNonGPRCard" type="BIT"/>
+            <column name="ManagesCash" type="BIT"/>
+            <column name="AllowPhoneNumberAuthentication" type="BIT"/>
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="1" name="TIM" type="TINYINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ComplianceProgramName" type="NVARCHAR(50)"/>
+            <column name="CardPresenceVerificationConfig" type="INT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-16">
+        <createTable tableName="tCheckTypes">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-17">
+        <createTable tableName="tContactTypes">
+            <column name="id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Type" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-18">
+        <createTable tableName="tCountries">
+            <column name="id" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Code" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(70)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Abbr2" type="CHAR(2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Abbr3" type="CHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="xRate" type="MONEY"/>
+            <column name="DTRateAsOf" type="datetime"/>
+            <column name="Currency_Name" type="NVARCHAR(20)"/>
+            <column name="Curr_CD_Alpha" type="NVARCHAR(3)"/>
+            <column name="Curr_CD_Num" type="INT"/>
+            <column name="Symbol" type="NVARCHAR(5)"/>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="CallingCode" type="INT"/>
+            <column name="IsCOB" type="BIT"/>
+            <column name="DebitAllowed" type="BIT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-19">
+        <createTable tableName="tCustomerPreferedProducts">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PAN" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ProductId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountNumber" type="NVARCHAR(30)"/>
+            <column name="PhoneNumber" type="BIGINT"/>
+            <column name="AccountPIN" type="NVARCHAR(20)"/>
+            <column name="AccountDOB" type="datetime"/>
+            <column name="AccountName" type="NVARCHAR(50)"/>
+            <column name="Enabled" type="BIT"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="Operator" type="NVARCHAR(20)"/>
+            <column name="AgentId" type="INT"/>
+            <column name="TenantId" type="NVARCHAR(20)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-20">
+        <createTable tableName="tCustomerSessionCounterIdDetails">
+            <column name="CustomerSessionId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CounterId" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-21">
+        <createTable tableName="tCustomerSessionShoppingCarts">
+            <column name="customerSessionRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cartRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-22">
+        <createTable tableName="tCustomerSessions">
+            <column name="customerSessionRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AgentSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CustomerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="DTStart" type="datetime"/>
+            <column name="DTEnd" type="datetime"/>
+            <column defaultValueNumeric="0" name="CardPresent" type="BIT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-23">
+        <createTable tableName="tFeeAdjustmentCompareTypes">
+            <column name="Id" type="TINYINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-24">
+        <createTable tableName="tFeeAdjustmentConditionTypes">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-25">
+        <createTable tableName="tFeeAdjustmentConditions">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FeeAdjustmentPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Description" type="NVARCHAR(100)"/>
+            <column name="ConditionType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CompareType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ConditionValue" type="NVARCHAR(1000)"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-26">
+        <createTable tableName="tIdentificationConfirmation">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AgentID" type="NVARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CustomerSessionID" type="NVARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DateIdentified" type="datetime"/>
+            <column name="ConfirmStatus" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-27">
+        <createTable tableName="tLedgerEntries">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LedgerTransactionRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-28">
+        <createTable tableName="tLedgerTransactions">
+            <column defaultValueComputed="newid()" name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-29">
+        <createTable tableName="tLocationCounterIdDetails">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LocationId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ProviderId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CounterId" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="1" name="IsAvailable" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-30">
+        <createTable tableName="tLocations">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LocationName" type="NVARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="IsActive" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Address1" type="NVARCHAR(100)"/>
+            <column name="Address2" type="NVARCHAR(100)"/>
+            <column name="City" type="NVARCHAR(50)"/>
+            <column name="State" type="NVARCHAR(2)"/>
+            <column name="ZipCode" type="NVARCHAR(10)"/>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTLastMod" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerId" type="SMALLINT"/>
+            <column name="PhoneNumber" type="NVARCHAR(20)"/>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="LocationIdentifier" type="VARCHAR(50)"/>
+            <column name="BankID" type="VARCHAR(40)"/>
+            <column name="BranchID" type="VARCHAR(40)"/>
+            <column name="TimezoneID" type="VARCHAR(100)"/>
+            <column name="NoOfCounterIDs" type="INT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-31">
+        <createTable tableName="tMessageCenter">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AgentId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TxnId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="0" name="IsParked" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueNumeric="1" name="IsActive" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-32">
+        <createTable tableName="tMessageStore">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="MessageKey" type="NVARCHAR(50)"/>
+            <column name="PartnerPK" type="BIGINT"/>
+            <column name="Language" type="NVARCHAR(4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Content" type="NVARCHAR(4000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="AddlDetails" type="NVARCHAR(4000)"/>
+            <column name="Processor" type="NVARCHAR(20)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-33">
+        <createTable tableName="tNexxoIdTypes">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT"/>
+            <column name="Name" type="NVARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Mask" type="NVARCHAR(25)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="HasExpirationDate" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Country" type="NVARCHAR(70)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="State" type="NVARCHAR(50)"/>
+            <column name="CountryId" type="UNIQUEIDENTIFIER"/>
+            <column name="StateId" type="UNIQUEIDENTIFIER"/>
+            <column defaultValueNumeric="0" name="IsActive" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-34">
+        <createTable tableName="tNotificationHosts">
+            <column name="id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="MailGateway" type="NVARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="MaxMessageLen" type="INT"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-35">
+        <createTable tableName="tNpsTerminals">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Description" type="VARCHAR(500)"/>
+            <column name="IPAddress" type="VARCHAR(20)"/>
+            <column defaultValue="8732" name="Port" type="VARCHAR(10)"/>
+            <column name="LocationPK" type="UNIQUEIDENTIFIER"/>
+            <column name="Status" type="VARCHAR(50)"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="PeripheralServiceUrl" type="VARCHAR(100)"/>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-36">
+        <createTable tableName="tPartnerCustomerGroupSettings">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PartnerCustomerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerGroupId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-37">
+        <createTable tableName="tPartnerCustomerGroupSettings_Aud">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PartnerCustomerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerGroupId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="AuditEvent" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTAudit" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="RevisionNo" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-38">
+        <createTable tableName="tPartnerCustomers">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="IsPartnerAccountHolder" type="BIT"/>
+            <column name="ReferralCode" type="NVARCHAR(16)"/>
+            <column name="ChannelPartnerId" type="UNIQUEIDENTIFIER"/>
+            <column name="AgentSessionId" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerProfileStatus" type="BIT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-39">
+        <createTable tableName="tPartnerCustomers_Aud">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="IsPartnerAccountHolder" type="BIT"/>
+            <column name="ReferralCode" type="NVARCHAR(16)"/>
+            <column name="ChannelPartnerId" type="UNIQUEIDENTIFIER"/>
+            <column name="AuditEvent" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTAudit" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="RevisionNo" type="BIGINT"/>
+            <column name="AgentSessionId" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerProfileStatus" type="BIT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-40">
+        <createTable tableName="tProspectEmploymentDetails">
+            <column name="ProspectId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PAN" type="BIGINT"/>
+            <column name="Occupation" type="NVARCHAR(255)"/>
+            <column name="Employer" type="NVARCHAR(255)"/>
+            <column name="EmployerPhone" type="NVARCHAR(255)"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-41">
+        <createTable tableName="tProspectGovernmentIdDetails">
+            <column name="ProspectId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PAN" type="BIGINT"/>
+            <column name="Identification" type="NVARCHAR(255)"/>
+            <column name="ExpirationDate" type="datetime"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="IdTypePK" type="UNIQUEIDENTIFIER"/>
+            <column name="IssueDate" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-42">
+        <createTable tableName="tProspectGroupSettings">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ProspectId" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerGroupId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-43">
+        <createTable tableName="tProspects">
+            <column name="id" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PAN" type="BIGINT"/>
+            <column name="FirstName" type="NVARCHAR(255)"/>
+            <column name="MiddleName" type="NVARCHAR(255)"/>
+            <column name="LastName" type="NVARCHAR(255)"/>
+            <column name="LastName2" type="NVARCHAR(255)"/>
+            <column name="MothersMaidenName" type="NVARCHAR(255)"/>
+            <column name="DOB" type="datetime"/>
+            <column name="Address1" type="NVARCHAR(255)"/>
+            <column name="Address2" type="NVARCHAR(255)"/>
+            <column name="City" type="NVARCHAR(255)"/>
+            <column name="State" type="NVARCHAR(255)"/>
+            <column name="ZipCode" type="NVARCHAR(255)"/>
+            <column name="Phone1" type="NVARCHAR(255)"/>
+            <column name="Phone1Type" type="NVARCHAR(255)"/>
+            <column name="Phone1Provider" type="NVARCHAR(255)"/>
+            <column name="Phone2" type="NVARCHAR(255)"/>
+            <column name="Phone2Type" type="NVARCHAR(255)"/>
+            <column name="Phone2Provider" type="NVARCHAR(255)"/>
+            <column name="SSN" type="NVARCHAR(255)"/>
+            <column name="TaxpayerId" type="NVARCHAR(255)"/>
+            <column name="DoNotCall" type="BIT"/>
+            <column name="SMSEnabled" type="BIT"/>
+            <column name="MarketingSMSEnabled" type="BIT"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="Gender" type="NVARCHAR(6)"/>
+            <column name="Email" type="NVARCHAR(320)"/>
+            <column name="IsAccountHolder" type="BIT"/>
+            <column name="ReferralCode" type="NVARCHAR(16)"/>
+            <column name="PIN" type="NVARCHAR(4)"/>
+            <column name="IsMailingAddressDifferent" type="BIT"/>
+            <column name="MailingAddress1" type="NVARCHAR(255)"/>
+            <column name="MailingAddress2" type="NVARCHAR(255)"/>
+            <column name="MailingCity" type="NVARCHAR(255)"/>
+            <column name="MailingState" type="NVARCHAR(255)"/>
+            <column name="MailingZipCode" type="NVARCHAR(255)"/>
+            <column name="ChannelPartnerId" type="UNIQUEIDENTIFIER"/>
+            <column name="ReceiptLanguage" type="VARCHAR(50)"/>
+            <column name="ProfileStatus" type="BIT"/>
+            <column name="BankId" type="NVARCHAR(40)"/>
+            <column name="CountryOfBirth" type="VARCHAR(5)"/>
+            <column name="Notes" type="VARCHAR(250)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-44">
+        <createTable tableName="tSequences">
+            <column name="seqName" type="NVARCHAR(25)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seqNum" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-45">
+        <createTable tableName="tShoppingCartTransactions">
+            <column name="cartRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="newid()" name="cartTxnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CartItemStatus" type="VARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-46">
+        <createTable tableName="tShoppingCartTransactions_Aud">
+            <column name="cartRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="RevisionNo" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AuditEvent" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTAudit" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-47">
+        <createTable tableName="tShoppingCarts">
+            <column name="cartRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Active" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="CustomerPK" type="UNIQUEIDENTIFIER"/>
+            <column name="Status" type="VARCHAR(50)"/>
+            <column defaultValueNumeric="0" name="IsParked" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-48">
+        <createTable tableName="tShoppingCarts_Aud">
+            <column name="cartRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Active" type="BIT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="CustomerPK" type="UNIQUEIDENTIFIER"/>
+            <column name="RevisionNo" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AuditEvent" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTAudit" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-49">
+        <createTable tableName="tSkins">
+            <column defaultValueComputed="newid()" name="Id" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ValueType" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ValueEn" type="NVARCHAR(MAX)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ValueEs" type="NVARCHAR(MAX)">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-50">
+        <createTable tableName="tStates">
+            <column defaultValueComputed="newid()" name="id" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Abbr" type="NVARCHAR(10)"/>
+            <column name="CountryCode" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="HASC1" type="NVARCHAR(10)"/>
+            <column name="Region" type="NVARCHAR(50)"/>
+            <column name="Label" type="NVARCHAR(50)"/>
+            <column name="FIPS" type="NVARCHAR(10)"/>
+            <column defaultValueComputed="getdate()" name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="XLicenseId" type="INT"/>
+            <column name="TimeZone" type="NVARCHAR(50)"/>
+            <column name="CountryId" type="UNIQUEIDENTIFIER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-51">
+        <createTable tableName="tTerminals">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column autoIncrement="true" name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Name" type="NVARCHAR(100)"/>
+            <column name="MacAddress" type="VARCHAR(50)"/>
+            <column name="IpAddress" type="VARCHAR(20)"/>
+            <column name="LocationPK" type="UNIQUEIDENTIFIER"/>
+            <column name="NpsTerminalPK" type="UNIQUEIDENTIFIER"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ChannelPartnerPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-52">
+        <createTable tableName="tTipsAndOffers">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ViewName" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ChannelPartnerName" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TipsAndOffersEn" type="NVARCHAR(300)"/>
+            <column name="TipsAndOffersEs" type="NVARCHAR(300)"/>
+            <column name="OptionalFilter" type="VARCHAR(50)"/>
+            <column name="DTCreate" type="datetime"/>
+            <column name="DTLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-53">
+        <createTable tableName="tTxn_BillPay">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="ProductId" type="BIGINT"/>
+            <column name="AccountNumber" type="NVARCHAR(50)"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-54">
+        <createTable tableName="tTxn_Cash">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="CashType" type="INT"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-55">
+        <createTable tableName="tTxn_Check">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+            <column name="BaseFee" type="MONEY"/>
+            <column name="DiscountApplied" type="MONEY"/>
+            <column name="AdditionalFee" type="MONEY"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-56">
+        <createTable tableName="tTxn_FeeAdjustments">
+            <column name="rowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TxnPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="FeeAdjustmentPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-57">
+        <createTable tableName="tTxn_Funds">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="FundType" type="INT"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+            <column name="BaseFee" type="MONEY"/>
+            <column name="DiscountApplied" type="MONEY"/>
+            <column name="AdditionalFee" type="MONEY"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-58">
+        <createTable tableName="tTxn_MoneyOrder">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+            <column name="BaseFee" type="MONEY"/>
+            <column name="DiscountApplied" type="MONEY"/>
+            <column name="AdditionalFee" type="MONEY"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-59">
+        <createTable tableName="tTxn_MoneyTransfer">
+            <column name="txnRowguid" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXEId" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CXNId" type="BIGINT"/>
+            <column name="LedgerEntryPK" type="UNIQUEIDENTIFIER"/>
+            <column name="CustomerSessionPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="AccountPK" type="UNIQUEIDENTIFIER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Amount" type="MONEY"/>
+            <column name="Fee" type="MONEY"/>
+            <column name="Description" type="NVARCHAR(255)"/>
+            <column name="CXEState" type="INT"/>
+            <column name="CXNState" type="INT"/>
+            <column name="DTCreate" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="DTLastMod" type="datetime"/>
+            <column name="ConfirmationNumber" type="VARCHAR(50)"/>
+            <column name="RecipientId" type="BIGINT"/>
+            <column name="ExchangeRate" type="MONEY"/>
+            <column name="DTServerCreate" type="datetime"/>
+            <column name="DTServerLastMod" type="datetime"/>
+            <column name="TransferType" type="INT"/>
+            <column name="TransactionSubType" type="VARCHAR(20)"/>
+            <column name="OriginalTransactionID" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-60">
+        <createTable tableName="tUserRoles">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Role" type="NVARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-61">
+        <createTable tableName="tUserStatuses">
+            <column name="Id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="Status" type="NVARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-62">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK__tChannel__F73921F63493CFA7" tableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-63">
+        <addPrimaryKey columnNames="id" constraintName="PK__tCountri__3213E83F3864608B" tableName="tCountries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-64">
+        <addPrimaryKey columnNames="id" constraintName="PK__tProspec__3213E83F2645B050" tableName="tProspects"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-65">
+        <addPrimaryKey columnNames="ProspectId" constraintName="PK__tProspec__95CA0CE42A164134" tableName="tProspectGovernmentIdDetails"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-66">
+        <addPrimaryKey columnNames="ProspectId" constraintName="PK__tProspec__95CA0CE42FCF1A8A" tableName="tProspectEmploymentDetails"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-67">
+        <addPrimaryKey columnNames="Id" constraintName="PK__tUserRol__3214EC073E52440B" tableName="tUserRoles"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-68">
+        <addPrimaryKey columnNames="Id" constraintName="PK__tUserSta__3214EC073A81B327" tableName="tUserStatuses"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-69">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tAccounts" tableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-70">
+        <addPrimaryKey columnNames="AgentId" constraintName="PK_tAgentAuthentication" tableName="tAgentAuthentication"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-71">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tAgentDetails" tableName="tAgentDetails"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-72">
+        <addPrimaryKey columnNames="AgentId, LocationId" constraintName="PK_tAgentLocationMapping" tableName="tAgentLocationMapping"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-73">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tAgentSessions" tableName="tAgentSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-74">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tChannelPartnerFeeAdjustments" tableName="tChannelPartnerFeeAdjustments"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-75">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tChannelPartnerFees_Check" tableName="tChannelPartnerFees_Check"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-76">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tChannelPartnerFees_Funds" tableName="tChannelPartnerFees_Funds"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-77">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tChannelPartnerFees_MoneyOrder" tableName="tChannelPartnerFees_MoneyOrder"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-78">
+        <addPrimaryKey columnNames="Id" constraintName="PK_tCheckTypes" tableName="tCheckTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-79">
+        <addPrimaryKey columnNames="id" constraintName="PK_tContactTypes" tableName="tContactTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-80">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tCustomerPreferedProducts" tableName="tCustomerPreferedProducts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-81">
+        <addPrimaryKey columnNames="customerSessionRowguid" constraintName="PK_tCustomerSessions" tableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-82">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tCustomers" tableName="tPartnerCustomers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-83">
+        <addPrimaryKey columnNames="Id" constraintName="PK_tFeeAdjustmentCompareTypes" tableName="tFeeAdjustmentCompareTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-84">
+        <addPrimaryKey columnNames="Id" constraintName="PK_tFeeAdjustmentConditionTypes" tableName="tFeeAdjustmentConditionTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-85">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tFeeAdjustmentConditions" tableName="tFeeAdjustmentConditions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-86">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tLedgerEntries" tableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-87">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tLedgerTransactions" tableName="tLedgerTransactions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-88">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tLocationCounterIdDetails" tableName="tLocationCounterIdDetails"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-89">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tLocations" tableName="tLocations"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-90">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tMessageCenter" tableName="tMessageCenter"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-91">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tMessageStore" tableName="tMessageStore"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-92">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tNexxoIdTypes" tableName="tNexxoIdTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-93">
+        <addPrimaryKey columnNames="id" constraintName="PK_tNotificationHosts" tableName="tNotificationHosts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-94">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tNpsTerminals" tableName="tNpsTerminals"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-95">
+        <addPrimaryKey clustered="false" columnNames="rowguid" constraintName="PK_tPartnerCustomerGroupSettings" tableName="tPartnerCustomerGroupSettings"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-96">
+        <addPrimaryKey clustered="false" columnNames="rowguid" constraintName="PK_tProspectGroupSettings" tableName="tProspectGroupSettings"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-97">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tRecordIdentityConfirmed" tableName="tIdentificationConfirmation"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-98">
+        <addPrimaryKey columnNames="cartTxnRowguid" constraintName="PK_tShoppingCartTransactions_cartTxnRowguid" tableName="tShoppingCartTransactions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-99">
+        <addPrimaryKey columnNames="cartRowguid" constraintName="PK_tShoppingCarts" tableName="tShoppingCarts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-100">
+        <addPrimaryKey columnNames="Id" constraintName="PK_tSkins_1" tableName="tSkins"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-101">
+        <addPrimaryKey columnNames="id" constraintName="PK_tStates" tableName="tStates"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-102">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tTerminals" tableName="tTerminals"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-103">
+        <addPrimaryKey columnNames="Id" constraintName="PK_tTipsAndOffers1" tableName="tTipsAndOffers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-104">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_BillPay" tableName="tTxn_BillPay"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-105">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_Cash" tableName="tTxn_Cash"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-106">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_Check" tableName="tTxn_Check"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-107">
+        <addPrimaryKey columnNames="rowguid" constraintName="PK_tTxn_FeeAdjustments" tableName="tTxn_FeeAdjustments"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-108">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_Funds" tableName="tTxn_Funds"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-109">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_MoneyOrder" tableName="tTxn_MoneyOrder"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-110">
+        <addPrimaryKey columnNames="txnRowguid" constraintName="PK_tTxn_MoneyTransfer" tableName="tTxn_MoneyTransfer"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-111">
+        <addUniqueConstraint columnNames="ChannelPartnerPK, Name" constraintName="IX_tTerminals_NameChannelPartner" deferrable="false" disabled="false" initiallyDeferred="false" tableName="tTerminals"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-112">
+        <addUniqueConstraint columnNames="Language, MessageKey, PartnerPK" constraintName="UQ_tMessageStore_1" deferrable="false" disabled="false" initiallyDeferred="false" tableName="tMessageStore"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-113">
+        <addForeignKeyConstraint baseColumnNames="ProspectId" baseTableName="tProspectEmploymentDetails" constraintName="FK23E166C730F18057" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tProspects"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-114">
+        <addForeignKeyConstraint baseColumnNames="ProspectId" baseTableName="tProspectGovernmentIdDetails" constraintName="FKBC9FBE4E30F18057" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tProspects"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-115">
+        <addForeignKeyConstraint baseColumnNames="CountryId" baseTableName="tNexxoIdTypes" constraintName="FK__tNexxoIdT__Count__3B40CD36" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tCountries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-116">
+        <addForeignKeyConstraint baseColumnNames="StateId" baseTableName="tNexxoIdTypes" constraintName="FK__tNexxoIdT__State__367C1819" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tStates"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-117">
+        <addForeignKeyConstraint baseColumnNames="CountryId" baseTableName="tStates" constraintName="FK__tStates__Country__3A4CA8FD" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tCountries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-118">
+        <addForeignKeyConstraint baseColumnNames="CustomerPK" baseTableName="tAccounts" constraintName="FK_tAccounts_tCustomers" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tPartnerCustomers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-119">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tChannelPartnerFeeAdjustments" constraintName="FK_tChannelPartnerFeeAdjustments_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-120">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tChannelPartnerFees_Check" constraintName="FK_tChannelPartnerFees_Check_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-121">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tChannelPartnerFees_Funds" constraintName="FK_tChannelPartnerFees_Funds_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-122">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tChannelPartnerFees_MoneyOrder" constraintName="FK_tChannelPartnerFees_MoneyOrder_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-123">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tChannelPartnerGroups" constraintName="FK_tChannelPartnerGroups_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-124">
+        <addForeignKeyConstraint baseColumnNames="AgentSessionPK" baseTableName="tCustomerSessions" constraintName="FK_tCustomerSessions_tAgentSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAgentSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-125">
+        <addForeignKeyConstraint baseColumnNames="CustomerPK" baseTableName="tCustomerSessions" constraintName="FK_tCustomerSessions_tCustomers" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tPartnerCustomers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-126">
+        <addForeignKeyConstraint baseColumnNames="FeeAdjustmentPK" baseTableName="tFeeAdjustmentConditions" constraintName="FK_tFeeAdjustmentConditions_tChannelPartnerFeeAdjustments" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartnerFeeAdjustments"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-127">
+        <addForeignKeyConstraint baseColumnNames="ConditionType" baseTableName="tFeeAdjustmentConditions" constraintName="FK_tFeeAdjustmentConditions_tFeeAdjustmentConditionTypes" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="Id" referencedTableName="tFeeAdjustmentConditionTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-128">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tLedgerEntries" constraintName="FK_tLedgerEntries_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-129">
+        <addForeignKeyConstraint baseColumnNames="LedgerTransactionRowguid" baseTableName="tLedgerEntries" constraintName="FK_tLedgerEntries_tLedgerTransactions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerTransactions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-130">
+        <addForeignKeyConstraint baseColumnNames="LocationId" baseTableName="tLocationCounterIdDetails" constraintName="FK_tLocationCounterIdDetails_LocationId" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLocations"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-131">
+        <addForeignKeyConstraint baseColumnNames="AgentId" baseTableName="tMessageCenter" constraintName="FK_tMessageCenter_AgentId" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAgentDetails"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-132">
+        <addForeignKeyConstraint baseColumnNames="TxnId" baseTableName="tMessageCenter" constraintName="FK_tMessageCenter_TxnId" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="txnRowguid" referencedTableName="tTxn_Check"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-133">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tNpsTerminals" constraintName="FK_tNpsTerminals_tChannelPartners" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-134">
+        <addForeignKeyConstraint baseColumnNames="LocationPK" baseTableName="tNpsTerminals" constraintName="FK_tNpsTerminals_tLocations_RowGuid" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLocations"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-135">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerGroupId" baseTableName="tPartnerCustomerGroupSettings" constraintName="FK_tPartnerCustomerGroupSettings_tChannelPartnerGroups" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="Id" referencedTableName="tChannelPartnerGroups"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-136">
+        <addForeignKeyConstraint baseColumnNames="PartnerCustomerPK" baseTableName="tPartnerCustomerGroupSettings" constraintName="FK_tPartnerCustomerGroupSettings_tPartnerCustomers" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tPartnerCustomers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-137">
+        <addForeignKeyConstraint baseColumnNames="IdTypePK" baseTableName="tProspectGovernmentIdDetails" constraintName="FK_tProspectGovernmentIdDetails_tNexxoIdTypes" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tNexxoIdTypes"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-138">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerGroupId" baseTableName="tProspectGroupSettings" constraintName="FK_tProspectGroupSettings_tChannelPartnerGroups" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="Id" referencedTableName="tChannelPartnerGroups"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-139">
+        <addForeignKeyConstraint baseColumnNames="ProspectId" baseTableName="tProspectGroupSettings" constraintName="FK_tProspectGroupSettings_tProspects" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="tProspects"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-140">
+        <addForeignKeyConstraint baseColumnNames="cartRowguid" baseTableName="tShoppingCartTransactions" constraintName="FK_tShoppingCartTransactions_tShoppingCart" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="cartRowguid" referencedTableName="tShoppingCarts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-141">
+        <addForeignKeyConstraint baseColumnNames="CustomerPK" baseTableName="tShoppingCarts" constraintName="FK_tShoppingCarts_tCustomer" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tPartnerCustomers"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-142">
+        <addForeignKeyConstraint baseColumnNames="ChannelPartnerPK" baseTableName="tTerminals" constraintName="FK_tTerminal_tChannelPartner" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartners"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-143">
+        <addForeignKeyConstraint baseColumnNames="LocationPK" baseTableName="tTerminals" constraintName="FK_tTerminals_tLocations" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLocations"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-144">
+        <addForeignKeyConstraint baseColumnNames="NpsTerminalPK" baseTableName="tTerminals" constraintName="FK_tTerminals_tNpsTerminals" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tNpsTerminals"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-145">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_BillPay" constraintName="FK_tTxn_BillPay_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-146">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_BillPay" constraintName="FK_tTxn_BillPay_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-147">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_BillPay" constraintName="FK_tTxn_BillPay_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-148">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_Cash" constraintName="FK_tTxn_Cash_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-149">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_Cash" constraintName="FK_tTxn_Cash_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-150">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_Cash" constraintName="FK_tTxn_Cash_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-151">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_Check" constraintName="FK_tTxn_Check_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-152">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_Check" constraintName="FK_tTxn_Check_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-153">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_Check" constraintName="FK_tTxn_Check_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-154">
+        <addForeignKeyConstraint baseColumnNames="FeeAdjustmentPK" baseTableName="tTxn_FeeAdjustments" constraintName="FK_tTxn_FeeAdjustments_tChannelPartnerFeeAdjustments" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tChannelPartnerFeeAdjustments"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-155">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_Funds" constraintName="FK_tTxn_Funds_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-156">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_Funds" constraintName="FK_tTxn_Funds_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-157">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_Funds" constraintName="FK_tTxn_Funds_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-158">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_MoneyOrder" constraintName="FK_tTxn_MoneyOrder_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-159">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_MoneyOrder" constraintName="FK_tTxn_MoneyOrder_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-160">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_MoneyOrder" constraintName="FK_tTxn_MoneyOrder_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-161">
+        <addForeignKeyConstraint baseColumnNames="AccountPK" baseTableName="tTxn_MoneyTransfer" constraintName="FK_tTxn_MoneyTransfer_tAccounts" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tAccounts"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-162">
+        <addForeignKeyConstraint baseColumnNames="CustomerSessionPK" baseTableName="tTxn_MoneyTransfer" constraintName="FK_tTxn_MoneyTransfer_tCustomerSessions" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="customerSessionRowguid" referencedTableName="tCustomerSessions"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-163">
+        <addForeignKeyConstraint baseColumnNames="LedgerEntryPK" baseTableName="tTxn_MoneyTransfer" constraintName="FK_tTxn_MoneyTransfer_tLedgerEntries" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="rowguid" referencedTableName="tLedgerEntries"/>
+    </changeSet>
+    <changeSet author="maxl (generated)" id="1426183724931-164">
+        <createIndex clustered="false" indexName="IX_tCustomerSessions_ID" tableName="tCustomerSessions" unique="false">
+            <column name="Id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

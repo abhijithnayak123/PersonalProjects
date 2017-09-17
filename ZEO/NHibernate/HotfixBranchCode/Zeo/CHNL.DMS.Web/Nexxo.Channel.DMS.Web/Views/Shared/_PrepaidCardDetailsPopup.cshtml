@@ -1,0 +1,90 @@
+﻿@model MGI.Channel.DMS.Web.Models.PrePaidCard
+@{
+    ViewBag.Title = "Prepaid Card";
+    Layout = null;
+}
+<script>
+    $(document).ready(function () {
+        var transactionType = '@Model.TransactionType';
+        var cdPopupActivationFee = '@Model.ActivationFee';
+        var cdPopupLoadFee = '@Model.LoadFee';
+        var cdPopupWithdrawFee = '@Model.WithdrawFee';
+    });
+</script>
+<script src="@Url.Content("~/Scripts/Fund/par_prepaidCardDetailsPopup.js")" type="text/javascript"></script>
+
+
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.Name, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.Name, new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.CardNumber, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.CardNumber, new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+@*<div class="row">
+    <div>
+        @Html.LabelFor(model => model.AccountNumber, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.AccountNumber, new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>*@
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.TransactionType, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.TransactionType, new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divActivationFee">
+    <div>
+        @Html.LabelFor(model => model.ActivationFee, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.ActivationFee, String.Format("{0:0.00}", @Model.ActivationFee), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divLoadAmount">
+    <div>
+        @Html.LabelFor(model => model.LoadAmount, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.LoadAmount, String.Format("{0:0.00}", @Model.LoadAmount), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divLoadFee">
+    <div>
+        @Html.LabelFor(model => model.LoadFee, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.LoadFee, String.Format("{0:0.00}", @Model.LoadFee), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divWithdrawAmount">
+    <div>
+        @Html.LabelFor(model => model.WithdrawAmount, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.WithdrawAmount, String.Format("{0:0.00}", @Model.WithdrawAmount), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divWithdrawFee">
+    <div>
+        @Html.LabelFor(model => model.WithdrawFee, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.WithdrawFee, String.Format("{0:0.00}", @Model.WithdrawFee), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row"  id="divLoadBalanceImpact">
+    <div>
+        @Html.LabelFor(model => model.LoadBalanceImpact, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.LoadBalanceImpact, String.Format("{0:0.00}", @Model.LoadBalanceImpact), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+<div class="row" id="divWithdrawBalanceImpact">
+    <div>
+        @Html.LabelFor(model => model.WithdrawBalanceImpact, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.WithdrawBalanceImpact, String.Format("{0:0.00}", @Model.WithdrawBalanceImpact), new { @class = "disable_txt", readOnly = "true" })
+    </div>
+</div>
+
+<div class="float_left row_shift30">
+    <ul>
+        <li>
+            <input type="button" value="Exit" onclick="javascript:$('#dlgCheckDetails').dialog('destroy').remove();" style="background-color: #ad2525;" />
+        </li>
+    </ul>
+</div>

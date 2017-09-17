@@ -1,0 +1,50 @@
+﻿@model MGI.Channel.DMS.Web.Models.BillPaymentViewModel
+<script src="@Url.Content("~/Scripts/Billpay/BillPayment.js")" type="text/javascript"></script>
+<center>
+<div class="part_freq_pay" id="gallery-wrap">
+    <ul id="gallery">
+        @if (@Model.FrequentBillPayees != null && @Model.FrequentBillPayees.Count > 0)
+        {
+            var frqRecevierCSS = "";
+            foreach (var Payee in Model.FrequentBillPayees)
+            {
+                if (Model.BillerName != null)
+                {
+                    if (Model.BillerName == Payee.ProductName)
+                    {
+                        frqRecevierCSS = "freq_items sel_freq_item";
+                    }
+                    else
+                    {
+                        frqRecevierCSS = "freq_items non_sel_freq_item";
+                    }
+                }
+
+                else
+                {
+                    frqRecevierCSS = "freq_items non_sel_freq_item";
+                }  
+            
+            <li><a id = "fqBlr_@Payee.Id.ToString()" class='@frqRecevierCSS' onclick="SelectBiller('@Payee.ProductName')" >
+                @{
+                string billerImageBaseUrl = System.Configuration.ConfigurationManager.AppSettings["ReceiptLogoUrl"];
+				string billerImageUrl = @Url.Content("~/Content/Images/BillPayWhite.png");
+				//Begin TA-191 Changes
+				//User Story Number: TA-191 | Server |   Developed by: Sunil Shetty     Date: 21.04.2015
+				//Purpose: The user / teller will have the ability to delete a specific biller from the Favorite Billers list. this image is used to show delete button biller
+				string billerCancelImageUrl = @Url.Content("~/Content/Images/Declined.png");				
+                }
+
+				<img id="fqBlrRemove_@Payee.Id.ToString()" alt="Remove Biller" src='@billerCancelImageUrl' height=15px width=15px class="float_right" onclick="btnFavBillerDeleteClick(this);" style="margin-top:2px;" />
+                <img id="fqBlrLogo" src ='@billerImageUrl' alt='@Payee.ProductName' height=50px width=50px class="float_left push_top5" />
+                <span>@Payee.ProductName</span> </a></li>
+            }
+        }
+    </ul>
+</div>
+</center>
+<div id="gallery-controls" class="frq_pay_gallery">
+    <a href="#" id="gallery-prev"> <img src="~/Content/Images/LeftArrow.jpg" alt="left" /></a>
+    <a href="#" id="gallery-next"> <img src="~/Content/Images/RightArrow.jpg" alt="right" /></a>
+</div>
+

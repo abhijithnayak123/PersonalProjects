@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Cxn.BillPay.MG"
+                   namespace="MGI.Cxn.BillPay.MG.Data">
+
+  <class name="BillerDenomination" table="tMGram_BillerDenomination" >
+    <id name="rowguid" column="MGBIllerDenominationPK">
+      <generator class="guid" />
+    </id>
+    
+    <many-to-one name="BillerLimit" class="BillerLimit" column="BillerLimitPK"  />
+    
+    <property name="DenominationAmount">
+      <column name="DenominationAmount" sql-type="decimal" not-null="false" />
+    </property>
+    
+  </class>
+</hibernate-mapping>

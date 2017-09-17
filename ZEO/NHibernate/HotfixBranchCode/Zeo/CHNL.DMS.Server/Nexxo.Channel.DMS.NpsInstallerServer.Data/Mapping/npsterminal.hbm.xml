@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2" assembly="MGI.Channel.DMS.NpsInstallerServer.Data" namespace="MGI.Channel.DMS.NpsInstallerServer.Data">
+	<class name='NpsTerminal' table='`tNpsTerminals`'>
+		<id name="rowguid" column="NpsTerminalPK">
+			<generator class="guid"/>
+		</id>
+		<property name='Id' column='NpsTerminalID' generated="insert" update="false" insert="false" />
+
+		<property name='Name' column='`Name`' />
+		<property name='Description' column='`Description`' />
+		<property name='IpAddress' column='`IPAddress`' />
+		<property name='Port' column='`Port`' />
+		<property name='PeripheralServiceUrl' column='`PeripheralServiceUrl`' />
+		<property name='Status' column='`Status`' />
+		<many-to-one name='Location' class='Location' column='`LocationPK`' />
+		<many-to-one name='ChannelPartner' class='ChannelPartner' column='`ChannelPartnerPK`' />
+		<property name="DTCreate" column="DTServerCreate" not-null="true" update="false"/>
+		<property name="DTLastMod" column="DTServerLastModified" not-null="false" insert="false"/>
+	</class>
+  
+  <class name="ChannelPartner" table="tChannelPartners" lazy="false">
+	  <id name="rowguid" column="ChannelPartnerPK" >
+	  </id>
+	  <property name="Id" column="ChannelPartnerId"></property>
+	  <property name="Name" column="Name"  />
+  </class>
+
+  <class name="Location" table="tLocations" >
+    <id name="rowguid" column="LocationPK" >
+    </id>
+    <property name="Id" column="LocationID" generated="insert" update="false" insert="false"/>
+    <property name="BankID" column="BankID"  />
+    <property name="BranchID" column="BranchID"  />
+    <property name="LocationIdentifier" column="LocationIdentifier"  />
+    <property name="LocationName" column="LocationName"  />
+    <property name="IsActive" column="IsActive" />
+    <property name="Address1" column="Address1" />
+    <property name="Address2" column="Address2" />
+    <property name="City" column="City" />
+    <property name="State" column="State" />
+    <property name="ZipCode" column="ZipCode" />
+    <property name="ChannelPartnerId" column="ChannelPartnerId" />
+    <property name="PhoneNumber" column="PhoneNumber" />
+    <property name="TimezoneID" column="TimezoneID" />
+    <property name="DTCreate" column="DTServerCreate" not-null="true" update="false" />
+    <property name="DTLastMod" column="DTServerLastModified" not-null="true" insert="false"/>
+  </class>
+</hibernate-mapping>

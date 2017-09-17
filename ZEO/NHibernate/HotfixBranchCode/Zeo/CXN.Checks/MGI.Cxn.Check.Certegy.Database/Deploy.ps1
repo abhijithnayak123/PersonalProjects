@@ -1,0 +1,1 @@
+﻿& .\MGI.Cxn.Check.Certegy.Database.exe | Write-Host

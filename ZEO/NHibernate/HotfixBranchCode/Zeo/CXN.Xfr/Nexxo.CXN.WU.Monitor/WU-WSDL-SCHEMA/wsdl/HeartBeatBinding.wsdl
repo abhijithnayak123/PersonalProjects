@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="HeartBeatBinding" targetNamespace="http://www.westernunion.com/HeartBeat" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.westernunion.com/HeartBeat" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:documentation>WSDL for HeartBeat Service
+		Version : 1.0 Authors : Western Union Created : 10 November 2010
+
+		Revision History:
+		1.0 11/11/2010 update fault definition</xsd:documentation>
+  <import location="HeartBeat.wsdl" namespace="http://www.westernunion.com/HeartBeat"/>
+  <binding name="HeartBeatSOAP_HTTP_Binding" type="tns:HeartBeatPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="HeartBeatService">
+      <soap:operation soapAction="HeartBeatAction"/>
+      <input name="HeartBeatService_Input">
+        <soap:body parts="esp-heartbeat-request" use="literal"/>
+      </input>
+      <output name="HeartBeatService_Output">
+        <soap:body parts="esp-heartbeat-reply" use="literal"/>
+      </output>
+      <fault name="fault">
+        <soap:fault name="fault" use="literal"/>
+      </fault>
+    </operation>
+  </binding>
+</definitions>

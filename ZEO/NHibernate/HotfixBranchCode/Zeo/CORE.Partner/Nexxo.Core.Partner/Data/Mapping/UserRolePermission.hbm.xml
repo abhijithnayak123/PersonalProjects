@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+
+	<class name ="UserRolePermission" table ="tUserRolesPermissionsMapping" lazy="false">
+		<id name="rowguid" column="UserRolesPermissionsMappingPK" >
+		</id>
+		<property name="Id" column="UserRolesPermissionsMappingID"/>
+		<many-to-one insert="false" update="false" lazy="false" name="Role" class="UserRole">
+			<column name="RoleId" sql-type="int" not-null="false" />
+		</many-to-one>
+		<many-to-one insert="false" update="false" lazy="false" name="Permission" class="Permission">
+			<column name="PermissionId" sql-type="uniqueidentifier" not-null="false" />
+		</many-to-one>		
+		<many-to-one insert="false" update="false" lazy="false" name="ChannelPartner" class="ChannelPartner">
+			<column name="ChannelPartnerId" sql-type="uniqueidentifier" not-null="false" />
+		</many-to-one>		
+		<property name="IsEnabled" />
+		<property name="DTServerCreate" column="DTServerCreate" not-null="true" update="false" />
+		<property name="DTServerLastModified" column="DTServerLastModified" not-null="false" insert="false" update="false" />
+	</class>
+</hibernate-mapping>

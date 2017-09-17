@@ -1,0 +1,92 @@
+﻿@model MGI.Channel.DMS.Web.Models.ReceiveMoney
+@{
+	ViewBag.Title = "ReceiveMoney";
+	Layout = "~/Views/Shared/_Common.cshtml";
+    
+}
+<script src="@Url.Content("~/Scripts/SendMoney/CancelMoneytransfer.js")" type="text/javascript"></script>
+@using (Html.BeginForm("ReceiveMoneyValidate", "ReceiveMoney"))
+{
+    <div>
+        <ul class="page_head product_head">
+            <li class="banner_txt">Receive Money</li>
+        </ul>
+    </div>
+    <br />
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.RecieveMoneyWesternUnionMTCN)</label>
+                @Html.TextBoxFor(model => model.WesternUnionMTCN, null, new { @class = "disable_txt", readOnly = "true", @maxlength = "19" })
+        </div>
+        
+    </div>
+    <br />
+    <div>
+       
+    </div>
+    <br />
+    <div class="row">
+        <div>
+            <input type="hidden" id="PanelStatus" value="1" />	
+			@Html.LabelFor(model => model.ReceiverName, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.ReceiverName, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.ReceiverName)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.SenderName, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.SenderName, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.SenderName)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TestQuestion, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TestQuestion, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestQuestion)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TestAnswer, new { @class = "row_label_txt" })
+                @Html.TextBoxFor(model => model.TestAnswer, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestAnswer)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TransferAmount, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TransferAmountWithCurrency, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TransferAmount)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.SenderStateCode, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.SenderStateCode, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+    </div>
+@Html.TextBoxFor(model => model.TransactionId, new { @class = "hide" })   @Html.TextBoxFor(model => model.TransferAmount, new { @class = "hide" })    
+<div  class="row_shift30">
+    <ul>
+        <li class="row_width30">
+            @Html.ActionLink("Cancel", "CancelSendMoneyDetails", "SendMoney", new { id = Model.TransactionId }, new { @class = "anc_link_btn cancelMoneyTransfer red_btn", id = Model.TransactionId,name = "ReceiverMoneyDetails" })
+	    </li>
+        <li class="row_width30 row_shift1">
+			<input type="submit" value="Submit" />
+		</li>
+    </ul>
+</div>
+}

@@ -1,0 +1,221 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyGramSendMoneyConfirm
+@{
+    ViewBag.Title = "SendMoneyConfirm";
+}
+
+<script src="@Url.Content("~/Scripts/SendMoney/MoneyGramSendMoneyConfirm.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/SendMoney/DoddFrankPrint.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/SendMoney/CancelMoneytransfer.js")" type="text/javascript"></script>
+
+<script type="text/javascript">
+	var MoneyGramSendMoneyTransactionId = '@Model.TransactionId';
+	var transactionId = '@Model.TransactionId';
+
+	//Author : Abhijith
+	//Bug : AL-2014
+	//Description : Adding a exception pop up if Dodd frank receipt not printed.
+	//Starts Here
+	var DoddFrankExceptionMsgPopupURL = '@Url.Action("DisplayDoddFrankMessage", "SendMoney")';
+	//Ends Here
+</script>
+
+@using (Html.BeginForm("SendMoneyConfirm", "MoneyGramMoneyTransfer", FormMethod.Post))
+{
+	<input type ="hidden" id = "DoddFrankPrintError" value = "@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.PrintDoddFrankError" />
+	
+	@Html.Partial("_partialSpinner")
+	
+    <div class="send_money_wrap">
+        <div>
+            <ul class="page_head product_head">
+                <li>Send Money Confirm</li>
+            </ul>
+        </div>
+        <div>
+            @if (@ViewBag.ErrorMessage != null)
+            {
+                <div id="divErrorMsg">
+                    <div class="field-validation-error error_txt">@ViewBag.ErrorMessage</div>
+                </div>
+            }
+        </div>
+        <input type="hidden" id="PanelStatus" value="1" />
+        <div class="info_wrap">
+            <ul>
+                <li class="rec_info">Receiver’s Information</li>
+                <li class="trn_info">Transfer Information </li>
+            </ul>
+        </div>
+        <div class="rec_info_wrap">
+            <div class="table_wrap">
+                <table>
+                    <tr>
+                        <td>
+                           @Html.DisplayFor(model => model.ReceiverName)
+                        </td>
+                    </tr>
+					@{
+						if (!string.IsNullOrWhiteSpace(Model.ReceiverAddress))
+						{
+							<tr>
+								<td> @Html.DisplayFor(model => model.ReceiverAddress) </td>
+							</tr>
+						}
+						if (!string.IsNullOrWhiteSpace(Model.ReceiverCity))
+						{
+					
+							<tr>
+								<td> @Html.DisplayFor(model => model.ReceiverCity) </td>
+							</tr>
+						}
+						if (!string.IsNullOrWhiteSpace(Model.ReceiverState))
+						{
+							<tr>
+								<td> @Html.DisplayFor(model => model.ReceiverState) </td>
+							</tr>
+						}
+					}
+                </table>
+                <div class="bold row2">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyTransferDestination</div>
+                <table>
+                    <tr>
+                        <td>
+                            @Html.DisplayFor(model => model.PickupCountry)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            @Html.DisplayFor(model => model.PickupState)
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <table>
+                    <tr>
+                        <td class="label">
+                            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyDeliveryMethod:
+                        </td>
+                        <td>
+                            @Html.DisplayFor(model => model.DeliveryMethod)
+                        </td>
+                    </tr>
+					 <tr>
+                        <td class="label">
+                            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiveAgent:
+                        </td>
+                        <td>
+                            @Html.DisplayFor(model => model.ReceiveAgent)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">
+                            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyTransferAmount:
+                        </td>
+                        <td>
+                            <span>$</span>@Html.DisplayFor(model => model.TransferAmount) <span>USD</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyOriginalFee:
+                        </td>
+                        <td>
+                            <span>$</span>@Html.DisplayFor(model => model.OriginalFee) <span>USD</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyPromoDiscount:
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(Model.CouponPromoCode))
+                            {
+                                <span>$ -</span>@Html.DisplayFor(model => model.PromoDiscount) <span>USD</span>
+                            }
+                            else
+                            {
+                                <span>NA</span>
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyCouponPromoCode
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(Model.CouponPromoCode))
+                            {
+                                @Html.DisplayFor(model => model.CouponPromoCode)
+                            }
+                            else
+                            {
+                                <span>NA</span>
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyNetFee:
+                        </td>
+                        <td>
+                            <span>$</span>@Html.DisplayFor(model => model.TransferFee) <span>USD</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SendMoneyTotalAmount:
+                        </td>
+                        <td>
+                            <span>$</span>@Html.DisplayFor(model => model.Amount) <span>USD</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="line_Sep">
+        </div>
+        <div class="rec_info_wrap">
+            <table>
+                <tr>
+                    <td>
+                        @Html.CheckBoxFor(model => model.ConsumerProtectionMessage)
+                    </td>
+                    <td>
+                        @Html.LabelFor(model => model.ConsumerProtectionMessage, new { @class = "bold" })
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        @Html.CheckBoxFor(model => model.ProvidedTermsandConditionsMessage)
+                    </td>
+                    <td>
+                        @Html.LabelFor(model => model.ProvidedTermsandConditionsMessage, new { @class = "bold" })
+                    </td>
+                </tr>
+                @if (Model.IsDomesticTransfer == false)
+                {
+                    <tr>
+                        <td>
+                            @Html.CheckBoxFor(model => model.DoddFrankDisclosure)
+                        </td>
+                        <td>
+                            @Html.LabelFor(model => model.DoddFrankDisclosure, new { @class = "bold" })
+                        </td>
+                    </tr>
+                }
+            </table>
+            <div class="send_many_btn_shift">
+                <ul>
+                    <li class="row_width30">
+                        @Html.ActionLink("Cancel", "CancelSendMoneyDetails", "SendMoney", new { id = Model.TransactionId }, new { @class = "anc_link_btn cancelMoneyTransfer red_btn", id = Model.TransactionId, name = "SendMoneyConfirm" })
+                    </li>
+                    <li class="SrchButtonWidth">
+                        <input type="submit" id="btnConfirm" value="Next" />
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    @Html.TextBoxFor(model => model.ReceiverFirstName, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransferFee, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransferAmount, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.TransactionId, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.IsDomesticTransfer, new { style = "display:none" })
+    @Html.TextBoxFor(model => model.PickupCountry, new { style = "display:none" })
+}

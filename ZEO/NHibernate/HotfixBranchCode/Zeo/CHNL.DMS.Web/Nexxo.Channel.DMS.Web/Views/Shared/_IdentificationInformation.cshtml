@@ -1,0 +1,147 @@
+﻿@model MGI.Channel.DMS.Web.Models.IdentificationInformation
+@{
+    Func<MGI.Channel.DMS.Web.Models.IdentificationInformation, object> GovtIdIssueState = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.GovtIdIssueState<span id="stateRequired" class="mandatory">*</span>
+    </text>;
+
+    Func<MGI.Channel.DMS.Web.Models.IdentificationInformation, object> IDIssuedDate = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.IDIssuedDate<span id="IdissueRequired" class="mandatory">*</span>
+    </text>;
+
+    Func<MGI.Channel.DMS.Web.Models.IdentificationInformation, object> IDExpireDate = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.IDExpireDate<span id="IdExpireRequired" style='color: red;'>*</span>
+    </text>;
+}
+
+<input type="hidden" id="customerMinimumAge" value="@Model.channelPartner.CustomerMinimumAge" />
+<input type="hidden" id="minimumAgeMessage" value="@Model.CustomerMinimumAgeMessage" />
+
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.MotherMaidenName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.MotherMaidenName, new { @class = "input_box", tabindex = "1", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_MotherMaidenName })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.MotherMaidenName)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.CountryOfBirth, new { @class = "row_label_txt" })
+        <span>@Html.DropDownListFor(model => model.CountryOfBirth, Model.LCountryOfBirth, new { @class = "dropdown_box", tabindex = "2" })</span>
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.CountryOfBirth)
+    </div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.PrimaryCountryCitizenShip, new { @class = "row_label_txt" })
+		<span class="ieSpanDisplay">@Html.DropDownListFor(model => model.PrimaryCountryCitizenShip, Model.LPrimaryCountryCitizenship, new { @class = "dropdown_box", tabindex = "3" })</span>
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.PrimaryCountryCitizenShip)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.SecondaryCountryCitizenShip, new { @class = "row_label_txt" })
+		<span class="ieSpanDisplay">@Html.DropDownListFor(model => model.SecondaryCountryCitizenShip, Model.LSecondaryCountryCitizenship, new { @class = "dropdown_box", tabindex = "4" })</span>
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.SecondaryCountryCitizenShip)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.LegalCode, new { @class = "row_label_txt" })
+		<span class="ieSpanDisplay">@Html.DropDownListFor(model => model.LegalCode, Model.LLegalCodes, new { @class = "dropdown_box", tabindex = "5" })</span>
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.LegalCode)
+	</div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.DateOfBirth, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "input_box", @placeholder = "MM/DD/YYYY", tabindex = "6"})
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.DateOfBirth)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.Country, new { @class = "row_label_txt" })
+        <span>@Html.DropDownListFor(model => model.Country, Model.LCountry, new { @class = "dropdown_box", tabindex = "7" })</span>
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.Country)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.GovtIDType, new { @class = "row_label_txt" })
+        <span class="ieSpanDisplay">@Html.DropDownListFor(model => model.GovtIDType, Model.LGovtIDType, new { @class = "dropdown_box", tabindex = "8" })</span>
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.GovtIDType)
+    </div>
+</div>
+<div class="row">
+    <div>
+        <label class="row_label_txt">@GovtIdIssueState(@Model)</label>
+        <span>@Html.DropDownListFor(model => model.GovtIdIssueState, Model.LStates, new { @class = "dropdown_box", tabindex = "9" })</span>
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.GovtIdIssueState)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.GovernmentId, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.GovernmentId, new { @class = "input_box", maxLength = 20, tabindex = "10", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_IDNumber })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.GovernmentId)
+    </div>
+</div>
+<div class="row">
+    <div>
+        <label class="row_label_txt">@IDIssuedDate(@Model)</label>
+        @Html.TextBoxFor(model => model.IDIssuedDate, new { @class = "input_box", @placeholder = "MM/DD/YYYY", tabindex = "11" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.IDIssuedDate)
+    </div>
+</div>
+<div class="row">
+    <div>
+		<label class="row_label_txt">@IDExpireDate(@Model)</label>
+        @Html.TextBoxFor(model => model.IDExpireDate, new { @class = "input_box", @placeholder = "MM/DD/YYYY", tabindex = "12" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.IDExpireDate)
+    </div>
+</div>
+<br />
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.MGIAlloyID, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.MGIAlloyID, new { @class = "input_box disable_txt", readOnly = true })
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.ClientID, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.ClientID, new { @class = "input_box disable_txt", readOnly = true, tabindex = "13"})
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.ClientID)
+	</div>
+</div>
+
+

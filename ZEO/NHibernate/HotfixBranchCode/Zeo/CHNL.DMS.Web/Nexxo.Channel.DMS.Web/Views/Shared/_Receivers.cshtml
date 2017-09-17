@@ -1,0 +1,227 @@
+﻿@model MGI.Channel.DMS.Web.Models.Receivers
+@{
+    ViewBag.Title = "Create Receiver";   
+}
+
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-1.7.1.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-ui.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/NexxoCustomValidations.js")" type="text/javascript"></script>
+
+
+<script language="javascript" type="text/javascript">
+    function showCancelPopUp() {
+        var lastzindex = $('div[role=dialog]:last')[0].style.zIndex;
+        var $confirmationCancel = $("<div id='dlgCancel'></div>");
+        $confirmationCancel.empty();
+        $confirmationCancel.dialog({
+            autoOpen: false,
+            title: "MGiAlloy",
+            width: 400,
+            draggable: false,
+            modal: true,
+            minHeight: 150,
+            resizable: false,
+			closeOnEscape: false,
+            zIndex: lastzindex,
+            open: function (event, ui) {
+                $confirmationCancel.load(cancelReceiverURL);
+            }
+        });
+        $confirmationCancel.dialog("open");
+    }
+
+    function showDialoguePopup() {
+        var lastzindex = $('div[role=dialog]:last')[0].style.zIndex;
+        var $confirmation = $("<div id='dlgCancel'></div>");
+        $confirmation.empty();
+        $confirmation.dialog({
+            autoOpen: false,
+            title: "MGiAlloy",
+            width: 400,
+            draggable: false,
+            modal: true,
+            minHeight: 150,
+            resizable: false,
+			closeOnEscape: false,
+            zIndex: lastzindex,
+            open: function (event, ui) {
+                $confirmation.load(cancelPopURL);
+            }
+        });
+        $confirmation.dialog("open");
+    }
+
+    function OnCompleteAction() {
+        var divValue = '@Model.AddEdit';
+        if (divValue == 'Add') {
+            var addReceiver = $('#addReceiver');
+            addReceiver.dialog("destroy").remove();
+        }
+        else if (divValue == 'Edit') {
+            var editReceiver = $('#editReceiver');
+            editReceiver.dialog("destroy").remove();
+        }        
+    }
+
+</script>
+
+
+@using (Html.BeginForm("Receivers", "SendMoney", FormMethod.Post, new { enctype = "multipart/form-data", id = "CreateReceiverForm" }))
+{
+    @Html.ValidationSummary(true)    
+    <div id="divError" class="error_txt">@ViewBag.ExceptionMessage</div>
+    <br />
+    <div align="center">
+        @if (Model.AddEdit == "Add") {
+            <h6> Create New Receiver </h6>
+            <script language="javascript" type="text/javascript"> document.getElementById("divAdd").style.display = "block"; </script>
+        }
+        else if (Model.AddEdit == "Edit") {
+            <h6> Edit Receiver </h6>
+            <script language="javascript" type="text/javascript"> document.getElementById("divEdit").style.display = "block"; </script>
+        }
+    </div>
+    <br />
+    <div>                                                  
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.FirstName, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.TextBoxFor(model => model.FirstName, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.FirstName) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.LastName, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.TextBoxFor(model => model.LastName, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.LastName) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.Status, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.DropDownListFor(model => model.Status, Model.LStatus,  new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.Status) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.Gender, new { @class = "row_label_txt" })<span class="mandatory">*</span>        
+            @Html.DropDownListFor(model => model.Gender, Model.LGenders , new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.Gender) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.Relationship, new { @class = "row_label_txt" })
+            @Html.DropDownListFor(model => model.Relationship, Model.LRelationships, new { @class = "dropdown_box" })
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.Address, new { @class = "row_label_txt" })
+            @Html.row_input_bg(model => model.Address, new { @class = "input_box" } )
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.Address) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.Country, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.DropDownListFor(model => model.Country, Model.LCountry, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.Country) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.GovtIdIssueState, new { @class = "row_label_txt" })&nbsp;&nbsp;<span id="stateRequiredStar" class="mandatory">*</span>
+            @Html.DropDownListFor(model => model.GovtIdIssueState, Model.LStates, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.GovtIdIssueState) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.City, new { @class = "row_label_txt" })&nbsp;&nbsp;<span id="cityRequiredStar" class="mandatory">*</span>
+            <span>@Html.DropDownListFor(model => model.City, Model.LCities, new { @class = "dropdown_box" }) </span>
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.City) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.DateOfBirth, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "TxtName", @placeholder = "MM/DD/YYYY" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.DateOfBirth) </div>
+    </div>
+    <div class="row">
+    <div>
+        @Html.LabelFor(model => model.PrimaryPhoneNumber, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.PrimaryPhoneNumber)
+        </div>
+        <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.PrimaryPhoneNumber)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.PhoneType, new { @class = "row_label_txt" })
+            @Html.DropDownListFor(model => model.PhoneType, Model.LPhoneTypes, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.PhoneType) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.MobileProvider, new { @class = "row_label_txt" })
+            @Html.DropDownListFor(model => model.MobileProvider, Model.LMobileProviders, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.MobileProvider) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.AmountType, new { @class = "row_label_txt" })
+            @Html.DropDownListFor(model => model.AmountType, Model.LAmountTypes, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.AmountType) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.AccountNumber, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.AccountNumber)
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.AccountNumber) </div>
+    </div>
+     <div class="row">
+         <div>
+            @Html.LabelFor(model => model.DeliveryMethod, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.DropDownListFor(model => model.DeliveryMethod, Model.LDeliveryMethods, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.DeliveryMethod) </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.DeliveryOptions, new { @class = "row_label_txt" })<span class="mandatory">*</span>
+            @Html.DropDownListFor(model => model.DeliveryOptions, Model.LDeliveryOptions, new { @class = "dropdown_box" })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.DeliveryOptions) </div>
+    </div>
+</div>
+
+    @Html.HiddenFor(model => model.ReceiverId)
+    <br />
+    
+    <div id="divAdd" class="float_right hide">
+        <ul>
+            <li><input type="button" id="CancelTransaction" value="Cancel" onclick="return showCancelPopUp();"  /></li>
+            <li><input type="submit" id="createReceiver" value="Save" /></li>
+        </ul>
+    </div>
+    
+    <div id="divEdit" class="float_right hide">
+        <ul>
+            <li><input type="button" id="CancelPopUp" value="Cancel" onclick="return showDialoguePopup()"  /></li>
+            <li><input type="submit" id="createReceiver" value="Save" /></li>
+        </ul>
+    </div>
+    
+}

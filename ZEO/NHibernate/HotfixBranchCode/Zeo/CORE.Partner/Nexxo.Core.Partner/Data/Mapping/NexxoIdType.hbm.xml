@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+
+	<class name="NexxoIdType" table="tNexxoIdTypes">
+		<id name="rowguid" column="NexxoIdTypePK">
+			<generator class="guid"/>
+		</id>
+		<property name="Id" column="NexxoIdTypeID"/>
+		<property name="Name"/>
+		<property name="Mask"/>
+		<property name="HasExpirationDate"/>
+		<many-to-one insert="false" update="false" lazy="false" name="StateId">
+			<column name="StatePK"  sql-type="uniqueidentifier" not-null="false" />
+		</many-to-one>
+		<many-to-one insert="false" update="false" lazy="false" name="CountryId">
+			<column name="CountryPK" sql-type="uniqueidentifier" not-null="false" />
+		</many-to-one>
+		<property name="IsActive"/>
+	</class>
+
+</hibernate-mapping>

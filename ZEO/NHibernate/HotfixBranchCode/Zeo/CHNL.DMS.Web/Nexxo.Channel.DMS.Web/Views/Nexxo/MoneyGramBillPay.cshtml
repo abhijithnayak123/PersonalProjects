@@ -1,0 +1,58 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyGramBillPayViewModel
+@{
+    ViewBag.Title = "MoneyGramBillPayment";
+    Layout = "~/Views/Shared/_Common.cshtml"; 
+}
+<script src="@Url.Content("~/Scripts/Billpay/MGBillpay.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    var URL_AutoCompleteBillPayee = '@Url.Action("AutoCompleteBillPayee", "MoneyGramBillPayment")';
+    var URL_PopulateBillFee = '@Url.Action("PopulateBillFee", "MoneyGramBillPayment")';
+    var URL_PopulateDynamicControls = '@Url.Action("PopulateDynamicControls", "MoneyGramBillPayment")';
+    var URL_PopulateBillpayee = '@Url.Action("PopulateBillpayee", "MoneyGramBillPayment")';
+    var URL_PopulateBillerMessage = '@Url.Action("GetBillerInfo", "MoneyGramBillPayment")';
+    var isException = '@ViewBag.IsException';
+    if(isException=='True') {
+      var FieldList = @Html.Raw(Json.Encode(Model.DynamicFields));
+    }
+    var varBillAmount1 = @Model.BillAmount1;
+    var ViewBag_ErrorMessage = '@ViewBag.ErrorMessage';
+    var Model_AccountAuthMask = '@Model.AccountAuthMask';
+	var defaultErrorMessage = "MGiAlloy | 0.0 | Unknown error occured while getting data. | Please contact System Administrator";
+</script>
+@using (Html.BeginForm("Validate", "MoneyGramBillPayment"))
+{   
+    @Html.Partial("_partialSpinner")
+    if (@ViewBag.ErrorMessage != null)
+    {
+    <center>
+        <div id="divViewBag" class="erro_txt">@ViewBag.ErrorMessage</div>
+        <br />
+    </center>
+    }
+    <div>
+        <ul class="page_head product_head">
+            <li class="fav_payee_banner_txt">Favorite Billers</li>
+        </ul>
+    </div>
+    <div id="FrequentBillers">
+        @Html.Partial("_partialFrequentPayees", Model)
+    </div>
+    <div>
+        <ul class="page_head product_head">
+            <li>Select New Biller</li>
+        </ul>
+    </div>
+    <div id="Div_BillPayment">
+        @Html.Partial("_MoneyGramBillPay", Model)
+        <div class="bill_payment_btn_wrap">
+            <ul>
+               @*  <li>
+	<input type="button" value="@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CancelButtonText" id="CancelTransaction" /></li>*@
+				<li class="row_width60"><input type="button" value="@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CancelButtonText" onclick="_showCancelTransaction()" class="red_btn" /></li>
+                <li>
+                    <input type="submit" value="Next" class="anc_link_btn" id="Submit" />
+                </li>
+            </ul>
+        </div>
+    </div>
+}

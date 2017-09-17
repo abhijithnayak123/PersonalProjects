@@ -1,0 +1,94 @@
+﻿<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object type="Spring.Objects.Factory.Config.PropertyPlaceholderConfigurer, Spring.Core">
+		<property name="ConfigSections" value="databaseSettings"/>
+	</object>
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+
+	<object name="MockMoneyTransfer" type="MGI.Unit.Test.MockData.MockMoneyTransferProcessor, MGI.Unit.Test"></object>
+
+	<object id="BIZMoneyTransferEngine" type="MGI.Biz.MoneyTransfer.Impl.MoneyTransferEngine, MGI.Biz.MoneyTransfer">
+		<property name="CXEMoneyTransferService" ref="CXEMoneyTransferService"></property>
+		<property name="CXNMoneyTransferService" ref="CXNMoneyTransferProcessor"></property>
+		<property name="CXECustomerService" ref="CXECustomerService"></property>
+		<property name="CXEAccountService" ref="AccountService"></property>
+		<property name="PTNRCustomerService" ref="Core.Partner.CustomerService"> </property>
+		<property name="PTNRMoneyTransferService" ref="PartnerMoneyTransferService"></property>
+		<property name="CustomerSessionService" ref="CustomerSessionService"></property>
+		<property name="LimitService" ref="BIZLimitService" />
+		<property name="PTNRChannelPartnerService" ref="CorePartnerChannelPartnerService"/>
+		<property name="MoneyTransferProcessorSvc" ref="MoneyTransferProcessorRouter"/>
+		<property name="PTNRDataStructureService" ref="CoreNexxoDataStructuresService"/>
+		<!-- TODO Merge <property name="CXNMoneyTransferSetupEngine" ref="CXNMoneyTransferSetup"></property>-->
+		<!--<property name ="ShoppingcartService" ref="InterceptedBIZPartnerShoppingCart"></property>-->
+		<property name="LocationCounterIdService" ref="CorePartnerLocationCounterIdService"></property>
+		<property name="CustomerSessionCounterIdService" ref="CustomerSessionCounterIdService"></property>
+		<property name="IsHardCodedCounterId" value="${IsHardCodedCounterId}" />
+		<property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+
+	<object id="CXEMoneyTransferService" factory-object="MockMoneyTransfer" factory-method="CreateInstanceOfCXEMoneyTransfer"></object>
+
+	<object id="CXNMoneyTransferProcessor" factory-object="MockMoneyTransfer" factory-method="CreateInstanceOfCXNMoneyTransfer"></object>
+	
+	<object id="MoneyTransferProcessorRouter" type="MGI.Cxn.Common.Processor.Util.ProcessorRouter, MGI.Cxn.Common">
+		<property name="Processors">
+			<object id="MoneyTransferProcessorsDictionary" type="System.Collections.Generic.Dictionary&lt;string, MGI.Cxn.Common.Processor.Contract.IProcessor&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+						<entry key="Synovus">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="Carver">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="TCF">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="MGI">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="Redstone">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+		<!-- The MoneyTransfer Providers -->
+		<!--Changes for MGI-->
+		<property name="Providers">
+			<object id="MoneyTransferProvidersDictionary" type="System.Collections.Generic.Dictionary&lt;string, string&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="string">
+						<entry key="Synovus">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="Carver">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="TCF">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="MGI">
+							<value type="string">MoneyGram</value>
+						</entry>
+						<entry key="Redstone">
+							<value type="string">MoneyGram</value>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+
+	</object>
+	<!-- EO MoneyTransfer Processors -->
+
+</objects>

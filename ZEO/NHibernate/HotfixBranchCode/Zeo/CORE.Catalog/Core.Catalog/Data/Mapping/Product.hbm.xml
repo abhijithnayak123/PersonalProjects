@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Core.Catalog" namespace="MGI.Core.Catalog.Data" xmlns="urn:nhibernate-mapping-2.2">
+
+  <class name="PartnerCatalog" table="tPartnerCatalog" lazy="true" >
+    <!--<id name="Id"/>-->
+    <!--<property name="Id">
+      <column name="Id" sql-type="bigint" not-null="true" />
+    </property>-->
+	  <!--<id name="TPartnerCatalogPK"  column="MasterCatalogPK">
+		  <generator class="guid" />
+	  </id>-->
+	  <id name="PartnerCatalogPK" column="tPartnerCatalogPK">
+		  <generator class="guid" />
+	  </id>
+    <property name="BillerName">
+      <column name="BillerName" sql-type="varchar" not-null="true" />
+    </property>
+    <property name="ChannelPartnerId">
+      <column name="ChannelPartnerId" sql-type="int" not-null="true" />
+    </property>
+    <property name="ProviderId">
+      <column name="ProviderId" sql-type="int" not-null="true" />
+    </property>
+    <property name="BillerCode">
+      <column name="BillerCode" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="Keywords">
+      <column name="Keywords" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="DTServerCreate">
+      <column name="DTServerCreate" sql-type="datetime" not-null="true" />
+    </property>
+	<many-to-one insert="false" update="false" lazy="false" name="MasterCatalog">
+		<column name="MasterCatalogPK" sql-type="uniqueidentifier" not-null="false" />
+	</many-to-one>
+	<!--<property name="MasterCatalogPK">
+		  <column name="MasterCatalogPK" sql-type="uniqueidentifier" not-null="false" />
+	</property>-->
+  </class>
+
+  <class name="MasterCatalog" table="tMasterCatalog" lazy="true" >
+	 <id name="rowguid"  column="MasterCatalogPK">
+		  <generator class="guid" />
+	 </id>
+    <!--<property name="rowguid">
+      <column name="MasterCatalogPK" sql-type="uniqueidentifier" not-null="true" />
+    </property>-->
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="MasterCatalogID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="ProviderCatalogId">
+      <column name="ProviderCatalogId" sql-type="bigint" not-null="true" />
+    </property>
+    <property name="BillerName">
+      <column name="BillerName" sql-type="varchar" not-null="true" />
+    </property>
+    <property name="BillerCode">
+      <column name="BillerCode" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="Keywords">
+      <column name="Keywords" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="ChannelPartnerId">
+      <column name="ChannelPartnerId" sql-type="int" not-null="true" />
+    </property>
+    <property name="ProviderId">
+      <column name="ProviderId" sql-type="int" not-null="true" />
+    </property>
+    <property name="ProductType">
+      <column name="ProductType" sql-type="int" not-null="false" />
+    </property>
+    <property name="LogoURL">
+      <column name="LogoURL" sql-type="nvarchar" not-null="false" />
+    </property>
+    <property name="IsActive">
+      <column name="IsActive" sql-type="bit" not-null="true" />
+    </property>
+    <property name="DTServerCreate">
+      <column name="DTServerCreate" sql-type="datetime" not-null="true" />
+    </property>
+    <property name="DTServerLastModified">
+      <column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+    </property>
+	 <bag name="PartnerCatalogs" inverse="true" cascade="none">
+		  <key column="MasterCatalogPK" />
+		  <one-to-many class="PartnerCatalog" />
+	 </bag>
+  </class>
+</hibernate-mapping>

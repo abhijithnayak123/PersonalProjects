@@ -1,0 +1,80 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyTransferTransactionDetailsViewModel
+@{
+    Layout = null;
+}
+<script src="@Url.Content("~/Scripts/TransactionHistory/TransactionHistory.js")" type="text/javascript"></script> 
+<div class="TrxDetailsBackColor">
+    <div class="reportSpacer">
+        <h1 class="trxpopup_title">
+            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MoneyTransferTranHistoryTitle
+            <span>
+                <input type="button" value="Reprint Receipt" class="MoneyOrderbuttonText" id="btnPrintReceipt" />
+            </span>
+        </h1>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.TransactionId, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.TransactionId)</span>
+		@if (Model.TransactionStatus.ToLower() == "committed")
+		{
+        <div style="margin-left: 80%;">
+			<input type="checkbox" id="chkbox_reprintSummaryReceipt" class="trxpopup_reprint_btn" > Include summary receipt in reprint
+		</div>
+		}
+        <h1 class="trxpopup_title">
+            <span>
+				<input type="button" value="Close" class="MoneyOrderbuttonText" onclick="javascript:$('#divPrepaid').dialog('destroy').remove();" />
+			</span>
+        </h1>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.TransactionStatus, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.TransactionStatus)</span>
+    </div>
+    <div class="reportSpacer" style="margin-top: 20px;">
+        @Html.LabelFor(model => model.TransferAmount, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">$@Html.DisplayFor(model => model.TransferAmount)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.Fee, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">$@Html.DisplayFor(model => model.Fee)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.Discount, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">$@Html.DisplayFor(model => model.Discount)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.PromotionName, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.PromotionName)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.PromotionDescription, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.PromotionDescription)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.NetFee, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">$@Html.DisplayFor(model => model.NetFee)</span>
+    </div>
+    <div class="reportSpacer" style="margin-top: 20px;">
+        @Html.LabelFor(model => model.Total, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">$@Html.DisplayFor(model => model.Total)</span>
+    </div>
+    <div class="reportSpacer" style="margin-top: 20px;">
+        @Html.LabelFor(model => model.ReceiverName, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.ReceiverName)</span>
+    </div>
+    <div class="reportSpacer">
+        @Html.LabelFor(model => model.ReceiverAddress, new { @class = "transPopUpLabel" })
+        <span class="transPopUpLabel" style="margin-left: 1%;">@Html.DisplayFor(model => model.ReceiverAddress)</span>
+    </div>
+</div>
+ @Html.Partial("_partial" + Model.ProviderName + "MoneyTransferTransactionDetails", Model)
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#btnPrintReceipt').click(function () {
+            var btnprint = $(this);
+            var reprintSummary = $("#chkbox_reprintSummaryReceipt")[0].checked;
+            RePrintReceipt(btnprint, '@Model.TransactionId', '@Model.TransactionType', reprintSummary);
+        });
+    });    
+</script>

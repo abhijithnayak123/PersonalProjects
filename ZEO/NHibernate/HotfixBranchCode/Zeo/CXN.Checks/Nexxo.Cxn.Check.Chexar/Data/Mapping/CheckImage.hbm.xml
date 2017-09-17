@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Cxn.Check.Chexar"
+                   namespace="MGI.Cxn.Check.Chexar.Data">
+
+  <class name="CheckImage" table="tChxr_CheckImages">
+    <id name="rowguid" column="ChxrCheckImagePK">
+      <generator class="guid"/>
+    </id>
+    <property name="Front" type="Serializable" length="2147483647"/>
+    <property name="Back" type="Serializable" length="2147483647"/>
+    <property name="Format"/>
+    <property name="FrontTIF" type="Serializable" length="2147483647"/>
+    <property name="BackTIF" type="Serializable" length="2147483647"/>
+
+
+    <many-to-one name="Trx" class="MGI.Cxn.Check.Chexar.Data.ChexarTrx"
+                  column="ChxrTrxPK" insert="true" update="false" cascade="none" not-null="true" />
+
+
+    <property name="DTTerminalCreate" update="false"/>
+    <property name="DTTerminalLastModified" insert="false" not-null="false"/>
+    <property name="DTServerCreate" update="false"/>
+    <property name="DTServerLastModified" insert="false" not-null="false"/>
+
+	</class>
+</hibernate-mapping>

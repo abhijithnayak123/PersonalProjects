@@ -1,0 +1,85 @@
+﻿@model MGI.Channel.DMS.Web.Models.CustomerLookUp
+
+<center>
+    
+    <div class="page_head product_head" style="text-align: left">
+        Find Carver Customer 
+    </div>
+    
+    <div class="customerlookup_hdg">
+        Use two or more of the fields below: 
+    </div>
+
+    <div class="customerlookup_container">
+        <div class="error_align_left customerlookup_error_disp" id="errorLabel">
+        </div>
+
+        <div class="customerlookup_row float_left">
+            <div class="float_left">
+                <label class="customerlookup_lbl">@Html.LabelFor(model => model.LastName)</label> 
+                @Html.TextBoxFor(model => model.LastName, new { @class = "float_left customerlookup_txt", tabindex = 1, id = "LastName" })
+            </div>
+            <div class="customerlookup_error clear_both">
+                @Html.ValidationMessageFor(model => model.LastName)
+				@Html.HiddenFor(model => model.IsCompanionSearch)
+            </div>
+            
+            <div class="float_left">
+                <label class="customerlookup_lbl">@Html.LabelFor(model => model.PrimaryPhone)</label>           
+                @Html.TextBoxFor(model => model.PrimaryPhone, new { @class = "float_left customerlookup_txt", tabindex = 3, autocomplete = "off", id = "PrimaryPhone", @maxLength = 12 })
+                <div class="customerlookup_error clear_both">
+                    @Html.ValidationMessageFor(model => model.PrimaryPhone)
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="customerlookup_row float_left">
+            <div class="float_left">
+                <label class="customerlookup_lbl">@Html.LabelFor(model => model.DateOfBirth)</label>           
+                @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "float_left customerlookup_txt", tabindex = 2, autocomplete = "off", id = "DateOfBirth", @placeholder = "MM/DD/YYYY" })
+                <div class="customerlookup_error clear_both">
+                    @Html.ValidationMessageFor(model => model.DateOfBirth)
+                </div>
+            </div>
+
+            <div class="float_left">
+                <label class="customerlookup_lbl">@Html.LabelFor(model => model.ZipCode)</label>           
+                @Html.TextBoxFor(model => model.ZipCode, new { @class = "float_left customerlookup_txt", tabindex = 4, autocomplete = "off", id = "ZipCode", @maxLength = 5 })
+                
+                <div class="customerlookup_error clear_both">
+                    @Html.ValidationMessageFor(model => model.ZipCode)
+                </div>
+            </div>
+            
+             
+        </div>
+        
+        <div class="customerlookup_btn_row float_left">
+            <input type="button" value="@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.SearchButtonText" class="confirmButton customerlookup_btn" id="criteriaSubmit" />
+            @Html.ActionLink("Cancel", "PersonalInformation", "CustomerRegistration", new { }, new { @class = "anc_link_btn red_btn" })
+        </div>
+        
+    
+    </div>
+    
+    <div id="NoRecords" class="apprCheck noRecords">
+        @if (ViewBag.ErrorMessage != null)
+        {
+            @ViewBag.ErrorMessage
+        }
+    </div>
+
+    <div id="griddiv" >
+        <div class="customerlookup_hdg float-left">
+            Select the customer to register: 
+        </div>
+
+        <div class="customerlookup_grid" id="divJqTable">
+            <table id="jqTable" class="scroll" style="background-color: White;">
+            </table>
+            <div id="jqTablePager" />
+        </div>
+    </div>
+    
+</center>

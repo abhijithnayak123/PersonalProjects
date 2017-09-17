@@ -1,0 +1,363 @@
+﻿@model MGI.Channel.DMS.Web.Models.Locations
+@{
+	ViewBag.Title = "Enter New Location";
+	
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> LocationBankID = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationBankID
+    @{
+		if (Model.ChannelPartnerName.ToLower() == "synovus" || Model.ChannelPartnerName.ToLower() == "tcf")
+		{
+	 	<span class="mandatory">*</span>
+		}
+	 }
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> LocationBranchID = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationBranchID
+	@{
+        if (Model.ChannelPartnerName.ToLower() == "synovus" || Model.ChannelPartnerName.ToLower() == "tcf")
+		{
+	    <span class="mandatory">*</span>
+		}
+	 }
+    </text>;
+	
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> LocationIdentifier = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationIdentifier<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> LocationName = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationName<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> LocationStatus = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationStatus<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> Address1 = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationAddress1<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> Address2 = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Address2<span class="mandatory"></span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> City = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.City<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> State = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.State<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> ZipCode = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ZipCode<span class="mandatory">*</span>
+    </text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Locations, object> TimeZone = 
+    @<text> 
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationTimeZone<span class="mandatory">*</span>
+    </text>;       
+       
+           
+}
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.maskedinput-1.3.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    function ValidateKey(e, regex) {
+        var enterKey = String.fromCharCode(!e.charCode ? e.which : e.charCode);
+        if (regex.test(enterKey)) {
+            return true;
+        }
+        e.preventDefault();
+        return false;
+    }
+
+    $(document).ready(function () {
+        $("#divUserSessionId").css("display", "");
+    	$('input[type=text]').bind("paste", function (e) {
+    		e.preventDefault();
+    	});
+        localStorage.removeItem('activeProcessorName');
+
+        $("#Phone").mask("999-999-9999");
+
+        var addEdit = '@Model.AddEdit';
+        if (addEdit == "Enter New Locations") {
+            $('#divAdd').show();
+            $('#divEdit').hide();
+        }
+        else if (addEdit == "Edit Location") {
+            $('#divAdd').hide();
+            $('#divEdit').show();
+        }
+        var channelPartner = '@Model.ChannelPartnerName.ToLower()';
+    	var regexIDNumber = /^([0-9])$/;
+        var regexLocationIdForKeyRestrict = /^[a-zA-Z0-9_#&\-\'/\s]*$/;
+        var regexLocationId = /^[a-zA-Z0-9]{1}[a-zA-Z0-9_#&\-\'/\s]*$/;
+        var regexLocationName = /^[a-zA-Z0-9_#&\-\'/\s]*$/;
+        var regexAddress = /^(?!.*(P|p)\.? ?(O|o)\.? ?(Box|bOx|boX|BOX|BOx|box))[-a-zA-Z\d .,/@@#!]*$/;
+        var regexCity = /^[a-zA-Z .-]*$/;
+        var regexZipCode = /^(\d)(?!\1{4}$)\d*$/;
+
+        if (channelPartner == "synovus" || channelPartner == "tcf") {
+            $('#BankID').rules("add", {
+                required: true,
+                messages: {
+                    required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationBankIDRequired'
+                }
+            });
+
+            $('#BankID').keypress(function (e) {
+                ValidateKey(e, regexIDNumber);
+            });
+
+            $('#BranchID').rules("add", {
+                required: true,
+                messages: {
+                    required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationBranchIDRequired'
+                }
+            });
+
+            $('#BranchID').keypress(function (e) {
+                ValidateKey(e, regexIDNumber);
+            });
+        }
+    	if (channelPartner == "carver")
+    	{
+    		$('#BankID').keypress(function (e) {
+    			ValidateKey(e, regexIDNumber);
+    		});
+    		$('#BranchID').keypress(function (e) {
+    			ValidateKey(e, regexIDNumber);
+    		});
+    	}
+
+        $('#LocationIdentifier').rules("add", {
+            required: true,
+            regex: regexLocationId,
+            messages: {
+                required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationIDRequired',
+                minlength: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationIDLength',
+                regex: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationIDRegex'
+            }
+        });
+
+        $('#LocationIdentifier').keypress(function (e) {
+            ValidateKey(e, regexLocationIdForKeyRestrict);
+        });
+
+        $('#LocationName').rules("add", {
+            required: true,
+            messages: {
+                required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationLocationNameRequired',
+            }
+        });
+
+        $('#LocationName').keypress(function (e) {
+            ValidateKey(e, regexLocationName);
+        });
+
+        $('#Address1').rules("add", {
+            required: true,
+            regex: regexAddress,
+            messages: {
+                required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationAddress1Required',
+                regex: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationAddress1Regex'
+            }
+        });
+
+        $('#Address1').keypress(function (e) {
+            ValidateKey(e, regexAddress);
+        });
+
+        $('#Address2').rules("add", {
+            regex: regexAddress,
+            messages: {
+                regex: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationAddress2Regex'
+            }
+        });
+
+        $('#Address2').keypress(function (e) {
+            ValidateKey(e, regexAddress);
+        });
+
+        $('#City').rules("add", {
+            required: true,
+            messages: {
+                required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationCityRequired',
+            }
+        });
+
+        $('#City').keypress(function (e) {
+            ValidateKey(e, regexCity);
+        });
+
+        $('#ZipCode').rules("add", {
+            required: true,
+            regex: regexZipCode,
+            messages: {
+                required: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationZipCodeRequired',
+                regex: '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationZipCodeRegex'
+            }
+        });
+
+        $('#ZipCode').keypress(function (e) {
+            ValidateKey(e, regexZipCode);
+        });
+    });
+
+
+</script>
+@using (Html.BeginForm("SaveNewLocation", "Locations"))
+{
+	TempData.Keep("SuccessMessage");
+	<div>
+		<ul class="page_head product_head">
+			<li class="float_left">@Model.AddEdit</li>
+		</ul>
+		@Html.ValidationSummary(true)
+		
+		<div id="divError" class="field-validation-error">@ViewBag.ExceptionMessage</div>
+
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@LocationBankID(@Model)</label>
+                @Html.TextBoxFor(model => model.BankID, Model.BankID, new { @class = "input_box", maxLength = "40", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_BankId })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.BankID)
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@LocationBranchID(@Model)</label>
+                @Html.TextBoxFor(model => model.BranchID, Model.BranchID, new { @class = "input_box", maxLength = "40", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_BranchId })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.BranchID)
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@LocationIdentifier(@Model)</label>
+                @Html.TextBoxFor(model => model.LocationIdentifier, Model.LocationIdentifier, new { @class = "input_box", maxLength = "50", minlength = "4", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_LocationId })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.LocationIdentifier)
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@LocationName(@Model)</label>
+                @Html.TextBoxFor(model => model.LocationName, new { @class = "input_box", maxLength = "100", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_LocationName })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.LocationName)
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@LocationStatus(@Model)</label>
+                @Html.DropDownListFor(model => model.LocationStatus, Model.LLocationStatus, new { @class = "dropdown_box" })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.LocationStatus)
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@Address1(@Model)</label>
+                @Html.TextBoxFor(model => model.Address1, new { @class = "input_box", maxLength = "100", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_Address1 })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.Address1)
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@Address2(@Model)</label>
+                @Html.TextBoxFor(model => model.Address2, new { @class = "input_box", maxLength = "100", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_Address2 })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.Address2)
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <label class="row_label_txt">@City(@Model)</label>
+                @Html.TextBoxFor(model => model.City, new { @class = "input_box", maxLength = 50, @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_City })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.City)
+            </div>
+        </div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@State(@Model)</label>
+				@Html.DropDownListFor(model => model.LocationUSState, Model.LLocationUSStates, new { @class = "dropdown_box" })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.LocationUSState)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@ZipCode(@Model)</label>
+				@Html.TextBoxFor(model => model.ZipCode, new { @class = "input_box", maxLength = 5, @placeholder = "#####" })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.ZipCode)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">@TimeZone(@Model)</label>
+				@Html.DropDownListFor(model => model.TimeZone, Model.LTimeZone, new { @class = "dropdown_box" })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.TimeZone)
+			</div>
+		</div>
+
+        <div class="row">
+            <div>
+                <label class="row_label_txt">
+                    @Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LocationPhone)</label>
+                @Html.TextBoxFor(model => model.Phone, new { @class = "input_box", maxLength = "12", @placeholder = "###-###-####" })
+            </div>
+            <div class="error_align_left">
+                @Html.ValidationMessageFor(model => model.Phone)
+            </div>
+        </div>
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.rowguid)
+        <div id="divAdd" class="btn_wrap">
+            <ul>
+                <li>
+                    @Html.ActionLink("View Summary", "ViewLocationSummary", "Locations", null, new { @class = "anc_link_btn orange_btn" })
+                    @*<input type="submit" name="Source" value="View Summary" />*@ 
+                </li>
+                <li> <input type="submit" name="Source" value="Next" /> </li>
+            </ul>
+        </div>
+        <div id="divEdit" class="btn_wrap">
+            <ul>
+                <li>
+                    <input type="submit" name="Source" value="Next" />
+                </li>
+            </ul>
+        </div>
+    </div>
+}

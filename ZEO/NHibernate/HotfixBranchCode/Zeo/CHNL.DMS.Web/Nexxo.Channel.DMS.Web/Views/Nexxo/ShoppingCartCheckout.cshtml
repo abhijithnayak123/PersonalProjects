@@ -1,0 +1,1087 @@
+﻿@model MGI.Channel.DMS.Web.Models.ShoppingCartDetail
+@{
+	ViewBag.Title = "ShoppingCartCheckout";
+	Layout = "~/Views/Shared/_Common.cshtml";
+	var MOSpinner = 0;
+}
+<script src="@Url.Content("~/Scripts/Check/CheckFranking.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/MoneyOrder/MoneyOrder.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/CheckOutSuccess.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/PrintReceipt.js")" type="text/javascript"></script>
+<script type="text/javascript">
+	var gprActivateIndex = @Model.Items.FindIndex(m => m.Product == "GPRActivation")
+	window.isCheckoutPage = true;
+	var minIntiLoadAmt = parseFloat('@Model.MinimumLoadAmount.ToString("0.00")');
+	var isGpr = '@Model.CardHolder';
+	var itemCount = '@Model.Items.Count';
+	$("#MinimumLoadAmount").val(minIntiLoadAmt);
+	var InitLoad = '@ViewBag.InitLoadAmt';
+	//AL-873 : Server side shopping cart calculation
+	var withdrawChangeFunctionURL = '@Url.Action("WithdrawChangeFunction", "ShoppingCart")';
+	var getChangeDueURL = '@Url.Action("GetChangeDue", "ShoppingCart")';
+	var LoadToCardChangeFunctionURL = '@Url.Action("LoadToCardChangeFunction", "ShoppingCart")';
+	var CashToCustomerChangeFunctionURL = '@Url.Action("CashToCustomerChangeFunction", "ShoppingCart")';
+	var NetDueToCustomerFunctionURL = '@Url.Action("NetDueToCustomerFunction", "ShoppingCart")';
+	//AL-873 : Server side shopping cart calculation
+	function GPRWithdrawAmountPopup() {
+		var $confirmation = $("<div id='GPRWithdrawalAmountPopup'></div>");
+		var withdrawamt = parseFloat($("input#WithdrawFromCard").val());
+		var previousCashCollected = parseFloat('@Model.PreviousCashCollected');
+		var withdrawFromCard = parseFloat($("input#WithdrawFromCard").val());
+		var GPRWithdrawAmountPopupURL = '@Url.Action("GPRWithdrawalAmountPopup", "ShoppingCart")';
+		$confirmation.empty();
+		$confirmation.dialog({
+			autoOpen: false,
+			title: "Message",
+			width: 373,
+			draggable: false,
+			modal: true,
+			minHeight: 150,
+			resizable: false,
+			closeOnEscape: false,
+			open: function (event, ui) {
+				var url = GPRWithdrawAmountPopupURL + "?withdrawAmt=" + withdrawamt + "&previousCashCollected=" + previousCashCollected + "&withdrawFromCard=" + withdrawFromCard;
+				$confirmation.load(url);
+			},
+			error: function (err) {
+				showExceptionPopupMsg(err);
+			}
+		});
+		$confirmation.dialog("open");
+		return false;
+	}
+
+	function displayLabels() {
+		loadToCard = parseFloat($("input#LoadToCard").val());
+		if (loadToCard <= 0) {
+			$("#minIntiLoadAmt").css('display', 'block');
+			$("#minIntiLoadAmtError").css('display', 'none');
+			$('#LoadFee').css('display', 'none');
+		}
+		else if (loadToCard >= minIntiLoadAmt) {
+			$("#minIntiLoadAmt").css('display', 'none');
+			$("#minIntiLoadAmtError").css('display', 'none');
+			$('#LoadFee').css('display', 'block');
+		}
+		else {
+			$('#LoadFee').css('display', 'none');
+			$("#minIntiLoadAmt").css('display', 'none');
+			$("#minIntiLoadAmtError").css('display', 'block');
+		}
+
+		withdrawamt = parseFloat($("input#WithdrawFromCard").val());
+		isDisabled = $('input#WithdrawFromCard').prop('disabled');
+		if (withdrawamt > 0 && isDisabled == false) {
+			$(".WithdrawFee").css("visibility", "visible");
+		}
+		else {
+			$(".WithdrawFee").css("visibility", "hidden");
+		}
+	};
+
+
+	$(document).ready(function () {
+
+		recalculatevalues();
+		var transactionId = '@ViewBag.transactionId';
+		if (transactionId != '') {
+			CheckRemove(transactionId);
+		}
+
+
+		$("input#LoadToCard").keypress(function () {
+			if ($("input#LoadToCard").val().length == 5 && ($("input#LoadToCard").val().indexOf(".") == -1)) {
+				return false;
+			}
+		});
+
+
+		$("#withdrawPromotionmsg").hide();
+		$("#Promotionmsg").hide();
+		$('#LoadFee').css('color', '#ff0000');
+
+		if (!(InitLoad == "true")) {
+			$("span#minIntiLoadAmtError").text('Minimum load amount = $' + minIntiLoadAmt);
+			$("span#minIntiLoadAmt").text('Minimum load amount = $' + minIntiLoadAmt);
+		}
+
+		var canShowWithdrawPopup = '@ViewBag.CashOverCounter';
+		if (canShowWithdrawPopup != null && canShowWithdrawPopup == 'True') {
+			GPRWithdrawAmountPopup();
+		}
+
+		var canShowProcessMoneyorderPopup = '@ViewBag.ProcessMoneyOrder';
+		if (canShowProcessMoneyorderPopup != null && canShowProcessMoneyorderPopup == 'True') {
+			ProcessMoneyOrderPopup();
+		}
+
+		$("input[type='submit']").click(function (event) {
+			var shoppingcartitems = '@Model.Items.Count';
+			var withdrawFrmCardText = parseFloat($("input#WithdrawFromCard").val());
+			var loadToCardText = parseFloat($("input#LoadToCard").val());
+			if ($(".field-validation-error").length > 0) {
+				if ($(".field-validation-error")[0].innerText.replace(/ /g, '') != "") {
+					event.preventDefault();
+					return false;
+				}
+			}
+			var validationError = $(".field-validation-error");
+			
+			if ((loadToCardText == 0 && withdrawFrmCardText == 0 && shoppingcartitems == 0) || (loadToCardText.toString() == "NaN" && withdrawFrmCardText.toString() == "NaN" && shoppingcartitems == 0)) {
+				event.preventDefault();
+				return false;
+			}
+			else {
+				$("#loading").fadeIn();
+				
+				var opts = {
+					lines: 12, // The number of lines to draw
+					length: 15, // The length of each line
+					width: 4, // The line thickness
+					radius: 10, // The radius of the inner circle
+					color: '#000', // #rgb or #rrggbb
+					speed: 1, // Rounds per second
+					trail: 100, // Afterglow percentage
+					shadow: false, // Whether to render a shadow
+					hwaccel: false // Whether to use hardware acceleration
+				};
+				var target = document.getElementById('loading');
+				var spinner = new Spinner(opts).spin(target);
+			}
+		});
+
+		$("#btnShoppingCartCheckout").attr("onclick", "javascript:return false");
+		var DeleteURL = '@Url.Action("DeleteCartItem", "CancelTransaction")'
+		var doneURL = '@Url.Action("TransactionDone", "ShoppingCart")';
+
+		$("#divCashCollect").css('visibility', 'hidden');
+		var NetDueToCust = parseFloat('@Model.CashToCustomer');
+		var CardBalance = parseFloat('@Model.CardBalance');		
+		var isCardPresent = '@Model.customerSession.CardPresent';
+		if ((!(isGpr == 'True')) || ((isGpr == 'True') && (isCardPresent == 'False'))) {
+			$("input#CashToCustomer").attr('disabled', 'disabled');
+		}
+
+		var cardStatus = '@ViewBag.cardStatus';
+		if ((isGpr == 'True') && cardStatus && (cardStatus == '8' || cardStatus == '9' || cardStatus == '100')) {
+			$("input#LoadToCard").attr('disabled', 'disabled');
+			$("input#CashToCustomer").attr('disabled', 'disabled');
+		}
+
+		var loadToCardText = parseFloat($("input#LoadToCard").val());
+		var withdrawFrmCardText = parseFloat($("input#WithdrawFromCard").val());
+		if (gprActivateIndex >= 0) {
+			loadToCardText = 0;
+			withdrawFrmCardText = 0;
+		}
+
+		var NetDueToCustomer = parseFloat('@Model.DueToCustomer.ToString("0.00")');
+		var previousCashCollected = parseFloat('@Model.PreviousCashCollected.ToString("0.00")');
+		//AL-873 : Server side shopping cart calculation
+		$.ajax({
+			type: 'GET',
+			url: NetDueToCustomerFunctionURL,
+			data: { netDueToCustomer: NetDueToCustomer, loadToCardAmount: loadToCardText, previousCashCollected: previousCashCollected, isGpr: isGpr },
+			async: false,
+			datatype: 'json',
+			success: function (jsonData) {
+
+				NetDueToCust = parseFloat(jsonData.netDueToCust);
+
+				if (isGpr == 'True' && NetDueToCust <= 0) {
+					$("#divCashCollect").css('visibility', 'visible');
+					$("input#CashCollected").val("0.00");
+				}	
+				else if (NetDueToCust < 0)
+				{
+					$("#divCashCollect").css('visibility', 'visible');
+				}
+				else {
+					$("input#CashCollected").val("0.00");
+					$("#divCashCollect").css('visibility', 'hidden');
+				}
+
+				if (previousCashCollected != null && previousCashCollected > 0) {
+					$("#divCashCollect").css('visibility', 'visible');
+					$("input#CashCollected").val(previousCashCollected);
+				}			
+
+				if (loadToCardText > 0) {
+					//$('#LoadFee').css('visibility','visible');
+					$('#WithdrawFee').css('visibility', 'hidden');
+				}
+				if (withdrawFrmCardText > 0) {
+					$('#LoadFee').css('visibility', 'hidden');
+					$('#WithdrawFee').css('visibility', 'visible');
+				}
+			},
+			error: function (err) {
+				showExceptionPopupMsg(err);
+			}
+		});
+
+
+		$("#divBalanceAccountConff").css('visibility', 'hidden');
+		//AL-873 : Server side shopping cart calculation
+		$("input#LoadToCard").change(function () {
+			showSpinners($("#spinnerWithNoMsg"));
+			LoadToCardChangeFunction();
+			getChangeDue();
+			displayLabels();
+			hideSpinners($("#spinnerWithNoMsg"));
+		});
+		//AL-873 : Server side shopping cart calculation
+		function LoadToCardChangeFunction() {
+
+			var loadToCardText = parseFloat($("input#LoadToCard").val());
+			if (loadToCardText.toString() == "NaN") {
+				$("input#LoadToCard").val("0.00");
+				loadToCardText = 0.00;
+			}
+			var cashCollected = parseFloat($("input#CashCollected").val());
+			if (cashCollected.toString() == "NaN")
+				cashCollected = 0.00;
+			var loadToCardModel = parseFloat('@Model.LoadToCard.ToString("0.00")');
+			var loadToCardChanged = loadToCardModel - loadToCardText;
+			var cashToCustomer = parseFloat('@Model.CashToCustomer.ToString("0.00")');
+			var netDueToCustomer = parseFloat('@Model.DueToCustomer.ToString("0.00")');
+			var previousCashCollected = parseFloat('@Model.PreviousCashCollected.ToString("0.00")');
+			$.ajax({
+				type: 'GET',
+				url: LoadToCardChangeFunctionURL,
+				data: { netDueToCustomer: netDueToCustomer, loadToCardAmount: loadToCardText, previousCashCollected: previousCashCollected },
+				async: false,
+				datatype: 'json',
+				success: function (jsonData) {
+
+					cashToCustomer = parseFloat(jsonData.cashToCustomer);
+
+					if (loadToCardText > 0) {
+						$("input#WithdrawFromCard").val("0.00");
+						$('#LoadFee').css('visibility', 'visible');
+						$('#WithdrawFee').css('visibility', 'hidden');
+					}
+					if (cashToCustomer < 0 || previousCashCollected > 0) {
+						$("#divCashCollect").css('visibility', 'visible');
+						$("input#CashCollected").val(previousCashCollected);
+					}
+					else {
+						$("input#CashCollected").val("0.00");
+						$("#divCashCollect").css('visibility', 'hidden');
+					}
+					if (cashToCustomer.toString() != "NaN")
+						$("input#CashToCustomer").val(cashToCustomer.toFixed(2));
+					else
+						$("input#CashToCustomer").val("0.00");
+
+				},
+				error: function (err) {
+					showExceptionPopupMsg(err);
+					hideSpinners($("#spinnerWithNoMsg"));
+				}
+			});
+		}
+		//AL-873 : Server side shopping cart calculation
+		$("input#WithdrawFromCard").change(function () {
+			showSpinners($("#spinnerWithNoMsg"));
+			WithdrawChangeFunction();
+			getChangeDue();
+			displayLabels();
+			hideSpinners($("#spinnerWithNoMsg"));
+		});
+		//AL-873 : Server side shopping cart calculation
+		function WithdrawChangeFunction() {
+			var withdrawFrmCardText = parseFloat($("input#WithdrawFromCard").val());
+			if (withdrawFrmCardText.toString() == "NaN") {
+				$("input#WithdrawFromCard").val("0.00");
+				withdrawFrmCardText = 0.00;
+			}
+			var cashCollected = parseFloat($("input#CashCollected").val());
+			if (cashCollected.toString() == "NaN")
+				cashCollected = 0.00;
+
+			var cashToCustomer = parseFloat('@Model.CashToCustomer.ToString("0.00")');
+			var NetDueToCustomer = parseFloat('@Model.DueToCustomer.ToString("0.00")');
+			var previousCashCollected = parseFloat('@Model.PreviousCashCollected.ToString("0.00")');
+
+			$.ajax({
+				type: 'GET',
+				url: withdrawChangeFunctionURL,
+				data: { netDueToCustomer: NetDueToCustomer, withdrawFrmCardAmount: withdrawFrmCardText, previousCashCollected: previousCashCollected },
+				async: false,
+				datatype: 'json',
+				success: function (jsonData) {
+
+					cashToCustomer = parseFloat(jsonData.cashToCustomer);
+
+					if (withdrawFrmCardText > 0) {
+						$("input#LoadToCard").val("0.00");
+						$('#LoadFee').css('display', 'none');
+						$('#WithdrawFee').css('visibility', 'visible');
+					}
+					if (cashToCustomer < 0)
+						$("#divCashCollect").css('visibility', 'visible');
+					else {
+						$("input#CashCollected").val("0.00");
+						$("#divCashCollect").css('visibility', 'hidden');
+					}
+					if (cashToCustomer.toString() != "NaN")
+						$("input#CashToCustomer").val(cashToCustomer.toFixed(2));
+					else
+						$("input#CashToCustomer").val("0.00");
+
+				},
+				error: function (err) {
+					showExceptionPopupMsg(err);
+					hideSpinners($("#spinnerWithNoMsg"));
+				}
+			});
+
+		}
+
+		function recalculatevalues() {
+			var loadToCardText = parseFloat($("input#LoadToCard").val());
+			if (loadToCardText.toString() == "NaN") {
+				$("input#LoadToCard").val("0.00");
+				loadToCardText = 0.00;
+			}
+
+			var withdrawFrmCardText = parseFloat($("input#WithdrawFromCard").val());
+			if (withdrawFrmCardText.toString() == "NaN") {
+				$("input#WithdrawFromCard").val("0.00");
+				withdrawFrmCardText = 0.00;
+			}
+
+			if (loadToCardText != 0)
+			{ LoadToCardChangeFunction(); }
+			if (withdrawFrmCardText != 0)
+			{ WithdrawChangeFunction(); }
+
+			getChangeDue();
+			displayLabels();
+
+		}
+
+		//AL-873 : Server side shopping cart calculation
+		$("input#CashToCustomer").change(function () {
+			showSpinners($("#spinnerWithNoMsg"));
+			CashToCustomerChangeFunction();
+			getChangeDue();
+			displayLabels();
+			hideSpinners($("#spinnerWithNoMsg"));
+		});
+
+		//AL-873 : Server side shopping cart calculation
+		function CashToCustomerChangeFunction() {
+
+			var TotalDueToCustomer = parseFloat('@Model.DueToCustomer.ToString("0.00")');
+			var NetDueToCustomer = parseFloat($("input#CashToCustomer").val());
+			if (NetDueToCustomer.toString() == "NaN") {
+				NetDueToCustomer = 0.00;
+			}
+
+			$.ajax({
+				type: 'GET',
+				url: CashToCustomerChangeFunctionURL,
+				data: { totalDueToCustomer: TotalDueToCustomer, netDueToCustomer: NetDueToCustomer },
+				async: false,
+				datatype: 'json',
+				success: function (jsonData) {
+
+					if (NetDueToCustomer.toString() == "NaN") {
+						$("input#CashToCustomer").val("0.00");
+						NetDueToCustomer = 0.00;
+					}
+					if (NetDueToCustomer < 0)
+						$("#divCashCollect").css('visibility', 'visible');
+					else {
+						$("input#CashCollected").val("0.00");
+						$("#divCashCollect").css('visibility', 'hidden');
+					}
+					var LoadToCard = parseFloat(jsonData.loadToCard);
+
+					if (LoadToCard.toString() != "NaN") {
+						if (LoadToCard >= 0) {
+							$("input#LoadToCard").val(LoadToCard.toFixed(2));
+							$("input#WithdrawFromCard").val("0.00");
+							$('#WithdrawFee').css('visibility', 'hidden');
+						}
+						else if (LoadToCard < 0) {
+							var isDisabled = $('input#WithdrawFromCard').prop('disabled');
+							if (!isDisabled) {
+								$("input#WithdrawFromCard").val(Math.abs(LoadToCard.toFixed(2)));
+								$('#WithdrawFee').css('visibility', 'visible');
+							}
+							$("input#LoadToCard").val("0.00");
+						}
+					}
+					else {
+						$("input#LoadToCard").val("0.00");
+						$("input#WithdrawFromCard").val("0.00");
+					}
+					var profileBalance = parseFloat('@Model.CardBalance');
+					if (LoadToCard < profileBalance)
+						$("#divBalanceAccountConff").css('visibility', 'visible');
+					else
+						$("#divBalanceAccountConff").css('visibility', 'hidden');
+					if (NetDueToCustomer < 0) {
+						$("#divCashCollect").css('visibility', 'visible');
+					}
+					else {
+						$("input#CashCollected").val("0.00");
+						$("#divCashCollect").css('visibility', 'hidden');
+					}
+					if (LoadToCard > 0) {
+						$('#LoadFee').css('visibility', 'visible');
+						$('#WithdrawFee').css('visibility', 'hidden');
+					}
+					else if (LoadToCard < 0) {
+						$('#LoadFee').css('visibility', 'hidden');
+						var isDisabled = $('input#WithdrawFromCard').prop('disabled');
+						if (!isDisabled)
+							$('#WithdrawFee').css('visibility', 'visible');
+					}
+
+				},
+				error: function (err) {
+					showExceptionPopupMsg(err);
+					hideSpinners($("#spinnerWithNoMsg"));
+				}
+			});
+		}
+
+
+		$('#CashCollected').keypress(function (event) {
+			avoidSpecialCharNegSign(event, this);
+		});
+
+		$('#CashToCustomer').keypress(function (event) {
+			avoidSpecialChar(event, this);
+		});
+
+		$('#LoadToCard').keypress(function (event) {
+			avoidSpecialCharNegSign(event, this);
+		});
+
+		$('#WithdrawFromCard').keypress(function (event) {
+			avoidSpecialCharNegSign(event, this);
+		});
+
+		$('#CashCollected').focus(function (event) {
+			var CashCollected = $("#CashCollected").val();
+			if (CashCollected == '0.00') {
+				$("#CashCollected").val('');
+			}
+		});
+
+		$('#CashToCustomer').focus(function (event) {
+			var CashToCustomer = $("#CashToCustomer").val();
+			if (CashToCustomer == '0.00') {
+				$("#CashToCustomer").val('');
+			}
+		});
+
+		$('#LoadToCard').focus(function (event) {
+			var LoadToCard = $("#LoadToCard").val();
+			if (LoadToCard == '0.00') {
+				$("#LoadToCard").val('');
+			}
+		});
+
+		$('#WithdrawFromCard').focus(function (event) {
+			var WithdrawFromCard = $("#WithdrawFromCard").val();
+			if (WithdrawFromCard == '0.00') {
+				$("#WithdrawFromCard").val('');
+			}
+		});
+
+
+		$('#LoadToCard').blur(function () {
+			var LoadToCard = $("#LoadToCard").val();
+			if (LoadToCard == '') {
+				$("#LoadToCard").val('0.00');
+				RemoveErrorMsg();
+			}
+		});
+
+		$('#WithdrawFromCard').blur(function () {
+			var WithdrawFromCard = $("#WithdrawFromCard").val();
+			if (WithdrawFromCard == '') {
+				$("#WithdrawFromCard").val('0.00');
+			}
+			RemoveErrorMsg();
+
+		});
+		$('#CashCollected').blur(function () {
+			var CashCollected = $("#CashCollected").val();
+			if (CashCollected == '') {
+				$("#CashCollected").val('0.00');
+			}
+			RemoveErrorMsg();
+		});
+
+		$('#CashToCustomer').blur(function () {
+			var CashToCustomer = $("#CashToCustomer").val();
+			if (CashToCustomer == '') {
+				$("#CashToCustomer").val('0.00');
+			}
+			var TotalDueToCustomer = parseFloat('@Model.DueToCustomer.ToString("0.00")');
+			var NetDueToCustomer = parseFloat($("input#CashToCustomer").val());
+			if ((TotalDueToCustomer == 0) && (NetDueToCustomer == 0)) {
+				$("input#LoadToCard").val("0.00");
+				$("input#WithdrawFromCard").val("0.00");
+				$('#LoadFee').css('visibility', 'hidden');
+				$('#WithdrawFee').css('visibility', 'hidden');
+			}
+			RemoveErrorMsg();
+		});
+
+		function avoidSpecialChar(event, e) {
+			if ($.browser.mozilla == true) {
+				if (event.which == 8 || event.keyCode == 37 || event.keyCode == 39 || event.keyCode == 9 || event.keyCode == 16 || event.keyCode == 46) {
+					return true;
+				}
+			}
+
+			if (event.which == 45 && $(e).val().indexOf('-') == -1)
+				return true;
+
+			if ((event.which != 46 || $(e).val().indexOf('.') != -1) && (event.which < 48 || event.which > 57)) {
+				event.preventDefault();
+			}
+		}
+
+
+		function avoidSpecialCharNegSign(event, e) {
+			if ($.browser.mozilla == true) {
+				if (event.which == 8 || event.keyCode == 37 || event.keyCode == 39 || event.keyCode == 9 || event.keyCode == 16 || event.keyCode == 46) {
+					return true;
+				}
+			}
+			if ((event.which != 46 || $(e).val().indexOf('.') != -1) && (event.which < 48 || event.which > 57)) {
+				event.preventDefault();
+			}
+		}
+	});
+
+	function RemoveErrorMsg() {
+		//Removes validation from input-fields
+		$('.input-validation-error').addClass('input-validation-valid');
+		$('.input-validation-error').removeClass('input-validation-error');
+		//Removes validation message after input-fields
+		$('.field-validation-error').addClass('field-validation-valid');
+		$('.field-validation-error').removeClass('field-validation-error');
+		//Removes validation summary
+		$('.validation-summary-errors').addClass('validation-summary-valid');
+		$('.validation-summary-errors').removeClass('validation-summary-errors');
+	}
+</script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/ShoppingItemDisplay.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<div id="loading">
+	<div id="loadingcontent">
+		<div id="loadingspinner" class="ShoppingCartLabelTxt">
+			<br />
+			<div class="shoppingCartTxtDiv"></div>
+			<div class="shoppingCartTxt">
+				Do not refresh or close browser. Transactions are being processed.
+			</div>
+		</div>
+	</div>
+</div>
+<div id="spinnerWithNoMsg">
+	<div id="loadingcontent">
+		<div id="loadingspinner">
+		</div>
+	</div>
+</div>
+
+@*Changes for loading ends*@
+<div class="error_txt">
+	@ViewBag.ErrorMessage
+</div>
+@using (Html.BeginForm("ShoppingCartCheckout", "ShoppingCart", FormMethod.Post, new { name = "checkoutForm", id = "checkoutForm" }))
+{
+	<div class="iePrductBandDivWidth">
+		<ul class="page_head product_head">
+			<li style="display: inline-block; float: left">Checkout</li>
+		</ul>
+	</div>
+
+	<div class="cart_checkout_wrap">
+		<table class="cart_checkout_tbl">
+			<tr>
+				<th>
+					Service
+				</th>
+				<th class="detail">
+					Details
+				</th>
+				<th>
+					Total
+				</th>
+				<th>
+					Amount
+				</th>
+				<th>
+					Fee
+				</th>
+				<th>
+					Status
+				</th>
+				<th>
+					Action
+				</th>
+			</tr>
+			@foreach (var row in Model.Items)
+			{
+				if (row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.Checks.ToString().ToLower()
+					|| row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.ReceiveMoney.ToString().ToLower()
+					|| row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.Refund.ToString().ToLower()
+					|| (row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.SendMoney.ToString().ToLower() && row.TxnType == "Credit"))
+				{
+					
+					string imageName =
+
+						row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.ReceiveMoney.ToString().ToLower() ||
+						row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.Refund.ToString().ToLower()
+						? "ReceiveMoneyGreen.png" :
+					   (row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.SendMoney.ToString().ToLower() ? "SendMoneyGreen.png" : "processcheckgreen.png");
+
+
+					<tr>
+						<td>
+							<img src="@Url.Content("~/Content/Images/" + imageName)" alt="" />
+						</td>
+						<td>
+							@row.Description
+						</td>
+						<td class="txt_center" id="amountId">
+							$@row.NetAmount.ToString("0.00")
+						</td>
+						<td class="txt_center">
+							$@row.Amount.ToString("0.00")
+						</td>
+						@{
+					if (row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.SendMoney.ToString().ToLower() && row.TxnType == "Credit")
+					{
+						if (row.DiscountApplied < 0)
+						{
+							<td class="txt_center error_txt">
+								$@row.NetFee.ToString("0.00")<span style="color: #005C00; font-size: large; font-weight: bold;">*</span>
+							</td>
+						}
+						else
+						{
+							<td class="txt_center error_txt">
+								$@row.Fee.ToString("0.00")
+							</td>
+						}
+					}
+					else
+					{
+						if (row.DiscountApplied < 0)
+						{
+							<td class="txt_center error_txt">
+								$@row.NetFee.ToString("0.00")<span style="color: #005C00; font-size: large; font-weight: bold;">*</span>
+							</td>
+						}
+						else
+						{
+							<td class="txt_center error_txt">
+								$@row.Fee.ToString("0.00")
+							</td>
+						}
+					}
+						}
+						<td class="txt_center">
+							@if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_FAILED)
+							{
+								<a onclick="displayitemdetails('@row.TxnId','@row.SummaryTitle','@row.Status');">
+									<img src="@Url.Content("~/Content/images/FailedIcon.png")" alt="Failed" title="Failed" />
+								</a>
+							}
+							else if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_PENDING)
+							{
+								<img src="@Url.Content("~/Content/images/HourglassIcon.png")" alt="Pending" title="Pending" />                                
+							}
+							else if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED)
+							{
+								<img src="@Url.Content("~/Content/images/Approved.jpg")" alt="Approved" title="Approved" />
+								<script type="text/javascript">
+									$(document).ready(function () {
+										var isApproved = '@ViewBag.IsApproved';
+										var isReclassify = '@ViewBag.IsReclassify';
+										if ((isApproved == 'True') && (isReclassify == 'False')) {
+											ShowCertegyConfirmationPopup(isApproved);
+										}
+									});
+								</script>
+							}
+							else if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_COMMITTED)
+							{
+								<img src="@Url.Content("~/Content/images/Committed.png")" alt="Completed" title="Completed" />
+							}
+							else if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_DECLINED)
+							{
+								<img src="@Url.Content("~/Content/images/Declined.png")" alt="Declined" title='@row.DmsStatusMessage' />
+							}
+						</td>
+						<td class="txt_center">
+							@if ((@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_PENDING
+						|| @row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED)
+						&& string.IsNullOrEmpty(@row.TxnSubType)
+						&& @row.Product.ToLower() != MGI.Channel.Shared.Server.Data.ProductType.Refund.ToString().ToLower())
+							{
+								<a type="button" class="park_img" onclick="showParkDialogue('@row.TxnId','CheckOut','@row.Product','@row.Status')">
+								</a>
+							}
+							@if (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_DECLINED
+								|| !string.IsNullOrEmpty(@row.TxnSubType)
+								|| @row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_FAILED
+								|| (@row.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED
+									&& @row.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.Refund.ToString().ToLower())
+								)
+							{
+								@Html.ActionLink(" ", "DeleteShoppingCartItem", "ShoppingCart", new { id = @row.TxnId, name = "CheckOut", product = @row.Product }, new { @class = "del_img", id = @row.TxnId, name = "CheckOut", product = @row.Product })
+							}
+						</td>
+					</tr>
+				}
+			}
+			@foreach (var row1 in Model.Items)
+			{
+				if ((row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.SendMoney.ToString().ToLower() && row1.TxnType == "Debit")
+					|| row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.BillPay.ToString().ToLower()
+					|| row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.GPRActivation.ToString().ToLower()
+					|| row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.MoneyOrder.ToString().ToLower()
+					|| row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.AddOnCard.ToString().ToLower())
+				{
+					string imageName = (row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.SendMoney.ToString().ToLower()) ? "SendMoneyGreen.png" :
+						(row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.BillPay.ToString().ToLower()) ? "BillPayGreen.png" :
+						(row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.GPRActivation.ToString().ToLower()
+						 || row1.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.AddOnCard.ToString().ToLower()) ? "CredentialsGreen.png" : "MoneyOrderGreen.png";
+
+					<tr class="">
+						<td class="shppngCartGridTabCol">
+
+							<img src="@Url.Content(string.Concat("~/Content/Images/", imageName))" alt="" />
+						</td>
+						<td style="text-align: left;">
+							@*<a id="aDescription">*@
+							@row1.Description@*</a>*@
+						</td>
+						<td class="txt_center error_txt">
+							$@row1.NetAmount.ToString("0.00")
+						</td>
+						<td class="txt_center error_txt">
+							$@row1.Amount.ToString("0.00")
+						</td>
+						@{
+					if (row1.DiscountApplied < 0)
+					{
+						<td class="txt_center error_txt">
+							$@row1.NetFee.ToString("0.00")<span style="color: #005C00; font-size: large; font-weight: bold;">*</span>
+						</td>
+					}
+					else
+					{
+						<td class="txt_center error_txt">
+							$@row1.Fee.ToString("0.00")
+						</td>
+					}
+						}
+						<td class="columnText" style="text-align: center;">
+							@if (@row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_FAILED)
+							{
+								<a style="text-decoration:underline;cursor:pointer;color:#0000ff" onclick="displayitemdetails('@row1.TxnId','@row1.SummaryTitle','@row1.Status');">
+									<img src="@Url.Content("~/Content/Images/FailedIcon.png")" alt="Failed" title="Failed" />
+								</a>
+							}
+							else if (@row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED)
+							{
+								<img style="margin-top:4px;" title="Validated" alt="Validated" src="@Url.Content("~/Content/images/Validated.jpg")">
+							}
+							else if (@row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_COMMITTED)
+							{
+								<img src="@Url.Content("~/Content/images/Approved.jpg")" alt="Completed" title="Completed" />
+							}
+						</td>
+						<td class="columnText" style="text-align: center;">
+							@if ((@row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_PENDING || @row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED || @row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_AUTHORIZED) && string.IsNullOrEmpty(@row1.TxnSubType))
+							{
+								<a type="button" class="park_img" onclick="showParkDialogue('@row1.TxnId','CheckOut','@row1.Product','@row1.Status')">
+								</a>								
+							}
+							@if (@row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_DECLINED || !string.IsNullOrEmpty(@row1.TxnSubType) || @row1.Status.ToLower() == MGI.Channel.DMS.Web.Common.Constants.STATUS_FAILED)
+							{
+								@Html.ActionLink(" ", "DeleteShoppingCartItem", "ShoppingCart", new { id = @row1.TxnId, name = "CheckOut", product = @row1.Product }, new { @class = "del_img", id = @row1.TxnId, name = "CheckOut", product = @row1.Product })
+							}
+						</td>
+					</tr>
+
+				}
+			}
+		</table>
+		<table class="cart_total_wrap">
+			<tr>
+				<td></td>
+				<td class="total_due">
+					@{if (Model.DueToCustomer >= 0)
+					{ @Html.Raw("Total Due to Customer");
+					}
+					else
+					{
+						@Html.Raw("Total Due from Customer");
+					}}
+				</td>
+				<td class="total_amount">
+					@{string color;
+					var temp = Model.DueToCustomer;
+					if (temp < 0)
+					{
+						temp = temp * (-1);
+					}
+					if (Model.DueToCustomer >= 0)
+					{
+						color = "Black";
+					}
+					else
+					{
+						color = "Red";
+					}
+					<span style="color: @color ">$@temp.ToString("0.00")</span>
+					}
+					
+					@Html.TextBoxFor(model => model.IsCardActivationTrx, new { style = "display:none" })
+					@Html.TextBoxFor(model => model.CardHolder, new { style = "display:none" })
+					<input type="hidden" name="DueToCustomer" id="DueToCustomer" value="@Model.DueToCustomer" />
+					<input type="hidden" name="PreviousCashCollected" id="PreviousCashCollected" value="@Model.PreviousCashCollected" />
+					
+				</td>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+	</div>
+	<div style="margin-top: 2%; font-family: arial, helvetica, sans-serif; text-align: left; font-size: 14px; color: #005C00;">
+		@ViewBag.PromotionText
+	</div>
+	<div class="error_txt cart_status">@ViewBag.MessageText</div>
+	<div class="row">
+
+
+
+
+		@Html.Partial("_ShoppingCartCheckout", Model)
+
+		@if (true)
+		{
+			string NetDueToCustomerEnable;
+			string cssClass;
+			if (Model.Items.FindAll(c => c.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.GPRWithdraw.ToString().ToLower()).Count > 0 ||
+				Model.Items.FindAll(c => c.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.GPRLoad.ToString().ToLower() ||
+					c.Product.ToLower() == MGI.Channel.Shared.Server.Data.ProductType.GPRWithdraw.ToString().ToLower()).Count == 0)
+			{
+
+
+				<table class="net_cash_wrap">
+					<tr>
+						@{var formated = String.Format("{0:0.00}", @Model.CashToCustomer);}
+						<td class="cart_row">
+							Net Cash $
+						</td>
+						<td>
+							<input type="text" id="CashToCustomer" name="CashToCustomer" value="@formated" class="cart_input" onblur="changeAmountPrecision(this)" />
+						
+						</td>
+						<td class="cart_label">
+							@if (ViewBag.CashPreviouslyCollected != null && ViewBag.CashPreviouslyCollected != 0)
+							{
+								<span>
+									Adjust Cash Collected $ @(ViewBag.CashPreviouslyCollected.ToString("#,##0.00"))
+								</span>
+							}
+							else if ((Model.PreviousCashCollected) > 0)
+							{
+								<span>
+									Adjust Cash Collected $ @Html.DisplayFor(model => model.PreviousCashCollected)
+								</span>
+							}
+						</td>
+					</tr>
+				</table>
+			}
+			else
+			{
+
+				<table class="net_cash_wrap">
+					<tr>
+						@{var formated = String.Format("{0:0.00}", @Model.CashToCustomer);}
+						<td class="cart_row">
+							Net Cash $
+						</td>
+						<td>
+							<input type="text" id="CashToCustomer" name="CashToCustomer" value="@formated" class="cart_input" onblur="changeAmountPrecision(this)" />
+						
+						</td>
+						<td class="cart_label">
+							@if ((Model.PreviousCashCollected) > 0)
+							{
+								<span>Adjust Cash Collected $ @Html.DisplayFor(model => model.PreviousCashCollected)</span>
+							}
+						</td>
+					</tr>
+				</table>
+			 
+			}
+		}
+		<table id="divCashCollect">
+			<tr>
+				<td class="cart_row" id="CashCollect"> Cash Collected $ </td>
+				<td>
+					@Html.TextBoxFor(c => c.CashCollected, new { @class = "cart_input", onblur = "keydownCashCollected(this)" , value="@formated"})
+				</td>
+				<td id="divChangeDue" class="cart_label">
+					<label id="changedue" class="bold"></label>
+				</td>
+			</tr>
+		</table>
+
+		@if (Model.IsReferalSectionEnable)
+		{
+			<br />
+			<br />
+			@Html.Partial("_partialReferalSection", Model)
+			<br />
+		}
+		<div class="card_btn_wrap">
+			<ul>
+                <li class="row_width60"><input type="button" id="btncancel" style="display:none;" value="@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CancelButtonText" onclick="_showCancelTransaction()" class="red_btn" /></li>
+				<li>
+                    <input type="submit" id="btnSubmit" value="Submit" name="submit" style="display:none;" />
+
+					<input type="submit" id="btnRecalc" value="ReCalc" name="recalc" style="display:none;" />
+				</li>
+			</ul>
+		</div>
+		<input type="hidden" value="" id="checkTrans" />
+	</div>
+
+	<script type="text/javascript">
+		function keydownCashCollected(e) {
+			showSpinners($("#spinnerWithNoMsg"));
+			changeAmountPrecision(e);
+			getChangeDue();
+			hideSpinners($("#spinnerWithNoMsg"));
+		}
+
+		// This method is modified to show/hide ReCalc button 
+		function getChangeDue() {
+			
+			var cashCollected = $('#CashCollected').val();
+			if (cashCollected.toString() == "")
+				cashCollected = 0.00;
+			var cashToCustomer = $('#CashToCustomer').val();
+			if (cashToCustomer.toString() == "")
+			    cashToCustomer = 0.00;
+			var sum = 0;
+			var withdrawFrmCardAmount = parseFloat($("input#WithdrawFromCard").val());
+			var loadToCardAmount = parseFloat($("input#LoadToCard").val());
+			var isGprShoppingCartItemExists = true;
+			var previousCashCollected = parseFloat('@Model.PreviousCashCollected.ToString("0.00")');
+
+			// check whether the GPR shopping cart item exists or not
+			if (isGpr == 'True' && itemCount == 0 && loadToCardAmount == 0 && withdrawFrmCardAmount == 0)
+			{
+				isGprShoppingCartItemExists = false;
+			}
+
+			if (parseFloat('@Model.PreviousCashCollected.ToString("0.00")') > 0)
+				cashCollected = previousCashCollected;
+				
+			$.ajax({
+				type: 'GET',
+				url: getChangeDueURL,
+				data: { cashCollected: cashCollected, cashToCustomer: cashToCustomer, previousCashCollected: previousCashCollected, isGprShoppingCartItemExists: isGprShoppingCartItemExists },
+				async: false,
+				datatype: 'json',
+				success: function (jsonData) {
+
+					if (cashToCustomer < 0) {
+						sum = parseFloat(jsonData.sum);
+					}
+                    $("input#btncancel").show();
+					// show/hide the Recalc button
+					if (jsonData.isRecalc) {
+
+						$("input#btnRecalc").show();
+						$("input#btnSubmit").hide();
+
+					}
+					else {
+
+						$("input#btnRecalc").hide();
+						$("input#btnSubmit").show();
+
+					}
+				},
+				error: function (err) {
+					showExceptionPopupMsg(err);
+					hideSpinner();
+				}
+			});
+
+			if (sum > 0) {
+				$("#divChangeDue").css('visibility', 'visible');
+				$("#changedue").text("Change Due is $ " + sum.toFixed(2));
+			}
+			else {
+				$("#divChangeDue").css('visibility', 'hidden');
+			}
+		}
+
+
+
+		function showParkDialogue(id, screenName, product, status) {
+			var $confirmation = $("<div id='dlgCancel'></div>");
+			$confirmation.empty();
+			$confirmation.dialog({
+				autoOpen: false,
+				title: "MGiAlloy",
+				width: 460,
+				draggable: false,
+				modal: true,
+				resizable: false,
+				closeOnEscape: false,
+				minHeight: 150,
+				open: function (event, ui) {
+					var url = ParkURL + '?id=' + id + '&screenName=' + screenName + '&product=' + product + '&status=' + status;
+					$confirmation.load(url);
+				}
+			});
+			$confirmation.dialog("open");
+		}
+
+		function certergyRemoveDialogue(id, screenName, product, status) {
+			var $confirmation = $("<div id='dlgCancel'></div>");
+			$confirmation.empty();
+			$confirmation.dialog({
+				autoOpen: false,
+				title: "MGiAlloy",
+				width: 460,
+				draggable: false,
+				modal: true,
+				resizable: false,
+				closeOnEscape: false,
+				minHeight: 150,
+				open: function (event, ui) {
+					var url = ParkURL + '?id=' + id + '&screenName=' + screenName + '&product=' + product + '&status=' + status;
+					$confirmation.load(url);
+				}
+			});
+			$confirmation.dialog("open");
+		}
+	</script>
+}

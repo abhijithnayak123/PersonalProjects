@@ -1,0 +1,190 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyGramReceiverViewModel
+@{
+	ViewBag.Title = "SendMoneyReceiver";
+	Layout = "~/Views/Shared/_Common.cshtml";
+	string AddEdit = Model.AddEdit;
+}
+<script type="text/javascript">
+    var MoneyTransfer_States_URL = '@Url.Action("GetStates", "MoneyGramMoneyTransfer")';
+</script>
+<script src="@Url.Content("~/Scripts/SendMoney/MoneyGramReceiver.js")" type="text/javascript"></script>
+@Html.Partial("_partialSpinner")
+@using (Html.BeginForm("AddReceiver", "MoneyGramMoneyTransfer", FormMethod.Post))
+{
+	@Html.ValidationSummary(true)  
+	<div>
+		<ul class="menuHeading productBand">
+			@if (AddEdit == "Add")
+   {
+				<li style="display: inline-block; float: left">Add Receiver </li>
+   }
+   else
+   {
+				<li style="display: inline-block; float: left">Edit Receiver </li>
+   }
+		</ul>
+	</div> 
+	<div class="row">
+		<p class="cFont sndMnySideHdngs">
+			Receiver's Name:
+		</p>
+	</div>
+	<div class="row">
+		<div>
+			<label class="labelText">@Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.FirstName)</label>
+			@Html.TextBoxFor(model => model.FirstName, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.FirstName)
+		</div>
+	</div>
+   <div class="row">
+		<div>
+			@Html.LabelFor(model => model.MiddleName, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.MiddleName, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.MiddleName)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			<label class="labelText">@Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.LastName)</label>
+			@Html.TextBoxFor(model => model.LastName, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.LastName)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.SecondLastName, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.SecondLastName, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.SecondLastName)
+		</div>
+	</div>
+	<div class="row">
+		<p class="cFont sndMnySideHdngs">
+			Pickup Details:
+		</p>
+	</div>
+	<div class="row">
+		<div>
+			<label class="labelText OptDropDownLblWidth">@Html.RequiredField(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpCountry)</label>
+			@Html.DropDownListFor(model => model.PickUpCountry, Model.LPickUpCountry, new { @class = "optDropDown" })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.PickUpCountry)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.PickUpState, new { @class = "labelText" })
+			@Html.DropDownListFor(model => model.PickUpState, Model.LPickUpState, new { @class = "optDropDown" })
+		</div>
+		<div class="errorDisplay" id="PickUpState">
+			@Html.ValidationMessageFor(model => model.PickUpState)
+		</div>
+	</div>  
+	<div class="row">
+		<p class="cFont sndMnySideHdngs">
+			Receiver's Contact Details:
+		</p>
+	</div>
+	<div>
+		<p class="cFont10 sndMnySideHdngs">
+			(Required if Phone Notification is selected as Delivery Option)
+		</p>
+	</div>
+    
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.Address, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.Address, new { @class = "textBox", @maxlength = 150 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.Address)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.City, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.City, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.City)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.StateProvince, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.StateProvince, new { @class = "textBox", @maxlength = 50 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.StateProvince)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.ZipCode, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.ZipCode, new { @class = "textBox", @maxlength = 10 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.ZipCode)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.Phone, new { @class = "labelText" })
+			@Html.TextBoxFor(model => model.Phone, new { @class = "textBox", @maxlength = 20 })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.Phone)
+		</div>
+	</div>
+	<div class="shift_down">
+		<div>
+			@Html.LabelFor(model => model.IsReceiverHasPhotoId, new { @class = "labelText" })
+			@Html.RadioButtonFor(e => e.IsReceiverHasPhotoId, true, new { id = "IsReceiverHasPhotoIdYes", @class = "margin_top_1" })
+			@Html.Label("IsReceiverHasPhotoIdYes", "Yes", new { @class = "test_question" })
+			@Html.RadioButtonFor(e => e.IsReceiverHasPhotoId, false, new { id = "IsReceiverHasPhotoIdNo", @class = "margin_top_1" })
+			@Html.Label("IsReceiverHasPhotoIdNo", "No", new { @class = "test_question" })
+		</div>
+		<div class="errorDisplay">
+			@Html.ValidationMessageFor(model => model.IsReceiverHasPhotoId)
+		</div>
+	</div>	  
+	<div class="testquestion">
+		<div class="row">
+			<div class="margin_top_two">
+				@Html.LabelFor(model => model.TestQuestion, new { @class = "labelText" })
+				@Html.TextBoxFor(model => model.TestQuestion, new { @class = "textBox", @maxlength = 100 })
+			</div>
+			<div class="errorDisplay">
+				@Html.ValidationMessageFor(model => model.TestQuestion)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				@Html.LabelFor(model => model.TestAnswer, new { @class = "labelText" })
+				@Html.TextBoxFor(model => model.TestAnswer, new { @class = "textBox", @maxlength = 100 })
+			</div>
+			<div class="errorDisplay">
+				@Html.ValidationMessageFor(model => model.TestAnswer)
+			</div>
+		</div>
+	</div>
+	
+	@Html.HiddenFor(model => model.ReceiverId)
+	@Html.HiddenFor(model => model.Id)
+	<div class="addreceiver_btn_wrap">
+		<ul>
+			<li>
+				<input type="button" id="CancelTransaction" value="Cancel" /></li>
+			<li>
+				<input type="submit" value="Save" /></li>
+		</ul>
+	</div>
+}

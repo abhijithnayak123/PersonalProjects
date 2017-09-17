@@ -1,0 +1,167 @@
+﻿@model MGI.Channel.DMS.Web.Models.Receivers
+@{
+	ViewBag.Title = "Receivers";
+    Layout = "~/Views/Shared/_Common.cshtml";
+}
+@{
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> PickUpCountry = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpCountry<span class="mandatory">*</span>
+	</text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> PickUpState = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpState<span class="mandatory hide" id="pickUpStateRequiredStar">*</span>
+	</text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> PickUpCity = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpCity<span class="mandatory hide" id="pickUpCityRequiredStar">*</span>
+	</text>;
+	
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> DeliveryMethod = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.DeliveryMethod<span class="mandatory">*</span>
+	</text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> DeliveryOptions = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.DeliveryOptions<span class="mandatory"></span>
+	</text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> DateOfBirth = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverDob
+	</text>;
+
+	Func<MGI.Channel.DMS.Web.Models.Receivers, object> Occupation = 
+	@<text>
+	@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverOccupation
+	</text>;
+}
+<script src="@Url.Content("~/Scripts/SendMoney/Receivers.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.maskedinput-1.3.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.placeholder.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+    	$('#DateOfBirth').mask("99/99/9999");
+
+        $(window).keydown(function (event) {
+            if (event.keyCode == 13) {
+                event.preventDefault();
+                return false;
+            }
+        });
+    });
+    $(function () {
+    	$('#DateOfBirth').placeholder();
+    });
+</script>
+
+@using (Html.BeginForm("SaveReceiver", "SendMoney"))
+{
+	<div id="divAddReceiverMenuHeader" class="hide">
+		<ul class="page_head product_head">
+			<li >Add Receiver - Delivery Options Page 2 of 2</li>
+		</ul>
+	</div>
+	<div id="divEditReceiverMenuHeader" class="hide">
+		<ul class="page_head product_head">
+			<li>Edit Receiver - Delivery Options Page 2 of 2</li>
+		</ul>
+	</div>
+	
+	<div class="row">
+		<div>
+			<label class="row_label_txt dropdown_width">@PickUpCountry(@Model)</label>
+			@Html.DropDownListFor(model => model.PickUpCountry, Model.LPickUpCountry, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PickUpCountry)
+		</div>
+	</div>
+	
+	<div class="row">
+		<div>
+			<label class="row_label_txt dropdown_width">@PickUpState(@Model)</label>
+			@Html.DropDownListFor(model => model.PickUpState, Model.LPickUpState, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PickUpState)
+		</div>
+		<div id="divRequiredPickUpState" class="error_align_left mandatory hide">
+            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpStateRequired
+        </div>		
+	</div>
+	
+	<div class="row">
+		<div>
+			<label class="row_label_txt dropdown_width">@PickUpCity(@Model)</label>
+			@Html.DropDownListFor(model => model.PickUpCity, Model.LPickUpCity, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PickUpCity)
+		</div>
+		<div id="divRequiredPickUpCity" class="error_align_left mandatory hide">
+            @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiverPickUpCityRequired
+        </div>
+	</div>
+
+	<div class="row">
+		<div>
+			<label class="row_label_txt dropdown_width">@DeliveryMethod(@Model)</label>
+			@Html.DropDownListFor(model => model.DeliveryMethod, Model.LDeliveryMethods, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.DeliveryMethod)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			<label class="row_label_txt dropdown_width">@DeliveryOptions(@Model)</label>
+			@Html.DropDownListFor(model => model.DeliveryOptions, Model.LDeliveryOptions, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.DeliveryOptions)
+		</div>
+	</div>
+	<div>
+		<p class="com_info"> Compliance Information:</p>
+	</div>
+	
+	<div class="row">
+		<div>
+			<label class="row_label_txt">@Occupation(@Model)</label>
+			@Html.TextBoxFor(model => model.Occupation, new { @class = "input_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.Occupation)
+		</div>
+	</div>
+	
+	<div class="row">
+		<div>
+			<label class="row_label_txt">@DateOfBirth(@Model)</label>
+			@Html.TextBoxFor(model => model.DateOfBirth, new { @class = "input_box", id = "DateOfBirth", @placeholder = "MM/DD/YYYY" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.DateOfBirth)
+		</div>
+	</div>
+	
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.CountryOfBirth, new { @class = "row_label_txt" })
+			@Html.DropDownListFor(model => model.CountryOfBirth, Model.LCountryOfBirth, new { @class = "dropdown_box"})
+		</div>
+	</div>
+	 @Html.Partial("_ReceiverPersonalInfo", Model)
+	<div id="divAdd" class="receive_btn_wrap">
+		<ul>
+            @* <li class="row_width30"><a href="@Url.Action("ConfirmIdentification", "CustomerSearch")" class="anc_link_btn">Cancel</a></li>*@
+            <li><input type="button" id="CancelTransaction" value="Cancel" /></li>
+			<li><input type="submit" id="saveReceiverSubmit" value="Save" /></li>
+		</ul>
+	</div>	
+}

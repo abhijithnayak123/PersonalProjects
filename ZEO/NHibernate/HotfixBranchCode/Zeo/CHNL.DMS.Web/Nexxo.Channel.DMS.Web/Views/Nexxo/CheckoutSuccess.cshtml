@@ -1,0 +1,159 @@
+﻿@model MGI.Channel.DMS.Web.Models.ShoppingCartSuccess
+@{
+	ViewBag.Title = "Checkout Success";
+	Layout = "~/Views/Shared/_Common.cshtml";
+}
+@{var uniqueId = Guid.NewGuid().ToString();}
+
+<script src="@Url.Content("~/Scripts/ShoppingCart/CheckOutSuccess.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Check/CheckFranking.js")" type="text/javascript"></script>
+<script language="javascript" type="text/javascript">
+    var imageUrl = '@Url.Content("~/Content/images/")';
+    var currentCheckCount = 0;
+    var checkCountNo = @Model.CheckCount;
+    var receiptTypeTemp;
+    var receiptArray;
+    var frankdata;
+    var customerSessionId = @ViewBag.customerSessionId;
+    $(document).ready(function () {
+        hasTransaction = false;
+        $("#btndiv").css('visibility', 'hidden');
+        currentCheckCount = 0;
+        receiptTypeTemp = '@Model.ReceiptType';
+        receiptArray = receiptTypeTemp.split("~~");
+
+        $('#ReceiptsList').hide();
+        if (checkCountNo == 0)
+        {
+            $('#ReceiptsList').show();
+            $('.checkFrankDiv').hide();
+            $('#DoNotCloseBrowser').show();
+
+            //Author : Abhijith
+            //Description : Added a call to post flush after doing shopping cart checkout process.
+            //Receipts and Post Flush will call simultaneously and if any errors in Post Flush, pop up is
+            //displayed with error messages but receipt processing will be continued.
+            //Starts Here
+            postFlush();
+            //Ends Here
+
+            PrintReceipts(receiptArray);
+        }
+
+        $('#btnfrankCheck').click(function () {
+            showCheckFrankingPopup(0);
+
+        });
+
+
+    });
+
+    //US1421 changes
+    function showCheckFrankingPopup(chkno) {
+        var $confirm = $("<div id='divFrankPopup'></div>");
+        var CheckFrankingPopupURL = '@Url.Action("DisplayCheckFrankingDetails", "shoppingcart")';
+        var btn = $(this);
+        btn.attr('disabled', true);
+        $('#btnPrint').attr('disabled', true);
+        $('#btnPrint').addClass('DisableButtons');
+        var dt = (new Date()).getTime();
+        if (chkno < checkCountNo) {
+            var frankval = @Html.Raw(Json.Encode(Model.CheckData));
+            var frankParams = frankval[parseInt(chkno)];
+        $confirm.empty();
+        $confirm.dialog({
+            autoOpen: false,
+            title: 'Check Endorsing',
+            width: 525,
+            draggable: false,
+            resizable: false,
+            closeOnEscape: false,
+            modal: true,
+            height: 380,
+            zIndex:400,
+            //					position:[320,140],
+            open: function (event, ui) {
+                var url = CheckFrankingPopupURL + '?Id=' + frankParams + '&dt=' + dt + '&chkslno=' + chkno ;
+                $confirm.load(url);
+            }
+        });
+        $confirm.dialog("open");
+
+    }
+    }
+</script>
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+@Html.Partial("_partialSpinner")
+<div class="RecieptsNotFound" style="display: none;">
+</div>
+@if (Model.CheckOutResult == false)
+{
+	<div class="checkout_fail_msg">
+		One or more transactions have failed, please refer the shopping cart for more details.
+	</div>
+}
+<div id="DivDone" class="checkout_success_div">
+	@if (Model.LoadToCard != 0)
+ {
+		<div class="successText">
+			Load to Card
+		</div>
+		<br />
+		<div class="successPrice">
+			$@Model.LoadToCard.ToString("0.00")
+		</div>
+        
+ }
+	@if (Model.CashToCustomer != 0)
+ {
+		<div class="successText">
+			Cash to Customer
+		</div>
+		<br />
+		<div class="successPrice">
+			$@Model.CashToCustomer.ToString("0.00")
+		</div>
+        
+ }
+	<input type="hidden" value="" id="checkTrans" />
+</div>
+<br />
+<div id="ReceiptsList" class="recieptList">
+	<div id="DoNotCloseBrowser" class="displaynone CustProfileLabelTxt donotclosebrowser">
+		<b>Do not refresh or close the browser until all receipts are printed.</b>
+	</div>
+	<div class="align_border_line">
+		<table id="ReceiptsTable" style="" class="checkoutSuccess reciepttable" cellpadding="0" cellspacing="0">
+			<thead>
+			</thead>
+		</table></div>
+		<br />
+	</div>
+@* //US1421 Changes*@
+<div class="checkFrankDiv">
+	@if (Model.FrankCheck == true)
+ {
+		<br />
+	
+		<div>
+			<p class="row5">
+				<span>Endorse check(s) prior to serving next customer</span>
+			</p>
+		</div>
+		<div class="row5 row_width30 chankFrankButton">
+			<ul>
+				<li>
+					<input type="button" value="Endorse Check" id="btnfrankCheck" class="anc_link_btn green_input" />
+				</li>
+			</ul>
+		</div>
+	
+ }
+ else
+ {
+		<div id="btndivs" class="SrchButtonWdth SrchButtonWdths">
+		</div>
+ }
+</div>
+<div id="DisableScreen" class="screenblocker">
+</div>

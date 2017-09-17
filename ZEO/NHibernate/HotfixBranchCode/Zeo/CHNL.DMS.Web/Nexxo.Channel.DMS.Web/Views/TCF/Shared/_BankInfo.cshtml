@@ -1,0 +1,62 @@
+﻿@model MGI.Channel.DMS.Web.Models.ProductCredentialViewModel
+
+@if (!Model.HasGPRCard)
+{
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.ProxyId, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.ProxyId, new { @class = "input_box", @maxlength = "19", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_PrepaidProxyId })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.ProxyId)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.PseudoDDA, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.PseudoDDA, new { @class = "input_box", @maxlength = "25", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_PrepaidPseudoDDA })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PseudoDDA)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.ExpirationDate, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.ExpirationDate, new { @class = "input_box", id = "ExpirationDate", @placeholder = "MM/YYYY" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.ExpirationDate)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.InitialLoad, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.InitialLoad, Model.InitialLoad.ToString("0.00"), new { @class = "input_box", maxlength="7" })
+			<span id="visa_initial_load">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.VisaInitialLoad</span>
+		</div> 
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.InitialLoad)
+		</div>
+	</div>
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.PromoCode, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.PromoCode, new { @class = "input_box", maxlength = "50" })
+			
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.PromoCode)
+		</div>
+	</div>
+    @Html.HiddenFor(model => model.TransactionId);
+    
+}
+<script src="@Url.Content("~/Scripts/Fund/Visa.js")" type="text/javascript"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/pie/v1/encryption.js" language="JavaScript" type="text/javascript" id="pie_script"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/pie/v1/mgi/getkey.js" language="JavaScript" type="text/javascript"></script>
+
+<script type="text/javascript">
+	var minimumLoadAmountErrorMessage = '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MinimumLoadAmount';
+	var maximumLoadAmountErrorMessage = '@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MaximumLoadAmountErrorMessage';
+</script>

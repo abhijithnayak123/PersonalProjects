@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object type="Spring.Objects.Factory.Config.PropertyPlaceholderConfigurer, Spring.Core">
+		<property name="ConfigSections" value="databaseSettings"/>
+	</object>
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+
+	<object name="MockTransactions" type="MGI.Unit.Test.MockClasses.MockTransactions, MGI.Unit.Test"></object>
+
+	<object name="MockCommonObjects" type="MGI.Unit.Test.MockClasses.MockCommonClass, MGI.Unit.Test"></object>
+
+	<object id="CustomerSessionService" factory-object="MockCommonObjects" factory-method="CreateCustomerSessionService"></object>
+
+	<object id="CXECustomerService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfCXECustomer"></object>
+
+	<object id="AccountService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfAccountService"></object>
+
+	<object id="PartnerCheckService" factory-object="MockTransactions" factory-method="Create&lt;MGI.Core.Partner.Data.Transactions.Check&gt;"></object>
+
+	<object id="AgentSessionService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfAgentSessionService"></object>
+
+	<object id="CorePartnerUserService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfManageUsers"></object>
+
+	<object id="Core.Partner.CustomerService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfPTNRCustomer"></object>
+
+	<object id="CorePartnerChannelPartnerService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfChannelPartnerService"></object>
+
+	<object id="PartnerFeeService" factory-object="MockTransactions" factory-method="CreateInstanceOfFeeService"></object>
+
+	<object id="CoreNexxoDataStructuresService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfNexxoIdType"></object>
+
+	<object id="CoreMessageCenterService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfMessageCenter"></object>
+
+	<object id="CoreCustomerFeeAdjustmentService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfCustomerFeeAdjustmentService"></object>
+
+	<object id="FeeAdjustmentService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfFeeAdjustmentService"></object>
+
+	<object id="PartnerFundsService" factory-object="MockTransactions" factory-method="Create&lt;MGI.Core.Partner.Data.Transactions.Funds&gt;"></object>
+
+	<object id="NexxoBizEventPublisher" factory-object="MockCommonObjects" factory-method="CreateInstanceOfNexxoBizEventPublisher"></object>
+
+	<object id="PartnerMoneyOrderService" factory-object="MockTransactions" factory-method="Create&lt;MGI.Core.Partner.Data.Transactions.MoneyOrder&gt;"></object>
+
+	<object id="CorePartnerLocationCounterIdService" factory-object="MockCommonObjects" factory-method="LocationServiceInstance"></object>
+
+	<object id="PartnerMoneyTransferService" factory-object="MockTransactions" factory-method="Create&lt;MGI.Core.Partner.Data.Transactions.MoneyTransfer&gt;"></object>
+
+	<object id="CustomerSessionCounterIdService" factory-object="MockCommonObjects" factory-method="CustomerSessionCounterIdServiceInstance"></object>
+	
+	<object id="CorePartnerLocationService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfManageLocations"></object>
+	
+	<object id="PartnerTerminalService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfTerminalService"></object>
+
+	<object id="PartnerGroupService" factory-object="MockCommonObjects" factory-method="CreateInstanceOfChannelPartnerGroupService"></object>
+
+	<object id="PartnerBillPayService" factory-object="MockTransactions" factory-method="Create&lt;MGI.Core.Partner.Data.Transactions.BillPay&gt;"></object>
+
+	<object id="PartnerCashService" factory-object="MockTransactions" factory-method="CreatePTNRCashIn"></object>
+
+	<object id="TCISGateway" factory-object="MockCommonObjects" factory-method="CreateInstanceOfClientCustomerService"></object>
+
+	<object id="CXNPartnerTCF" factory-object="MockCommonObjects" factory-method="CreateRCIFIOInstance"></object>
+
+	<object id="PrintTemplateRepo" factory-object="MockCommonObjects" factory-method="CreateInstanceOfPrintTemplate"></object>
+	
+</objects>
