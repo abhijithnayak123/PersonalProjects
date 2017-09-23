@@ -1,1 +1,0 @@
-﻿& .\Nexxo.Common.ODS.Database.exe | Write-Host

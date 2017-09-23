@@ -1,1 +1,0 @@
-﻿update tChxr_Partner set Id = 27

@@ -1,1 +1,0 @@
-﻿& .\Nexxo.CXN.BP.NYCHA.Database.exe | Write-Host

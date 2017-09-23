@@ -1,1 +1,0 @@
-﻿update tFView_Credential set ciaClientId =  64108

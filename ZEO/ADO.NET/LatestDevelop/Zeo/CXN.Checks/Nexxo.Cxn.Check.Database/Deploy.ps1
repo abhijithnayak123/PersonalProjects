@@ -1,1 +1,0 @@
-﻿& .\Nexxo.Cxn.Check.Database.exe | Write-Host

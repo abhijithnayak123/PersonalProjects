@@ -1,1 +1,0 @@
-﻿& .\Nexxo.CXN.MT.MG.Database.exe | Write-Host

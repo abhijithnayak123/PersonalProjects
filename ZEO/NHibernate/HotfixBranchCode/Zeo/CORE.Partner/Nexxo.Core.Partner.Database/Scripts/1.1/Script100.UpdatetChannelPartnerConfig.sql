@@ -1,1 +1,0 @@
-﻿update tChannelPartners set CardPresenceVerificationConfig =2 where rowguid = 'EC6AAAE3-2BA7-4E0B-898E-D296DB432C17'

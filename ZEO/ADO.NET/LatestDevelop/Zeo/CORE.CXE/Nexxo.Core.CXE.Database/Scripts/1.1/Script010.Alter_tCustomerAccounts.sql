@@ -1,3 +1,0 @@
-﻿
-ALTER TABLE tCustomerAccounts
-ADD DTLastMod DATETIME NULL
