@@ -1,1 +1,0 @@
-﻿& .\Nexxo.Cxn.Fund.TSys.Database.exe | Write-Host

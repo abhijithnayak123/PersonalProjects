@@ -1,1 +1,0 @@
-﻿& .\Nexxo.Core.Catalog.Database.exe | Write-Host

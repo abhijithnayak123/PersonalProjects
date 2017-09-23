@@ -1,3 +1,0 @@
-﻿ALTER TABLE [dbo].[tTerminals]
-ALTER COLUMN [NpsTerminalPK] [UNIQUEIDENTIFIER] NULL
-GO

@@ -1,1 +1,0 @@
-﻿& .\Nexxo.Cxn.Fund.FirstView.Database.exe | Write-Host

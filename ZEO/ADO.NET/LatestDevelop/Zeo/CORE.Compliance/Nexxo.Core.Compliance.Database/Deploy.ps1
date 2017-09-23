@@ -1,1 +1,0 @@
-& .\Nexxo.Core.Compliance.Database.exe | Write-Host

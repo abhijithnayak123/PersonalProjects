@@ -1,1 +1,0 @@
-Added a readme file for GIT, as git does not track empty folders.

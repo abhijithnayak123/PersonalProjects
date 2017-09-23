@@ -1,1 +1,0 @@
-﻿GRANT EXECUTE ON [dbo].[GetNextSequenceNumber] TO [DMSWebSvc]

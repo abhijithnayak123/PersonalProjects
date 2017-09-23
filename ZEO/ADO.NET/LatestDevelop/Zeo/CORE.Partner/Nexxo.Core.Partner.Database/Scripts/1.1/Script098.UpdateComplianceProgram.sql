@@ -1,1 +1,0 @@
-﻿update tChannelPartners set ComplianceProgramName = 'SynovusCompliance' where id = 33;

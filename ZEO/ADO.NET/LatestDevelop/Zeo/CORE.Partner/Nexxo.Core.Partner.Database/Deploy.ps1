@@ -1,1 +1,0 @@
-& .\Nexxo.Core.Partner.Database.exe | Write-Host

@@ -1,2 +1,0 @@
-﻿ALTER TABLE tChannelPartners
-ADD TIM TINYINT NOT NULL CONSTRAINT DF_tChannelPartners_TIM DEFAULT (1)

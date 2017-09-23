@@ -1,1 +1,0 @@
-delete from tLimits where LimitTypePK ='A6E81E42-5C5F-40A2-9562-FA956355C8FC'

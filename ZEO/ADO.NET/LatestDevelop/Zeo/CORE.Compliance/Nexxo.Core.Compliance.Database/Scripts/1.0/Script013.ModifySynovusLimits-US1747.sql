@@ -1,3 +1,0 @@
-﻿UPDATE tLimits SET PerX = 10000, PerDay = 10000, DTLastMod = GETDATE() WHERE LimitTypePK = 'A6E81E42-5C5F-40A2-9562-FA956355C8FC' 
-AND Name = 'GPR Balanace'
-GO
