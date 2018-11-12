@@ -1,0 +1,91 @@
+<div class="container opt-form">
+  <div class="clearfix"></div>
+  <div class="row">
+    <div class="col-md-10 col-md-offset-1">
+      <div class="opt-card mdl-card mdl-shadow--2dp m-b-md  p-a-lg" style="height: auto; min-height: 10px;">
+        <div class="mdl-card__title p-t-0 p-b-0" style="display: block;">
+          <h5 class="pull-left m-t-xs m-b-xs">Registered Candidates</h5>
+          <button class="mdl-button mdl-js-button mdl-button--icon pull-right" id="admin-filter-toggle" (click)="FilterToggle()">
+                <i class="material-icons">{{_filterText}}</i>
+              </button>
+          <div class="clearfix"></div>
+          <div id="admin-filter" class="col-xs-12 p-l-0 p-r-0" *ngIf="_isFilter">
+            <h5 class="m-a-0"><small>Filter Search</small></h5>
+            <div class="row">
+              <div class="col-sm-3">
+                <mdl-select label="Practice" floating-label [(ngModel)]="_selPract">
+                  <mdl-option [value]><em>-- Select --</em></mdl-option>
+                  <mdl-option *ngFor="let c of _lst_Practices" [value]="c.Name">{{c.Name}}</mdl-option>
+                </mdl-select>
+              </div>
+              <div class="col-sm-3">
+                <mdl-select label="Position" floating-label [(ngModel)]="_selPos">
+                  <mdl-option [value]><em>-- Select --</em></mdl-option>
+                  <mdl-option *ngFor="let c of _lst_Positions" [value]="c.Name">{{c.Name}}</mdl-option>
+                </mdl-select>
+              </div>
+              <div class="col-sm-3">
+                <mdl-select label="Stage" floating-label (change)="onInterviewStg_Change($event)" [(ngModel)]="_selIntervStg">
+                  <mdl-option [value]><em>-- Select --</em></mdl-option>
+                  <mdl-option *ngFor="let c of _lst_Interview_Stage" [value]="c.Name">{{c.Name}}</mdl-option>
+                </mdl-select>
+              </div>
+              <div class="col-sm-3">
+                <mdl-select label="Interview Mode" floating-label [(ngModel)]="_selIntervTyp">
+                  <mdl-option [value]><em>-- Select --</em></mdl-option>
+                  <mdl-option *ngFor="let c of _lst_Interview_Type" [value]="c.Name">{{c.Name}}</mdl-option>
+                </mdl-select>
+              </div>
+              <div class="col-sm-4">
+                <mdl-textfield type="text" [(ngModel)]="_search" label="Find by Mobile number or Email id" floating-label> </mdl-textfield>
+              </div>
+              <div class="col-sm-2 m-t-xs">
+                <button class="mdl-button mdl-js-button mdl-button--raised mdl-color--red-400 mdl-color-text--white pull-right" id="admin-filter-toggle" (click)="GetList()">Search </button>
+              </div>
+              <div class="col-sm-2 m-t-xs">
+                <img src="/src/app/images/Excel.jpg" style="cursor: pointer;" width="35" height="35" (click)="ExportData()" />
+              </div>
+              <div class="clearfix"></div>
+            </div>
+          </div>
+          <div class="clearfix"></div>
+        </div>
+        <table class="col-xs-12 mdl-data-table mdl-js-data-table  mdl-shadow--2dp m-t-lg">
+          <thead>
+            <tr>
+              <th class="mdl-data-table__cell--non-numeric">Full Name</th>
+              <th class="mdl-data-table__cell--non-numeric">Practice</th>
+              <th class="mdl-data-table__cell--non-numeric">Position</th>
+              <th class="mdl-data-table__cell--non-numeric">Status</th>
+              <th class="mdl-data-table__cell--non-numeric">Mobile</th>
+              <th class="mdl-data-table__cell--non-numeric">Email</th>
+              <th class="mdl-data-table__cell--non-numeric">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of _lst_CandidateDetails">
+              <td class="mdl-data-table__cell--non-numeric">{{c.FirstName}}{{c.MiddleName}}{{" "}}{{c.LastName}}</td>
+              <td class="mdl-data-table__cell--non-numeric">{{c.PracticeName}} </td>
+              <td class="mdl-data-table__cell--non-numeric">{{c.PositionName}} </td>
+              <td class="mdl-data-table__cell--non-numeric">{{c.InterviewStageName}} </td>
+              <td class="mdl-data-table__cell--non-numeric">{{c.Mobile}}</td>
+              <td class="mdl-data-table__cell--non-numeric">{{c.Email}}</td>
+              <td class="mdl-data-table__cell--non-numeric"><a (click)="CandidateSearch(c.Email)"><i class="material-icons">edit</i></a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="col-xs-12">
+          <nav aria-label="Page navigation">
+            <ul class="pagination">
+              <li *ngFor="let p of _pages; let myIndex = index" [ngClass]="{active: myIndex === _activePage}">
+                <a (click)="GetRecords(myIndex+1)">{{myIndex+1}}</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <div class="clearfix"></div>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+  </div>
+</div>

@@ -1,0 +1,120 @@
+<div class="container opt-form">
+  <div class="clearfix"></div>
+  <div class="opt-card mdl-card mdl-shadow--2dp p-a-lg" style="padding-bottom: 60px !important; ">
+    <div class="col-sm-8">
+      <h4 class="m-t mdl-color-text--red-400"><strong>Candidate Details</strong></h4>
+    </div>
+    <div class="col-sm-4">
+      <div class="opt-text-btn">
+        <mdl-textfield type="text" [(ngModel)]="_candReg.Search" label="Find by Mobile number or Email id" floating-label> </mdl-textfield>
+        <button mdl-button mdl-button-type="icon" class="mdl-button mdl-js-button mdl-color--red-400 btnPosition" (click)="SearchCandidate()">
+                  <mdl-icon class="material-icons mdl-color-text--white">search</mdl-icon>
+                </button>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <mdl-textfield type="text" label="First Name" [(ngModel)]="_candReg.FirstName" floating-label></mdl-textfield>
+    </div>
+    <div class="col-sm-6">
+      <mdl-textfield type="text" label="Last Name" [(ngModel)]="_candReg.LastName" floating-label></mdl-textfield>
+    </div>
+    <div class="col-sm-6">
+      <mdl-textfield type="text" label="Mobile" [(ngModel)]="_candReg.Mobile" (blur)="validateMobile()" floating-label></mdl-textfield>
+    </div>
+    <div class="col-sm-6">
+      <mdl-textfield type="text" label="Email" [(ngModel)]="_candReg.Email" (blur)="validateEmail()" floating-label></mdl-textfield>
+    </div>
+    <div class="col-sm-6">
+      <mdl-select label="Practice" floating-label [(ngModel)]="_selPract">
+        <mdl-option [value]><em>-- Select --</em></mdl-option>
+        <mdl-option *ngFor="let c of _lst_Practices" [value]="c.Id">{{c.Name}}</mdl-option>
+      </mdl-select>
+    </div>
+    <div class="col-sm-6">
+      <mdl-select label="Position" floating-label [(ngModel)]="_selPos">
+        <mdl-option [value]><em>-- Select --</em></mdl-option>
+        <mdl-option *ngFor="let c of _lst_Positions" [value]="c.Id">{{c.Name}}</mdl-option>
+      </mdl-select>
+    </div>
+    <div class="col-sm-6">
+      <mdl-select label="Stage" floating-label (change)="onInterviewStg_Change($event)" [(ngModel)]="_selIntervStg">
+        <mdl-option [value]><em>-- Select --</em></mdl-option>
+        <mdl-option *ngFor="let c of _lst_Interview_Stage" [value]="c.Id">{{c.Name}}</mdl-option>
+      </mdl-select>
+    </div>
+    <div class="col-sm-6">
+      <mdl-textfield type="text" label="Recruiter Email" [(ngModel)]="_candReg.Recruiter.Email" style="padding-top:20px;" floating-label></mdl-textfield>
+    </div>
+    <div class="clearfix"></div>
+    <div *ngIf="_isShortListed">
+      <div class="col-sm-8">
+        <mdl-textfield type="text" label="Job Description" rows="4" [(ngModel)]="_candReg.JobDescription" floating-label></mdl-textfield>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <div *ngIf="_isInterview">
+      <div class="col-sm-6">
+        <mdl-select label="Interview Mode" floating-label [(ngModel)]="_selIntervTyp">
+          <mdl-option [value]><em>-- Select --</em></mdl-option>
+          <mdl-option *ngFor="let c of _lst_Interview_Type" [value]="c.Id">{{c.Name}}</mdl-option>
+        </mdl-select>
+      </div>
+      <div class="col-sm-6">
+        <date-picker [(ngModel)]="_candReg.InterviewDate" mode="datetime" name="date" format="MM/DD/YYYY HH:mm A" [showClearButton]="false"
+          placeholder="Select Date and Time"></date-picker>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <div *ngIf="_isOffer">
+      <div class="col-sm-6">
+        <mdl-textfield type="text" label="comment" rows="4" [(ngModel)]="_candReg.Comment" floating-label></mdl-textfield>
+      </div>
+      <div class="col-sm-6">
+        <mdl-textfield type="text"></mdl-textfield>
+        <div class="mdl-button mdl-button--primary mdl-button--icon mdl-button--file">
+          <i class="material-icons">attach_file</i><input type="file" (change)="fileChange($event)" placeholder="Upload file"
+            accept=".pdf,.doc,.docx">
+        </div>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <div *ngIf="_isOnBoarding">
+      <div class="col-sm-8">
+        <mdl-textfield type="text" label="Type Comment" rows="4" [(ngModel)]="_candReg.OnBoardDescription" floating-label></mdl-textfield>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <div *ngIf='_candReg.Id > 0'>
+      <button class="mdl-button mdl-js-button mdl-button--raised mdl-color--red-400 mdl-color-text--white pull-right btnAskFeebBack"
+        (click)="editUserDialog.show()">Feed Back</button>
+    </div>
+    <div class="clearfix"></div>
+    <button class="mdl-button mdl-js-button mdl-button--raised mdl-color--red-400 mdl-color-text--white pull-right btnPosition"
+      (click)="OnRegister()">Save Details </button>
+  </div>
+</div>
+<div>
+  <a class="float" (click)="Reset()">
+          <i class="material-icons mdl-color-text--white my-float">add</i>
+        </a>
+</div>
+<div *ngIf="_isLoading" class="loading">Loading&#8230;</div>
+
+
+
+<mdl-dialog #editUserDialog [mdl-dialog-config]="{
+  clickOutsideToClose: true,
+  styles:{'width': '300px'},
+  isModal:true,
+  openFrom: editUserButton,
+  enterTransitionDuration: 400,
+  leaveTransitionDuration: 400}" (show)="onDialogShow(dialogRef)" (hide)="onDialogHide()">
+  <h3 class="mdl-dialog__title back-color">Feed Back</h3>
+  <div class="mdl-dialog__content">
+      <mdl-textfield type="text" label="Comment" rows="4" [(ngModel)]="_candReg.FeedBackComment" class="ask-feed" floating-label autofocus></mdl-textfield>
+  </div>
+  <div class="mdl-dialog__actions">
+    <button class="mdl-button mdl-js-button mdl-button--raised mdl-color--red-400 mdl-color-text--white" (click)="AddFeedBack()">Save</button>
+    <button mdl-button (click)="editUserDialog.close()" mdl-ripple>Close</button>
+  </div>
+</mdl-dialog>
