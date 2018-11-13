@@ -1,0 +1,230 @@
+<div class="tab-container tab-control">  
+  <app-spinner [show]="show"></app-spinner>
+  <div class="row custForm no-gutters custLayout">
+      <div class="col col-auto">
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label widthAuto">{{"label_cut_order" | translation}}</label>
+            <kendo-combobox [data]="cutOrders | sortPipe : 'CutOrder'" [(value)]="selectedCutOrder" [textField]="'CutOrder'" 
+            [valueField]="'CutHbrId'" [value] = 'selectedCutOrder' 
+            (valueChange)="onCutOrderChange($event)"
+              [popupSettings]="{ width: 'auto' }" class="width-120 width-120 k-dropdown"
+              [filterable]="true"  (filterChange)="handleFilter($event)">
+              <ng-template kendoComboBoxHeaderTemplate>
+                  <div class="row k-list-header">
+                    <div class="col col-auto width-60 font-bold">Cut Order</div>
+                    <div class="col col-auto minWidth-60 maxWidth-60 font-bold">Sew Plant</div>
+                    <div class="col col-auto minWidth-60 maxWidth-60 font-bold">Style</div>
+                    <div class="col col-auto minWidth-280 font-bold">Style Description</div>
+                  </div>
+                </ng-template>
+                <ng-template kendoComboBoxItemTemplate let-dataItem>
+                    <div class="col col-auto width-60 templatecell">{{ dataItem?.CutOrder }}</div>
+                    <div class="col col-auto minWidth-60 maxWidth-60 templatecell">{{ dataItem?.SewPlant }}</div>
+                    <div class="col col-auto minWidth-60 maxWidth-60 templatecell">{{ dataItem?.Style }}</div>
+                    <div class="col col-auto minWidth-280 templatecell">{{ dataItem?.StyleDesc }}</div>
+                </ng-template>
+            </kendo-combobox>
+        </div>  
+      </div>
+      <div class="col col-auto">
+  
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-60-1">{{ "label_sew_plant" | translation}}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100"  [(ngModel)]="sewPlant" disabled/>
+        </div>
+  
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-60-1">{{ "label_cut_plant" | translation}}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100" [(ngModel)]="cutPlant" disabled />
+        </div>
+  
+      </div>
+      <div class="col col-auto">
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-60-2">{{ "label_style" | translation }}</label>
+            <input id="simple-input" type="text" class="k-textbox width-280" [(ngModel)]="style" disabled/>
+        </div>
+  
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-60-2">{{ "label_style_desc" | translation }}</label>
+            <input id="simple-input" type="text" class="k-textbox width-280" [(ngModel)]="styleDescription" disabled/>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-50" style="min-width:auto;">{{ "label_color"| translation }}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100"  [(ngModel)]="color" disabled/>
+        </div>
+  
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-50" style="min-width:auto;">{{ "label_cut_qt"| translation }}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100"  [ngModel]="actualCutQty | number" 
+              disabled />
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-70-1">{{ "label_fiscal_week" | translation}}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100" [ngModel]="fiscalWeek | datePipe" disabled/>
+        </div>
+  
+        <div class="row custFormrow">
+          <label for="staticEmail" class="col-form-label width-70-1">{{ "label_cut_date" | translation }}</label>
+            <input id="simple-input" type="text" class="k-textbox width-100" [ngModel]="cutDate | datePipe" disabled/>
+        </div>
+      </div>
+      <div class="col col-auto">
+          
+          <div class="form-group row custFormrow">  
+            <textarea id="simple-textarea"   class="k-textbox width-240 maxWidth-240 m-0" rows="3"  placeholder='Comments'  style="height: 65px !important;" [(ngModel)]="comments"></textarea> 
+          </div>
+      </div>
+    </div>
+
+  <div id="grid" data-role="grid" class="k-grid k-widget k-display-block clearfix">
+    <div class="k-grid-header clearfix">
+      <!-- <div class="k-grid-header-wrap k-auto-scrollable"> -->
+      <!-- <table role="grid"> -->
+        <!-- <thead role="rowgroup"> -->
+          <kendo-grid [data]="gridView" [scrollable]="'scrollable'" [style.maxHeight.vh]="64" [style.minHeight.px]="110"
+          [sortable]="{allowUnsort:false}" [sort]="sort" (sortChange)="sortChange($event)">
+
+           <kendo-grid-column field="IsSelected" title="" width="50" class="text-center" [sortable]="false" >
+              <ng-template kendoGridHeaderTemplate>
+                <!-- <input class="form-control" type="checkbox" (change)="onCheckAll($event)" /> -->
+                <input type="checkbox" id="headergridpulldata" class="k-checkbox" (change)="onCheckAll($event)" 
+                [ngModel]="selectCheckAll()">
+                <label class="k-checkbox-label" for="headergridpulldata"></label>
+              </ng-template>
+              <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                <!-- <input class="form-control" type="checkbox" [(ngModel)]="dataItem.IsSelected"  (change)="setPulledInfo()"/> -->
+                <input type="checkbox" id="{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.IsSelected"  (change)="setPulledInfo()">
+                <label class="k-checkbox-label" for="{{rowIndex}}"></label>
+              </ng-template>
+            </kendo-grid-column>
+           <kendo-grid-column field="ItemCode" title="{{ 'title_aramark_item' | translation }}" width="120">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.ItemCode" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+             <kendo-grid-column field="FiberContent" title="{{ 'title_fiber_content' | translation }}" width="140">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.FiberContent" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="RMVendorName"  title="{{ 'title_vendor' | translation }}" width="90">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.RMVendorName" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="RMVendorItemNumber"  title="Vendor item" width="90">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.RMVendorItemNumber" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="RollCaseNumber"  title="Roll Case #" width="90">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.RollCaseNumber" disabled />
+              </ng-template>
+            </kendo-grid-column> 
+
+            <kendo-grid-column field="Width"  title="{{ 'title_width' | translation }}" width="60">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox"  style="text-align: right" type="text" [ngModel]="dataItem.Width | number" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="BinLocation"  title="Bin Allocation" width="120">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.BinLocation" disabled />
+              </ng-template>
+            </kendo-grid-column>
+           
+            <kendo-grid-column field="LotNumber"  title="Lot #" width="80">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.LotNumber" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+            
+            <kendo-grid-column field="AllocationQty"  title="Allocated " width="120">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [ngModel]="dataItem.AllocationQty | number" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="PulledQty"  title="Pulled " width="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [ngModel]="dataItem.PulledQty | number" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column  field="LoaderNumber"  title="Load Number" width="100">
+							<ng-template kendoGridCellTemplate let-dataItem>
+                <kendo-dropdownlist 
+                [value]="selectedLoadNumber"
+                [data]="loaderNumbers"  
+                [textField]="'LoaderNumber'"
+                [valueField]="'Id'">
+								</kendo-dropdownlist>
+							</ng-template>
+						</kendo-grid-column>
+
+            <kendo-grid-column field="PullTimeStamp"  title="Pulled Date" width="140">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.PullTimeStamp" disabled />
+              </ng-template>
+            </kendo-grid-column>
+            
+            <kendo-grid-column field="PulledBy"  title="Pulled By" width="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.PulledBy" disabled />
+              </ng-template>
+            </kendo-grid-column>
+
+          </kendo-grid>
+        <!-- </thead> -->
+      <!-- </table> -->
+      <!-- </div> -->
+
+    </div>
+  </div>
+  <form class="row custForm armrk-tbl-footer no-gutters border-bottom custLayout clearfix">
+      <div class="col mt-2">    
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Rolls</label>
+          <input type="text" class="k-textbox text-left" id="" style="max-width: 70px;" value="{{totalPullRolls | number}}" disabled>
+        </div>
+      </div>
+
+      <div class="col mt-2">    
+          <div class="form-group row custFormrow">
+            <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Selected Rolls</label>
+            <input type="text" class="k-textbox text-left" disabled id="" value="{{getSelectedRolls() | number}}"  style="    max-width: 70px;">
+          </div>
+        </div>
+
+        <div class="col mt-2">    
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Allocated</label>
+              <input type="text" class="k-textbox text-left" disabled id="" value="{{getTotalAllocated() | number}}" style="    max-width: 70px;">
+            </div>
+          </div>
+     
+      <div class="col mr-auto mt-2">    
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Pulled</label>
+          <input type="text" class="k-textbox text-left" id=""  value="{{getTotalPulledYards() | number}}" style="max-width: 70px;" disabled>
+        </div>
+      </div>
+     
+      <div class="col mr-0 mt-2">
+          <button type="submit" [disabled]="!canEnablePull()" (click)="confirmPull()" class="btn btn-danger armrk-btn">Pull</button>
+      </div>
+      
+    </form>
+
+</div>

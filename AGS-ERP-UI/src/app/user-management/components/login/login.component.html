@@ -1,0 +1,49 @@
+<link href="./../../../../assets/styles/signStyle.css" rel="stylesheet">
+<div class="armrk-signin">
+  <div class="container">
+    <app-spinner [show]="show"></app-spinner>
+    <div class="row align-items-start">
+      <div class="col col-12">
+        <!-- Image and text -->
+        <nav class="navbar navbar-expand-lg ">
+          <div class="navbar-brand" href="#">
+            <img src="./assets/images/aramark-logo-w.png" class="d-inline-block align-top logo" alt="">
+            <!-- <span class="tagline">AGS</span> -->
+            <span class="tagline text-right">AMCS<br /><small>2.0</small></span>
+          </div>
+
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo01" aria-controls="navbarTogglerDemo01"
+            aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="ml-auto">
+            <app-language></app-language>
+          </div>
+        </nav>
+      </div>
+      <div class="clearfix"></div>
+      <div class="col col-12 col-md-6 col-lg-4 form-container wrap">
+        <form class="form-signin" [formGroup]='signInForm' (ngSubmit)='submit()'>
+          <h2 class="form-signin-heading text-left">{{ "header_sign_in" | translation }}</h2>
+          <label for="inputEmail" class="sr-only">{{ "placeholder_email" | translation }}</label>
+          <input type="email" autofocus id="inputEmail" class="form-control" formControlName="username" placeholder='{{ "placeholder_email" | translation }}'>
+          <div class='k-required' *ngIf="(signInForm.controls.username.touched && signInForm.controls.username.errors?.required)">{{"error_email_required" | translation}}</div>
+          <label for="inputPassword" class="sr-only">{{ "placeholder_password" | translation }}</label>
+          <input type="password" id="inputPassword" class="form-control" formControlName="password" placeholder='{{ "placeholder_password" | translation }}'>
+          <div class='k-required' *ngIf="(signInForm.controls.password.touched && signInForm.controls.password.errors?.required)">{{"error_password_required" | translation}}</div>
+          <div class="clearfix">
+            <input type="checkbox" id="rememberMeLogin" class="k-checkbox" formControlName="rememberMe" value="remember-me">
+            <label class="k-checkbox-label rememberme-lbl" for="rememberMeLogin">{{ "label_remember_me" | translation }}</label>
+          </div>
+          <div class="clearfix">
+            <button class="btn btn-lg btn-black-bordered justify-content-end float-right" type="submit" (click)="submit()" [disabled]="!signInForm.valid">{{ "button_sign_in" | translation }}</button>
+          </div>
+        </form>
+      </div>
+      <div class="col col-12 col-md-6 col-lg-5 wrap col2">
+        <p class="h1 info">{{ "login_paragraph_message" | translation }}</p>
+      </div>
+    </div>
+  </div>
+  <!-- /container -->
+</div>

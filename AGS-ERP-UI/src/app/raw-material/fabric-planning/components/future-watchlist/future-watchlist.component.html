@@ -1,0 +1,125 @@
+<div class="tab-container tab-control frm-lg">
+  <app-spinner [show]="show"></app-spinner>
+
+  <form class="row custForm no-gutters border-bottom custLayout clearfix">
+    <div class="col col-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">{{"title_vendor" | translation}}</label>
+        <kendo-combobox [data]="vendorList | sortPipe : 'VendorName'" [(value)]="selectedVendor" [textField]="'VendorName'" [valueField]="'VendorId'"
+          [placeholder]="defaultItem.VendorName" (valueChange)="onVendorChange($event)" [popupSettings]="{ width: 'auto' }"
+          class="width-260 k-dropdown" [filterable]="true" (filterChange)="handleVendorFilter($event)">
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col col-auto mr-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto">Aramark Item</label>
+        <kendo-combobox [data]="aramarkItemList | sortPipe" [(value)]="selectedAramarkItem" (valueChange)="onAramarkItemChange($event)" [textField]="'ItemNumber'" [valueField]="'ItemNumber'"
+          [popupSettings]="{ width: 'auto' }" class="width-200 k-dropdown" [filterable]="true" (filterChange)="handleAramarkItemFilter($event)">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto width-100 font-bold">Code</div>
+              <div class="col col-auto minWidth-120 font-bold">Description</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto width-100 templatecell">{{ dataItem?.ItemNumber}}</div>
+            <div class="col col-auto minWidth-120 templatecell">{{ dataItem?.Description}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col col-auto mr-0">
+      <div class=" text-right agglomerations iconTooltip-large mr-0" id="agglomerations2">
+        <button title="Export to PDF" class="icon_arm arm_pdf" id="moscow" (click)="ExportToPdf(grid)" [disabled]="(futureWatchListData?.length) === 0">
+        </button>
+        <button title="Export to Excel" class="icon_arm arm_excel" id="moscow" (click)="ExportToExcel(grid)" [disabled]="(futureWatchListData?.length) === 0">
+        </button>
+      </div>
+    </div>
+
+  </form>
+
+  <div class="clearfix"></div>
+  <div id="grid3" data-role="grid" class="k-grid k-widget k-display-block responsiveTable">
+    <div class="k-grid-header">
+      <!-- <table role="grid">
+        <thead role="rowgroup"> -->
+      <kendo-grid [data]="gridData" #grid="kendoGrid" [scrollable]="'scrollable'" [height]="700" [style.maxHeight.vh]="70" [sortable]="{allowUnsort:false}"
+        [sort]="sort" (sortChange)="sortChange($event)">
+        <kendo-grid-column field="ItemNumber" class="text-center tab-font   font-bold " title="Item Number" [width]="110">
+          <ng-template kendoGridCellTemplate let-dataItem>
+
+            <span class="link link-blue" (click)='post(selectedVendor?.VendorId ,dataItem.ItemId)'>{{ dataItem.ItemNumber }}</span>
+
+
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="Description" class=" text-left tab-font " title="Item Description" [width]="170">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <div class="elepsis" style="max-width:160px;" title="{{dataItem.Description}}"> {{dataItem.Description}}</div>
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="FiberContent" class=" text-left tab-font" title="Fabric Content" [width]="165">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <div class="elepsis" style="max-width:145px;" title="{{dataItem.FiberContent}}"> {{dataItem.FiberContent}}</div>
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="OnHand" class="text-right tab-font" title="On Hand" [width]="80">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            {{dataItem.OnHand | number}}
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="AvgWeeklyDemand" class="text-right tab-font" title="Avg Weekly Dmnd" [width]="70">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            {{dataItem.AvgWeeklyDemand | number}}
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="MinWOS" class="text-right tab-font" title="Min WOS" [width]="80">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            {{dataItem.MinWOS | number}}
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="SafetyStock" class="text-right tab-font" title="Safety Stock" [width]="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            {{dataItem.SafetyStock | number}}
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column *ngFor='let label of WELabelList' field="{{label}}" class="text-right tab-font" title="{{label}}" [width]="65"
+          [sortable]="false">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <div [class]="fieldColor(dataItem, label)">
+              {{getColumnValue(label, dataItem.ItemNumber) | number}}
+            </div>
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-pdf fileName="future-watchlist--{{selectedVendor ? selectedVendor.VendorName :''}}.pdf" [repeatHeaders]="true">
+          <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+          <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+            <div class="page-template">
+              <div class="header">
+                <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+              </div>
+              <div class="footer">
+                Page {{ pageNum }} of {{ totalPages }}
+              </div>
+            </div>
+          </ng-template>
+        </kendo-grid-pdf>
+
+        <kendo-grid-excel fileName="future-watchlist-{{selectedVendor?.VendorName}}.xlsx" [fetchData]="getGridData">
+        </kendo-grid-excel>
+      </kendo-grid>
+      <!-- </thead>
+      </table> -->
+    </div>
+  </div>
+</div>

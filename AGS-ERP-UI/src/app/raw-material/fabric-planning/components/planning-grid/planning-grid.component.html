@@ -1,0 +1,45 @@
+<div class="row custForm no-gutters custLayout clearfix mt-2 pt-2">
+    <div class="form-group row custFormrow m-0">
+      <label for="staticEmail" class="mr-4">
+        <b>Item Number:</b> {{gridData?.ItemCode}}</label> |
+      <label for="staticEmail" class="mr-4 ml-4">
+        <b>On Hand:</b> {{gridData?.OnHand | number}}</label> |
+      <label for="staticEmail" class="mr-4 ml-4">
+        <b>Avg Weekly Demand:</b> {{gridData?.AvgWeeklyDemand | number}}</label> |
+      <label for="staticEmail" class="mr-4 ml-4">
+        <b>Min WOS:</b> {{gridData?.MinWOS | number}}</label>|
+      <label for="staticEmail" class="mr-4 ml-4">
+        <b>Item Description:</b> {{gridData?.Description}}</label> |
+      <label for="staticEmail" class="mr-4 ml-4"> 
+        <b>Fiber Content:</b> {{gridData?.FiberContent}}</label>
+    </div>
+</div>
+<div id="grid" data-role="grid" class="k-grid  k-widget k-display-block responsiveTable" style="min-height:auto;">
+  <!-- <div class="k-grid-header"> -->
+    <kendo-grid #grid="kendoGrid" [data]="reportGridData" [rowClass]="rowColor" class="fab-plan" [scrollable]="'scrollable'"
+      [height]="240" [style.maxHeight.vh]="50"  [style.minHeight.px]="240">
+      <kendo-grid-column *ngFor='let label of headers; let i = index' field="{{label}}" class="text-right tab-font " title="{{label}}" [class]="{'codeColumn': true}"
+        [width]="i === 0 ? 180 : 90" [style.maxWidth.vh]="90"  [style.minWidth.px]="90">
+        <ng-template kendoGridCellTemplate let-dataItem>
+           <div class="elepsis" style="max-width:98%;" title="{{getColumnValue(dataItem, label)}}"><p [class]="colorCode(dataItem, label)"> {{getColumnValue(dataItem, label)}}</p> </div>          
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-pdf fileName="fabric-planning-report.pdf" [repeatHeaders]="true">
+        <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+        <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+          <div class="page-template">
+            <div class="header">
+              <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+            </div>
+            <div class="footer">
+              Page {{ pageNum }} of {{ totalPages }}
+            </div>
+          </div>
+        </ng-template>
+      </kendo-grid-pdf>
+      <kendo-grid-excel fileName="fabric-planning-report.xlsx">
+      </kendo-grid-excel>
+      </kendo-grid>
+    <!-- </div> -->
+  </div>

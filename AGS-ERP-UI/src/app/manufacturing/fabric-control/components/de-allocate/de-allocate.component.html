@@ -1,0 +1,195 @@
+<div class="tab-container tab-control">
+  <div class="row custForm no-gutters fab-con">
+    <div class="col col-auto">
+      <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Cut Order</label>
+        <div class="col-7 custFields">
+         <kendo-dropdownlist [data]="cutOrderList"
+         [textField]="'Number'"
+         [valueField]="'Id'"
+         (valueChange) = "onCutOrderChange($event)">
+					</kendo-dropdownlist>
+        </div>
+      </div>
+
+      <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Sew Plant</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.SewPlant" disabled />
+        </div>
+      </div>
+
+    
+    </div>
+    <div class="col col-auto">
+    <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Cut Plant</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.CutPlant" disabled/>
+        </div>
+      </div>
+
+      <div class="custFormrow row">
+        <label for="staticEmail" class="col-form-label width-60-2">Style</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.Style" disabled />
+        </div>
+      </div>
+    </div>
+
+    <div class="col col-auto">
+        <div class="custFormrow row">
+        <label for="staticEmail" class="col-form-label width-60-2">Style Desc</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.StyleDescription" disabled/>
+        </div>
+      </div>
+    <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Color</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.Color" disabled/>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col fourth-field">
+   
+    <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Cut Qty</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [ngModel]="fabricControlData.ActualCutQty | number" disabled />
+        </div>
+      </div>
+     
+    <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Fiscal Week</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.FiscalWeekNumber" disabled/>
+        </div>
+      </div>
+    </div>
+
+    <div class="col last-field">
+        <div class="custFormrow row">
+        <label for="staticEmail" class="col-4 col-form-label">Cut Date</label>
+        <div class="col-7 custFields">
+          <input id="simple-input" type="text" class="k-textbox" style="width: 100%;" [(ngModel)]="fabricControlData.CutDate" disabled />
+        </div>
+      </div>
+  </div>
+  </div>
+  <div class="clearfix"></div>
+  <div id="grid" data-role="grid" class="k-grid k-widget k-display-block">
+    <div class="k-grid-header">
+      <!-- <div class="k-grid-header-wrap k-auto-scrollable"> -->
+
+          <kendo-grid [data]="fabricControlData.FabricRollCases" [scrollable]="'scrollable'"  [style.maxHeight.vh]="64"  [style.maxHeight.px]="110">
+
+            <kendo-grid-column field="IsSelected" title="" width="50" class="text-center">
+              <ng-template kendoGridHeaderTemplate>
+                <!-- <input class="form-control" type="checkbox" (change)="onCheckAll($event)" /> -->
+                <input type="checkbox" id="gridheaderdeallocate" class="k-checkbox"  (change)="onCheckAll($event)" >
+                <label class="k-checkbox-label" for="gridheaderdeallocate"></label>
+              </ng-template>
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <!-- <input class="form-control" type="checkbox" [(ngModel)]="dataItem.IsSelected" /> -->
+                <input type="checkbox" id="{{dataItem.Id}}" class="k-checkbox"  [(ngModel)]="dataItem.IsSelected">
+                <label class="k-checkbox-label" for="{{dataItem.Id}}"></label>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column title="{{ 'title_aramark_item' | translation }}" width="120">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.AramarkItem" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+             <kendo-grid-column title="{{ 'title_fiber_content' | translation }}" width="140">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.FiberContent" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column title="{{ 'title_vendor' | translation }}" width="90">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.Vendor" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column title="Vendor Item" width="90">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.VendorItem" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column title="Roll Case Id" width="70">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.Id" disabled />
+              </ng-template>
+            </kendo-grid-column> 
+
+            <kendo-grid-column title="{{ 'title_width' | translation }}" width="60">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox"  style="text-align: right" type="text" [ngModel]="dataItem.Width | number" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column title="Bin Location" width="75">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.BinLocationId" disabled />
+              </ng-template>
+            </kendo-grid-column>
+           
+            <kendo-grid-column title="{{ 'title_shade_lot_nbr' | translation }}" width="80">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.ShadeLotNbr" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+            
+            <kendo-grid-column title="Allocated Yards" width="70">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [ngModel]="dataItem.Allocated | number" disabled/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="AllocatedDate" title="Allocated Date" width="100" >
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.AllocatedDate" disabled/>
+                  </ng-template>
+            </kendo-grid-column>
+            
+            <kendo-grid-column field="AllocatedBy" title="Allocated By" width="100" >
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.AllocatedBy" disabled/>
+                  </ng-template>
+            </kendo-grid-column>
+
+          </kendo-grid>
+      
+      <!-- </div> -->
+
+    </div>
+
+    <div class="clearfix"></div>
+  </div>
+  <div class="clearfix"></div>
+
+
+  <form class="armrk-tbl-footer custFields form-inline grid-footer-strip" >
+    <div class="form-group">
+      <label for="staticEmail2" class="">Rolls Allocated</label>
+      <input type="text"  class="k-textbox  text-right" id="" value="{{fabricControlData.FabricRollCases.length | number}}" disabled>
+    </div>
+
+    <div class="form-group  mr-auto">
+      <label for="inputPassword2" class="">Selected Yards</label>
+      <input type="text"  class="k-textbox text-right" id="" value="{{getTotalDeAllocatedYards()|number}}" disabled>
+    </div>
+    <div class="form-group pr-4">
+      <button type="submit" class="btn btn-danger armrk-btn" [disabled]="!canEnableDeAllocate()" (click)="confirmDeAllocate()">DeAllocate</button>
+    </div>
+
+  </form>
+            
+  <div class="clearfix"></div>
+</div>

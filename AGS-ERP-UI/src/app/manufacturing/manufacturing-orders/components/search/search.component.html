@@ -1,0 +1,167 @@
+<div class="tab-container">
+    <!-- <app-spinner [show]="show"></app-spinner> -->
+    <div id="binLocationFilter" class="binLocationFilter clearfix">
+      <form class="row custForm no-gutters border-bottom custLayout mt-0">
+        <div class="col col-auto">
+          <div class="form-group row custFormrow">
+            <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">Cut Order #</label>
+            <kendo-combobox class="k-widget k-dropdown k-header width-220" ></kendo-combobox>
+          </div>
+        </div>
+        <div class="col col-auto">
+          <div class="form-group row custFormrow ">
+              <button type="submit" class="btn btn-danger armrk-btn">Open</button>
+          </div>
+        </div>
+      </form>
+
+      <form class="row custForm no-gutters border-bottom custLayout">
+          <div class="col col-auto">
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-60-1">Customer</label>
+              <kendo-dropdownlist class="width-120" >
+              </kendo-dropdownlist>
+            </div>
+    
+            <div class="form-group row custFormrow ">
+              <label for="staticEmail" class="col-form-label font-bold width-60-1">Style</label>
+              <kendo-dropdownlist class="width-120" >
+                </kendo-dropdownlist>
+            </div>
+          </div>
+          <div class="col col-auto">
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-60-1">Sew Plant</label>
+              <kendo-combobox class="k-widget k-dropdown k-header width-120" >
+              </kendo-combobox>
+            </div>
+    
+            <div class="form-group row custFormrow ">
+              <label for="staticEmail" class="col-form-label font-bold width-60-1">Color</label>
+              <kendo-dropdownlist class="width-120" >
+                </kendo-dropdownlist>
+            </div>
+          </div>
+          <div class="col col-auto">
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-70-2">Order status</label>
+              <kendo-combobox class="k-widget k-dropdown k-header width-140"  [popupSettings]="{ width: 'auto' }">
+              </kendo-combobox>
+            </div>
+    
+    
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-70-2">Size</label>
+              <kendo-combobox class="k-widget k-dropdown k-header width-140" [popupSettings]="{ width: 'auto' }">
+              </kendo-combobox>
+            </div>
+          </div>
+          <div class="col col-auto">
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-50-1">Cut Plan</label>
+              <kendo-combobox class="k-widget k-dropdown k-header width-140" [popupSettings]="{ width: 'auto' }">
+              </kendo-combobox>
+            </div>
+          </div>
+    
+          <div class="col-auto mr-0">
+              <div class="form-group row custFormrow mr-2">
+                  <div class="form-check form-check-inline">
+                    <input type="checkbox" id="girdHeaderFabricOrder" name =" " class="k-checkbox width-100" >
+                    <label class="k-checkbox-label font-bold mt-2" for="girdHeaderFabricOrder">Null</label>
+                  </div>
+              </div>
+            </div>
+          <div class="col col-auto">
+              <div class="form-group row custFormrow armrk-btn">
+                <button type="submit" class="btn btn-clearall-circle-red-bg" ></button>
+                <button type="submit" class="btn btn-arrow-right-circle-red-bg" ></button>
+              </div>
+            </div>
+        </form>
+    </div>
+    <div id="grid" class="clearfix">
+      <div class="col-auto custFields mt-2 custForm">
+        <label class="font-bold mb-0" for="inlineFormInputGroup">Filtered Data</label>
+      </div>
+      <kendo-grid  [style.maxHeight.px]="250" [style.minHeight.px]="250" >
+  
+        <kendo-grid-column title="#" width=36 class="text-center" [style.minWidth.px]=36 [style.maxWidth.px]=36>
+          <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+            {{rowIndex + 1}}
+          </ng-template>
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="RMVendorName" class="text-left" title="Cut Order #" [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120"></kendo-grid-column>
+  
+        <kendo-grid-column field="PickupLocation" class="text-left" title="Customer" [width]="140" [style.maxWidth.px]="140"
+          [style.minWidth.px]="140"></kendo-grid-column>
+  
+        <kendo-grid-column field="PONbr" class="text-left" title="Cust. PO #" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="ItemCode" class="text-left" title="Style" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80"></kendo-grid-column>
+  
+        <kendo-grid-column field="ItemName" class="elepsis text-left tab-font " title="Color" [width]="80" [style.minWidth.px]="80"
+          [style.maxWidth.px]="80"></kendo-grid-column>
+  
+        <kendo-grid-column field="VendorItemNbr" class="text-left" title="Status" [width]="90" [style.minWidth.px]="90" [style.maxWidth.px]="90"></kendo-grid-column>
+  
+        <kendo-grid-column field="FiberContent" class="text-left" title="Issued Date" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100"></kendo-grid-column>
+  
+        <kendo-grid-column field="ColorName" class="text-left" title="Sew Plant" class="text-left" [width]="80" [style.minWidth.px]="80"
+          [style.maxWidth.px]="80"></kendo-grid-column>
+  
+        <kendo-grid-column field="CuttableWidth" class="text-right" title="Issued Qty" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80"> </kendo-grid-column>
+  
+        <kendo-grid-column field="CountryOfOrigin" class="text-left" title="Cut Qty" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80"> </kendo-grid-column>
+  
+        <kendo-grid-column field="LeadTime" class="text-left" title="XCut Qty" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80"></kendo-grid-column>
+  
+        <kendo-grid-column field="POPrice" title="Sew Qty" class="text-right" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80"></kendo-grid-column>
+  
+        <kendo-grid-column field="WeightPerYard" title="XSew Qty"  class="text-right" [width]="85" [style.minWidth.px]="85" [style.maxWidth.px]="85"></kendo-grid-column>
+  
+        <kendo-grid-column field="AvailableQty" title="INDC Qty" [width]="70" [style.minWidth.px]="70" [style.maxWidth.px]="70"></kendo-grid-column>
+  
+        <kendo-grid-column field="ExtendedValue" title="OB Qty" class="text-right" [width]="100" [style.minWidth.px]="100"
+          [style.maxWidth.px]="100"></kendo-grid-column>
+  
+        <kendo-grid-column class="text-right" title="OB Status" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80">
+         </kendo-grid-column>
+        <kendo-grid-column field="IsSelected" title="" [width]="40" class="text-center">
+         
+        </kendo-grid-column>
+        <kendo-grid-column field="IsSelected" title="" width="40" [style.minWidth.px]="40" [style.maxWidth.px]="40" class="text-center">
+        </kendo-grid-column>
+      </kendo-grid>
+    </div>
+  
+  
+    <!-- <div id="binLocationFilter" class="binLocationFilter clearfix mt-2 mb-1">
+      <div class="custForm clearfix">
+        <div class="form-row align-items-center">
+          <div class="col-auto custFields custFields-inline truck-estimation-list" >
+            <span [class]="getClass(g.Weight)" attr.data-position="{{g.Id}}">
+              <label class="text-left">0</label>
+            </span>
+          </div>
+          <div class="col-auto custFields custFields-inline estimate-alert-info  ml-auto">
+            <label class="font-bold mb-0 mr-4">
+              Total Weight / Container Capacity
+            </label>
+            <label class="font-bold mb-0 ml-auto">0</label>
+          </div>
+        </div>
+      </div>
+    </div> -->
+    <form class="armrk-tbl-footer custFields custFields-inline form-inline ">
+        <div class="col col-auto mt-2">    
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Orders</label>
+              <input type="text" class="k-textbox  text-left width-90 maxWidth-90" id="" value="0" disabled>
+            </div>
+          </div>
+    </form>
+    <div class="clearfix"></div>
+  </div>

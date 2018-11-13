@@ -1,0 +1,51 @@
+<div class="tab-container  tab-control">
+  <app-spinner [show]="show"></app-spinner>
+
+  <form class="row custForm no-gutters border-bottom custLayout clearfix">
+    <div class="col col-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">{{"title_vendor" | translation}}</label>
+        <kendo-combobox [data]="vendors | sortPipe : 'VendorName'" [(value)]="selectedVendor" [textField]="'VendorName'" [valueField]="'VendorId'"
+          (valueChange)="onVendorChange($event)" [popupSettings]="{ width: 'auto' }" [placeholder]="defaultItem.VendorName"
+          class="width-260 k-dropdown" [filterable]="true" (filterChange)="handleVendorFilter($event)">
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col col-auto mr-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto">Aramark Item</label>
+        <kendo-combobox [data]="aramarkItemsList | sortPipe :'ItemNumber'" [(value)]="selectedAramarkItem" [textField]="'ItemNumber'" [valueField]="'Id'"
+          (valueChange)="onAramarkItemChange($event)" [popupSettings]="{ width: 'auto' }" class="width-260 k-dropdown" [filterable]="true"
+          (filterChange)="handleAramarkItemFilter($event)">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto width-100 font-bold">Code</div>
+              <div class="col col-auto minWidth-120 font-bold">Description</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto width-100 templatecell">{{ dataItem?.ItemNumber}}</div>
+            <div class="col col-auto minWidth-120 templatecell">{{ dataItem?.Description}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col col-auto mr-0">
+      <div class=" text-right agglomerations iconTooltip-large mr-0" id="agglomerations2">
+        <button title="Export to PDF" class="icon_arm arm_pdf" id="moscow" (click)="pdf.saveAs('fabric-planning-report.pdf')" [disabled]="(gridReportData.length) === 0">
+        </button>
+        <button title="Export to Excel" class="icon_arm arm_excel" id="moscow" [disabled]="(gridReportData.length) === 0"> 
+        </button>
+      </div>
+    </div>
+
+  </form>
+
+  <div class="clearfix"></div>
+  <kendo-pdf-export #pdf paperSize="A4" margin="2cm">
+    <div *ngFor='let data of gridReportData'>
+      <app-planning-grid [gridData]="data"></app-planning-grid>
+    </div>
+  </kendo-pdf-export>
+  <div class="clearfix"></div>
+</div>

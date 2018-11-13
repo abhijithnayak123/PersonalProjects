@@ -1,0 +1,301 @@
+<div class="tab-container">
+  <app-spinner [show]="show"></app-spinner>
+  <div id="binLocationFilter" class="binLocationFilter clearfix">
+    <form class="row custForm no-gutters border-bottom custLayout">
+
+      <div class="col col-auto">
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-50-1 minWidthAuto">PO #</label>
+          <input class="k-textbox width-100" type="text" name="PO#" [ngModel]="PONbr" disabled/>
+        </div>
+        <div class="form-group row custFormrow ">
+          <label for="staticEmail" class="col-form-label font-bold width-50-1 minWidthAuto">PO Date</label>
+          <input class="k-textbox width-100" type="text" name="PoDate" [ngModel]="PODate | datePipe" disabled/>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-90-2 minWidthAuto">Vendor</label>
+          <input class="k-textbox width-250" type="text" name="vendor" [ngModel]="Vendor" disabled/>
+        </div>
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-90-2">Pickup Location</label>
+          <input class="k-textbox width-250" type="text" name="PickUpLoc" [ngModel]="PickUpLoc" disabled/>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="form-group row custFormrow ">
+          <label for="staticEmail" class="col-form-label font-bold width-90-1">Requested Date</label>
+          <input class="k-textbox width-120" type="text" name="RequestedDate" [ngModel]="RequestedDate | datePipe" disabled/>
+        </div>
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-90-1">Ship To</label>
+          <input class="k-textbox width-120" type="text" name="ShipTo" [ngModel]="ShipTo" disabled/>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-100-2">PO Status</label>
+          <kendo-dropdownlist class="k-widget k-dropdown k-header width-140" [data]="status" [(value)]="selectedStatus" [textField]="'Status'"
+            [valueField]="'Status'" (valueChange)="OnStatusChange(selectedStatus)" [popupSettings]="{ width: 'auto' }" [disabled]="PoStatusDisable">
+          </kendo-dropdownlist>
+        </div>
+
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-100-2">PO Sent to Vendor</label>
+          <input class="k-textbox width-140" type="text" name="PoToVendor" [ngModel]="PoToVendor" disabled/>
+        </div>
+      </div>
+      <!-- <div class="col">
+        <div class="form-group row custFormrow">
+          <label for="staticEmail" class="col-form-label font-bold width-60-2">Comments</label>
+          <textarea id="simple-textarea" rows="3" class="k-textbox width-240 maxWidth-240" name="comments" placeholder="Comments" style="min-height: 66px;" ></textarea>
+        </div>
+      </div> -->
+      <div class="col-auto mr-2">
+          <div class="form-group row custFormrow armrk-btn">
+              <div class="form-check form-check-inline">
+                <input type="checkbox" id="girdHeaderFabricOrder" name =" " class="k-checkbox width-120" [(ngModel)]="POCommunication">
+                <label class="k-checkbox-label font-bold mt-2" for="girdHeaderFabricOrder">PO Communicated</label>
+              </div>
+            </div>
+      </div>
+      <div class="col">
+        <div class="form-group row custFormrow armrk-btn">
+          <a class="btn btn-mail-circle-red-sml"></a>
+          <a class="btn btn-view-circle-red-sml" target="_blank" [href]="POReportUrl"></a>
+        </div>
+      </div>
+
+    </form>
+
+  </div>
+
+  <div id="grid" class="clearfix responsiveTable">
+    <!-- <div class="col-auto custFields mt-2 pl-2">
+      <label class="font-bold" for="inlineFormInputGroup">Filtered Data</label>
+    </div> -->
+    <div class="col col-auto row m-0 p-0"  style=" background-color:#ddd !important;">
+      <div class="col col-auto p-0 m-0 " style="border: 1px solid #f1f1f1;min-width:160px;max-width:160px;">
+        <ul class="font-bold m-0 p-0" style="list-style: none; line-height: 28px;padding-left:12px !important;">
+          <li>Original</li>
+          <li>Scheduled</li>
+          <li>Actual</li>
+        </ul>
+      </div>
+      <div class="col col-auto mr-0 p-0 ml-auto colCreated" style="max-width:6.2%">
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" [(value)]="OrigSchedCreateDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" [(value)]="SchedCreateDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [(value)]="ActualDateCreate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+      </div>
+      <div class="col col-auto mr-0 p-0 colConfirmed"  style="max-width:6%">
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" [(value)]="OrigSchedConfirmDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker  class="width-100" [(value)]="SchedConfirmDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" [disabled]="actualDisabled"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [min]="this.ActualDateCreate" [(value)]="ActualDateConfirmed" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" 
+            [disabled] = "statusDisable" (valueChange)="onchangeActualConfirm(ActualDateCreate,ActualDateConfirmed,gridData)"></kendo-datepicker>
+          </div>
+        </div>
+      </div>
+      <div class="col col-auto mr-0 p-0 colShipped" style="max-width:6%">
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" [(value)]="OrigSchedShipDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [(value)]="ScheduledDateShipped" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" [disabled] ="SchldShippedDisabled"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [(value)]="ActualDateShipped" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+      </div>
+      <div class="col col-auto p-0 colReceived" style="max-width:6%;">
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" [(value)]="OrigSchedReceiptDate" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [min] = "this.ScheduledDateShipped" [(value)]="ScheduledDateReceived" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" [disabled] ="SchldShippedReceived"></kendo-datepicker>
+          </div>
+        </div>
+        <div class="custFields  custFields-lg ">
+          <div class="input-group">
+            <kendo-datepicker [(value)]="ActualDateReceived" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled="true"></kendo-datepicker>
+          </div>
+        </div>
+      </div>    
+      <div class="col col-auto p-0 colReceived" style="min-width: 85px; max-width: 5%;width: 5%;">&nbsp;</div>  
+    </div>
+
+    <kendo-grid #grid="kendoGrid" [data]="POGridData.data" [scrollable]="'scrollable'" [style.maxHeight.vh]="50" [style.minHeight.px]="106"
+      class="mt-0" [sortable]="{allowUnsort:false}" [sort] ="currentSort" (sortChange)="currentSortChange($event)">
+
+      <kendo-grid-column title="" [width]="40" class="text-center">
+        <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+          <input type="checkbox" id={{rowIndex}} class="k-checkbox" [(ngModel)]="dataItem.IsSelected" [disabled] = "checkboxDisable" (change) ="onSelect(dataItem)">
+          <label class="k-checkbox-label" for={{rowIndex}}></label>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div>&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="ItemCode" title="Aramark Item" [width]="120">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="min-width:110px;max-width:110px;" title="{{dataItem.ItemCode}}"> {{dataItem.ItemCode}}</div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:110px;max-width:110px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="ItemDesc" class="elepsis text-left tab-font " title="Aramark Desc." [width]="160" [style.maxWidth.px]="140">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="min-width:150px;max-width:150px;" title="{{dataItem.ItemDesc}}"> {{dataItem.ItemDesc}}</div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:170px;max-width:170px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="VendorItemNbr" title="Vendor Item" [width]="100">
+          <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div>&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="Color" title="Color" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="min-width:80px;max-width:80px;" title="{{dataItem.Color}}"> {{dataItem.Color}}</div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:95px;max-width:95px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="FiberContent" title="Fabric Content" [width]="180" >
+        <ng-template kendoGridHeaderTemplate>
+            <div class="elepsis" style="min-width:170px;max-width:170px;" title="Fabric Content">Fabric Content</div>
+          </ng-template>
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="min-width:170px;max-width:170px;" title="{{dataItem.FiberContent}}"> {{dataItem.FiberContent}}</div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div  style="min-width:180px;max-width:180px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="COO" title="COO" [width]="100">
+          <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:100px;max-width:100px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="UOM" title="UOM" [width]="100">
+          <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:100px;max-width:100px;" >&nbsp;</div></ng-template>
+      </kendo-grid-column>
+      <kendo-grid-column field="COMMENTS" title="Comments" [width]="160">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="min-width:150px;max-width:150px;" title="{{dataItem.COMMENTS}}">{{dataItem.COMMENTS}}</div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column"><div style="min-width:150px;max-width:150px;" >&nbsp;</div></ng-template>
+    </kendo-grid-column>
+      <kendo-grid-column field="UnitPrice" title="Price" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          <div class="input-group"> 
+            <span class="input-group-addon">$</span>
+            <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.UnitPrice" [disabled]="disableStatus" 
+            (change)="totalUnit(dataItem.UnitPrice)"/>
+          </div>
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-left">Total Units</div>
+          <div class="text-left">Extended Value</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="QtyOrdered" title="Created" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          {{dataItem.QtyOrdered | number}}
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityCreated | number :'1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedCreated | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="Confirmed" title="Confirm" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.QtyConfirmed"  [disabled]="disableStatus" 
+          (change)="updatetotalquantityConfirm(dataItem.QtyConfirmed,dataItem.UnitPrice)" only-number groupByThree />
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityConfirm | number : '1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedConfirm | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <!-- <kendo-grid-column field="QtyShipped" title="Shipped" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          {{dataItem.QtyShipped| number : '1.0-2'}}
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityShipped | number : '1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedShipped | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column> -->
+      <kendo-grid-column field="QtyReceived" title="Shipped" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          {{dataItem.QtyReceived| number : '1.0-2'}}
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityReceived | number : '1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedReceived | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="QtyReceived" title="Received" class="text-right" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          {{dataItem.QtyReceived| number : '1.0-2'}}
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityReceived | number : '1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedReceived | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="QtyOB" title="OB" class="text-right" [width]="80">
+        <ng-template kendoGridCellTemplate let-dataItem let-column="column">
+          {{dataItem.QtyOB| number}}
+        </ng-template>
+        <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+          <div class="text-right">{{totalquantityOB | number : '1.0-2'}}</div>
+          <div class="text-right"><span class="float-left">$</span>{{extendedOB | number : '1.0-2'}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+    </kendo-grid>
+  </div>
+
+  <form class="row custForm armrk-tbl-footer no-gutters custLayout clearfix">
+      <div class="col col-auto ml-auto mr-0 mt-1">
+          <button type="submit" class="btn btn-danger armrk-btn mr-2" [disabled] ="DisableButton" (click)="OnCancel()">Cancel</button>
+          <button type="submit" class="btn btn-danger armrk-btn mr-2"(click) ="OnDelete(gridData,selectedStatus)" [disabled] ="deleteDisable" >Delete</button>
+          <button type="submit" class="btn btn-danger armrk-btn mr-2" [disabled] ="DisableButton" (click)="OnSave(gridData,selectedStatus)">Save</button>
+      </div>
+</form>
+</div>

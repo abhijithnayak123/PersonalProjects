@@ -1,0 +1,10 @@
+<div class="input-group armrk-input-group armrk-icon">
+  <input type="text" #dropDownInputField id="armrk-lzyload" class="k-input" [ngModel]="inputValue" (blur)="hideDropDown($event)" (keyup)="onInputChange($event)" (click)="onInputChange($event)" autocomplete="off"/>
+  <span class="icon-clearinput" (click)="clearInput()"></span>
+  <span class="icon-downarrow" (click)="onInputChange($event)"></span>
+  <div [ngClass] ="showHide" >
+    <ul class="list-group" id="customDropDown" track-scroll (endOfScrollEvent)="endOfScrollEventReceived($event)">
+      <li class="list-group-item" *ngFor="let item of dropDownData let i = index" (mousedown)="onSelectDropDownValue(item)">{{item?.AreaCode}}</li>
+    </ul>
+  </div>
+</div>

@@ -1,0 +1,280 @@
+<div class="tab-container  frm-lg">
+  <app-spinner [show]="show"></app-spinner>
+  <form class="row custForm no-gutters border-bottom custLayout clearfix">
+    <div class="col col-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">{{"title_vendor" | translation}}</label>
+        <!-- <kendo-dropdownlist [data]="vendorList | sortPipe : 'VendorName'" [(value)]="selectedVendor" [textField]="'VendorName'" [valueField]="'VendorId'" [defaultItem]="defaultItem" (valueChange)="onVendorChange($event)" [popupSettings]="{ width: 'auto' }"  class="width-260">
+      </kendo-dropdownlist> -->
+        <kendo-combobox [data]="vendorList | sortPipe : 'VendorName'" [textField]="'VendorName'" [valueField]="'VendorId'" [(value)]="selectedVendor"
+          [popupSettings]="{ width: 'auto' }" (valueChange)="getConfirmationOnChange($event)" class="width-250 k-dropdown"
+          [filterable]="true" (filterChange)="handleVendorFilter($event)"  [placeholder]="defaultvendor.VendorName">
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col col-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto">{{"label_requested_date" | translation}}</label>
+        <input type="text" class="k-textbox text-left width-80" [value]="requestedDate| date: 'MM/dd/yyyy'" disabled>
+      </div>
+    </div>
+    <div class="col col-auto mr-auto">
+      <div class="form-group row custFormrow mt-1">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto">{{"label_delivery_date" | translation}}</label>
+        <input type="text" class="k-textbox text-left width-80" id="" [value]="deliveryDate| date: 'MM/dd/yyyy'" disabled>
+      </div>
+    </div>
+    <div class="col-auto mr-0">
+      <div class="form-group row custFormrow mt-1">
+        <!-- <label for="staticEmail" class="col-form-label font-bold widthAuto mr-3">Suggested Only</label> -->
+        <div class="form-check form-check-inline">
+          <input type="checkbox" id="girdHeaderFabricOrder" name=" " class="k-checkbox width-100" [(ngModel)]="isSystemYdsChecked"
+            (click)="onVendorChange(selectedVendor)">
+          <label class="k-checkbox-label font-bold mt-2" for="girdHeaderFabricOrder">Suggested Only</label>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto mr-0">
+      <div class=" text-right col agglomerations iconTooltip-large mr-0" id="agglomerations2">
+        <button title="Export to PDF" class="icon_arm arm_pdf" id="moscow" (click)="ExportToPdf(grid)" [disabled]="!(orderGridData.data.length > 0)">
+        </button>
+        <button title="Export to Excel" class="icon_arm arm_excel" id="moscow" (click)="ExportToExcel(grid)" [disabled]="!(orderGridData.data.length > 0)">
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="k-grid-header clearfix responsiveTable">
+
+    <kendo-grid [data]="orderGridData" #grid="kendoGrid" [scrollable]="'scrollable'" [height]="700" [rowClass]="rowCallback"
+      [style.maxHeight.vh]="62" [sortable]="{allowUnsort:false}" [sort]="sort" (sortChange)="sortChange($event)">
+
+      <kendo-grid-column title="" [width]="40" class="text-center">
+        <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+          <!-- <input class="form-control" type="checkbox"> -->
+          <input type="checkbox" id="o{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.IsSelected" (change)=Total()>
+          <label class="k-checkbox-label" for="o{{rowIndex}}"></label>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="ItemNumber" class="text-center tab-font font-bold" title="Item Number" [width]="100">
+      </kendo-grid-column>
+
+      <kendo-grid-column field="Description" class="text-left tab-font elepsis" title="Item Description" [width]="165">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="elepsis" style="max-width:145px;" title="{{dataItem.Description}}"> {{dataItem.Description}}</div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="VendorItem" class="text-center tab-font" title="Vendor Item" [width]="120">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox" type="text" [(ngModel)]="dataItem.VendorItem" [disabled]="true" />
+
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="FiberContent" class="text-center tab-font" title="Fabric Content" [width]="140">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox" type="text" [(ngModel)]="dataItem.FiberContent" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="COO" class="text-center tab-font" title="COO" [width]="70">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox" type="text" [(ngModel)]="dataItem.COO" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="LeadTime" class="text-center tab-font" title="Lead Time" [width]="90">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.LeadTime" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="OnHand" class="text-center tab-font" title="On Hand" [width]="80">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [ngModel]="dataItem.OnHand | number" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="AvgWeeklyDemand" class="text-center tab-font" title="Avg Weekly Dmnd" [width]="130">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [ngModel]="dataItem.AvgWeeklyDemand | number" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="MinWOS" class="text-center tab-font" title="Min WOS" [width]="80">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [ngModel]="dataItem.MinWOS | number" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="SafetyStock" class="text-center tab-font" title="Safety Stock" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [ngModel]="dataItem.SafetyStock | number" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="POPrice" class="text-center tab-font" title="PO Price" [width]="80">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="input-group">
+            <span class="input-group-addon">$</span>
+            <input class="k-textbox text-right" type="text" [ngModel]="dataItem.POPrice | number:'1.0-2'" [disabled]="true" />
+          </div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="SystemYds" class="text-center tab-font" title="System Yds" [width]="90">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [ngModel]="dataItem.SystemYds | number" [disabled]="true" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="SystemCost" class="text-center tab-font" title="System Cost" [width]="100">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="input-group">
+            <span class="input-group-addon">$</span>
+            <input class="k-textbox text-right" type="text" [ngModel]="dataItem.SystemCost |  number :'1.0-2'" [disabled]="true" />
+          </div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="OrderYds" class="text-center tab-font" title="Order Yds" [width]="80">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.OrderYds" [disabled]="!dataItem.IsSelected" (change)=calculateOrderCost(dataItem)
+            only-number groupByThree/>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="OrderCost" class="text-center tab-font" title="Order Cost" [width]="90">
+        <ng-template kendoGridCellTemplate let-dataItem>
+          <div class="input-group">
+            <span class="input-group-addon">$</span>
+            <input class="k-textbox text-right" type="text" [ngModel]="dataItem.OrderCost |  number :'1.0-2'" [disabled]="true" />
+          </div>
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-column field="Comment" class="text-center tab-font" title="Comment" [width]="240">
+        <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox text-left" type="text" [(ngModel)]="dataItem.Comment" [disabled]="!dataItem.IsSelected" />
+        </ng-template>
+      </kendo-grid-column>
+
+      <kendo-grid-pdf fileName="fabric-order--{{selectedVendor ? selectedVendor.VendorName :''}}.pdf" [repeatHeaders]="true">
+        <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+        <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+          <div class="page-template">
+            <div class="header">
+              <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+            </div>
+            <div class="footer">
+              Page {{ pageNum }} of {{ totalPages }}
+            </div>
+          </div>
+        </ng-template>
+
+        <kendo-grid-column field="ItemNumber" title="ItemNumber">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="Description" title="Item Description">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="VendorItem" title="Vendor Item">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="FiberContent" title="Fabric Content">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="COO" title="COO">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="LeadTime" title="Lead Time">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="OnHand" title="On Hand">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="AvgWeeklyDemand" title="Avg Weekly Dmnd">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="MinWOS" title="Min Wos">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="SafetyStock" title="Safety Stock">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="POPrice" title="PO Price">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="SystemYds" title="System Yds">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="SystemCost" title="System Cost">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="OrderYds" title="Order Yds">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="OrderCost" title="Order Cost">
+        </kendo-grid-column>
+
+        <kendo-grid-column field="Comment" title="Comment">
+        </kendo-grid-column>
+      </kendo-grid-pdf>
+
+      <kendo-grid-excel fileName="fabric-order-{{selectedVendor?.VendorName}}.xlsx">
+      </kendo-grid-excel>
+
+    </kendo-grid>
+  </div>
+
+  <form class="row custForm armrk-tbl-footer no-gutters custLayout clearfix">
+    <div class="col col-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Item Count</label>
+        <input type="text" class="k-textbox  text-left width-90 maxWidth-90" id="" value="{{totalRolls | number}}" disabled>
+      </div>
+    </div>
+    <div class="col col-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">Selected Count</label>
+        <input type="text" class="k-textbox  text-left width-90 maxWidth-90" id="" value="{{selectedTotalRolls() | number}}" disabled>
+      </div>
+    </div>
+    <div class="col col-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Cost</label>
+        <input type="text" class="k-textbox  text-left width-90 maxWidth-90" id="" value="$ {{selectedTotalOrderCost() | number: '1.2-2'}}"
+          disabled>
+      </div>
+    </div>
+    <div class="col col-auto mr-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto"> Total Order Yards</label>
+        <input type="text" class="k-textbox  text-left width-90 maxWidth-90" id="" value="{{selectedTotalOrderYards()  | number: '1.0-2'}}" disabled>
+      </div>
+    </div>
+    <div class="col col-auto mr-0 mt-2">
+      <button type="submit" class="btn btn-danger armrk-btn" (click)="OnOrderYrdsChange()" [disabled]="!enablePlaceOrder()">Place Order</button>
+    </div>
+
+  </form>
+</div>
+
+<kendo-dialog title="Comments" *ngIf="openedCommentbox" (close)="closeConfirmbox()" [width]="450">
+  <form class="row custForm no-gutters custLayout">
+    <p style="margin: 16px 30px; text-align: center;" [innerHTML]="message"></p>
+    <div class="col-12">
+      <div class="form-group row custFormrow">
+        <textarea id="simple-textarea" rows="3" class="k-textbox widthFull" placeholder="Additional Instructions(optional)" style="min-height: 90px;" [(ngModel)]="additionalDetails"
+          name="additionalDetails"></textarea>
+      </div>
+    </div>
+  </form>
+
+  <div class="text-center k-dilog-btn-group">
+    <button class="btn btn-danger" (click)="closeConfirmbox()">Cancel</button>
+    <button class="btn btn-danger" (click)="OnPlaceOrder()" primary="true">Save</button>
+  </div>
+</kendo-dialog>

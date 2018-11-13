@@ -1,0 +1,280 @@
+<div class="tab-container tab-control  grid-frm-icons">
+    <app-spinner [show]="show"></app-spinner>
+    <div class="armrk-popup-layer" *ngIf="showPopuplayer" (click)="onCloseallPopup()"></div>
+    <form class="row custForm no-gutters custLayout pb-0">
+        <div class="col col-auto">           
+            <div class="form-group row custFormrow" *ngIf ="!model.isAddMode && !model.isEditMode">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Supplier Name<font class="warning">*</font></label>
+                <kendo-combobox class="k-dropdown width-220" [popupSettings]="{ width: 'auto' }" [data]="model.VendorList | sortPipe:'Code': true"
+                [textField]="'Name'" [valueField]="'Code'" [(value)]="model.Vendor" [filterable]="true" (filterChange)="handleVendorFilter($event)"
+                (valueChange)="onVendorChange(model.Vendor)" >
+                  <ng-template kendoDropDownListHeaderTemplate>
+                    <div class="row k-list-header">
+                      <div class="col col-auto width-50 font-bold">Code</div>
+                      <div class="col col-auto minWidth-100 widthAuto font-bold">Name</div>
+                    </div>
+                  </ng-template>
+                  <ng-template kendoComboBoxItemTemplate let-dataItem>
+                    <div class="col col-auto width-50 templatecell"><span class="ellipsis" title="{{dataItem?.Code}}">{{dataItem?.Code}}</span></div>
+                    <div class="col col-auto minWidth-100 widthAuto templatecell">{{ dataItem?.Name}}</div>
+                   </ng-template>
+                </kendo-combobox>
+            </div>
+            <div class="form-group row custFormrow" *ngIf ="model.isAddMode || model.isEditMode">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Supplier Name<font class="warning">*</font></label>
+                <input id="simple-input" type="text" class=" k-textbox width-140" name="VendorName" [(ngModel)]="model.Name"/>
+            </div>
+        </div>
+        <div class="col col-auto mr-auto">
+            <div class="form-group row custFormrow armrk-btn">
+              <button type="submit" class="btn btn-add-circle-red-sml" (click)="onAdd()"></button>
+              <button type="submit" class="btn btn-edit-circle-red-sml"(click)="onEdit()" [disabled]="!isVendorSelected"></button>
+            </div>
+          </div>
+
+        <div class="col col-auto mr-0 pr-0 ml-auto">
+            <div class="form-group row custFormrow">
+                <div class="armrk-popup">
+                    <button #anchor2 (click)="onTogglePopupData('WU',!showWhereUsed)" class="k-button {{toggleClassshowToggle}}" [disabled]="!isVendorSelected">Vendor Contact</button>
+                    <kendo-popup [popupClass]="'content popup'" [anchor]="anchor2" *ngIf="showWhereUsed">
+                        <app-vendor-contact [VendorId]="model.Vendor.Id" (cancel)="onCancelVendorcontactList()"></app-vendor-contact>
+                    </kendo-popup>
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <form class="row custForm no-gutters border-bottom custLayout mt-0 pt-0">
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Supplier Code<font class="warning">*</font></label>
+                <input id="simple-input" type="text" class=" k-textbox width-140" name="VendorCode" [(ngModel)]="model.Code" style="text-transform: uppercase"  appAlphaNumeric [disabled]="!model.isAddMode"/>
+            </div>
+        </div>
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold widthAuto">Supplier Short Desc.<font class="warning">*</font></label>
+                <input id="simple-input" type="text" class=" k-textbox width-140" name="VendorShort" [(ngModel)]="model.ShortDescription" [disabled]="!model.isAddMode && !model.isEditMode"/>
+            </div>
+        </div>
+        <!-- <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold widthAuto">Planning Supplier #</label>
+                <input id="simple-input" type="text" class=" k-textbox width-140" disabled/>
+            </div>
+        </div> -->
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold widthAuto">Supplier Status</label>
+                <kendo-combobox class="k-dropdown width-180" [popupSettings]="{ width: 'auto' }" [data]="model.StatusList | sortPipe:'Id':true"
+                    [textField]="'Code'" [valueField]="'Code'" [(value)]="model.VendorStatus" [filterable]="true" (filterChange)="handleStatusFilter($event)"
+                    (valueChange)="onStatusChange(model.Status)" [disabled]="!model.isEditMode">
+                    <ng-template kendoDropDownListHeaderTemplate>
+                        <div class="row k-list-header">
+                        <div class="col col-auto minWidth-80 font-bold">Code</div>
+                        <div class="col col-auto font-bold">Description</div>
+                        </div>
+                    </ng-template>
+                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                        <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                    </ng-template>
+                </kendo-combobox>
+            </div>
+        </div>
+    </form>
+    <div class="mt-2 custForm border-top">
+        <label class="font-bold mb-0" for="inlineFormInputGroup">Address</label>
+    </div>
+    <form class="row custForm no-gutters border-bottom custLayout">
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Address Line 1<font class="warning">*</font></label>
+                <textarea id="simple-textarea" class="k-textbox width-300 maxWidth-300 m-0" name="addr1" [(ngModel)]="model.AddressLine1" rows="3" style="height: auto !important;    max-height: 30px;"
+                [disabled]="!model.isAddMode && !model.isEditMode" maxlength="100"></textarea>
+            </div>
+       
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Address Line 2</label>
+                <textarea id="simple-textarea" class="k-textbox width-300 maxWidth-300 m-0" name="addr2"  [(ngModel)]="model.AddressLine2"  rows="3"  style="height: auto !important;    max-height: 30px;" 
+                [disabled]="!model.isAddMode && !model.isEditMode" maxlength="100"></textarea>
+            </div>
+        </div>
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-70">City<font class="warning">*</font></label>
+                <input id="simple-input" type="text" class=" k-textbox width-140" name="city" [(ngModel)]="model.City"  maxlength="30" [disabled]="!model.isAddMode && !model.isEditMode" />
+            </div>
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-70">Country<font class="warning">*</font></label>
+                <kendo-combobox class="k-dropdown width-140" [popupSettings]="{ width: 'auto' }" [data]="model.Countries | sortPipe:'Code':true"
+                [textField]="'Name'" [valueField]="'Code'" [(value)]="model.VendorCountry" [filterable]="true" (filterChange)="handleCountryFilter($event)"
+                (valueChange)="onCountryChange(model.VendorCountry)" [disabled]="!model.isAddMode && !model.isEditMode">
+                <ng-template kendoDropDownListHeaderTemplate>
+                    <div class="row k-list-header">
+                    <div class="col col-auto minWidth-80 font-bold">Code</div>
+                    <div class="col col-auto font-bold">Name</div>
+                    </div>
+                </ng-template>
+                <ng-template kendoComboBoxItemTemplate let-dataItem>
+                    <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                    <div class="col col-auto templatecell">{{ dataItem?.Name}}</div>
+                </ng-template>
+            </kendo-combobox>
+            </div>            
+        </div>
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-60">State<font class="warning">*</font></label>
+                <input id="simple-input" type="text" maxlength="30" class=" k-textbox width-140" name="state" [(ngModel)]="model.State" [disabled]="!model.isAddMode && !model.isEditMode"/>
+            </div>
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-60">Zip<font class="warning">*</font></label>
+                <input id="simple-input" type="text" pattern ="^[a-zA-Z0-9][a-zA-Z0-9-]*$" maxlength="10" class=" k-textbox width-140" name="zip" [(ngModel)]="model.Zip" [disabled]="!model.isAddMode && !model.isEditMode"/>
+            </div>
+        </div>
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-130-2">Consignment</label>
+                <div class="form-check form-check-inline">
+                    <input type="checkbox" id="girdHeadermaintainrolls" class="k-checkbox width-100" name="consignment" [(ngModel)]="model.Consignment" [disabled]="!model.isAddMode && !model.isEditMode">
+                    <label class="k-checkbox-label mt-2" for="girdHeadermaintainrolls"></label>
+                </div>
+            </div>
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-130-2">Consignment Take Days</label>
+                <input id="simple-input" type="text" only-number maxlength="3" class=" k-textbox width-140" name="days" [(ngModel)]="model.ConsignmentTakeDays" [disabled]="!model.Consignment"/>
+            </div>
+        </div>
+    </form>
+    <div class="mt-2 custForm border-top clearfix">
+        <label class="font-bold mb-0 mt-1" for="inlineFormInputGroup">Supplier's Site Details</label>
+        <div class="armrk-btn ml-auto mr-0 float-right">
+            <button type="submit" class="btn btn-add-circle-red-sml" (click)="AddNewSite()" [disabled]="!model.isAddMode && !model.isEditMode"></button>
+        </div>
+    </div>
+    <div class="clearfix">
+    <kendo-grid #grid="kendoGrid" [scrollable]="'scrollable'" [style.maxHeight.px]="220" [style.minHeight.px]="160" [data]="gridDataList.data"
+                   [sortable]="{allowUnsort:false}" [sort]="filterSort" (sortChange)="filterSortChange($event)">  
+            <kendo-grid-column title="#" width=36 class="text-center" [style.minWidth.px]=36 [style.maxWidth.px]=36>
+                <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <div class="armrk-btn">
+                        <button class="btn btn-delete-circle-blk" (click)="onSiteDelete(dataItem)" [disabled]="!model.isAddMode && !model.isEditMode"></button>
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-left" title="Site Name" [width]="240" [style.minWidth.px]="240" [style.maxWidth.px]="240">
+                    <ng-template kendoGridHeaderTemplate>Site Name<font class="warning-label">*</font></ng-template>
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" [(ngModel)]="dataItem.Name" type="text" maxlength="100"/>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-left" title="Site Code" [width]="140" [style.maxWidth.px]="140" [style.minWidth.px]="140">
+                    <ng-template kendoGridHeaderTemplate>Site Code<font class="warning-label">*</font></ng-template>
+                <ng-template kendoGridCellTemplate let-dataItem>
+                            <input class="k-textbox" [(ngModel)]="dataItem.Code" type="text" maxlength="20" [disabled]="!dataItem.isAddMode"/>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column class="text-left" title="Site Short Desc." [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120">
+                    <ng-template kendoGridHeaderTemplate>Site Short Desc.<font class="warning-label">*</font></ng-template>
+                    <ng-template kendoGridCellTemplate let-dataItem>
+                            <input class="k-textbox" [(ngModel)]="dataItem.Description" type="text"  maxlength="20" appAlphaNumeric/>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column class="text-left" title="Site Status" [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                  <kendo-combobox class="k-widget k-dropdown k-header" [data]="dataItem.StatusList | sortPipe : 'Id'" [(value)]="dataItem.VendorStatus" 
+                    [textField]="'Code'" [valueField]="'Code'" [popupSettings]="{ width: 'auto' }" [filterable]="true"
+                    (valueChange)="onVendorStatusChange(dataItem.VendorStatus)" (filterChange)="handleSupplierStatusFilter($event)" [disabled]="dataItem.isDisabled">
+                    <ng-template kendoDropDownListHeaderTemplate>
+                            <div class="row k-list-header">
+                                <div class="col col-auto minWidth-80 font-bold">Code</div>
+                                <div class="col col-auto font-bold">Description</div>
+                            </div>
+                            </ng-template>
+                            <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                                <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                            </ng-template>
+                  </kendo-combobox>  
+                 </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column class="text-left" title="Site Type" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100">
+                    <ng-template kendoGridHeaderTemplate>Site Type<font class="warning-label">*</font></ng-template>
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <kendo-combobox class="k-widget k-dropdown k-header" [data]="dataItem.TypesList | sortPipe : 'Code'" [(value)]="dataItem.Type" 
+                    [textField]="'Description'" [valueField]="'Code'" [popupSettings]="{ width: 'auto' }" [filterable]="true"
+                    (valueChange)="onVendorTypeChange(dataItem.Type)" (filterChange)="handleVendorTypeFilter($event)">
+                    <ng-template kendoDropDownListHeaderTemplate>
+                    <div class="row k-list-header">
+                        <div class="col col-auto minWidth-40 font-bold">Code</div>
+                        <div class="col col-auto font-bold">Description</div>
+                    </div>
+                    </ng-template>
+                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                        <div class="col col-auto width-40 templatecell">{{dataItem?.Code}}</div>
+                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                    </ng-template>
+                    </kendo-combobox>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column class="text-center" title="Fabric Item" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80">
+                <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <input type="checkbox" id="Fabirc_{{rowIndex}}" class="k-checkbox" name="fabrcItem" [(ngModel)]="dataItem.FabricItem">
+                    <label class="k-checkbox-label float-none" for="Fabirc_{{rowIndex}}"></label>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column class="text-center" title="Trim" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100">
+                <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <input type="checkbox" id="Trim_{{rowIndex}}" class="k-checkbox" name="trim" [(ngModel)]="dataItem.Trim">
+                    <label class="k-checkbox-label float-none" for="Trim_{{rowIndex}}"></label>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-center" title="Send Forecast" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100">
+                <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <input type="checkbox" id="SF_{{rowIndex}}" class="k-checkbox" name="sendforecase" [(ngModel)]="dataItem.SendForecast">
+                    <label class="k-checkbox-label float-none" for="SF_{{rowIndex}}"></label>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-center" title="OTS" [width]="100" [style.minWidth.px]="100" [style.maxWidth.px]="100">
+                <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <input type="checkbox" id="OTS_{{rowIndex}}" class="k-checkbox"name="OTS" [(ngModel)]="dataItem.OTS">
+                    <label class="k-checkbox-label float-none" for="OTS_{{rowIndex}}"></label>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-left" title="Order to Pick up" [width]="110" [style.minWidth.px]="110" [style.maxWidth.px]="110">
+                    <ng-template kendoGridHeaderTemplate>Order to Pick up<font class="warning-label">*</font></ng-template>
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" [(ngModel)]="dataItem.OrderToPickup" type="text" maxlength="3"  only-number/>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column class="text-center" title="Site Details" width="80" [style.minWidth.px]="80" [style.maxWidth.px]="80">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div class="armrk-btn">
+                        <button (click)="openVendorSite(dataItem)" class="btn btn-edit-details-circle-red-sml"></button>
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+        </kendo-grid>
+    </div>
+
+    <form class="row custForm armrk-tbl-footer no-gutters custLayout clearfix">
+        <div class="col col-auto mr-0 mt-2 ml-auto">
+            <button type="submit" class="btn btn-danger armrk-btn ml-2" [disabled]="!model.isAddMode && !model.isEditMode" (click)="onSupplierCancel()">Cancel</button>
+            <button type="submit" class="btn btn-danger armrk-btn ml-2" [disabled]="!model.isAddMode && !model.isEditMode" (click)="saveSupplier()">Save</button>
+        </div>
+    </form>
+</div>
+
+<kendo-dialog [width]="660" *ngIf="showVendorSite">
+         <span class="close-dialog">
+            <img src="./assets/images/icon_close.png" (click)="onCancelVendorcontactList()">
+        </span>
+        <app-vendor-site [VendorName]="model.Name" [SiteItem]="siteItem" (onClose)="onCancelVendorcontactList()" (onSave)="updateSiteRecords($event)"></app-vendor-site>
+</kendo-dialog>

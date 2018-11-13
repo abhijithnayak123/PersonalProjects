@@ -1,0 +1,184 @@
+<div class="modal-body p-0 m-0">
+  <app-spinner [show]="show"></app-spinner>
+  <form class="row custForm no-gutters custLayout p-0 m-0">
+      <div _ngcontent-c28="" class="row custForm no-gutters custLayout clearfix mt-2 pt-2">
+          <div class="form-group row custFormrow m-0">
+              <label class="mr-4" for="staticEmail">
+                  <b>Supplier Name:</b> {{site.VendorName}}</label> |
+              <label class="mr-4 ml-4" for="staticEmail">
+                  <b>Site Name:</b> {{site.Name}}</label>
+          </div>
+      </div>
+      <div class="col-12 clearfix">
+          <form class="row custForm no-gutters custLayout armrkTable p-1">
+              <div class="col col-12 armrkTcol mr-0 row" style="width:100%;min-width:unset;max-width:unset;">
+                  <div class="form-group row custFormrow armrkTheader">
+                      <label for="staticEmail" class="col-form-label font-bold widthFull td  pl-2 pr-2">Address</label>
+                  </div>
+                  <div class="form-group row custFormrow">
+                      <label for="staticEmail" class="col-form-label font-bold width-100">Address Line 1<font class="warning">*</font></label>
+                      <input id="simple-input" type="text" name="address1" class="k-textbox width-100" maxlength="100" style="width:518px;" [(ngModel)]="site.AddressLine1" />
+                  </div>
+                  <div class="form-group row custFormrow">
+                      <label for="staticEmail" class="col-form-label font-bold width-100">Address Line 2</label>
+                      <input id="simple-input" type="text" name="address2" class="k-textbox width-100" maxlength="100"  style="width:518px;"  [(ngModel)]="site.AddressLine2"/>
+                  </div>
+                  <div class="col col-auto p-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-100">City<font class="warning">*</font></label>
+                          <input id="simple-input" type="text" name="city" class="k-textbox width-210"  maxlength="30" [(ngModel)]="site.City"/>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0 mr-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-50">State<font class="warning">*</font></label>
+                          <input id="simple-input" type="text" name="vendorstate" class="k-textbox width-230" maxlength="30" [(ngModel)]="site.State" />
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-100">Country<font class="warning">*</font></label>
+                          <kendo-combobox class="k-dropdown width-210" [popupSettings]="{ width: 'auto' }" [data]="site.CountryList | sortPipe:'Code':true"
+                          [textField]="'Name'" [valueField]="'Code'" [(value)]="site.Country" [filterable]="true" (valueChange)="countryChange(site.Country)"
+                          (filterChange)="countryFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-80 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Name</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Name}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0 mr-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-50">Zip<font class="warning">*</font></label>
+                          <input id="simple-input" type="text" name="Zip" class="k-textbox width-230" pattern ="^[a-zA-Z0-9][a-zA-Z0-9-]*$" maxlength="10" [(ngModel)]="site.Zip" />
+                      </div>
+                  </div>
+              </div>
+
+              <div class="col col-12 armrkTcol mr-0 mt-2 row" style="width:100%;min-width:unset;max-width:unset;">
+
+                  <div class="form-group row custFormrow armrkTheader">
+                      <label for="staticEmail" class="col-form-label font-bold widthFull td  pl-2 pr-2">Additional Details</label>
+                  </div>
+
+                  <div class="col col-auto p-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-50">INCO<font class="warning">*</font></label>
+                          <kendo-combobox class="k-dropdown width-200" [popupSettings]="{ width: 'auto' }" [data]="site.IncoList | sortPipe:'Code':true"
+                          [textField]="'Description'" [valueField]="'Code'" [(value)]="site.IncoSite" [filterable]="true" (valueChange)="incoChange(site.IncoSite)"
+                          (filterChange)="incoFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-40 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Description</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-40 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0 mr-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-120-1">Delivery Event<font class="warning">*</font></label>
+                          <kendo-combobox class="k-dropdown width-210-1" [popupSettings]="{ width: 'auto' }" [data]="site.DeliveryList | sortPipe:'Code':true"
+                          [textField]="'Description'" [valueField]="'Code'" [(value)]="site.DeliveryEventSite" [filterable]="true" (valueChange)="eventChange(site.DeliveryEventSite)"
+                          (filterChange)="eventFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-40 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Description</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-40 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-50">Port<font class="warning">*</font></label>
+                          <kendo-combobox class="k-dropdown width-200" [popupSettings]="{ width: 'auto' }" [data]="site.Ports | sortPipe:'Code':true"
+                          [textField]="'Description'" [valueField]="'Code'" [(value)]="site.PortSite" [filterable]="true" (valueChange)="portChange(site.PortSite)"
+                          (filterChange)="portFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-40 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Description</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-40 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0 mr-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-120-1">TP Number<font class="warning">*</font></label>
+                          <input id="simple-input" type="text" class="k-textbox width-210-1" name="TPNumber" [(ngModel)]="site.TPNumber" only-number maxlength="20" />
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-50">ASN</label>
+                          <kendo-combobox class="k-dropdown width-200" [popupSettings]="{ width: 'auto' }" [data]="site.AsnList | sortPipe:'Code':true"
+                          [textField]="'Description'" [valueField]="'Code'" [(value)]="site.AsnSite" [filterable]="true" (valueChange)="asnChange(site.AsnSite)"
+                          (filterChange)="asnFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-80 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Description</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+                  <div class="col col-auto p-0 mr-0">
+                      <div class="form-group row custFormrow">
+                          <label for="staticEmail" class="col-form-label font-bold width-120-1">PO Communication<font class="warning">*</font></label>
+                          <kendo-combobox class="k-dropdown width-210-1" [popupSettings]="{ width: 'auto' }" [data]="site.Communications | sortPipe:'Code':true"
+                          [textField]="'Description'" [valueField]="'Code'" [(value)]="site.POCommunicationSite" [filterable]="true" (valueChange)="communicationChange(site.POCommunicationSite)"
+                          (filterChange)="communicationFilter($event)">
+                                <ng-template kendoDropDownListHeaderTemplate>
+                                        <div class="row k-list-header">
+                                        <div class="col col-auto minWidth-80 font-bold">Code</div>
+                                        <div class="col col-auto font-bold">Description</div>
+                                        </div>
+                                    </ng-template>
+                                    <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                        <div class="col col-auto width-80 templatecell">{{dataItem?.Code}}</div>
+                                        <div class="col col-auto templatecell">{{ dataItem?.Description}}</div>
+                                    </ng-template>
+                          </kendo-combobox>
+                      </div>
+                  </div>
+
+              </div>
+
+          </form>
+      </div>
+      <form class="row custForm no-gutters custLayout clearfix">
+          <div class="col col-auto mr-0 mt-2 ml-auto">
+              <button type="submit" class="btn btn-danger armrk-btn ml-2" (click)="closeWindow()">Cancel</button>
+              <button type="submit" class="btn btn-danger armrk-btn ml-2" (click)="saveSite()">Save</button>
+          </div>
+      </form>
+  </form>
+</div>

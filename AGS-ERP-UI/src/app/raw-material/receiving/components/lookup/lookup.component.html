@@ -1,0 +1,276 @@
+<div class="tab-container tab-control grid-frm-icons">
+  <app-spinner [show]="show"></app-spinner>
+  <div class="row custForm no-gutters custLayout">
+    <div class="col-md-3 col-lg-auto col">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold width-60">Container</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-140" [data]="containers | sortPipe : 'ContainerNbr' : true" [(value)]="selectedContainer"
+          [textField]="'ContainerNbr'" [valueField]="'ContainerId'" [popupSettings]="{ width: 'auto' }" [filterable]="true"
+          (filterChange)="handleFilter($event)" (valueChange)="onContainerChange()">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto maxWidth-80 font-bold">Container #</div>
+              <div class="col col-auto minWidth-70 widthAuto font-bold">Vendor</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto maxWidth-80 templatecell">{{ dataItem?.ContainerNbr}}</div>
+            <div class="col col-auto minWidth-70 widthAuto templatecell">{{ dataItem?.ContainerVendor}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-60">PickUp #</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-140" [data]="pickupNumbers | sortPipe : 'PickupNumber' : true"
+          [popupSettings]="{ width: 'auto' }" [(value)]="selectedpickUp" [textField]="'PickupNumber'" [valueField]="'PickupNumber'"
+          [filterable]="true" (filterChange)="handlePickUpNbrFilter($event)" (valueChange)="onPickUpChange()">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto font-bold">Pickup #</div>
+              <div class="col col-auto minWidth-120 maxWidth-120 font-bold">Vendor</div>
+              <div class="col col-auto minWidth-120 font-bold">Pickup Location</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto templatecell">{{ dataItem?.PickupNumber }}</div>
+            <div class="col col-auto minWidth-120 maxWidth-120 templatecell"><span class="ellipsis" title="{{ dataItem?.VendorName }}">{{ dataItem?.VendorName}}</span></div>
+            <div class="col col-auto minWidth-120 templatecell">{{ dataItem?.PickupLocation}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col-md-3 col-lg-auto col">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-60">Receipt #</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-140" [data]="receipts | sortPipe : 'ReceiptNumber' : true" [textField]="'ReceiptNumber'"
+          [valueField]="'ReceiptId'" [(value)]="selectedReceipt" [popupSettings]="{ width: 'auto' }" [filterable]="true" (filterChange)="handleReceiptFilter($event)"
+          (valueChange)="onReceiptChange()">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto width-60 font-bold">Receipt #</div>
+              <div class="col col-auto minWidth-60 font-bold">Created Date</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto width-60 templatecell">{{ dataItem?.ReceiptNumber}}</div>
+            <div class="col col-auto minWidth-60 templatecell">{{ dataItem?.ReceiptDate | date: 'MM/dd/yyyy hh:mm:ss a'}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-60">PO #</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-140" [data]="poNumbers | sortPipe : 'PONumber' : true" [(value)]="selectedPONumber"
+          [textField]="'PONumber'" [valueField]="'PONumber'" [popupSettings]="{ width: 'auto' }" [filterable]="true" (filterChange)="handlePOFilter($event)"
+          (valueChange)="onPOChange()">
+          <ng-template kendoComboBoxHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto width-60 font-bold">PO #</div>
+              <div class="col col-auto minWidth-60 font-bold">Created Date</div>
+            </div>
+          </ng-template>
+          <ng-template kendoComboBoxItemTemplate let-dataItem>
+            <div class="col col-auto width-60 templatecell">{{ dataItem?.PONumber}}</div>
+            <div class="col col-auto minWidth-60 templatecell">{{ dataItem?.PoCreatedDate | date: 'MM/dd/yyyy hh:mm:ss'}}</div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+    </div>
+    <div class="col-md-3 col-lg-auto col">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-100-2">Receipt From Date</label>
+        <div class="custFields  custFields-lg">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" [(value)]="receiptFromDate" (valueChange)="onchangefromDate(receiptFromDate,receiptToDate)"></kendo-datepicker>
+          </div>
+        </div>
+      </div>
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-100-2">Receipt To Date</label>
+        <div class="custFields  custFields-lg">
+          <div class="input-group">
+            <kendo-datepicker class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" [(value)]="receiptToDate" [min]="this.receiptFromDate" (valueChange)="onchangetoDate(receiptFromDate,receiptToDate)"></kendo-datepicker>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="col-md-3 col-lg-auto col">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-90-2">Vendor Name</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-270" [data]="vendorNames  | sortPipe : 'VendorName' : true" [(value)]="selectedVendorName"
+          [textField]="'VendorName'" [valueField]="'VendorName'" [popupSettings]="{ width: 'auto' }" [filterable]="true" (filterChange)="handleVendorNameFilter($event)"
+          (valueChange)="onVendorChange()">
+          <ng-template kendoDropDownListHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto minWidth-100 font-bold">Vendor Name</div>
+            </div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label width-90-2">PickUp Location</label>
+        <kendo-combobox class="k-widget k-dropdown k-header width-270" [data]="pickupLocations  | sortPipe : 'PickupLocation' : true"
+          [(value)]="selectedPickUpLocation" [textField]="'PickupLocation'" [valueField]="'PickupLocation'" [popupSettings]="{ width: 'auto' }"
+          [filterable]="true" (filterChange)="handlePickupLocationFilter($event)" (valueChange)="onPickupLocationChange()">
+          <ng-template kendoDropDownListHeaderTemplate>
+            <div class="row k-list-header">
+              <div class="col col-auto minWidth-60 font-bold">Name</div>
+            </div>
+          </ng-template>
+        </kendo-combobox>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-lg-auto col">
+      <div class="form-group row custFormrow armrk-btn">
+        <button type="submit" class="btn btn-clearall-circle-red-bg" (click)="ClearHeader()" [disabled]="canDisableSearchAndClear()"></button>
+        <button type="submit" class="btn btn-arrow-right-circle-red-bg" (click)="Search()" [disabled]="canDisableSearchAndClear()"></button>
+      </div>
+    </div>
+  </div>
+  <div id="agglomerations2" class=" text-right col agglomerations iconTooltip iconTooltip-large ">
+    <button title="Export to PDF" class="icon_arm arm_pdf" (click)="ExportToPdf(grid)" id="moscow" [disabled]="(lookUpGrid.length === 0)">
+    </button>
+    <button title="Export to Excel" class="icon_arm arm_excel" (click)="ExportToExcel(grid)" id="moscow" [disabled]="(lookUpGrid.length === 0)">
+    </button>
+  </div>
+
+  <div id="grid" data-role="grid" class="k-grid k-widget k-display-block">
+    <div class="k-grid-header responsiveTable">
+      <kendo-grid #grid="kendoGrid" [scrollable]="'scrollable'" [data]="gridData" [height]="500" [style.maxHeight.vh]="50" [sortable]="{allowUnsort:false}"
+        [sort]="sort" (sortChange)="sortChange($event)">
+        <kendo-grid-column field="ReceiptNumber" title="Receipt #" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <!-- <input class="k-textbox" [(ngModel)]="dataItem.ReceiptNumber" type="text" disabled/> -->
+            <span class="link link-blue" (click)='post(dataItem.ReceiptNumber,dataItem.PONumber)'>{{ dataItem.ReceiptNumber }}</span>
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-column field="ReceivedDate" title="Receipt Date" width="160">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.ReceivedDate" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="ContainerNumber" title="Container" width="160">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.ContainerNumber" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="PickupNumber" title="Pickup #" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.PickupNumber" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="PONumber" title="PO #" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.PONumber" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="Quantity" title="Roll Yards" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox text-right" [ngModel]="dataItem.Quantity | number" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="ReceivedYards" title="Received Yards" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox text-right" [ngModel]="dataItem.ReceivedYards | number" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="ItemCode" title="Aramark Item " width="140">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.ItemCode" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="Color" title="Color" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.Color" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="Width" title="Width" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox text-right" [ngModel]="dataItem.Width | number" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="FiberContent" title="Fiber Content" width="120">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.FiberContent" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="VendorItem" title="Vendor Item" width="110">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.VendorItem" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="COO" title="COO" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox" [(ngModel)]="dataItem.COO" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+        <kendo-grid-column field="Defective" title="Defective" width="100">
+          <ng-template kendoGridCellTemplate let-dataItem>
+            <input class="k-textbox text-right" [ngModel]="dataItem.Defective | number" type="text" disabled/>
+          </ng-template>
+        </kendo-grid-column>
+
+        <kendo-grid-pdf fileName="{{selectedpickUp?.PickupNumber}}.pdf" [repeatHeaders]="true">
+          <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+          <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+            <div class="page-template">
+              <div class="header">
+                <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+              </div>
+              <div class="footer">
+                Page {{ pageNum }} of {{ totalPages }}
+              </div>
+            </div>
+          </ng-template>
+          <kendo-grid-column field="ReceiptNumber" title="Receipt #">
+          </kendo-grid-column>
+          <kendo-grid-column field="ReceivedDate" title="Receipt Date">
+          </kendo-grid-column>
+          <kendo-grid-column field="ContainerNumber" title="Container #">
+          </kendo-grid-column>
+          <kendo-grid-column field="PickupNumber" title="Pickup #">
+          </kendo-grid-column>
+          <kendo-grid-column field="PONumber" title="PO #">
+          </kendo-grid-column>
+          <kendo-grid-column field="Quantity" title="Roll Yards">
+          </kendo-grid-column>
+          <kendo-grid-column field="ReceivedYards" title="Received Yards">
+          </kendo-grid-column>
+          <kendo-grid-column field="ItemCode" title="Aramark Item Code">
+          </kendo-grid-column>
+          <kendo-grid-column field="Color" title="Color">
+          </kendo-grid-column>
+          <kendo-grid-column field="Width" title="Width">
+          </kendo-grid-column>
+          <kendo-grid-column field="FiberContent" title="Fiber Content">
+          </kendo-grid-column>
+          <kendo-grid-column field="VendorItem" title="Vendor Item">
+          </kendo-grid-column>
+          <kendo-grid-column field="COO" title="COO">
+          </kendo-grid-column>
+          <kendo-grid-column field="Defective" title="Defective">
+          </kendo-grid-column>
+        </kendo-grid-pdf>
+
+        <kendo-grid-excel fileName="{{selectedpickUp?.PickupNumber}}.xlsx">
+        </kendo-grid-excel>
+      </kendo-grid>
+    </div>
+  </div>
+
+  <form class="row custForm armrk-tbl-footer no-gutters custLayout clearfix">
+    <div class="col col-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Yards</label>
+        <input type="text" class="k-textbox  text-left width-70" [value]="yards | number" disabled>
+      </div>
+    </div>
+    <div class="col col-auto mr-auto mt-2">
+      <div class="form-group row custFormrow">
+        <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Received</label>
+        <input type="text" class="k-textbox  text-left width-70" [value]="receivedYards | number" disabled>
+      </div>
+    </div>
+  </form>

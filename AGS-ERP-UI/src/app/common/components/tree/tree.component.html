@@ -1,0 +1,16 @@
+<div class="panel-body">
+  <ul class="nav navbar-nav" >
+  <li class="panel panel-default {{l.Id == childId ? 'active' : ''}}"  *ngFor="let l of list" id="dropdown">
+      
+        <a class="pv" href="#dropdown-{{l.Id}}" data-toggle="collapse" *ngIf='hasChild(l.Id)'>
+         
+          {{l.Name}}
+        </a>
+        <div id="dropdown-{{l.Id}}" class="panel-collapse collapse" *ngIf='hasChild(l.Id)'>
+          <app-tree [list]="getChildMenu(l.Id)"></app-tree>
+        </div>
+        <a [routerLink]="[l.Path]"  (click)="addActiveClass(l.Id)"  *ngIf='!hasChild(l.Id)'>{{l.Name}}</a>
+      
+    </li>
+  </ul>
+</div>

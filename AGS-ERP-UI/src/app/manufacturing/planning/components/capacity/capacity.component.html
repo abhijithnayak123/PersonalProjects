@@ -1,0 +1,180 @@
+<div class="tab-container tab-control  fab-container-track frm-lg">
+  
+    <div class="row custForm no-gutters custLayout">
+        <div class="col col-auto mt-2">    
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label font-bold width-50">Vendor</label>
+                <kendo-dropdownlist class="width-120" >
+              </kendo-dropdownlist>
+            </div>
+        </div>
+        <div class="col col-auto mt-2"> 
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-90">Load Category</label>
+                <kendo-combobox class="k-widget k-dropdown k-header width-120">
+                </kendo-combobox>
+            </div>
+          </div>
+          <div class="col col-auto mt-2"> 
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-60-1"># of Week</label>
+                <input class="k-textbox width-50" type="text" />
+            </div>
+          </div>
+          <div class="col col-auto mt-2">  
+            <div class="form-group row custFormrow">
+              <label for="staticEmail" class="col-form-label width-90-1" >Capacity Group</label>
+              <input class="k-textbox width-140" type="text"  disabled/>
+            </div>
+          </div>
+  
+          <div class="col col-auto mt-2 mr-auto">
+              <div class="form-group row custFormrow armrk-btn">
+                <button type="submit" class="btn btn-clearall-circle-red-bg"></button>
+                <button type="submit" class="btn btn-arrow-right-circle-red-bg"></button>
+              </div>
+          </div>
+
+          <div class="col col-auto ml-auto mt-2"> 
+            <div class="form-group row custFormrow">
+              <button type="submit" class="btn btn-danger armrk-btn mr-2">Transpose</button>
+              <button type="submit" class="btn btn-danger armrk-btn mr-2">Upload</button>
+            </div>
+          </div>
+          <div class="col col-auto mr-0 pr-0">
+            <div id="agglomerations2" class=" text-right col agglomerations iconTooltip iconTooltip-large armrk-btn pt-0 mr-0 clearfix">
+              <button title="Export to PDF"  class="icon_arm arm_pdf" id="moscow" ></button>
+              <button title="Export to Excel"  class="icon_arm arm_excel" id="moscow" ></button>
+            </div>
+          </div>
+      </div>
+      <!-- <div class="row custForm no-gutters custLayout">
+        
+      </div>  -->
+    
+    <div id="grid2" class="clearfix"></div>
+    <!-- <table role="grid2">
+      <thead role="rowgroup"> -->
+        <kendo-grid #grid="kendoGrid"  [height]="630" [style.maxHeight.vh]="50">
+            
+          <kendo-grid-column title="" [width]="40" class="text-center">
+            <ng-template kendoGridHeaderTemplate>
+                <input type="checkbox" id="girdHeadermaintainrolls" class="k-checkbox" >
+                <label class="k-checkbox-label" for="girdHeadermaintainrolls"></label>
+              </ng-template>
+            <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+              <input type="checkbox" id=rowIndex class="k-checkbox" >
+              <label class="k-checkbox-label" for=rowIndex></label>
+            </ng-template>
+          </kendo-grid-column>
+          <kendo-grid-column title="#" width="40" class="text-center" [style.minWidth.px]="40" [style.maxWidth.px]="40">
+            <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+              {{rowIndex + 1}}
+            </ng-template>
+          </kendo-grid-column>
+          <kendo-grid-column field="ContainerNumber" title="Vendor Code" [width]="120">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <div>
+                <input [disabled]="true" type="text" class="k-textbox text-center" />
+              </div>
+            </ng-template>
+          </kendo-grid-column>
+          <kendo-grid-column field="PickUpNumber" title="Vendor Name" [width]="180">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <div>
+                <input [disabled]="true" type="text" class="k-textbox text-center" />
+              </div>
+            </ng-template>
+          </kendo-grid-column>
+          <kendo-grid-column field="PONumber" title="Load Category" [width]="120">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <div>
+                <input [disabled]="true" type="text" class="k-textbox text-center"  />
+              </div>
+            </ng-template>
+          </kendo-grid-column>
+  
+          <kendo-grid-column field="TotalRolls" title="Fiscal wk End Date" [width]="180">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <div>
+                <input [disabled]="true" type="text" class="k-textbox text-right"  />
+              </div>
+            </ng-template>
+          </kendo-grid-column>
+  
+          <kendo-grid-column field="TotalYards" title="Capacity" [width]="80">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <div>
+                <input [disabled]="true" type="text" class="k-textbox text-right" />
+              </div>
+            </ng-template>
+          </kendo-grid-column>
+  
+          <kendo-grid-column field="PickUpLocation" title="Comments" [width]="180">
+            <ng-template kendoGridCellTemplate let-dataItem>
+              <input [disabled]="true" class="k-textbox text-left" type="text"  />
+            </ng-template>
+          </kendo-grid-column>
+                
+      <kendo-grid-pdf fileName="container_search_results.pdf" [repeatHeaders]="true">
+        <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+        <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+          <div class="page-template">
+            <div class="header">
+              <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+            </div>
+            <div class="footer">
+              Page {{ pageNum }} of {{ totalPages }}
+            </div>
+          </div>
+        </ng-template>
+        <kendo-grid-column field="ContainerNumber" title="Vendor">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="PickupNumber" title="Vendor Name">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="PONumber" title="Load Category">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="TotalRolls" title="Fiscal wk End Date">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="TotalYards" title="Capacity">
+        </kendo-grid-column>
+  
+        <kendo-grid-column field="PickupLocation" title="Comments">
+        </kendo-grid-column>
+      </kendo-grid-pdf>
+  
+      <kendo-grid-excel fileName="container_search_results.xlsx">
+        <kendo-excelexport-column field="ContainerNumber" title="Vendor">
+        </kendo-excelexport-column>
+  
+        <kendo-excelexport-column field="PickupNumber" title="Vendor Name">
+        </kendo-excelexport-column>
+  
+        <kendo-excelexport-column field="PONumber" title="Load Category">
+        </kendo-excelexport-column>
+  
+        <kendo-excelexport-column field="TotalRolls" title="Fiscal wk End Date">
+        </kendo-excelexport-column>
+  
+        <kendo-excelexport-column field="TotalYards" title="Capacity">
+        </kendo-excelexport-column>
+  
+        <kendo-excelexport-column field="PickupLocation" title="Comments">
+        </kendo-excelexport-column>
+      </kendo-grid-excel>
+  
+    </kendo-grid>
+      <!-- </thead>
+    </table> -->
+  
+    <form class="armrk-tbl-footer custFields custFields-inline form-inline clearfix ">
+      <div class="form-group ml-auto pr-4">
+          <button type="submit" class="btn btn-danger armrk-btn mr-2" >Save</button>
+      </div>
+  </form>
+  </div>
+  

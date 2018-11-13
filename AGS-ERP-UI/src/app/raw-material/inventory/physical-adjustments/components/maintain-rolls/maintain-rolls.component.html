@@ -1,0 +1,399 @@
+<div class="maintain-roles">
+    
+      <div class="aramark-tabs k-content  card-box-shadow clearfix">
+        <div id="tabstrip">
+          <!--tab Receiving-->
+          <div class="tab-container fab-container-track frm-lg pt-2 pb-2">
+            <app-spinner [show]="show"></app-spinner>
+              <div id="binLocationFilter" class="clearfix">
+                <form class="row custForm no-gutters border-bottom custLayout clearfix">
+                  <div class="col col-auto mt-1">    
+                    <div class="form-group row custFormrow">
+                      <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Location</label>
+                      <kendo-dropdownlist class="k-widget k-dropdown k-header width-260" [data]="locations" [(value)]="selectedLocation" [textField]="'Name'"
+                      [valueField]="'Id'" (valueChange)="onLocationChange($event)" [popupSettings]="{ width: 'auto' }">
+                    </kendo-dropdownlist>
+                    </div>
+                  </div>
+                  <div class="col col-auto mr-1 mt-1">
+                    <div class="form-group row custFormrow">
+                      <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">Bin</label>
+                      <div class="fctl-bin custFields custFields-lg float-left kdp-head mr-0" *ngIf="binLocations">
+                        <OPT-Dropdown (valueChangeSelectedEvent)="onBinLocationChange($event)" *ngIf="binLocations" [data]="binLocations" class="minWidth-140 width-140" style="display:inline-block"></OPT-Dropdown>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col col-auto mr-auto">
+                    <div id="agglomerations2" class="agglomerations iconTooltip-large pull-left  clearfix" style="    padding-top: 0;    margin-top: -2px;">
+                      <button class="icon_arm_sm arm_refresh mr-2" (click)="selectedBinLocation !== undefined ? onRefresh() : null" role="button" [disabled]="selectedBinLocation === undefined">
+                      </button>
+                      <button title="Add Row" class="icon_arm arm_add" id="moscow" (click)="selectedBinLocation !== undefined ? onAdd() : null" [disabled]="selectedBinLocation === undefined">
+                      </button>
+                      <button title="Copy Row" class="icon_arm arm_copy" id="moscow" (click)="onCopy()" [disabled]="!enableActions()">
+                      </button>
+                      <button title="Delete" class="icon_arm arm_delete" id="moscow" (click)="deleteConfirm()" [disabled]="!enableActions()">
+                      </button>
+                      <button title="Transfer Rolls" class="icon_arm arm_transfer" id="moscow" data-toggle="modal" data-target="#exampleModal" (click)="onTransfer()"       [disabled]="!enableActions()">
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col col-auto mr-0">
+                    <div id="agglomerations2" class="float-right agglomerations iconTooltip-large pull-left  clearfix mr-0" style="    padding-top: 0;    margin-top: -2px;">
+                      <button title="Export to PDF" class="icon_arm arm_pdf" id="moscow" (click)="ExportToPdf(grid)" [disabled]="selectedBinLocation === undefined || gridView.data.length === 0">
+                      </button>
+                      <button title="Export to Excel" class="icon_arm arm_excel" id="moscow" (click)="ExportToExcel(grid)" [disabled]="selectedBinLocation === undefined || gridView.data.length === 0">
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+    
+            <div id="grid" class="maintain responsiveTable clearfix">
+              <!-- <table role="grid">
+                <thead role="rowgroup">  -->
+              <kendo-grid #grid="kendoGrid" [data]="gridView" [resizable]="true" [scrollable]="'scrollable'" [style.height.vh]="68" [style.maxHeight.vh]="68"
+              [sortable]="{allowUnsort:false}" [sort]="sort" (sortChange)="sortChange($event)">
+    
+                <kendo-grid-column field="IsSelected" title="" [width]="40" class="text-center" [sortable]="false">
+                  <ng-template kendoGridHeaderTemplate>
+                    <!-- <input class="form-check-input" type="checkbox" (change)="onSelectAll($event)" [(ngModel)]="IsAllSelected" /> -->
+                    <input type="checkbox" id="girdHeadermaintainrolls" class="k-checkbox" (change)="onSelectAll($event)" [ngModel]="isAllSelected()">
+                    <label class="k-checkbox-label" for="girdHeadermaintainrolls"></label>
+                  </ng-template>
+                  <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                    <!-- <input class="form-control" type="checkbox" [(ngModel)]="dataItem.IsSelected" /> -->
+                    <input type="checkbox" id="{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.IsSelected" >
+                    <label class="k-checkbox-label" for="{{rowIndex}}"></label>
+                  </ng-template>
+                </kendo-grid-column>
+    
+                <kendo-grid-column field="RollCaseId" title="Roll Case #" [width]="112">
+                  <ng-template kendoGridCellTemplate let-dataItem>
+                    <div [class]="dataItem.IsValid ? '' : 'error-grid'">
+                      <input [disabled]="!dataItem.IsAdded" type="text" class="k-textbox " style="font-weight: bold" [(ngModel)]="dataItem.RollCaseId" maxlength="50" />
+                    </div>
+                  </ng-template>
+                </kendo-grid-column>
+    
+                <kendo-grid-column field="ColorCode.Color" title="Color" [width]="120" [style.maxWidth.px]="120" >
+                  <ng-template kendoGridCellTemplate let-dataItem>
+                    <kendo-combobox  [data]="dataItem.ColorDetailsList" class="custom_dropdown armrk-list-container k-dropdown"
+                     [title]="dataItem.ColorCode == undefined ? '': dataItem.ColorCode.Color" [value]="dataItem.ColorCode" 
+                     [textField]="'Color'" [valueField]="'ColorId'"
+                      (valueChange)="onColorChange($event, dataItem)" [disabled]="!dataItem.IsAdded" 
+                      [popupSettings]="{ width: 'auto' }"
+                      [filterable]="true" (filterChange)="handleColorFilter($event,dataItem)">
+                        <ng-template kendoComboBoxHeaderTemplate>
+                            <div class="row k-list-header">
+                              <div class="col-auto width-60 font-bold">Color Code</div>
+                              <div class="col-auto font-bold">Color</div>
+                            </div>
+                          </ng-template>
+                          <ng-template kendoComboBoxItemTemplate let-dataItem>
+                              <div class="col-auto width-60 templatecell">{{ dataItem?.ColorCode }}</div>
+                              <div class="col-auto templatecell">{{ dataItem?.Color }}</div>
+                          </ng-template>
+                    </kendo-combobox>
+                  </ng-template>
+                </kendo-grid-column>
+    
+                    <kendo-grid-column field="AramarkItemCode.ItemCode" title="Aramark Item" [width]="130">
+                      <ng-template kendoGridCellTemplate let-dataItem>
+                        <kendo-combobox [data]="dataItem.AramarkItemList" class="armrk-list-container k-dropdown" 
+                        [title]="dataItem.AramarkItemCode == undefined ? '': dataItem.AramarkItemCode.ItemCode"
+                         [value]="dataItem.AramarkItemCode" [textField]="'ItemCode'" [valueField]="'Id'"
+                          (valueChange)="onAramarkItemCodeChange($event, dataItem)" [disabled]="!dataItem.IsAdded" 
+                          [popupSettings]="{ width: 'auto' }"
+                          [filterable]="true" (filterChange)="handleAramarkItemFilter($event, dataItem)">
+                          <!-- <ng-template kendoDropDownListItemTemplate let-dataItem>
+                              <div class="col-4 templatecell pr-0 kdp-list">{{ dataItem?.ItemCode }}</div> <div class="col-7 templatecell kdp-list">{{ dataItem?.ItemName }}</div> 
+                          </ng-template> -->
+
+                          <ng-template kendoComboBoxHeaderTemplate>
+                              <div class="row k-list-header">
+                                <div class="col-auto width-100 font-bold">Item Code</div>
+                                <div class="col-auto minWidth-120 font-bold">Item Name</div>
+                              </div>
+                            </ng-template>
+                            <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                <div class="col-auto width-100 templatecell">{{ dataItem?.ItemCode }}</div>
+                                <div class="col-auto minWidth-120 templatecell">{{ dataItem?.ItemName }}</div>
+                            </ng-template>
+
+                        </kendo-combobox>
+                      </ng-template>
+                    </kendo-grid-column>
+    
+                <kendo-grid-column field="FiberContent" title="Fiber Content" [width]="160">
+                  <ng-template kendoGridCellTemplate let-dataItem>
+                    <div title="{{dataItem.FiberContent}}" style="max-width:100%;">
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.FiberContent" disabled />
+                    </div>
+                  </ng-template>
+                </kendo-grid-column>
+    
+                    <kendo-grid-column field="Vendor.Name" title="Vendor" [width]="130">
+                      <ng-template kendoGridCellTemplate let-dataItem>
+                        <kendo-combobox    [data]="dataItem.VendorList" [title]="dataItem.Vendor == undefined ? '': dataItem.Vendor.Name" class=" k-dropdown font-bold"
+                        [value]="dataItem.Vendor" [textField]="'Name'" [valueField]="'Id'"
+                          (valueChange)="onVendorChange($event, dataItem)" [disabled]="!dataItem.IsAdded" 
+                          [popupSettings]="{ width: 'auto' }" 
+                          [filterable]="true" (filterChange)="handleVendorFilter($event, dataItem)">
+                          <!-- <ng-template kendoDropDownListItemTemplate let-dataItem>
+                              <div class="col-2 templatecell kdp-list">{{ dataItem?.Code }}</div> <div class="col-8 templatecell kdp-list">{{ dataItem?.Name }}</div> 
+                          </ng-template> -->
+                          <ng-template kendoComboBoxHeaderTemplate>
+                              <div class="row k-list-header">
+                                <div class="col-auto width-60 font-bold">Code</div>
+                                <div class="col-auto minWidth-100 font-bold">Name</div>
+                              </div>
+                            </ng-template>
+                            <ng-template kendoComboBoxItemTemplate let-dataItem>
+                                <div class="col-auto width-60 templatecell">{{ dataItem?.Code }}</div>
+                                <div class="col-auto minWidth-100 templatecell">{{ dataItem?.Name }}</div>
+                            </ng-template>
+                        </kendo-combobox>
+                      </ng-template>
+                    </kendo-grid-column>
+
+            <kendo-grid-column field="VendorItem" title="Vendor Item" [width]="130">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.VendorItem" disabled />
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="LotNumber" title="Lot #" [width]="80">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.LotNumber" [disabled]="!(dataItem.IsSelected || dataItem.IsAdded)"
+                  (change)="modifyRow(dataItem)" maxlength="10"/>
+              </ng-template>
+            </kendo-grid-column>
+    
+            <kendo-grid-column field="CountryOfOrigin" title="COO" [width]="76">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" type="text" [(ngModel)]="dataItem.CountryOfOrigin" disabled />
+              </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column field="Width" title="Width" [width]="86">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox"  style="text-align: right" type="text" [ngModel]="dataItem.Width | number" disabled />
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="OnHand" title="On Hand" [width]="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox"  style="text-align: right"  type="text" [(ngModel)]="dataItem.OnHand" (change)="onOHChange(dataItem)" [disabled]="!(dataItem.IsSelected || dataItem.IsAdded)"
+                only-number groupByThree/>
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="Allocated" title="Allocated" [width]="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [ngModel]="dataItem.Allocated| number" disabled />
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="Available" title="Available" [width]="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [ngModel]="dataItem.Available| number" disabled />
+              </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="Defective" title="Defective" [width]="100">
+              <ng-template kendoGridCellTemplate let-dataItem>
+                <input class="k-textbox" style="text-align: right" type="text" [(ngModel)]="dataItem.Defective" (change)="onDefectiveChange(dataItem)" [disabled]="!(!dataItem.IsAdded && (!dataItem.IsAdded && dataItem.IsSelected))"
+                only-number groupByThree/>
+              </ng-template>
+            </kendo-grid-column>
+
+                <kendo-grid-column field="ReasonCode.Description" title="Reason Code" [width]="160"  [sortable]="false">
+                  <ng-template kendoGridCellTemplate let-dataItem>
+                    <kendo-dropdownlist [data]="dataItem.IsAdded ? reasonDataAdd : reasonDataDelupd" [title]="dataItem.ReasonCodeId == undefined ? '' : dataItem.ReasonCodeId.Description" [value]="dataItem.ReasonCode" [textField]="'Description'" [valueField]="'Id'" (valueChange)="OnReasonChange($event, dataItem)"
+                      [popupSettings]="{ width: 'auto' }" [disabled]="!(dataItem.IsSelected || dataItem.IsAdded)">
+                      <!-- <ng-template kendoDropDownListItemTemplate let-dataItem>
+                      
+                          <div class="col-1 templatecell kdp-list">{{ dataItem?.Id }}</div> <div class="col-9 templatecell kdp-list">{{ dataItem?.Description }}</div>
+                      </ng-template> -->
+
+                      <ng-template kendoDropDownListHeaderTemplate>
+                          <div class="row k-list-header">
+                            <div class="col-auto width-20 font-bold">ID</div>
+                            <div class="col-auto minWidth-100 font-bold">Description</div>
+                          </div>
+                        </ng-template>
+                        <ng-template kendoDropDownListItemTemplate let-dataItem>
+                            <div class="col-auto width-20 templatecell">{{ dataItem?.Id }}</div>
+                            <div class="col-auto minWidth-100 templatecell">{{ dataItem?.Description }}</div>
+                        </ng-template>
+                    </kendo-dropdownlist>
+                  </ng-template>
+                </kendo-grid-column>
+    
+                <kendo-grid-pdf fileName="{{selectedBinLocation?.AreaCode}}-Bin.pdf" [repeatHeaders]="true">
+                  <kendo-grid-pdf-margin top="1cm" left="1cm" right="1cm" bottom="2cm"></kendo-grid-pdf-margin>
+                  <ng-template kendoGridPDFTemplate let-pageNum="pageNum" let-totalPages="totalPages">
+                    <div class="page-template">
+                      <div class="header">
+                        <div style="float: right">Page {{ pageNum }} of {{ totalPages }}</div>
+                      </div>
+                      <div class="footer">
+                        Page {{ pageNum }} of {{ totalPages }}
+                      </div>
+                    </div>
+                  </ng-template>
+                  <kendo-grid-column field="RollCaseId" title="Roll Case Id">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="ColorCode.Color" title="Color">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="AramarkItemCode.ItemCode" title="Aramark Item">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="FiberContent" title="Fiber Content">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="Vendor.Name" title="Vendor">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="VendorItem" title="Vendor Item">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="LotNumber" title="Lot #" >
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="CountryOfOrigin" title="COO" >
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="Width" title="Width">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="OnHand" title="On Hand" >
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="Allocated" title="Allocated">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="Available" title="Available">
+                  </kendo-grid-column>
+    
+                  <kendo-grid-column field="Defective" title="Defective">
+                  </kendo-grid-column>
+                </kendo-grid-pdf>
+                <kendo-grid-excel fileName="{{selectedBinLocation?.AreaCode}}-Bin.xlsx">
+                  <kendo-excelexport-column field="RollCaseId" title="Roll Case Id">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="ColorCode.Color" title="Color">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="AramarkItemCode.ItemCode" title="Aramark Item">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="FiberContent" title="Fiber Content">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="Vendor.Name" title="Vendor">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="VendorItem" title="Vendor Item">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="LotNumber" title="Lot #">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="CountryOfOrigin" title="COO">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="Width" title="Width">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="OnHand" title="On Hand">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="Allocated" title="Allocated">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="Available" title="Available">
+                  </kendo-excelexport-column>
+    
+                  <kendo-excelexport-column field="Defective" title="Defective">
+                  </kendo-excelexport-column>
+                </kendo-grid-excel>
+              </kendo-grid>
+              <!-- </thead>
+              </table> -->
+            </div>
+            
+
+            <form class="row custForm armrk-tbl-footer no-gutters border-bottom custLayout clearfix">
+                <div class="col col-auto mt-2">    
+                  <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Total Rolls</label>
+                    <input type="text" class="k-textbox text-left width-70" disabled id="" value="{{rollCases.length | number}}" style="    max-width: 70px;">
+                  </div>
+                </div>
+                <div class="col col-auto mt-2">
+                  <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto minWidthAuto">On Hand</label>
+                    <input type="text" class="k-textbox  text-left width-70" id=""   disabled value="{{getTotalOnHandYard() | number}}" style="    max-width: 70px;">
+                  </div>
+                </div>
+                <div class="col col-auto mt-2">    
+                  <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Allocated</label> 
+                    <input type="text" class="k-textbox text-left width-70" id=""  disabled value="{{getTotalAllocatedYards() | number}}" style="    max-width: 70px;">
+                  </div>
+                </div>
+                <div class="col col-auto mr-auto mt-2">    
+                  <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto  minWidthAuto">Available</label>
+                    <input type="text" class="k-textbox text-left width-70" id="" disabled value="{{getTotalAvailableYards() | number}}" style="    max-width: 70px;">
+                  </div>
+                </div>
+               
+                <div class="col col-auto mr-0 mt-2 ml-auto text-right">
+                    <button type="submit" [disabled]="!enableActions()" class="btn btn-danger armrk-btn" (click)="saveConfirm()">Save</button>
+                </div>
+                
+              </form>
+          </div>
+          <!--end of tab Receiving-->
+        </div>
+      </div>
+    
+    </div>
+    
+    
+    <kendo-dialog [width]="600" *ngIf="opened">
+      <span class="close-dialog">
+        <img src="./assets/images/icon_close.png" (click)="close()">
+      </span>
+      <div class="modal-body">
+        <div class="custForm clearfix">
+          <div class="col-12 custFields custFields-lg p-0">
+            <label for="staticEmail2" class=" col-12 mt-1">
+              <b>To Bin Location</b>
+            </label>
+            <div class="col fctl-bin custFields custFields-lg float-left kdp-head width-140 mr-0" *ngIf="destinationBinLocationList">
+              <OPT-Dropdown (valueChangeSelectedEvent)="onDestinationBinChange($event)" *ngIf="destinationBinLocationList" [data]="destinationBinLocationList"></OPT-Dropdown>
+            </div>
+            <!-- <kendo-combobox class="col-12 fctl-loc" 
+            [data]="destinationBinLocationList" 
+            [(value)]="selectedDestinationBinLocation"
+              [textField]="'AreaCode'" 
+              [valueField]="'Id'" 
+              (valueChange)="onDestinationBinChange($event)" 
+              [popupSettings]="{ width: 'auto' }"
+              [filterable]="true" (filterChange)="handleBinLocationFilter($event)">
+            </kendo-combobox> -->
+            <label for="staticEmail2" class="col-12 mt-1 text-danger">
+              <b>{{ DestinationBinFullMessage }}</b>
+            </label>
+          </div>
+        </div>
+        <div class="text-center k-dilog-btn-group">
+          <button kendoButton (click)="close()" class="btn btn-danger" (click)="transferConfirm()" [disabled]="!enableTransfer()">Transfer</button>
+        </div>
+      </div>
+    </kendo-dialog>  

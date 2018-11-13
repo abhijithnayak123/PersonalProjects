@@ -1,0 +1,61 @@
+import { BaseModel } from "../../../shared/models/base.model";
+
+export class ControlModel extends BaseModel {
+    constructor() {
+        super();
+    }
+    public CutItemId: number;
+    public ItemCode: string;
+    public FiberContent: string;
+    public RMVendorName: string;
+    public RMVendorItemNumber: string;
+    public Width: number;
+    public BinLocation: string;
+    public RollCaseId: number;
+    public CutHDRId: number;
+    public AvailableYards: number;
+    public AllocationBatchId: number;
+    public AllocationBatchVersionStamp: string;
+    public AllocationHDRVersionStamp: string;
+    public MarkerYeild: number;
+    public MarkerQty: number;
+    public COO: string;
+    public RMVendorId: number;
+    public RMVendorSiteId: number;
+    public MillId: number;
+    public LotNumber: string;
+    public AllocationItemId: number;
+    public AllocationItemVersionStamp: string;
+    public InventoryHDRId: number;
+    public AllocationQty: number;
+    public Pulled: boolean;
+    public PulledToInventoryArea: string;
+    public ConsumedQty: number;
+    public ReturnedQty: number;
+    public ReturnedToInventoryArea: string;
+    public ReturnedToInventoryAreaId: number;
+    public AdjustedQty: number;
+    public AdjustedResonCodeId: number;
+    public AllocationRollId: number;
+    public AllocationRollVesrsionStamp: string;
+    public InventoryDTLId: number;
+    public AllocationHDRId: number;
+    public ActionType: number;
+    public PullTimeStamp: string;
+    public IsSelected: boolean;
+    public PulledBy: string;
+    public PulledQty: number;
+    public PulledToInventoryAreaId: number;
+    public ConsumedDate: string;
+    public ConsumedBy: string;
+    public Consignment: boolean;
+    public ConsignmentField: string;
+    public ReceiptDate: string;
+    public ItemId: number;
+    public AllocateBatchVersionMap: string;
+    public CuttingVendorSiteId: number;
+    public Status: string;
+    public IsAddedToCurrentSelection: boolean;
+    public VendorSiteId: number;
+    public RollCaseNumber: string;
+}

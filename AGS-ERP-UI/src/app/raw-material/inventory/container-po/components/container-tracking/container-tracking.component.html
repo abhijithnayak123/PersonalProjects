@@ -1,0 +1,384 @@
+<div class="tab-container fab-container-track frm-lg">
+    <app-spinner [show]="show"></app-spinner>
+    <div id="binLocationFilter" class="binLocationFilter clearfix">
+        <form class="row custForm no-gutters border-bottom custLayout">
+            <div class="col col-auto">
+                <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto">Vendor</label>
+                    <kendo-combobox class="k-dropdown width-220" [data]="vendors | sortPipe : 'RMVendorName'" [popupSettings]="{ width: 'auto' }"
+                        [textField]="'RMVendorName'" [valueField]="'VendorId'" [(value)]="selectedVendor" [filterable]="true"
+                        (filterChange)="handleFilter($event)">
+                        <ng-template kendoDropDownListHeaderTemplate>
+                            <div class="row k-list-header">
+                                <div class="col col-auto minWidth-100 font-bold">Vendor Name</div>
+                            </div>
+                        </ng-template>
+                    </kendo-combobox>
+                </div>
+            </div>
+            <div class="col col-auto">
+                <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold widthAuto">Pickup Date</label>
+                    <div class="custFields  custFields-lg ">
+                        <div class="input-group">
+                            <kendo-datepicker [(value)]="pickUpDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"></kendo-datepicker>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col col-auto">
+                <div class="form-group row custFormrow armrk-btn">
+                    <button type="submit" class="btn btn-clearall-circle-red-bg" (click)="clearSearch()" [disabled]="(!selectedVendor)"></button>
+                    <button type="submit" class="btn btn-arrow-right-circle-red-bg" (click)="getConfirmationOnVendorChange()" [disabled]="(!selectedVendor)"></button>
+                </div>
+            </div>
+        </form>
+
+        <form class="row custForm no-gutters border-bottom custLayout">
+            <div class="col col-auto">
+                <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold width-60">Container</label>
+                    <kendo-combobox class="k-dropdown width-140" [data]="containers | sortPipe : 'ContainerNbr'" [popupSettings]="{ width: 'auto' }"
+                        [textField]="'ContainerNbr'" [valueField]="'ContainerId'" [value]="selectedContainer" (valueChange)="getConfirmationOnChangeOfContainer($event)"
+                        [filterable]="true" (filterChange)="handleContainerFilter($event)" [disabled]="disableFields">
+                        <ng-template kendoComboBoxHeaderTemplate>
+                            <div class="row k-list-header">
+                                <div class="col col-auto width-60 font-bold">Container</div>
+                                <div class="col col-auto minWidth-90 font-bold">Vendor Name</div>
+                            </div>
+                        </ng-template>
+                        <ng-template kendoComboBoxItemTemplate let-dataItem>
+                            <div class="col col-auto width-60 templatecell">{{ dataItem?.ContainerNbr}}</div>
+                            <div class="col col-auto minWidth-120 templatecell">{{ dataItem?.VendorNames}}</div>
+                        </ng-template>
+                    </kendo-combobox>
+                </div>
+
+                <div class="form-group row custFormrow">
+                    <label for="staticEmail" class="col-form-label font-bold width-60">Ref #</label>
+                    <input type="text" class="k-textbox width-140" name="refNumber" [(ngModel)]="containerHeaderDetails.ContainerRefNumber" [disabled]="disableFields"/>
+                </div>
+            </div>
+            <div class="col col-auto">
+                <div class="form-group row custFormrow">
+                    <textarea id="simple-textarea" rows="3" class="k-textbox width-300 maxWidth-300" name="comments" placeholder="Comments" style="min-height: 66px;"
+                        [(ngModel)]="containerHeaderDetails.Comments" [disabled]="disableFields"></textarea>
+                </div>
+            </div>
+            <div class="col col-auto">
+                <div class="form-group row custFormrow ">
+                    <label for="staticEmail" class="col-form-label font-bold width-100">Attachments</label>
+                    <kendo-combobox class="k-dropdown width-180" [data]="attachmentList | sortPipe : 'DisplayName'" [popupSettings]="{ width: 'auto' }"
+                        [textField]="'DisplayName'" [valueField]="'AttachmentId'" [(value)]="selectedAttachment" [filterable]="true"
+                        (filterChange)="handleAttachmentFilter($event)" [disabled]="disableFields">
+                        <ng-template kendoComboBoxHeaderTemplate>
+                            <div class="row k-list-header">
+                                <div class="col col-auto minWidth-200 maxWidth-200 font-bold">FileName</div>
+                                <div class="col col-auto minWidth-160 maxWidth-160 font-bold">Type</div>
+                                <div class="col col-auto minWidth-160 maxWidth-160 font-bold">User</div>
+                                <div class="col col-auto minWidth-160 widthAuto font-bold">Attached Date</div>
+                            </div>
+                        </ng-template>
+                        <ng-template kendoComboBoxItemTemplate let-dataItem>
+                            <div class="col col-auto minWidth-200 maxWidth-200 templatecell"><span class="ellipsis" title="{{ dataItem?.DisplayName}}">{{ dataItem?.DisplayName}}</span></div>
+                            <div class="col col-auto minWidth-160 maxWidth-160 templatecell"><span class="ellipsis" title="{{ dataItem?.AttachmentTypeCode}}">{{ dataItem?.AttachmentTypeCode}}</span></div>
+                            <div class="col col-auto minWidth-160 maxWidth-160 templatecell"><span class="ellipsis" title="{{ dataItem?.CreatedByLogin}}">{{ dataItem?.CreatedByLogin}}</span></div>
+                            <div class="col col-auto minWidth-160 widthAuto templatecell">{{ dataItem?.CreatedOn | date: 'MM/dd/yyyy hh:mm:ss'}}</div>
+                        </ng-template>
+                    </kendo-combobox>
+                </div>
+            </div>
+            <div class="col col-auto mr-auto">
+                <div class="form-group row custFormrow armrk-btn">
+                    <button type="submit" class="btn btn-add-circle-red-sml" (click)="openAttachment()" [disabled]="(!selectedContainer)"></button>
+                    <button type="submit" class="btn btn-delete-circle-red-sml" [disabled]="(!selectedAttachment)" (click)="deleteConfirm()"></button>
+                    <button type="submit" class="btn btn-view-circle-red-sml" [disabled]="(!selectedAttachment)" (click)="downloadFile()"></button>
+                </div>
+            </div>
+            <div class="col col-auto ml-auto mr-0">
+                <div class="form-group row custFormrow armrk-btn">
+                    <a class="btn btn-exprtdownld-circle-red-sml float-right mr-0 {{ContainerReportUrl == null ? 'disabled': ''}}" target="_blank"
+                        [href]="ContainerReportUrl"></a>
+                </div>
+            </div>
+        </form>
+
+    </div>
+
+
+    <form class="custForm clearfix">
+        <div class="form-row align-items-center armrkTable">
+            <div class="col col-2 custFields custFields-lg armrkTcol text-left" style="min-width: 100px;max-width: 100px;width:100px;">
+                <div class="armrkTrow">
+                    <label class=" " for="inlineFormInput"> &nbsp;</label>
+                </div>
+                <div class="armrkTrow font-bold">
+                    <label class=" " for="inlineFormInput">Schedule Date</label>
+                </div>
+                <div class="armrkTrow font-bold">
+                    <label class=" " for="inlineFormInput">Actual Date</label>
+                </div>
+            </div>
+            <div class="col col-5 armrkTable custLayout ">
+                <div class="form-row align-items-center">
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" [disabled]="!created" [style.background-color]="created && containerHeaderDetails?.CurrEventId == 1? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(1,null,'CarrierConfirmationDate')">Created</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.CreatedDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.CreatedDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" disabled style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" [disabled]="!confirm" [style.background-color]="confirm && containerHeaderDetails?.CurrEventId == 2? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(2,'CarrierConfirmationDate','ActualOriginDate')">Confirm</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.ExpectedConfirmationDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                (valueChange)="onScheduleDateChange('ExpectedConfirmationDate','CreatedDate')" [disabled]="!confirm || (!(containerHeaderDetails.CarrierConfirmationDate == null))" style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.CarrierConfirmationDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                    (valueChange)="onActualDateChange('CarrierConfirmationDate','CreatedDate')" [disabled]="!confirm || !(containerHeaderDetails.CurrEventId == 2 || containerHeaderDetails.CurrEventId == 1)" style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" [disabled]="!shipped" [style.background-color]="shipped && containerHeaderDetails?.CurrEventId == 3? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(3,'ActualOriginDate','ActualBorderDate')">Shipped</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.ExpectedPickupDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                (valueChange)="onScheduleDateChange('ExpectedPickupDate','CarrierConfirmationDate')" [disabled]="!shipped || (!(containerHeaderDetails.ActualOriginDate == null))" style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.ActualOriginDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" (valueChange)="onActualDateChange('ActualOriginDate','CarrierConfirmationDate')"
+                                    [disabled]="!shipped || !(containerHeaderDetails.CurrEventId == 3 || containerHeaderDetails.CurrEventId == 2)" style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" [disabled]="!border" [style.background-color]="border && containerHeaderDetails?.CurrEventId == 4? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(4,'ActualBorderDate', 'ActualAtFactoryDate')">At Border</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.ExpectedBorderDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                (valueChange)="onScheduleDateChange('ExpectedBorderDate','ActualOriginDate')" [disabled]="!border || (!(containerHeaderDetails.ActualBorderDate == null))" style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.ActualBorderDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" (valueChange)="onActualDateChange('ActualBorderDate','ActualOriginDate')"
+                                    [disabled]="!border || !(containerHeaderDetails.CurrEventId == 3 || containerHeaderDetails.CurrEventId == 4)" style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" [disabled]="!factory" [style.background-color]="factory && containerHeaderDetails?.CurrEventId == 5? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(5,'ActualAtFactoryDate','ActualDcDate')">At Factory</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.ExpectedAtFactoryDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                (valueChange)="onScheduleDateChange('ExpectedAtFactoryDate','ActualBorderDate')" [disabled]="!factory || (!(containerHeaderDetails.ActualAtFactoryDate == null))" style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.ActualAtFactoryDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'"
+                                    (valueChange)="onActualDateChange('ActualAtFactoryDate','ActualBorderDate')" [disabled]="!factory || !(containerHeaderDetails.CurrEventId == 4 || containerHeaderDetails.CurrEventId == 5)" style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto col-2 custFields armrkTcol text-center">
+                        <div class="armrkTrow">
+                            <button type="button" class="btn btn-block btn-sm" disabled [style.background-color]="recived && containerHeaderDetails?.CurrEventId == 6? '#db2926' : ''"
+                                (click)="UpdateHeaderStatus(6,'ActualDcDate',null)">Received</button>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <kendo-datepicker [(value)]="containerHeaderDetails.ExpectedDcDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" (valueChange)="onScheduleDateChange('ExpectedDcDate','ActualAtFactoryDate')"
+                                disabled style="width:120px;max-width:120px;"></kendo-datepicker>
+                        </div>
+                        <div class="armrkTrow custFields custFields-lg ">
+                            <div class="input-group">
+                                <kendo-datepicker [(value)]="containerHeaderDetails.ActualDcDate" class="width-100" placeholder="mm/dd/yyyy" [format]="'MM/dd/yyyy'" (valueChange)="onActualDateChange('ActualDcDate','ActualAtFactoryDate')"
+                                    disabled style="width:120px;max-width:120px;"></kendo-datepicker>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col col-5 armrkTable responsiveTable">
+                <kendo-grid [scrollable]="'scrollable'" [data]="notesGridView" style="height: auto; min-height: 100px; max-height:100px;margin: 0;"
+                    [sortable]="{allowUnsort:false}" [sort]="notesSort" (sortChange)="sortNotesChange($event)" class="tracking-descr-grid">
+                    <kendo-grid-column field="Notes" title="Description" [width]="450" [sortable]="false">
+                    </kendo-grid-column>
+
+                    <kendo-grid-column field="CreatedOn" title="Date" [width]="100">
+                        <ng-template kendoGridCellTemplate let-dataItem>
+                            <div>
+                                {{dataItem.CreatedOn | date: 'MM/dd/yyyy hh:mm:ss'}}
+                            </div>
+                        </ng-template>
+                    </kendo-grid-column>
+
+                    <kendo-grid-column field="CreatedByLogin" title="User" [width]="120">
+                    </kendo-grid-column>
+
+                </kendo-grid>
+            </div>
+            <div class="col-auto">
+                <div class="form-group row custFormrow armrk-btn mt-4 pt-4">
+                    <button type="submit" class="btn btn-add-circle-red-sml" (click)="openCommentbox()" [disabled]="(!selectedContainer)"></button>
+                </div>
+            </div>
+        </div>
+    </form>
+    <div class="responsiveTable">
+        <kendo-grid #grid="kendoGrid" [data]="gridView" [scrollable]="'scrollable'" [style.maxHeight.vh]="50" [style.minHeight.px]="200"
+            [sortable]="{allowUnsort:false}" [sort]="sort" (sortChange)="sortChange($event)">
+
+            <kendo-grid-column field="VendorCode" title="Vendor Code" [width]="160">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div>
+                        <input [disabled]="true" type="text" class="k-textbox" [(ngModel)]="dataItem.VendorCode" />
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="VendorName" title="Vendor Name" [width]="200">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div>
+                        <input [disabled]="true" type="text" class="k-textbox" [(ngModel)]="dataItem.VendorName" />
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="PickupLocnAddress" title="Pickup Location" [width]="280">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div title="{{dataItem.PickupLocnAddress}}">
+                        <input [disabled]="true" class="k-textbox" type="text" [(ngModel)]="dataItem.PickupLocnAddress" />
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="PickupNbr" title="Pickup #" [width]="200">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div>
+                        <input [disabled]="true" type="text" class="k-textbox" [(ngModel)]="dataItem.PickupNbr" />
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="ShipmentNbr" title="Shipment" [width]="160">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.ShipmentNbr" appAlphaNumeric (ngModelChange)='onGridValueChange()'
+                        [disabled]="fieldDisable" />
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="AsnNbr" title="ASN" [width]="140">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.AsnNbr" appAlphaNumeric (ngModelChange)='onGridValueChange()'
+                        [disabled]="fieldDisable" />
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="BillOfLadingNbr" title="Bill Of Lading" [width]="160">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox" type="text" [(ngModel)]="dataItem.BillOfLadingNbr" appAlphaNumeric (ngModelChange)='onGridValueChange()'
+                        [disabled]="fieldDisable" />
+                </ng-template>
+                <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+                    <div class="text-right font-bold pr-2">Total</div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="TotalRolls" title="Total Rolls" [width]="120">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.TotalRolls" only-number groupByThree (change)='onRollsChange(dataItem)'
+                        [disabled]="fieldDisable" />
+                </ng-template>
+                <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+                    <div class="text-right font-bold pr-2">{{totalRolls | number}}</div>
+                </ng-template>
+            </kendo-grid-column>
+
+            <kendo-grid-column field="TotalYards" title="Total Yards" [width]="120">
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <input class="k-textbox text-right" type="text" [(ngModel)]="dataItem.TotalYards" only-number groupByThree (change)='onYardsChanges(dataItem)'
+                        [disabled]="fieldDisable" />
+                </ng-template>
+                <ng-template kendoGridFooterTemplate let-dataItem let-column="column">
+                    <div class="text-right font-bold pr-2">{{totalYards | number}}</div>
+                </ng-template>
+            </kendo-grid-column>
+            <kendo-grid-column field="IsSelected" title="" width="40" [style.minWidth.px]="40" [style.maxWidth.px]="40" class="text-center">
+                <ng-template kendoGridHeaderTemplate> </ng-template>
+                <ng-template kendoGridCellTemplate let-dataItem>
+                    <div class="armrk-btn">
+                        <a class="btn btn-exprtdownld-circle-red-vrsml btn-overide-temp" target="_blank" [href]="dataItem.VendorReportUrl"></a>
+                    </div>
+                </ng-template>
+            </kendo-grid-column>
+        </kendo-grid>
+        <!-- </thead>
+  </table> -->
+    </div>
+    <form class="row custForm armrk-tbl-footer no-gutters custLayout clearfix">
+            <div class="col col-auto ml-auto mr-0 mt-1">
+                    <button type="submit" class="btn btn-danger armrk-btn mr-2" (click)='postConfirm()' [disabled]="(containerDetails.length==0)">Save</button>
+            </div>
+    </form>
+</div>
+
+
+
+
+<kendo-dialog title="Add Attachments" *ngIf="openedAttachment" (close)="closeAttachment('cancel')" [width]="450">
+    <form class="row custForm no-gutters border-bottom custLayout">
+        <div class="col col-auto">
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-100">Document Type</label>
+                <kendo-dropdownlist class="width-240" [data]="attachmentTypeList | sortPipe : 'Code'" [popupSettings]="{ width: 'auto' }"
+                    [textField]="'Code'" [valueField]="'AttachmentTypeId'" [(value)]="selectedAttachmentType">
+                </kendo-dropdownlist>
+            </div>
+            <div class="form-group row custFormrow">
+                <label for="staticEmail" class="col-form-label font-bold width-100">File Name</label>
+                <input #fileInput type="file" accept=".doc,.docx, .pdf, .xls, .xlsx" (change)="validateFile()" />
+            </div>
+        </div>
+    </form>
+
+    <div class="text-center k-dilog-btn-group">
+        <button class="btn btn-danger" (click)="closeAttachment('no')">Cancel</button>
+        <button class="btn btn-danger" (click)="verifyUpload()" primary="true" [disabled]="(selectedAttachmentType) && !(enableAttachmentButton)">Save</button>
+    </div>
+</kendo-dialog>
+
+<kendo-dialog title="Comments" *ngIf="openedCommentbox" (close)="closeCommentbox('cancel')" [width]="450">
+    <form class="row custForm no-gutters border-bottom custLayout">
+        <div class="col-12">
+            <div class="form-group row custFormrow">
+                <textarea id="simple-textarea" rows="3" class="k-textbox widthFull" placeholder="Comments" style="min-height: 66px;" [(ngModel)]="gridNotes"
+                    name="comments"></textarea>
+            </div>
+        </div>
+    </form>
+
+    <div class="text-center k-dilog-btn-group">
+        <button class="btn btn-danger" (click)="closeCommentbox('no')">Cancel</button>
+        <button class="btn btn-danger" (click)="SaveComments()" primary="true" [disabled]="(!gridNotes)">Save</button>
+    </div>
+</kendo-dialog>

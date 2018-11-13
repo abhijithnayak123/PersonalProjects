@@ -1,0 +1,129 @@
+<form class="row custForm no-gutters border-bottom custLayout clearfix">
+  <div class="col col-auto ml-auto">
+      <div class="form-group row custFormrow armrk-btn">
+          <button type="submit" (click)="onAdd()" class="btn btn-add-circle-red-sml"></button>
+          <button type="submit" (click)="onDelete()" class="btn btn-delete-circle-red-sml" [disabled]="canEnableActions()"></button>
+      </div>
+  </div>
+</form>
+<kendo-grid [data]="vendorConatctData">
+  <app-spinner [show]="showSpinner"></app-spinner>
+  <kendo-grid-column title=" " [width]="40" class="text-center" [sortable]="false">
+    <ng-template kendoGridHeaderTemplate>
+        <input type="checkbox" id="headergridreceiving" class="k-checkbox" [ngModel]="isAllSelected()" (change)="onSelectAllCheck($event)">
+        <label class="k-checkbox-label float-none" for="headergridreceiving"></label>
+    </ng-template>
+    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+        <input type="checkbox" id="{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.IsSelected">
+        <label class="k-checkbox-label float-none" for="{{rowIndex}}"></label>
+    </ng-template>
+  </kendo-grid-column>
+  <kendo-grid-column class="text-left" title="Contact Name" [width]="140" [style.minWidth.px]="140" [style.maxWidth.px]="140">
+        <ng-template kendoGridHeaderTemplate>Contact Name<font class="warning-label">*</font></ng-template>
+      <ng-template kendoGridCellTemplate let-dataItem>
+          <div>
+              <input type="text" class="k-textbox " style="font-weight: bold" maxlength="50" [(ngModel)]="dataItem.ContactName"
+              [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)" />
+          </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Site" [width]="140" [style.maxWidth.px]="140" [style.minWidth.px]="140">
+      <ng-template kendoGridCellTemplate let-dataItem>
+          <kendo-combobox class="k-dropdown width-140" [popupSettings]="{ width: 'auto' }" [data]="dataItem.SiteList" [textField]="'Name'" [valueField]="'Code'" 
+          [(ngModel)]="dataItem.Site" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)">
+                <ng-template kendoDropDownListHeaderTemplate>
+                    <div class="row k-list-header">
+                    <div class="col col-auto minWidth-60 font-bold">Code</div>
+                    <div class="col col-auto font-bold">Name</div>
+                    </div>
+                </ng-template>
+                <ng-template kendoComboBoxItemTemplate let-dataItem>
+                    <div class="col col-auto width-60 templatecell">{{dataItem?.Code}}</div>
+                    <div class="col col-auto templatecell">{{ dataItem?.Name}}</div>
+                </ng-template>
+          </kendo-combobox>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Email" [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120">
+        <ng-template kendoGridHeaderTemplate>Email<font class="warning-label">*</font></ng-template>
+      <ng-template kendoGridCellTemplate let-dataItem>
+        <div>
+            <input type="text" class="k-textbox " style="font-weight: bold" maxlength="256" pattern='^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$'
+            [(ngModel)]="dataItem.Email" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)"/>
+        </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Role" [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120">
+      <ng-template kendoGridCellTemplate let-dataItem>
+        <div>
+            <input type="text" class="k-textbox " style="font-weight: bold" maxlength="100" 
+            [(ngModel)]="dataItem.Role" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)" appAlphaNumeric/>
+        </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Phone" [width]="110" [style.minWidth.px]="110" [style.maxWidth.px]="110">
+      <ng-template kendoGridCellTemplate let-dataItem>
+          <div>
+              <input type="text" class="k-textbox" style="font-weight: bold" maxlength="20" 
+               [(ngModel)]="dataItem.Phone" pattern ="^[0-9][0-9-]*$" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)"/>
+          </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Mobile" [width]="110" [style.minWidth.px]="110" [style.maxWidth.px]="110">
+      <ng-template kendoGridCellTemplate let-dataItem>
+          <div>
+              <input type="text" class="k-textbox " style="font-weight: bold" maxlength="20" 
+               [(ngModel)]="dataItem.Mobile" pattern ="^[0-9][0-9-]*$" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)"/>
+          </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-left" title="Fax" [width]="110" [style.maxWidth.px]="110" [style.minWidth.px]="110">
+      <ng-template kendoGridCellTemplate let-dataItem>
+          <div>
+              <input type="text" class="k-textbox " style="font-weight: bold" maxlength="20"  
+              [(ngModel)]="dataItem.Fax"  pattern ="^[0-9][0-9-]*$" [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)"/>
+          </div>
+      </ng-template>
+  </kendo-grid-column>
+
+  <kendo-grid-column class="text-center" title="Primary Contact" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80">
+      <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+          <input type="checkbox" id="pc_{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.PrimaryContact"
+          [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)">
+          <label class="k-checkbox-label float-none" for="pc_{{rowIndex}}"></label>
+      </ng-template>
+  </kendo-grid-column>
+
+
+  <kendo-grid-column class="text-center" title="PO Contact" [width]="120" [style.minWidth.px]="120" [style.maxWidth.px]="120">
+      <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+          <input type="checkbox" id="po_{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.POContact"
+          [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)">
+          <label class="k-checkbox-label float-none" for="po_{{rowIndex}}"></label>
+      </ng-template>
+  </kendo-grid-column>
+
+
+  <kendo-grid-column class="text-center" title="Finance Contact" [width]="80" [style.minWidth.px]="80" [style.maxWidth.px]="80">
+      <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+          <input type="checkbox" id="fc_{{rowIndex}}" class="k-checkbox" [(ngModel)]="dataItem.FinanceContact"
+          [disabled]="!(dataItem.IsAdded || dataItem.IsSelected)">
+          <label class="k-checkbox-label float-none" for="fc_{{rowIndex}}"></label>
+      </ng-template>
+  </kendo-grid-column>
+
+</kendo-grid>
+<form class="row custForm no-gutters border-bottom custLayout clearfix">
+  <div class="col col-auto ml-auto">
+      <div class="form-group row custFormrow">
+          <button type="submit" class="btn btn-danger armrk-btn ml-2" (click)="onCancel()">Cancel</button>
+          <button type="submit" class="btn btn-danger armrk-btn ml-2" (click)="onSave()" [disabled]="canEnableActions()">Save</button>
+      </div>
+  </div>
+</form>

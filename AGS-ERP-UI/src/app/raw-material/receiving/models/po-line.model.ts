@@ -1,0 +1,40 @@
+import { BaseModel } from "../../../shared/models/base.model";
+import { POModel } from "./po.model";
+import { AramarkItemModel } from "./aramark-item.model";
+import { BinLocation } from "./bin-location.model";
+
+export class POLineModel extends BaseModel {
+    POList: POModel[] = [];
+    POs: POModel[] = [];
+    PO: POModel;
+    AramarkItemList: AramarkItemModel[] = [];
+    AramarkItems: AramarkItemModel[] = [];
+    AramarkItem: AramarkItemModel;
+    RollCase: string;
+    RollCaseNbr: string;
+    RollYards: number;
+    Quantity: number;
+    LotNumber: string;
+    BinLocationList: BinLocation[] = [];
+    BinLocations: BinLocation[] = [];
+    BinLocation: BinLocation;
+    InventoryAreaId: number;
+    Color: string;
+    Width: number;
+    FiberContent: string;
+    VendorItem: string;
+    COO: string;
+    Defective: number;
+    Comments: string;
+    POComments: string;
+    IsSelected: boolean;
+    IsAdded: boolean;
+    ShipmentHdrId: number;
+    POLineId:number;
+    PONumber:string;
+    POHdrId:number;
+    AramarkItemId:number;
+    ReceiptDate: any;
+    RollCaseId:number;
+    IsValid:boolean;
+}
