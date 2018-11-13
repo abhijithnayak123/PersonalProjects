@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Cxn.Fund.TSys" namespace="MGI.Cxn.Fund.TSys.Data" xmlns="urn:nhibernate-mapping-2.2">
+  <class name="TSysTransaction" table="tTSys_Trx">
+    <id name="rowguid" column="TSysTrxPK">
+      <generator class="guid"/>
+    </id>
+
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="TSysTrxID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+
+    <many-to-one name="Account" class="MGI.Cxn.Fund.TSys.Data.TSysAccount" column="TSysAccountPK" insert="true" update="false" cascade="none" not-null="true" />
+    <property name="TransactionType"/>
+    <property name="Amount"/>
+    <property name="Fee"/>
+    <property name="Description"/>
+    <property name="DTLocalTransaction"/>
+    <property name="DTTransmission"/>
+    <property name="ErrorCode"/>
+    <property name="ErrorMsg"/>
+    <property name="Status"/>
+    <property name="ConfirmationId"/>
+    <property name="Balance"/>
+    <property name="DTTerminalCreate"/>
+    <property name="DTTerminalLastModified"/>
+    <property name="ChannelPartnerID"/>
+    <property name="DTServerCreate" update="false"/>
+	  <property name="DTServerLastModified" not-null="false"/>
+  </class>
+</hibernate-mapping>

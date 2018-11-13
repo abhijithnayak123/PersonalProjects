@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+  <object id="transactionManager"
+    type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+    <property name="TransactionSynchronization" value="Always"/>
+  </object>
+  <tx:attribute-driven/>
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <import resource="assembly://MGI.Common/MGI.Common/MGICommon.xml" />
+	<import resource="assembly://MGI.Cxn.MoneyTransfer.WU/MGI.Cxn.MoneyTransfer.WU/WUSpring.xml"/>
+	<import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Cxn.MoneyTransfer.MG/MGI.Cxn.MoneyTransfer.MG/MGI.Cxn.MoneyTransfer.MG.Spring.xml"/>
+	<import resource="assembly://MGI.Biz.Compliance/MGI.Biz.Compliance/Biz.Compliance.Services.Spring.xml"/>
+
+	<object id="ThrowsBizMoneyTransferEngineExceptionAdvice" type="MGI.Biz.MoneyTransfer.Impl.Advice.ThrowsBizMoneyTransferEngineExceptionAdvice, MGI.Biz.MoneyTransfer"/>
+
+	<object id="InterceptedBIZMoneyTransferEngine" type="MGI.Biz.MoneyTransfer.Impl.MoneyTransferEngine, MGI.Biz.MoneyTransfer">
+		<property name="CXEMoneyTransferService" ref="CXEMoneyTransferService"></property>
+		<property name="CXNMoneyTransferService" ref="CXNMoneyTransferProcessor"></property>
+		<property name="CXECustomerService" ref="CXECustomerService"></property>
+		<property name="CXEAccountService" ref="AccountService"></property>
+		<property name="PTNRCustomerService" ref="Core.Partner.CustomerService"> </property>
+		<property name="PTNRMoneyTransferService" ref="PartnerMoneyTransferService"></property>
+		<property name="CustomerSessionService" ref="CustomerSessionService"></property>
+		<!--<property name="MoneyTransferEngine" ref="BIZMoneyTransferEngine"/>-->
+		<property name="LimitService" ref="BIZLimitService"/>
+		<property name="PTNRChannelPartnerService" ref="CorePartnerChannelPartnerService"/>
+		<property name="MoneyTransferProcessorSvc" ref="MoneyTransferProcessorRouter"/>
+		<property name="PTNRDataStructureService" ref="CoreNexxoDataStructuresService"/>
+		<!-- TODO Merge <property name="CXNMoneyTransferSetupEngine" ref="CXNMoneyTransferSetup"></property>-->
+		<!--<property name ="ShoppingcartService" ref="InterceptedBIZPartnerShoppingCart"></property>-->
+		<property name="LocationCounterIdService" ref="CorePartnerLocationCounterIdService"></property>
+		<property name="CustomerSessionCounterIdService" ref="CustomerSessionCounterIdService"></property>
+	</object>
+
+	<!--<object id="BIZMoneyTransferEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target" ref="InterceptedBIZMoneyTransferEngine"/>
+		<property name="InterceptorNames">
+			<list>
+				<value>ThrowsBizMoneyTransferEngineExceptionAdvice</value>
+			</list>
+		</property>
+	</object>-->
+
+	<!-- TODO Merge <object id="InterceptedBIZMoneyTransferSetupEngine" type="MGI.Biz.MoneyTransfer.Impl.MoneyTransferSetupEngine, MGI.Biz.MoneyTransfer">
+		 <property name ="MoneyTransferSetup" ref ="CXNMoneyTransferSetup"></property>
+		<property name="CustomerSessionService" ref="CustomerSessionService"></property>
+		<property name="PTNRChannelPartnerService" ref="CorePartnerChannelPartnerService"/>
+		<property name="MoneyTransferProcessorSvc" ref="MoneyTransferProcessorRouter"/>
+		<property name="LocationCounterIdService" ref="CorePartnerLocationCounterIdService"></property>
+	</object>
+
+
+	<object id="BIZMoneyTransferSetupEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target" ref="InterceptedBIZMoneyTransferSetupEngine"/>
+		<property name="InterceptorNames">
+			<list>
+				<value>ThrowsBizMoneyTransferEngineExceptionAdvice</value>
+			</list>
+		</property>
+	</object>  TODO Merge -->
+
+	<!-- The MoneyTransfer Processors -->
+	<object id="MoneyTransferProcessorRouter" type="MGI.Cxn.Common.Processor.Util.ProcessorRouter, MGI.Cxn.Common">
+		<property name="Processors">
+			<object id="MoneyTransferProcessorsDictionary" type="System.Collections.Generic.Dictionary&lt;string, MGI.Cxn.Common.Processor.Contract.IProcessor&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+						<entry key="Synovus">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="Carver">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="TCF">
+							<ref object="CXNMoneyTransferProcessor"/>
+						</entry>
+						<entry key="MGI">
+							<ref object="CXNMoneyTransferMGProcessor"/>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+		<!-- The MoneyTransfer Providers -->
+		<!--Changes for MGI-->
+		<property name="Providers">
+			<object id="MoneyTransferProvidersDictionary" type="System.Collections.Generic.Dictionary&lt;string, string&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="string">
+						<entry key="Synovus">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="Carver">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="TCF">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="MGI">
+							<value type="string">MoneyGram</value>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+
+	</object>
+	<!-- EO MoneyTransfer Processors -->
+
+	<import resource="assembly://MGI.Core.Compliance/MGI.Core.Compliance/Core.Compliance.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+
+	<object id="ThrowsBizComplianceExceptionAdvice" type="MGI.Biz.Compliance.Impl.Advice.ThrowsBizComplianceExceptionAdvice, MGI.Biz.Compliance"/>
+
+	 <!--<object name="InterceptedBizLimitService" type="MGI.Biz.Compliance.Impl.LimitServiceImpl, MGI.Biz.Compliance">
+    <property name="CoreComplianceProgramService" ref="ComplianceProgramService"/>
+    <property name="ComplianceTransactionService" ref="ComplianceTransactionService"/>
+    <property name="PartnerCustomerSessionService" ref="CustomerSessionService"/>
+  </object>-->
+
+	<object id="BIZComplianceService" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target" ref="InterceptedBizLimitService"/>
+		<property name="InterceptorNames">
+			<list>
+				<value>ThrowsBizComplianceExceptionAdvice</value>
+			</list>
+		</property>
+	</object>
+</objects>

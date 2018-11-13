@@ -1,0 +1,44 @@
+﻿@model MGI.Channel.DMS.Web.Models.PinDetails
+@Html.ValidationSummary(true)
+@*@if (!string.IsNullOrEmpty(Model.channelPartner.AuthenticationType))
+{
+    @Html.Partial("_" + Model.channelPartner.AuthenticationType, Model)
+}*@
+<div class="row">
+   <div>@Html.LabelFor(model => model.PhoneNumber, new { @class = "row_label_txt" })
+       
+    @Html.TextBoxFor(model => model.PhoneNumber, new { @class = "disable_txt", @disabled = "disabled", autocomplete = "off" })</div> 
+   
+    <div class="error_align_left">
+    @Html.ValidationMessageFor(model => model.PhoneNumber)</div>
+</div>
+@{
+    Func<MGI.Channel.DMS.Web.Models.PinDetails, object> Pin = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Pin<span class="mandatory">*</span>
+    </text>;
+    Func<MGI.Channel.DMS.Web.Models.PinDetails, object> ReEnter = 
+    @<text>
+    @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReEnter<span class="mandatory">*</span>
+    </text>;
+}
+<div class="row">
+    <div>
+        <label class="row_label_txt">@Pin(@Model)</label>
+        @Html.EditorFor(model => model.Pin, new { @class = "input_box", maxLength = 4 })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.Pin)
+    </div>
+    <div id="divErrorPinNumber" class="error_align_left error_txt hide">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.PINNumberRequired</div>
+</div>
+<div class="row">
+    <div>
+        <label class="row_label_txt">@ReEnter(@Model)</label>
+        @Html.EditorFor(model => model.ReEnter, new { @class = "input_box", maxLength = 4, onblur = "clearPinNumbers()" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.ReEnter)
+    </div>
+    <div id="divErrorReEnterPin" class="error_align_left error_txt hide">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReEnterPINNumberRequired</div>
+</div>

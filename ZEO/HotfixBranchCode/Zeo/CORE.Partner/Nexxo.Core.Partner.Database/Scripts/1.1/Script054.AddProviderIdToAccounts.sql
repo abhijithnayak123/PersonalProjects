@@ -1,0 +1,3 @@
+﻿ALTER TABLE tAccounts
+ADD ProviderId INT NOT NULL
+GO

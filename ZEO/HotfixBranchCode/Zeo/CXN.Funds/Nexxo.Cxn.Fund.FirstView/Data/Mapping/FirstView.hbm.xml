@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Cxn.Fund.FirstView" namespace="MGI.Cxn.Fund.FirstView.Data" xmlns="urn:nhibernate-mapping-2.2">
+	<class name="FirstViewCredentials" table="tFView_Credential">
+		<id name="rowguid" column="FViewCredentialPK">
+			<generator class="guid"/>
+		</id>
+
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="FViewCredentialID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+
+		<property name="ServiceUrl" />
+		<property name="User" column="`User`" />
+		<property name="Password" />
+		<property name="Application" />
+		<property name="SystemExtLogin" />
+		<property name="CIAClientID" />
+		<property name="ChannelPartnerId" />
+		<property name="DTServerCreate"/>
+		<property name="DTServerLastModified"/>
+	</class>
+
+  <class name="FirstViewIdTypes" table="tFView_IdTypes">
+    <id name="rowguid" column="FViewIdTypesPK">
+      <generator class ="guid"/>
+    </id>
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="FViewIdTypesID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="NexxoIdTypeId"/>
+    <property name="IdCode"/>
+    <property name="Name"/>
+    <property name="CountryCode"/>
+    <property name="StateCode"/>
+    <property name="DTServerCreate"/>
+    <property name="DTServerLastModified"/>
+  </class>
+  
+	<class name="FirstViewCard" table="tFView_Card">
+		<id name="rowguid" column="FViewCardPK">
+			<generator class="guid"/>
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="FViewCardID" not-null="true" sql-type="bigint IDENTITY(2000000000,1)"/>
+		</property>
+		<property name="CardNumber" not-null ="0"/>
+		<property name="AccountNumber" not-null ="0"/>
+    <property name ="BSAccountNumber" not-null ="0"/>
+    <property name="NameAsOnCard"/>
+		<property name="FirstName" not-null ="0"/>
+		<property name="MiddleName" not-null	 ="0"/>
+		<property name="LastName" not-null ="0"/>
+		<property name="DateOfBirth" not-null ="0"/>
+		<property name="SSN">
+			<column name="SSNNumber" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="GovernmentId" not-null ="0"/>
+		<property name="IDNumber" not-null ="0"/>
+    <property name="GovtIdExpirationDate" not-null ="0"/>
+    <property name="GovtIDIssueCountry" not-null ="0"/>
+    <property name="GovtIDIssueDate" not-null ="0"/>
+    <property name="GovtIDIssueState" not-null ="0"/>
+    <property name="AddressLine1" not-null ="0"/>
+		<property name="AddressLine2" not-null ="0"/>
+		<property name="City" not-null ="0"/>
+		<property name="State" not-null ="0"/>
+		<property name="PostalCode" not-null ="0"/>
+		<property name="HomePhoneNumber" not-null ="0"/>
+    <property name="ShippingContactName" not-null ="0"/>
+    <property name="ShippingAddressLine1" not-null ="0"/>
+    <property name="ShippingAddressLine2" not-null ="0"/>
+    <property name="ShippingCity" not-null ="0"/>
+    <property name="ShippingState" not-null ="0"/>
+    <property name="ShippingZipCode" not-null ="0"/>
+    <property name="ExpiryDate"/>
+		<property name="IsActive"/>
+		<property name="DTActivated"/>
+		<property name="ActivatedBy"/>
+		<property name="DTDeactivated"/>
+		<property name="DeactivatedBy"/>
+		<property name="DeactivatedReason"/>
+		<property name="DTTerminalCreate"/>
+		<property name="DTTerminalLastModified"/>
+	</class>
+
+  
+	<class name="FirstViewTransaction" table="tFView_Trx">
+		<id name="rowguid" column="FViewTrxPK">
+			<generator class="guid"/>
+		</id>
+
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="FViewTrxID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+
+		<many-to-one name="Account" class="MGI.Cxn.Fund.FirstView.Data.FirstViewCard" column="FViewCardPK" insert="true" update="false" cascade="none" not-null="true" />
+		<property name="ProcessorId" not-null ="0"/>
+		<property name="PrimaryAccountNumber" not-null ="0"/>
+		<property name="TransactionType" not-null ="0"/>
+		<property name="TransactionAmount" not-null ="0"/>
+		<property name="CardAcceptorIdCode" not-null ="0"/>
+		<property name="CardAcceptorTerminalID" not-null ="0"/>
+		<property name="CardAcceptorBusinessCode" not-null ="0"/>
+		<property name="TransactionDescription" not-null ="0"/>
+		<property name="MessageTypeIdentifier" not-null ="0"/>
+		<property name="TransactionCurrencyCode" not-null ="0"/>
+		<property name="DTLocalTransaction" not-null ="0"/>
+		<property name="DTTransmission" not-null ="0"/>
+		<property name="CreditPlanMaster" not-null ="0"/>
+		<property name="AccountNumber" not-null ="0"/>
+		<property name="TransactionID" not-null ="0"/>
+		<property name="CardBalance" not-null ="0"/>
+		<property name="PreviousCardBalance" not-null ="0"/>
+		<property name="ErrorCode" not-null ="0"/>
+		<property name="ErrorMsg" not-null ="0"/>
+		<property name="CardStatus"/>
+		<property name="ActivationRequired"/>
+		<property name="DTTerminalCreate"/>
+		<property name="DTTerminalLastModified"/>
+    <property name ="ChannelPartnerID"/>
+		<property name="DTServerCreate" update="false"/>
+		<property name="DTServerLastModified" not-null="false"/>
+	</class>
+
+  
+</hibernate-mapping>

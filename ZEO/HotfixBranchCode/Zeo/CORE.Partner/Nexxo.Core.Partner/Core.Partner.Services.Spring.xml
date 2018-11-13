@@ -1,0 +1,454 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xmlns:db="http://www.springframework.net/database"
+		 xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+	<!-- These are Channel Partner object definitions... 
+    These should work in any environment and only change when the Partner services wiring needs a change.
+  -->
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Db.Spring.xml" />
+
+	<!-- Agent Session Service -->
+	<object id="NHibAgtSessionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.AgentSession&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="AgentSessionService" type="MGI.Core.Partner.Impl.AgentSessionServiceImpl, MGI.Core.Partner">
+		<property name="AgentSessionRepo" ref="NHibAgtSessionRepo"/>
+	</object>
+	<!-- End Of Agent Session Service -->
+
+	<!-- Channel Partner Service -->
+	<object id="ChannelPartnerServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartner&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="ProductProcessorServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerProductProcessors&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="ProductTypesServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerProductTypes&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="PreFundingServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerPreFunding&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="RemittanceTransactionServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerRemittanceTransaction&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="TipsAndOffersServiceRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.TipsAndOffers&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="NHibCheckTypeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.CheckType&gt;, MGI.Common.DataAccess" autowire="byType" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="CorePartnerChannelPartnerService" type="MGI.Core.Partner.Impl.ChannelPartnerServiceImpl, MGI.Core.Partner" >
+		<property name="ChannelPartnerServiceRepo" ref="ChannelPartnerServiceRepo" />
+		<property name="LocationsServiceRepo" ref="LocationRepo" />
+		<property name="ProductProcessorServiceRepo" ref="ProductProcessorServiceRepo" />
+		<property name="ProductTypesServiceRepo" ref="ProductTypesServiceRepo" />
+		<property name="PreFundingServiceRepo" ref="PreFundingServiceRepo" />
+		<property name="RemittanceTransactionServiceRepo" ref="RemittanceTransactionServiceRepo" />
+		<property name="TipsAndOffersServiceRepo" ref="TipsAndOffersServiceRepo" />
+		<property name="CheckTypeRepo" ref="NHibCheckTypeRepo" />
+		<property name="ChannelPartnerCertificateRepo" ref="ChannelPartnerCertificateRepo" />
+		<property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+
+	<!-- End Of Channel Partner Service -->
+
+	<!-- Customer Service -->
+	<object id="PartnerCustomerRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Customer&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="Core.Partner.CustomerService" type="MGI.Core.Partner.Impl.CustomerServiceImpl, MGI.Core.Partner">
+		<property name="PartnerCustomerRepo" ref="PartnerCustomerRepo"/>
+		<property name="ProspectRepo" ref="ProspectRepo" />
+		<property name="IDBuilder" ref="IDBuilder" />
+		<property name="IdentityConfirmRepo" ref="NHibIdentityConfirmRepo"/>
+		<property name="AccountsRepo" ref="AccountsRepo"/>
+		<property name="GroupSetting" ref="GroupSetting"/>
+		<property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+	<!-- End Of Customer Service -->
+
+	<!-- Customer Session Service -->
+	<object id="NHibCustomerSessionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.CustomerSession&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="CustomerSessionService" type="MGI.Core.Partner.Impl.CustomerSessionServiceImpl, MGI.Core.Partner">
+		<property name="CustomerSessionRepo" ref="NHibCustomerSessionRepo"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="MongoDBLogger" ref="TLoggerRef"></property>
+	</object>
+	<!-- End of Customer Session Service -->
+
+	<object id="NHibCustomerSessionCounterIdRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.CustomerSessionCounter&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+	<object id="CustomerSessionCounterIdService" type="MGI.Core.Partner.Impl.CustomerSessionCounterIdServiceImpl, MGI.Core.Partner">
+		<property name="CustomerSessionCounterIdRepo" ref="NHibCustomerSessionCounterIdRepo"/>
+	</object>
+	
+	<!-- Location Service -->
+	<object id="LocationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Location&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="LocationProcessorCredentialsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.LocationProcessorCredentials&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="CorePartnerLocationService" type="MGI.Core.Partner.Impl.LocationServiceImpl, MGI.Core.Partner">
+		<property name="LocationRepo" ref="LocationRepo"/>
+	</object>
+
+	<object id="CorePartnerLocationProcessorCredentialsService" type="MGI.Core.Partner.Impl.LocationProcessorCredentialService, MGI.Core.Partner">
+		<property name="LocationProcessorCredentialsRepo" ref="LocationProcessorCredentialsRepo"/>
+	</object>
+
+	<!-- End of Location Service -->
+	<object id="LocationCounterIdRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.LocationCounterId&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="CorePartnerLocationCounterIdService" type="MGI.Core.Partner.Impl.LocationCounterIdServiceImpl, MGI.Core.Partner">
+		<property name="LocationCounterIdRepo" ref="LocationCounterIdRepo"/>
+		<property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+
+	<!-- User Manager Service -->
+	<object id="UserManagementRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserDetails&gt;, MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="UserStatusRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserStatus&gt;, MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="UserRoleRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserRole&gt;, MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="UserAuthenticationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserAuthentication&gt;, MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="UserLocationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserLocation&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="SearchUserRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.UserDetails&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="UserSMTPRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerSMTPDetails&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="ChannelPartnerCertificateRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerCertificate&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="CorePartnerUserService" type="MGI.Core.Partner.Impl.ManageUserServiceImpl, MGI.Core.Partner" >
+		<property name="UserManagementRepo" ref="UserManagementRepo"></property>
+		<property name="UserStatusRepo" ref="UserStatusRepo"></property>
+		<property name="UserRoleRepo" ref="UserRoleRepo"></property>
+		<property name="UserAuthenticationRepo" ref="UserAuthenticationRepo"></property>
+		<property name="UserLocationRepo" ref="UserLocationRepo"></property>
+		<property name="SearchUserRepo" ref="SearchUserRepo"></property>
+		<property name="UserSMTPRepo" ref="UserSMTPRepo"></property>
+		<property name="LocationRepo" ref="LocationRepo"/>
+	</object>
+
+	<!-- End of User Management Service -->
+
+	<object id="MessageCenterRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.AgentMessage&gt;, MGI.Common.DataAccess"  >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="CoreMessageCenterService" type="MGI.Core.Partner.Impl.MessageCenterImpl, MGI.Core.Partner" >
+		<property name="MessageCenterRepository" ref="MessageCenterRepo"></property>
+    <property name="NLogger" ref="NLoggerRef"></property>
+	</object>
+
+	<!-- Message Service-->
+	<object id="NHibMessageRepo"
+			  type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Message>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+	<object id="MessageStore" type="MGI.Core.Partner.Impl.MessageStoreImpl, MGI.Core.Partner" >
+		<property name="PartnerRepo" ref="ChannelPartnerServiceRepo"></property>
+		<property name="MessageRepo" ref="NHibMessageRepo"></property>
+	</object>
+	<!-- End of Message Service -->
+
+	<!-- Transaction Service -->
+	<object id="NHibBillPayRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.BillPay>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="AccountsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Account>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="GroupSetting" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.CustomerGroupSetting>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="BillPayService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.BillPay>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibBillPayRepo"/>
+	</object>
+
+	<object id="NHibCashRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.Cash>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="CashService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.Cash>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibCashRepo"/>
+	</object>
+
+	<object id="NHibCheckRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.Check>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerCheckService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.Check>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibCheckRepo"/>
+	</object>
+
+	<object id="NHibFundsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.Funds>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerFundsService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.Funds>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibFundsRepo"/>
+	</object>
+
+	<object id="NHibMoneyOrderRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.MoneyOrder>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerMoneyOrderService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.MoneyOrder>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibMoneyOrderRepo"/>
+	</object>
+
+	<object id="NHibMoneyTransferRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.MoneyTransfer>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerMoneyTransferService" type="MGI.Core.Partner.Impl.TransactionServiceImpl&lt;MGI.Core.Partner.Data.Transactions.MoneyTransfer>, MGI.Core.Partner">
+		<property name="TransactionRepo" ref="NHibMoneyTransferRepo"/>
+    <property name="MongoDBLogger" ref="TLoggerRef"></property>
+  </object>
+	<!-- End of Transaction Service -->
+
+	<!-- Terminal Service -->
+	<object id="NHibTerminalRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Terminal>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerTerminalService" type="MGI.Core.Partner.Impl.TerminalServiceImpl, MGI.Core.Partner">
+		<property name="TerminalRepo" ref="NHibTerminalRepo"/>
+	</object>
+	<!-- End of Terminal Service -->
+
+	<!-- Transaction History Service -->
+	<object id="TransactionHistoryRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.TransactionHistory&gt;,  MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="PartnerTransactionHistoryService" type="MGI.Core.Partner.Impl.TransactionHistoryServiceImpl, MGI.Core.Partner">
+		<property name="TransactionHistoryRepo" ref="TransactionHistoryRepo"/>
+		<property name="PastTransactionRepo" ref="PastTransactionRepo"/>
+  </object>
+	<!-- End of Transaction History Service -->
+
+	<!-- Cash Drawer Report -->
+	<object id="CashDrawerReportRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.CashDrawerReport&gt;,  MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="PartnerCashDrawerReportService" type="MGI.Core.Partner.Impl.ReportServiceImpl, MGI.Core.Partner">
+		<property name="CashDrawerReportRepo" ref="CashDrawerReportRepo"/>
+	</object>
+	<!-- End of Transaction History Service -->
+
+	<!-- NpsTerminal Service -->
+	<object id="NpsTerminalRepository" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.NpsTerminal&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PartnerNpsTerminalService" type="MGI.Core.Partner.Impl.ManageNpsTerminal, MGI.Core.Partner">
+		<property name="NpsTerminalRepository" ref="NpsTerminalRepository"/>
+	</object>
+	<!-- End of Terminal Service -->
+
+	<!-- Nexxo Idtype Service -->
+	<object name="IdTypeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerIdTypesMapping&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="MasterCountryRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerMasterCountryMapping&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="MasterCountriesRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.MasterCountry&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="CountryRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Country&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="StateRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.State&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="ContactTypeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ContactType&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="NotificationHostRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.NotificationHost&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="LegalCodeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.LegalCode&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object name="OccupationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Occupation&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<!-- Shopping Cart Service -->
+	<object id="NHibShoppingCartSessionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ShoppingCart>, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="ShoppingCartService" type="MGI.Core.Partner.Impl.ShoppingCartServiceImpl, MGI.Core.Partner">
+		<property name="ShoppingCartRepo" ref="NHibShoppingCartSessionRepo"/>
+	</object>
+	<!-- End Of Shopping Cart Service -->
+
+	<!--<db:provider id="PartnerDbProvider"
+			provider="SqlServer-2.0"
+			connectionString="Data Source=${PartnerDataSource};Database=${PartnerDatabase};User ID=${PartnerDbUser};Password=${PartnerDbPassword};"/>-->
+
+	<object id="IDNumberGenerator" type="MGI.Common.DataAccess.Impl.IDNumberGenerator, MGI.Common.DataAccess">
+		<property name="DBProvider" ref="PartnerDbProvider"/>
+	</object>
+
+	<object id="IDBuilder" type="MGI.Core.Partner.Impl.IDNumberBuilder, MGI.Core.Partner">
+		<property name="IDGenerator" ref="IDNumberGenerator"/>
+		<property name="IsRealPAN" value="${IsRealPAN}" />
+	</object>
+
+	<object id="ProspectRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Prospect&gt;,  MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="CustomerRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Customer&gt;,  MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object >
+	<object id="PastTransactionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.PastTransaction&gt;,  MGI.Common.DataAccess" >
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object >
+	<object id="CoreNexxoDataStructuresService" type="MGI.Core.Partner.Impl.NexxoDataStructuresServiceImpl, MGI.Core.Partner">
+		<property name="IdTypeRepo" ref="IdTypeRepo" />
+		<property name="MasterCountryRepo" ref="MasterCountryRepo" />
+		<property name="StateRepo" ref="StateRepo" />
+		<property name="CountryRepo" ref="CountryRepo" />
+		<property name="ContactTypeRepo" ref="ContactTypeRepo" />
+		<property name="NotificationHostRepo" ref="NotificationHostRepo" />
+		<property name="LegalCodeRepo" ref="LegalCodeRepo" />
+		<property name="OccupationRepo" ref="OccupationRepo" />
+		<property name="MasterCountriesRepo" ref="MasterCountriesRepo" />
+	</object>
+
+	<!-- End of Nexxo Idtype Service -->
+
+	<!-- Fee Service -->
+	<object id="NHibCheckFeeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Fees.CheckFee&gt;,  MGI.Common.DataAccess"  autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+	<object id="NHibTransactionFeeAdjustmentRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Transactions.TransactionFeeAdjustment&gt;,  MGI.Common.DataAccess"  autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="NHibFundsFeeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Fees.FundsFee&gt;,  MGI.Common.DataAccess" autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="NHibMoneyOrderFeeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Fees.MoneyOrderFee&gt;,  MGI.Common.DataAccess"  autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="NHibChannelPartnerPricingFeeRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerPricing&gt;,  MGI.Common.DataAccess"  autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="PartnerFeeService" type="MGI.Core.Partner.Impl.FeeServiceImpl, MGI.Core.Partner">
+		<property name="CheckFeeRepo" ref="NHibCheckFeeRepo" />
+		<property name="FundsFeeRepo" ref="NHibFundsFeeRepo" />
+		<property name="MoneyOrderFeeRepo" ref="NHibMoneyOrderFeeRepo" />
+		<property name="FeeAdjustmentService" ref="FeeAdjustmentService" />
+		<property name="CustomerFeeAdjustmentsRepo" ref="CustomerFeeAdjustmentsRepo"/>
+		<property name="FeeAdjustmentsRepo" ref="NHibFeeAdjustmentsRepo" />
+		<property name="ChannelPartnerPricingRepo" ref="NHibChannelPartnerPricingFeeRepo" />
+		<property name="ChannelPartnerSvc" ref="CorePartnerChannelPartnerService"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="MongoDBLogger" ref="TLoggerRef"></property>
+	</object>
+	<!-- End of Fee Service -->
+
+	<!--Customer Transaction Service (for limit engine)-->
+	<object id="ComplianceTxnRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ComplianceTransaction&gt;,  MGI.Common.DataAccess" autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="ComplianceTransactionService" type="MGI.Core.Partner.Impl.ComplianceTransactionServiceImpl, MGI.Core.Partner">
+		<property name="ComplianceTransactionRepo" ref="ComplianceTxnRepo"/>
+	</object>
+	<!--end of CustomerTransactionService-->
+
+	<object id="NHibIdentityConfirmRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.IdentificationConfirmation&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<!-- Groups service -->
+	<object id="NHibGroupsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.ChannelPartnerGroup&gt;,  MGI.Common.DataAccess"  autowire="byType">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"></property>
+	</object>
+
+	<object id="PartnerGroupService" type="MGI.Core.Partner.Impl.ChannelPartnerGroupServiceImpl, MGI.Core.Partner">
+		<property name="GroupsRepo" ref="NHibGroupsRepo" />
+	</object>
+	<!-- end of Groups service -->
+
+	<!-- FeeAdjustmentService -->
+	<object id="FeeAdjustmentConditionFactory" type="MGI.Core.Partner.Impl.FeeAdjustmentConditionFactory, MGI.Core.Partner" />
+
+	<object id="NHibFeeAdjustmentsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Fees.FeeAdjustment&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+	<object id="CustomerFeeAdjustmentsRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.Fees.CustomerFeeAdjustments&gt;, MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="FeeAdjustmentService" type="MGI.Core.Partner.Impl.FeeAdjustmentServiceImpl, MGI.Core.Partner">
+		<property name="FeeAdjustmentsRepo" ref="NHibFeeAdjustmentsRepo" />
+		<property name="FeeConditionFactory" ref="FeeAdjustmentConditionFactory" />
+		<property name="_transactionFeeAdjustmentRepo" ref="NHibTransactionFeeAdjustmentRepo" />
+		<!--<property name="CustomerFeeAdjustmentsRepo" ref="CustomerFeeAdjustmentsRepo"/>-->
+    <property name="NLogger" ref="NLoggerRef"></property>
+	</object>
+
+	<object id="CoreCustomerFeeAdjustmentService" type="MGI.Core.Partner.Impl.CustomerFeeAdjustmentServiceImpl, MGI.Core.Partner">
+		<property name="CustomerFeeAdjustmentsRepo" ref="CustomerFeeAdjustmentsRepo"/>
+	</object>
+	<!-- end of FeeAdjustmentService -->
+
+	<object id="MoneyOrderImageRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Core.Partner.Data.MoneyOrderImage&gt;,  MGI.Common.DataAccess">
+		<property name="SessionFactory" ref="SessionFactoryCorePartner"/>
+	</object>
+
+	<object id="PtrMoneyOrderImageService" type="MGI.Core.Partner.Impl.MoneyOrderImageImpl, MGI.Core.Partner">
+		<property name="PtnrMoneyOrderRepo" ref="MoneyOrderImageRepo"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="MongoDBLogger" ref="TLoggerRef"></property>	
+	</object>
+
+
+</objects>

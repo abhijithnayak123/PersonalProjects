@@ -1,0 +1,347 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{12E023F0-7502-477A-B331-589758A36EBE}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MGI.Cxn.BillPay.MG.Test</RootNamespace>
+    <AssemblyName>MGI.Cxn.BillPay.MG.Test</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Common.Logging">
+      <HintPath>..\..\Packages\Common.Logging.2.1.2\lib\net40\Common.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Iesi.Collections">
+      <HintPath>..\..\Packages\Iesi.Collections.3.2.0.4000\lib\Net35\Iesi.Collections.dll</HintPath>
+    </Reference>
+    <Reference Include="Moq">
+      <HintPath>..\..\Packages\Moq.4.0.10827\lib\NET40\Moq.dll</HintPath>
+    </Reference>
+    <Reference Include="NHibernate">
+      <HintPath>..\..\Packages\NHibernate.3.2.0.4000\lib\Net35\NHibernate.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\Packages\NUnit.2.5.7.10213\lib\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.mocks">
+      <HintPath>..\..\Packages\NUnit.2.5.7.10213\lib\nunit.mocks.dll</HintPath>
+    </Reference>
+    <Reference Include="pnunit.framework">
+      <HintPath>..\..\Packages\NUnit.2.5.7.10213\lib\pnunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="Spring.Aop">
+      <HintPath>..\..\Packages\Spring.Aop.1.3.2\lib\net40\Spring.Aop.dll</HintPath>
+    </Reference>
+    <Reference Include="Spring.Core">
+      <HintPath>..\..\Packages\Spring.Core.1.3.2\lib\net40\Spring.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Spring.Data">
+      <HintPath>..\..\Packages\Spring.Data.1.3.2\lib\net40\Spring.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Spring.Data.NHibernate32">
+      <HintPath>..\..\Packages\Spring.Data.NHibernate32.1.3.2\lib\net40\Spring.Data.NHibernate32.dll</HintPath>
+    </Reference>
+    <Reference Include="Spring.Testing.NUnit">
+      <HintPath>..\..\Packages\Spring.Testing.NUnit.1.3.2\lib\net40\Spring.Testing.NUnit.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BillPayGatewayFixture.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Service References\AgentConnectService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MGI.Cxn.BillPay.MG.Test.Spring.xml">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="packages.config" />
+    <None Include="Service References\AgentConnectService\AgentConnect1305.wsdl" />
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.AmendTransactionResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BillerSearchResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BillPaymentCancelResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BillPaymentConsumerLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BillPaymentDetailReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BillPaymentSummaryReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.BpValidationResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CheckInResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CityListResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CodeTableResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CommitTransactionResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ConfirmTokenResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CountryInfoResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.CurrencyInfoResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DetailLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DirectedSendRegistrationFieldsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DirectoryOfAgentsByAreaCodePrefixResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DirectoryOfAgentsByCityResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DirectoryOfAgentsByZipResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.DoddFrankStateRegulatorInfoResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FeeLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FormFreeBPLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FormFreeReceiveLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FormFreeSendLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FormFreeTranLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FormFreeTypeLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.FQDOsForCountryResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.GetFieldsForProductResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.GetFieldsForRewardsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.GetFQDOByCustomerReceiveNumberResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.GetRelatedProfilesResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.IndustryResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.InitialSetupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.MoneyGramConsumerLookupResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.MoneyGramReceiveDetailReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.MoneyGramReceiveSummaryReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.MoneyGramSendDetailReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.MoneyGramSendSummaryReportResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ProfileResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.QueryRegistrationByNamesResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReceiveCountryRequirementsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReceiveReversalResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReceiveValidationResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReferenceNumberNameResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReferenceNumberPhoneResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.ReferenceNumberResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.SaveRegistrationResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.SaveRewardsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.SendReversalResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.SendValidationResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.StateProvinceInfoResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.TranslationsResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\AgentConnectService\Nexxo.Cxn.BillPay.MG.Test.AgentConnectService.VariableReceiptInfoResponse.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CMMN\Common\MGI.Common.csproj">
+      <Project>{AAF0A571-5FAC-4582-8152-74D36E1305C4}</Project>
+      <Name>MGI.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CMMN\DataAccess\MGI.Common.DataAccess.csproj">
+      <Project>{8B74FCC0-FF54-437E-B265-7B0F5FAC2570}</Project>
+      <Name>MGI.Common.DataAccess</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CMMN\DataProtection\MGI.Common.DataProtection.csproj">
+      <Project>{9BB8C119-17AD-44C5-86AF-B8D04C742266}</Project>
+      <Name>MGI.Common.DataProtection</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CXN.CMMN\MGI.Common.Processor.csproj">
+      <Project>{D0687C04-9B90-4FEE-9C9B-70CBF64FF286}</Project>
+      <Name>MGI.Common.Processor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CXN.MG.Common\Nexxo.CXN.MG.Common\MGI.CXN.MG.Common.csproj">
+      <Project>{F60A9C75-9B19-440E-A725-9EECAFDDF5C9}</Project>
+      <Name>MGI.CXN.MG.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Nexxo.Cxn.BillPay.MG\MGI.Cxn.BillPay.MG.csproj">
+      <Project>{2630235B-C8A5-4B95-89B2-3468A91A45CF}</Project>
+      <Name>MGI.Cxn.BillPay.MG</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Nexxo.Cxn.BillPay\MGI.Cxn.BillPay.csproj">
+      <Project>{C7022C08-4C37-4532-B3F6-BB2B0659F636}</Project>
+      <Name>MGI.Cxn.BillPay</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\AgentConnectService\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\AgentConnectService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\AgentConnectService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\AgentConnectService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

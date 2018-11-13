@@ -1,0 +1,812 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://tempuri.org/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://tempuri.org/">
+      <s:element name="CompanyLogin">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyId" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Username" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Password" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CompanyLoginResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyLoginResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailAdd">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="BadgeNo" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="BranchId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="EmployeeId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="ProductId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="RefAmount" type="s:double" />
+            <s:element minOccurs="1" maxOccurs="1" name="FeeRate" type="s:double" />
+            <s:element minOccurs="0" maxOccurs="1" name="RefNumber" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="CheckDate" type="s:dateTime" />
+            <s:element minOccurs="0" maxOccurs="1" name="ABA" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AcctNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="MicrData" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="FeeAmount" type="s:double" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkFront" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkFrontName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkBack" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkBackName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Ckfronttif" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="Ckbacktif" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="makerPhone" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailAddResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceDetailAddResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailAddGeocode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="BadgeNo" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="BranchId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="EmployeeId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="ProductId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="RefAmount" type="s:double" />
+            <s:element minOccurs="1" maxOccurs="1" name="FeeRate" type="s:double" />
+            <s:element minOccurs="0" maxOccurs="1" name="RefNumber" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="CheckDate" type="s:dateTime" />
+            <s:element minOccurs="0" maxOccurs="1" name="ABA" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AcctNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="MicrData" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="FeeAmount" type="s:double" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkFront" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkFrontName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkBack" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="CkBackName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Ckfronttif" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="Ckbacktif" type="s:base64Binary" />
+            <s:element minOccurs="0" maxOccurs="1" name="makerPhone" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="GeoLatitude" type="s:double" />
+            <s:element minOccurs="1" maxOccurs="1" name="GeoLongitude" type="s:double" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailAddGeocodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceDetailAddGeocodeResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailDelete">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="tmpTrandetId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceDetailDeleteResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceDetailDeleteResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PostTmp">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="BranchId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="EmployeeId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="BadgeNo" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PostTmpResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="PostTmpResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckRules">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckRulesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckRulesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ProductTypeList">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ProductTypeListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ProductTypeListResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ProductList">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="productTypeId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ProductListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ProductListResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="OnHoldList">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="employeeId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="branchId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="OnHoldListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="OnHoldListResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReOpen">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReOpenResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ReOpenResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceGet">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceGetResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceGetResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceVoid">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InvoiceVoidResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceVoidResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetOpenTrans">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetOpenTransResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetOpenTransResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SetPrinted">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SetPrintedResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="SetPrintedResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="IsKnownMicr">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TranMastId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="IsKnownMicrResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="IsKnownMicrResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetMicrInfo">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TmpTranDetId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetMicrInfoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetMicrInfoResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ClearTrans">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="EmployeeId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="BadgeNo" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ClearTransResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ClearTransResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="CompanyLoginSoapIn">
+    <wsdl:part name="parameters" element="tns:CompanyLogin" />
+  </wsdl:message>
+  <wsdl:message name="CompanyLoginSoapOut">
+    <wsdl:part name="parameters" element="tns:CompanyLoginResponse" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailAddSoapIn">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailAdd" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailAddSoapOut">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailAddResponse" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailAddGeocodeSoapIn">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailAddGeocode" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailAddGeocodeSoapOut">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailAddGeocodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailDeleteSoapIn">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailDelete" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceDetailDeleteSoapOut">
+    <wsdl:part name="parameters" element="tns:InvoiceDetailDeleteResponse" />
+  </wsdl:message>
+  <wsdl:message name="PostTmpSoapIn">
+    <wsdl:part name="parameters" element="tns:PostTmp" />
+  </wsdl:message>
+  <wsdl:message name="PostTmpSoapOut">
+    <wsdl:part name="parameters" element="tns:PostTmpResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckRulesSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckRules" />
+  </wsdl:message>
+  <wsdl:message name="CheckRulesSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckRulesResponse" />
+  </wsdl:message>
+  <wsdl:message name="ProductTypeListSoapIn">
+    <wsdl:part name="parameters" element="tns:ProductTypeList" />
+  </wsdl:message>
+  <wsdl:message name="ProductTypeListSoapOut">
+    <wsdl:part name="parameters" element="tns:ProductTypeListResponse" />
+  </wsdl:message>
+  <wsdl:message name="ProductListSoapIn">
+    <wsdl:part name="parameters" element="tns:ProductList" />
+  </wsdl:message>
+  <wsdl:message name="ProductListSoapOut">
+    <wsdl:part name="parameters" element="tns:ProductListResponse" />
+  </wsdl:message>
+  <wsdl:message name="OnHoldListSoapIn">
+    <wsdl:part name="parameters" element="tns:OnHoldList" />
+  </wsdl:message>
+  <wsdl:message name="OnHoldListSoapOut">
+    <wsdl:part name="parameters" element="tns:OnHoldListResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReOpenSoapIn">
+    <wsdl:part name="parameters" element="tns:ReOpen" />
+  </wsdl:message>
+  <wsdl:message name="ReOpenSoapOut">
+    <wsdl:part name="parameters" element="tns:ReOpenResponse" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceGetSoapIn">
+    <wsdl:part name="parameters" element="tns:InvoiceGet" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceGetSoapOut">
+    <wsdl:part name="parameters" element="tns:InvoiceGetResponse" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceVoidSoapIn">
+    <wsdl:part name="parameters" element="tns:InvoiceVoid" />
+  </wsdl:message>
+  <wsdl:message name="InvoiceVoidSoapOut">
+    <wsdl:part name="parameters" element="tns:InvoiceVoidResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetOpenTransSoapIn">
+    <wsdl:part name="parameters" element="tns:GetOpenTrans" />
+  </wsdl:message>
+  <wsdl:message name="GetOpenTransSoapOut">
+    <wsdl:part name="parameters" element="tns:GetOpenTransResponse" />
+  </wsdl:message>
+  <wsdl:message name="SetPrintedSoapIn">
+    <wsdl:part name="parameters" element="tns:SetPrinted" />
+  </wsdl:message>
+  <wsdl:message name="SetPrintedSoapOut">
+    <wsdl:part name="parameters" element="tns:SetPrintedResponse" />
+  </wsdl:message>
+  <wsdl:message name="IsKnownMicrSoapIn">
+    <wsdl:part name="parameters" element="tns:IsKnownMicr" />
+  </wsdl:message>
+  <wsdl:message name="IsKnownMicrSoapOut">
+    <wsdl:part name="parameters" element="tns:IsKnownMicrResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetMicrInfoSoapIn">
+    <wsdl:part name="parameters" element="tns:GetMicrInfo" />
+  </wsdl:message>
+  <wsdl:message name="GetMicrInfoSoapOut">
+    <wsdl:part name="parameters" element="tns:GetMicrInfoResponse" />
+  </wsdl:message>
+  <wsdl:message name="ClearTransSoapIn">
+    <wsdl:part name="parameters" element="tns:ClearTrans" />
+  </wsdl:message>
+  <wsdl:message name="ClearTransSoapOut">
+    <wsdl:part name="parameters" element="tns:ClearTransResponse" />
+  </wsdl:message>
+  <wsdl:portType name="TransactionServiceSoap">
+    <wsdl:operation name="CompanyLogin">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Verifies login information to access web methods</wsdl:documentation>
+      <wsdl:input message="tns:CompanyLoginSoapIn" />
+      <wsdl:output message="tns:CompanyLoginSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAdd">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Writes a record to tmptrandet and returns the tmptrandetid</wsdl:documentation>
+      <wsdl:input message="tns:InvoiceDetailAddSoapIn" />
+      <wsdl:output message="tns:InvoiceDetailAddSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAddGeocode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Writes a record to tmptrandet and returns the tmptrandetid</wsdl:documentation>
+      <wsdl:input message="tns:InvoiceDetailAddGeocodeSoapIn" />
+      <wsdl:output message="tns:InvoiceDetailAddGeocodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailDelete">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Deletes an invoice detail</wsdl:documentation>
+      <wsdl:input message="tns:InvoiceDetailDeleteSoapIn" />
+      <wsdl:output message="tns:InvoiceDetailDeleteSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="PostTmp">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Creates invoice from temporary records</wsdl:documentation>
+      <wsdl:input message="tns:PostTmpSoapIn" />
+      <wsdl:output message="tns:PostTmpSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckRules">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Runs check rules on invoice (obsolete)</wsdl:documentation>
+      <wsdl:input message="tns:CheckRulesSoapIn" />
+      <wsdl:output message="tns:CheckRulesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ProductTypeList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Retrieves the product type listing</wsdl:documentation>
+      <wsdl:input message="tns:ProductTypeListSoapIn" />
+      <wsdl:output message="tns:ProductTypeListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ProductList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Retrieves the product list</wsdl:documentation>
+      <wsdl:input message="tns:ProductListSoapIn" />
+      <wsdl:output message="tns:ProductListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="OnHoldList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Retrieves the on-hold list</wsdl:documentation>
+      <wsdl:input message="tns:OnHoldListSoapIn" />
+      <wsdl:output message="tns:OnHoldListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ReOpen">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Retrieves status of transaction previously at call center</wsdl:documentation>
+      <wsdl:input message="tns:ReOpenSoapIn" />
+      <wsdl:output message="tns:ReOpenSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceGet">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Retrieves invoice details</wsdl:documentation>
+      <wsdl:input message="tns:InvoiceGetSoapIn" />
+      <wsdl:output message="tns:InvoiceGetSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceVoid">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Voids invoice details</wsdl:documentation>
+      <wsdl:input message="tns:InvoiceVoidSoapIn" />
+      <wsdl:output message="tns:InvoiceVoidSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetOpenTrans">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns incomplete transactions</wsdl:documentation>
+      <wsdl:input message="tns:GetOpenTransSoapIn" />
+      <wsdl:output message="tns:GetOpenTransSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SetPrinted">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Updates printed flag for invoice</wsdl:documentation>
+      <wsdl:input message="tns:SetPrintedSoapIn" />
+      <wsdl:output message="tns:SetPrintedSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="IsKnownMicr">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns MICR and Check information</wsdl:documentation>
+      <wsdl:input message="tns:IsKnownMicrSoapIn" />
+      <wsdl:output message="tns:IsKnownMicrSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetMicrInfo">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns Micr information and OCR information</wsdl:documentation>
+      <wsdl:input message="tns:GetMicrInfoSoapIn" />
+      <wsdl:output message="tns:GetMicrInfoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ClearTrans">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Clears orphaned transactions from temporary records</wsdl:documentation>
+      <wsdl:input message="tns:ClearTransSoapIn" />
+      <wsdl:output message="tns:ClearTransSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="TransactionServiceSoap" type="tns:TransactionServiceSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CompanyLogin">
+      <soap:operation soapAction="http://tempuri.org/CompanyLogin" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAdd">
+      <soap:operation soapAction="http://tempuri.org/InvoiceDetailAdd" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAddGeocode">
+      <soap:operation soapAction="http://tempuri.org/InvoiceDetailAddGeocode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailDelete">
+      <soap:operation soapAction="http://tempuri.org/InvoiceDetailDelete" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PostTmp">
+      <soap:operation soapAction="http://tempuri.org/PostTmp" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckRules">
+      <soap:operation soapAction="http://tempuri.org/CheckRules" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProductTypeList">
+      <soap:operation soapAction="http://tempuri.org/ProductTypeList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProductList">
+      <soap:operation soapAction="http://tempuri.org/ProductList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="OnHoldList">
+      <soap:operation soapAction="http://tempuri.org/OnHoldList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReOpen">
+      <soap:operation soapAction="http://tempuri.org/ReOpen" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceGet">
+      <soap:operation soapAction="http://tempuri.org/InvoiceGet" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceVoid">
+      <soap:operation soapAction="http://tempuri.org/InvoiceVoid" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetOpenTrans">
+      <soap:operation soapAction="http://tempuri.org/GetOpenTrans" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SetPrinted">
+      <soap:operation soapAction="http://tempuri.org/SetPrinted" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="IsKnownMicr">
+      <soap:operation soapAction="http://tempuri.org/IsKnownMicr" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMicrInfo">
+      <soap:operation soapAction="http://tempuri.org/GetMicrInfo" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ClearTrans">
+      <soap:operation soapAction="http://tempuri.org/ClearTrans" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="TransactionServiceSoap12" type="tns:TransactionServiceSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CompanyLogin">
+      <soap12:operation soapAction="http://tempuri.org/CompanyLogin" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAdd">
+      <soap12:operation soapAction="http://tempuri.org/InvoiceDetailAdd" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailAddGeocode">
+      <soap12:operation soapAction="http://tempuri.org/InvoiceDetailAddGeocode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceDetailDelete">
+      <soap12:operation soapAction="http://tempuri.org/InvoiceDetailDelete" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PostTmp">
+      <soap12:operation soapAction="http://tempuri.org/PostTmp" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckRules">
+      <soap12:operation soapAction="http://tempuri.org/CheckRules" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProductTypeList">
+      <soap12:operation soapAction="http://tempuri.org/ProductTypeList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProductList">
+      <soap12:operation soapAction="http://tempuri.org/ProductList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="OnHoldList">
+      <soap12:operation soapAction="http://tempuri.org/OnHoldList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReOpen">
+      <soap12:operation soapAction="http://tempuri.org/ReOpen" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceGet">
+      <soap12:operation soapAction="http://tempuri.org/InvoiceGet" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InvoiceVoid">
+      <soap12:operation soapAction="http://tempuri.org/InvoiceVoid" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetOpenTrans">
+      <soap12:operation soapAction="http://tempuri.org/GetOpenTrans" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SetPrinted">
+      <soap12:operation soapAction="http://tempuri.org/SetPrinted" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="IsKnownMicr">
+      <soap12:operation soapAction="http://tempuri.org/IsKnownMicr" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetMicrInfo">
+      <soap12:operation soapAction="http://tempuri.org/GetMicrInfo" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ClearTrans">
+      <soap12:operation soapAction="http://tempuri.org/ClearTrans" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="TransactionService">
+    <wsdl:port name="TransactionServiceSoap" binding="tns:TransactionServiceSoap">
+      <soap:address location="http://beta.chexar.net/webservice/transactionservice.asmx" />
+    </wsdl:port>
+    <wsdl:port name="TransactionServiceSoap12" binding="tns:TransactionServiceSoap12">
+      <soap12:address location="http://beta.chexar.net/webservice/transactionservice.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

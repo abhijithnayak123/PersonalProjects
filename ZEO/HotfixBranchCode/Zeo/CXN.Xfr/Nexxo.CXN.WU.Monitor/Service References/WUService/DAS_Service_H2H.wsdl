@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.westernunion.com/DAS_Service_H2H" xmlns:xrsi="http://www.westernunion.com/schema/xrsi" name="DAS_Service_H2H" targetNamespace="http://www.westernunion.com/DAS_Service_H2H" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema xmlns:mrm="http://www.westernunion.com/DAS_Service_H2H" targetNamespace="http://www.westernunion.com/DAS_Service_H2H">
+      <xsd:import schemaLocation="../schema/XRSIDasReply.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+      <xsd:import schemaLocation="../schema/XRSIDasRequest.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+      <xsd:import schemaLocation="../schema/XRSIErrorReply.xsd" namespace="http://www.westernunion.com/schema/xrsi" />
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="DAS_Service_in">
+    <wsdl:part name="h2h-das-request" element="xrsi:h2h-das-request" />
+  </wsdl:message>
+  <wsdl:message name="DAS_Service_out">
+    <wsdl:part name="h2h-das-reply" element="xrsi:h2h-das-reply" />
+  </wsdl:message>
+  <wsdl:message name="DAS_Service_fault1">
+    <wsdl:part name="error-reply" element="xrsi:error-reply" />
+  </wsdl:message>
+  <wsdl:portType name="DASInquiryPortType">
+    <wsdl:operation name="DAS_Service">
+      <wsdl:input name="DAS_Service_Input" message="tns:DAS_Service_in" />
+      <wsdl:output name="DAS_Service_Output" message="tns:DAS_Service_out" />
+      <wsdl:fault name="DAS_Service_Fault" message="tns:DAS_Service_fault1" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="DASInquiry_H2H_SOAP_HTTP_Binding" type="tns:DASInquiryPortType">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="DAS_Service">
+      <soap:operation soapAction="" />
+      <wsdl:input name="DAS_Service_Input">
+        <soap:body use="literal" parts="h2h-das-request" />
+      </wsdl:input>
+      <wsdl:output name="DAS_Service_Output">
+        <soap:body use="literal" parts="h2h-das-reply" />
+      </wsdl:output>
+      <wsdl:fault name="DAS_Service_Fault">
+        <soap:fault use="literal" name="DAS_Service_Fault" namespace="" />
+      </wsdl:fault>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="DAS_Service_H2H">
+    <wsdl:port name="SOAP_HTTP_Port" binding="tns:DASInquiry_H2H_SOAP_HTTP_Binding">
+      <soap:address location="http://www.westernunion.com/DAS_Service_H2H" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="HeartBeat" targetNamespace="http://www.westernunion.com/HeartBeat" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.westernunion.com/HeartBeat" xmlns:xrsi="http://www.westernunion.com/schema/xrsi" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:documentation>WSDL for HeartBeat Service
+	Version : 1.0 Authors : Western Union Created : 10 November 2010
+
+	Revision History:
+	1.0 11/11/2010 update schema version</xsd:documentation>
+  <types>
+    <xsd:schema targetNamespace="http://www.westernunion.com/HeartBeat" version="1.0" xmlns:mrm="http://www.westernunion.com/HeartBeat">
+      <xsd:import namespace="http://www.westernunion.com/schema/xrsi" schemaLocation="../schema/XRSIGBSHeartbeatReply.xsd"/>"
+      <xsd:import namespace="http://www.westernunion.com/schema/xrsi" schemaLocation="../schema/XRSIGBSHeartbeatRequest.xsd"/>
+      <xsd:import namespace="http://www.westernunion.com/schema/xrsi" schemaLocation="../schema/XRSIErrorReply.xsd"/>
+    </xsd:schema>
+  </types>
+  <message name="HeartBeatService_in">
+    <part name="esp-heartbeat-request" element="xrsi:esp-heartbeat-request"/>
+  </message>
+  <message name="HeartBeatService_out">
+    <part name="esp-heartbeat-reply" element="xrsi:esp-heartbeat-reply"/>
+  </message>
+  <message name="HeartBeatService_faultMsg">
+    <part name="error-reply" element="xrsi:error-reply"/>
+  </message>
+  <portType name="HeartBeatPortType">
+    <operation name="HeartBeatService">
+      <input name="HeartBeatService_Input" message="tns:HeartBeatService_in"/>
+      <output name="HeartBeatService_Output" message="tns:HeartBeatService_out"/>
+      <fault name="fault" message="tns:HeartBeatService_faultMsg"/>
+    </operation>
+  </portType>
+</definitions>

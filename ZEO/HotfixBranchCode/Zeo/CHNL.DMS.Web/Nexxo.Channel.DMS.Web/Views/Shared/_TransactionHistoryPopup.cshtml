@@ -1,0 +1,33 @@
+﻿@model MGI.Channel.DMS.Web.Models.TransactionHistoryPopup
+
+<script language="javascript" type="text/javascript">
+
+    $(document).ready(function () {
+        $('#btnPrintReceipt').bind('click', function () {
+            PrintTransactionReceipt();
+        });
+    });
+
+    function PrintTransactionReceipt() {
+        var printCompleted = true;
+        var printParams = '@Model.ReceiptData';
+        PrintReceipt(NPSbaseURL, printParams);
+        //Close the confirmation window
+        $('#divTrans').dialog('destroy').remove();
+    }
+</script>
+<div>
+    <hgroup>
+        <h1>Are you sure you want to print ?</h1>
+    </hgroup>
+    <div class="shift25">
+        <ul>
+            <li>
+                <input type="submit" value="Print" class="btn_txt" id="btnPrintReceipt" />
+            </li>
+            <li>
+                <input type="button" value="Exit" onclick="javascript:$('#divTrans').dialog('destroy').remove();" style="background-color: #ad2525;" />
+            </li>
+        </ul>
+    </div>
+</div>

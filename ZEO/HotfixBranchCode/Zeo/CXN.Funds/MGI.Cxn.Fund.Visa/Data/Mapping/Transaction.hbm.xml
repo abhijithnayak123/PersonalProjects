@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping assembly="MGI.Cxn.Fund.Visa" namespace="MGI.Cxn.Fund.Visa.Data" xmlns="urn:nhibernate-mapping-2.2">
+	<class name="Transaction" table="tVisa_Trx" lazy="true" >
+		<id name="rowguid" column="VisaTrxPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="VisaTrxID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+
+		<many-to-one name="Account" class="MGI.Cxn.Fund.Visa.Data.Account" column="AccountPK" insert="true" update="false" cascade ="none" not-null ="true" />
+
+		<property name="TransactionType">
+			<column name="TransactionType" sql-type="int" not-null="true" />
+		</property>
+		<property name="Amount">
+			<column name="Amount" sql-type="money" not-null="true" />
+		</property>
+		<property name="Fee">
+			<column name="Fee" sql-type="money" not-null="false" />
+		</property>
+		<property name="Description">
+			<column name="Description" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="Status">
+			<column name="Status" sql-type="int" not-null="true" />
+		</property>
+		<property name="ConfirmationId">
+			<column name="ConfirmationId" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="ChannelPartnerID">
+			<column name="ChannelPartnerID" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="Balance">
+			<column name="Balance" sql-type="money" not-null="true" />
+		</property>
+		<property name="ErrorCode">
+			<column name="ErrorCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="ErrorMsg">
+			<column name="ErrorMsg" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DTTransmission">
+			<column name="DTTransmission" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="DTTerminalCreate">
+			<column name="DTTerminalCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTTerminalLastModified">
+			<column name="DTTerminalLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="PromoCode">
+			<column name="PromoCode" sql-type="nvarchar" not-null="false" />
+		</property>
+	<property name="LocationNodeId">
+			<column name="LocationNodeId" sql-type="bigint" not-null="false" />
+		</property>
+	</class>
+</hibernate-mapping>

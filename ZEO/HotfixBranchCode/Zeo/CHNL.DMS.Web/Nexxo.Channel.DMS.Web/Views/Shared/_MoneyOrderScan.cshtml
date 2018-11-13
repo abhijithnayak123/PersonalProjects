@@ -1,0 +1,28 @@
+﻿@model MGI.Channel.DMS.Web.Models.MoneyOrderImage
+@{
+    ViewBag.Title = MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ScanMoneyOrder;
+}
+<div id="processScanMoneyOrder">
+    <div>
+        <ul class="txt_center">
+            <li>Place the Money Order check in the scanner</li>
+        </ul>
+    </div>
+    @{var moneyOrderId = Guid.NewGuid().ToString();}
+    <div class="msg_statement">
+        <div>
+            <img id="MoneyOrderImage" alt="MoneyOrderImage" src="@Url.Content("~/Content/images/MOScanInstruction.png")"/>
+        </div>
+        @Html.Partial("_MoneyOrderDetails", Model)
+    </div>
+    <div>
+        <ul class="txt_center">
+            <li class="popUpCancelBtnWidth">
+                @Html.ActionLink("Cancel Transaction", "MoneyOrderCancel", "ShoppingCart", null, new { id = "submitLink", @class = "anc_link_btn red_btn"})
+            </li>
+            <li class="popUpConfrmBtnWidth">
+                <input type="button" id="btnScan" value="Scan" onclick="ScanMoneyOrder(NPSbaseURL, '@moneyOrderId')" class ="confirmButton" />
+            </li>
+        </ul>
+    </div>
+</div>

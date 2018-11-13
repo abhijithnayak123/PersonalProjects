@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://tempuri.org/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://tempuri.org/">
+      <s:element name="CompanyLogin">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyId" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Username" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Password" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CompanyLoginResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyLoginResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ComposeMessage">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TicketNo" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="EmployeeId" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="Message" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ComposeMessageResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ComposeMessageResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckForMessage">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TicketNo" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckForMessageResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckForMessageResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ConfirmMessage">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="MessageId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ConfirmMessageResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ConfirmMessageResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="TicketStatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="token" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="TicketNo" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="TicketStatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="TicketStatusResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="CompanyLoginSoapIn">
+    <wsdl:part name="parameters" element="tns:CompanyLogin" />
+  </wsdl:message>
+  <wsdl:message name="CompanyLoginSoapOut">
+    <wsdl:part name="parameters" element="tns:CompanyLoginResponse" />
+  </wsdl:message>
+  <wsdl:message name="ComposeMessageSoapIn">
+    <wsdl:part name="parameters" element="tns:ComposeMessage" />
+  </wsdl:message>
+  <wsdl:message name="ComposeMessageSoapOut">
+    <wsdl:part name="parameters" element="tns:ComposeMessageResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckForMessageSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckForMessage" />
+  </wsdl:message>
+  <wsdl:message name="CheckForMessageSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckForMessageResponse" />
+  </wsdl:message>
+  <wsdl:message name="ConfirmMessageSoapIn">
+    <wsdl:part name="parameters" element="tns:ConfirmMessage" />
+  </wsdl:message>
+  <wsdl:message name="ConfirmMessageSoapOut">
+    <wsdl:part name="parameters" element="tns:ConfirmMessageResponse" />
+  </wsdl:message>
+  <wsdl:message name="TicketStatusSoapIn">
+    <wsdl:part name="parameters" element="tns:TicketStatus" />
+  </wsdl:message>
+  <wsdl:message name="TicketStatusSoapOut">
+    <wsdl:part name="parameters" element="tns:TicketStatusResponse" />
+  </wsdl:message>
+  <wsdl:portType name="CallCenterServiceSoap">
+    <wsdl:operation name="CompanyLogin">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Verifies login information to access web methods</wsdl:documentation>
+      <wsdl:input message="tns:CompanyLoginSoapIn" />
+      <wsdl:output message="tns:CompanyLoginSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ComposeMessage">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Composes a new message</wsdl:documentation>
+      <wsdl:input message="tns:ComposeMessageSoapIn" />
+      <wsdl:output message="tns:ComposeMessageSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckForMessage">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Checks to see if there are any unread messages</wsdl:documentation>
+      <wsdl:input message="tns:CheckForMessageSoapIn" />
+      <wsdl:output message="tns:CheckForMessageSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ConfirmMessage">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Confirms receipt of a message</wsdl:documentation>
+      <wsdl:input message="tns:ConfirmMessageSoapIn" />
+      <wsdl:output message="tns:ConfirmMessageSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="TicketStatus">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns ticket status and resulting wait time</wsdl:documentation>
+      <wsdl:input message="tns:TicketStatusSoapIn" />
+      <wsdl:output message="tns:TicketStatusSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="CallCenterServiceSoap" type="tns:CallCenterServiceSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CompanyLogin">
+      <soap:operation soapAction="http://tempuri.org/CompanyLogin" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ComposeMessage">
+      <soap:operation soapAction="http://tempuri.org/ComposeMessage" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckForMessage">
+      <soap:operation soapAction="http://tempuri.org/CheckForMessage" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ConfirmMessage">
+      <soap:operation soapAction="http://tempuri.org/ConfirmMessage" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="TicketStatus">
+      <soap:operation soapAction="http://tempuri.org/TicketStatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="CallCenterServiceSoap12" type="tns:CallCenterServiceSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CompanyLogin">
+      <soap12:operation soapAction="http://tempuri.org/CompanyLogin" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ComposeMessage">
+      <soap12:operation soapAction="http://tempuri.org/ComposeMessage" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckForMessage">
+      <soap12:operation soapAction="http://tempuri.org/CheckForMessage" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ConfirmMessage">
+      <soap12:operation soapAction="http://tempuri.org/ConfirmMessage" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="TicketStatus">
+      <soap12:operation soapAction="http://tempuri.org/TicketStatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="CallCenterService">
+    <wsdl:port name="CallCenterServiceSoap" binding="tns:CallCenterServiceSoap">
+      <soap:address location="http://beta.chexar.net/webservice/callcenterservice.asmx" />
+    </wsdl:port>
+    <wsdl:port name="CallCenterServiceSoap12" binding="tns:CallCenterServiceSoap12">
+      <soap12:address location="http://beta.chexar.net/webservice/callcenterservice.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

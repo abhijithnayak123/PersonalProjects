@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Cxn.BillPay.WU" 
+				   namespace="MGI.Cxn.BillPay.WU.Data" 
+				   xmlns="urn:nhibernate-mapping-2.2">
+	<class name="ImportedBiller" table="tWUnion_ImportBillers" lazy="true" >
+		<id name="rowguid" column="WUBillersPK">
+			<generator class="guid"/>
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUBillersID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="BillerName">
+			<column name="BillerName" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="AccountNumber">
+			<column name="AccountNumber" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CardNumber">
+			<column name="CardNumber" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="WUIndex">
+			<column name="WUIndex" sql-type="varchar" not-null="true" />
+		</property>
+		<many-to-one name="WUAccount" class="MGI.Cxn.BillPay.WU.Data.WesternUnionAccount" column="WUBillPayAccountPK" insert="true" update="false" cascade ="none" not-null ="true" />
+		<property name="AgentSessionId">
+			<column name="AgentSessionId" sql-type="bigint" not-null="true" />
+		</property>
+		<property name="CustomerSessionId">
+			<column name="CustomerSessionId" sql-type="bigint" not-null="true" />
+		</property>
+	</class>
+</hibernate-mapping>

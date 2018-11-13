@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{6936DFC5-FFFA-4332-A1C4-5DFEA85A8882}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MGI.Cxn.Check.Certegy</RootNamespace>
+    <AssemblyName>MGI.Cxn.Check.Certegy</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AutoMapper, Version=2.2.0.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\AutoMapper.2.2.0\lib\net40\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IIO.cs" />
+    <Compile Include="Data\CertegyProviderException.cs" />
+    <Compile Include="Data\Account.cs" />
+    <Compile Include="Data\CheckImage.cs" />
+    <Compile Include="Data\CheckTypeMapping.cs" />
+    <Compile Include="Data\Credential.cs" />
+    <Compile Include="Data\Transaction.cs" />
+    <Compile Include="Impl\Gateway.cs" />
+    <Compile Include="Impl\IO.cs" />
+    <Compile Include="Impl\SimulatorIO.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Service References\Certegy\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\CMMN\Common\MGI.Common.csproj">
+      <Project>{aaf0a571-5fac-4582-8152-74d36e1305c4}</Project>
+      <Name>MGI.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CMMN\DataAccess\MGI.Common.DataAccess.csproj">
+      <Project>{8b74fcc0-ff54-437e-b265-7b0f5fac2570}</Project>
+      <Name>MGI.Common.DataAccess</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CMMN\MGI.Common.Logging\MGI.Common.Logging.csproj">
+      <Project>{e27eb7b0-7ecb-4e9b-81bd-b6ab823d82d9}</Project>
+      <Name>MGI.Common.Logging</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CMMN\Nexxo.TimeStamp\MGI.TimeStamp.csproj">
+      <Project>{5662f7de-1c83-42ea-8afa-6d691634e9e6}</Project>
+      <Name>MGI.TimeStamp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\MGI.Alloy.TransactionalLogging\MGI.Common.TransactionalLogging\MGI.Common.TransactionalLogging.csproj">
+      <Project>{7f83710f-ff4d-492c-b1a1-2a2acfef6065}</Project>
+      <Name>MGI.Common.TransactionalLogging</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Nexxo.Cxn.Check\MGI.Cxn.Check.csproj">
+      <Project>{9e4372b9-7bcc-4d0e-833d-02edadd454c5}</Project>
+      <Name>MGI.Cxn.Check</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CXN.CMMN\MGI.Common.Processor.csproj">
+      <Project>{d0687c04-9b90-4fee-9c9b-70cbf64ff286}</Project>
+      <Name>MGI.Common.Processor</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MGI.Cxn.Check.Certegy.Db.Spring.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MGI.Cxn.Check.Certegy.Spring.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Mapping\Account.hbm.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Mapping\CheckImage.hbm.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Mapping\CheckTypeMapping.hbm.xml" />
+    <EmbeddedResource Include="Data\Mapping\Credential.hbm.xml" />
+    <EmbeddedResource Include="Data\Mapping\Transaction.hbm.xml">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <None Include="Service References\Certegy\MGI.Cxn.Check.Certegy.Certegy.Custom.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Certegy\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Service References\Certegy\configuration.svcinfo" />
+    <None Include="Service References\Certegy\configuration91.svcinfo" />
+    <None Include="WSDL\certegypca.wsdl" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Service References\Certegy\PCAService.wsdl" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\Certegy\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

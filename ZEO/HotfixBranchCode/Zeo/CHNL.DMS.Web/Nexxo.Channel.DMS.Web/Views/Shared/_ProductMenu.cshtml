@@ -1,0 +1,48 @@
+﻿@model MGI.Channel.DMS.Web.Models.BaseModel
+<ul class="menuClass" id="selection">
+    <li class="nav_head">
+        <a href="#">Products</a>
+    </li>
+    @foreach (var provider in Model.Providers) 
+    { 
+        <li class="nav_item_select nav_icon_process">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ProcessCheck, provider.ActionName, provider.ControllerName, null, new { @class = "nav_name" })
+        </li>
+    }
+
+    @if (Session["activeButton"] != null && Session["activeButton"] == "billpayment") {
+        <li class="nav_item_select nav_icon_billpay">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.BillPayment, "BillPayment", "WesternUnionBillPayment", new { }, new { @class = "nav_name" })
+        </li>
+    }
+    else {
+        <li id="liBillPay" class="nav_item nav_icon_billpay_dis">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.BillPayment, "BillPayment", "WesternUnionBillPayment", new { }, new { @class = "nav_name" })
+        </li>
+    } 
+    @if (Session["activeButton"] != null && Session["activeButton"] == "sendmoney") {
+        <li class="nav_item_select nav_icon_sendmoney">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MoneyTransfer, "SendMoney", "Product", new { }, new { @class = "nav_name" })
+        </li>
+    }
+    else {
+        <li id="liSendMny" class="nav_item nav_icon_sendmoney_dis">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.MoneyTransfer, "SendMoney", "Product", new { }, new { @class = "nav_name" })
+        </li>
+    }
+
+	<!--added for receive money -->
+	@if (Session["activeButton"] != null && Session["activeButton"] == "Receive Money") {
+        <li class="nav_item_select nav_icon_recivemoney">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiveMoney, "ReceiveMoney", "Product", new { }, new { @class = "nav_name" })
+        </li>
+    }
+    else {
+        <li id="liRcvMny" class="nav_item nav_icon_recivemoney_dis">
+            @Html.ActionLink(@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ReceiveMoney, "ReceiveMoney", "Product", new { }, new { @class = "nav_name" })
+        </li>
+    }
+
+	@Html.Partial("_partialMoneyOrderMenu")       
+    @Html.Partial("_partialTransactionHistoryMenu")
+</ul>

@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="PCAService" targetNamespace="http://fis.certegy.pca.com/"
+ xmlns="http://schemas.xmlsoap.org/wsdl/" 
+ xmlns:tns="http://fis.certegy.pca.com/"
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+ xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+ 
+ <types>
+ 
+ <xsd:schema xmlns:tns="http://fis.certegy.pca.com/" 
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    version="1.2" targetNamespace="http://fis.certegy.pca.com/">
+
+ <xsd:element name="AuthorizeRequest" type="tns:PCARequest"></xsd:element>
+ <xsd:element name="AuthorizeResponse" type="tns:PCAResponse"></xsd:element>
+ <xsd:element name="ReverseRequest" type="tns:PCAReverseRequest"></xsd:element>
+ <xsd:element name="ReverseResponse" 
+    type="tns:PCAReverseResponse"></xsd:element>
+ <xsd:element name="EchoRequest" type="tns:PCAEchoRequest"></xsd:element>
+ <xsd:element name="EchoResponse" type="tns:PCAEchoResponse"></xsd:element>
+
+ <xsd:complexType name="Address">
+  <xsd:sequence>
+   <xsd:element name="Line1" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Line2" type="xsd:string" 
+     minOccurs="0"></xsd:element>
+   <xsd:element name="City" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="State" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Zip" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="DOB">
+  <xsd:sequence>
+   <xsd:element name="Year" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Month" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Day" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="ID">
+  <xsd:sequence>
+   <xsd:element name="Type" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Value" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="Enrollment">
+  <xsd:sequence>
+   <xsd:element name="LastName" type="xsd:string" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="FirstName" type="xsd:string" 
+     minOccurs="0"></xsd:element>
+   <xsd:element name="DOB" type="tns:DOB" 
+     minOccurs="1"></xsd:element>
+   <xsd:element name="Phone" type="xsd:string" 
+     minOccurs="0"></xsd:element>
+   <xsd:element name="Address" type="tns:Address" 
+     minOccurs="0"></xsd:element>
+   <xsd:element name="ID" type="tns:ID" 
+     minOccurs="0"></xsd:element>
+   <xsd:element name="SwipedID" type="xsd:base64Binary"
+     minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="MICR">
+  <xsd:sequence>
+   <xsd:element name="ExpansionType" type="xsd:string"
+      minOccurs="0"></xsd:element>
+   <xsd:element name="EntryType" type="xsd:string" 
+      minOccurs="1" default="S"></xsd:element>
+   <xsd:element name="Line" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="Check">
+  <xsd:sequence>
+   <xsd:element name="Amount" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="MICR" type="tns:MICR" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="IssueDate" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Type" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="Device">
+  <xsd:sequence>
+   <xsd:element name="Type" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="Phone" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="ID" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="IPAddress" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="Custom">
+     <xsd:attribute name="name" type="xsd:string" use="required"/>
+        <xsd:attribute name="value" type="xsd:string" use="required" />
+    </xsd:complexType>
+ 
+ <xsd:complexType name="PCARequest">
+  <xsd:sequence>
+   <xsd:element name="TransID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="Version" type="xsd:decimal" 
+      minOccurs="1" default="1.2"></xsd:element>
+   <xsd:element name="TranType" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="SiteID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="SSN" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Check" type="tns:Check" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Enroll" type="tns:Enrollment" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Device" type="tns:Device" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Roundtrip" type="xsd:string" 
+      minOccurs="0" maxOccurs="5"></xsd:element>
+   <xsd:element name="Custom" type="tns:Custom" 
+      minOccurs="0" maxOccurs="50"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="PCAResponse">
+  <xsd:sequence>
+   <xsd:element name="TransID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="ResponseCode" type="xsd:string"
+      minOccurs="1"></xsd:element>
+   <xsd:element name="ApprovalNumber" type="xsd:string"
+      minOccurs="0"></xsd:element>
+   <xsd:element name="SettlementID" type="xsd:string"
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Roundtrip" type="xsd:string" 
+      minOccurs="0" maxOccurs="5"></xsd:element>
+   <xsd:element name="Custom" type="tns:Custom" 
+      minOccurs="0" maxOccurs="50"></xsd:element>
+  <!-- >= Version 1.2 only -->    
+   <xsd:element name="CertegyUID" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="CheckABA" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="CheckAcct" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="CheckNumber" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+  <!-- >= Version 1.1 only -->    
+   <xsd:element name="CheckType" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Fee" type="xsd:decimal" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="PCAReverseRequest">
+  <xsd:sequence>
+   <xsd:element name="TransID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="Version" type="xsd:decimal" 
+      minOccurs="1" default="1.2"></xsd:element>
+   <xsd:element name="SiteID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="SSN" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+   <xsd:element name="Check" type="tns:Check" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="Roundtrip" type="xsd:string" 
+      minOccurs="0" maxOccurs="5"></xsd:element>
+   <xsd:element name="Custom" type="tns:Custom" 
+      minOccurs="0" maxOccurs="50"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="PCAReverseResponse">
+  <xsd:sequence>
+   <xsd:element name="TransID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="ResponseCode" type="xsd:string"
+      minOccurs="1"></xsd:element>
+   <xsd:element name="Roundtrip" type="xsd:string" 
+      minOccurs="0" maxOccurs="5"></xsd:element>
+   <xsd:element name="Custom" type="tns:Custom" 
+      minOccurs="0" maxOccurs="50"></xsd:element>
+   <!-- >= Version 1.2 only -->    
+   <xsd:element name="CertegyUID" type="xsd:string" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="PCAEchoRequest">
+  <xsd:sequence>
+   <xsd:element name="SiteID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="EchoNumber" type="xsd:integer" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ <xsd:complexType name="PCAEchoResponse">
+  <xsd:sequence>
+   <xsd:element name="SiteID" type="xsd:string" 
+      minOccurs="1"></xsd:element>
+   <xsd:element name="EchoNumber" type="xsd:integer" 
+      minOccurs="0"></xsd:element>
+  </xsd:sequence>
+ </xsd:complexType>
+
+ </xsd:schema>
+
+ </types>
+ 
+ <message name="AuthorizeResponse">
+  <part name="parameters" element="tns:AuthorizeResponse"></part>
+ </message>
+ <message name="AuthorizeRequest">
+  <part name="parameters" element="tns:AuthorizeRequest"></part>
+ </message>
+ <message name="ReverseResponse">
+  <part name="parameters" element="tns:ReverseResponse"></part>
+ </message>
+ <message name="ReverseRequest">
+  <part name="parameters" element="tns:ReverseRequest"></part>
+ </message>
+ <message name="EchoResponse">
+  <part name="parameters" element="tns:EchoResponse"></part>
+ </message>
+ <message name="EchoRequest">
+  <part name="parameters" element="tns:EchoRequest"></part>
+ </message>
+
+ <portType name="PCA">
+  <operation name="authorize">
+   <input message="tns:AuthorizeRequest"></input>
+   <output message="tns:AuthorizeResponse"></output>
+  </operation>
+  <operation name="reverse">
+   <input message="tns:ReverseRequest"></input>
+   <output message="tns:ReverseResponse"></output>
+  </operation>
+  <operation name="echo">
+   <input message="tns:EchoRequest"></input>
+   <output message="tns:EchoResponse"></output>
+  </operation>
+
+ </portType>
+
+
+ <binding name="PCAPortBinding" type="tns:PCA">
+  <soap:binding style="document"
+   transport="http://schemas.xmlsoap.org/soap/http" />
+  <operation name="authorize">
+   <soap:operation soapAction="authorize" />
+   <input>
+    <soap:body use="literal" />
+   </input>
+   <output>
+    <soap:body use="literal" />
+   </output>
+  </operation>
+
+  <operation name="reverse">
+   <soap:operation soapAction="reverse" />
+   <input>
+    <soap:body use="literal" />
+   </input>
+   <output>
+    <soap:body use="literal" />
+   </output>
+  </operation>
+
+  <operation name="echo">
+   <soap:operation soapAction="echo" />
+   <input>
+    <soap:body use="literal" />
+   </input>
+   <output>
+    <soap:body use="literal" />
+   </output>
+  </operation>
+
+
+ </binding>
+ <service name="PCAService">
+  <port name="PCAPort" binding="tns:PCAPortBinding">
+   <soap:address 
+      location="https://transtest2.certegy.com/mepca2/PCAService" />
+  </port>
+ </service>
+</definitions>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+  <!--<object id="transactionManager"
+    type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+  </object>-->
+  
+  <import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+  <import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+
+  <object id="ThrowsBizCashEngineExceptionAdvice" type="MGI.Biz.CashEngine.Impl.Advice.ThrowsBizCashEngineExceptionAdvice, MGI.Biz.CashEngine"/>
+  
+  <object id="InterceptedBizCashEngine" type="MGI.Biz.CashEngine.Impl.CashEngine, MGI.Biz.CashEngine">
+    <property name="CashService" ref ="CXECashService"></property>
+    <property name="CashCustomerService" ref="CXECustomerService"></property>
+    <property name="PTNRCashService" ref="CashService"></property>
+    <property name="CustomerSessionService" ref="CustomerSessionService"/>
+    <property name="NLogger" ref="NLoggerRef"></property>
+	  <property name="MongoDBLogger" ref="TLoggerRef"/>
+  </object>
+
+  <object id="CashEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+    <property name="Target" ref="InterceptedBizCashEngine"/>
+    <property name="InterceptorNames">
+      <list>
+        <value>ThrowsBizCashEngineExceptionAdvice</value>
+      </list>
+    </property>
+  </object>
+  
+</objects>

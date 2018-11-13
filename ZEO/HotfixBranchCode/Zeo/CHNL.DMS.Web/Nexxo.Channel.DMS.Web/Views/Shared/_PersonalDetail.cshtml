@@ -1,0 +1,232 @@
+﻿@model MGI.Channel.DMS.Web.Models.PersonalDetail
+<script language="javascript" type="text/javascript">
+
+    function mask(num) {
+        if (num.length == 11 || num.length == 9) {
+            var val = num.replace(/-/g, "");
+            var SSN = val;
+            var maskedValue = "***-**-";
+            if (val.charAt(0) != "*" || num.value == "")
+                $("#ActualSSN").val(val);
+            if (val != "" && val.length == 9) {
+                SSN = maskedValue + SSN.substring(5, val.length);
+                return SSN;
+            }
+        }
+        return num;
+    }
+
+    function onFocus(num) {
+        var val = num.value;
+        //		if (val)
+        if (val != null || val != "" || val.length > 0)
+            $("#SSN").val(num.value).select();
+
+        if (val.charAt(0) != "*")
+            $("#ActualSSN").val(num.value);
+
+        return true;
+    }
+
+
+    $(document).ready(function () {
+        $("#SSN").keypress(function () {
+            if (($("#SSN").val().length) == 9) {
+                return false;
+            }
+        });
+        $("#SSN").EditNumeric();
+
+        $("#SSN").focusout(function () {
+            $("#SSN").val(mask($("#SSN").val()));
+            SSNValidation();
+        });
+        $("#SSN").mousedown(function (e) {
+            var key = e.which || e.keyCode;
+            if (key === 3 || key === 2 || key === 1) {
+                var val = $("#SSN").val();
+                if (val.length > 0 || val != "") {
+                    $("#SSN").val(val).focus();
+                    $("#SSN").val(val).select();
+                }
+            }
+        });
+        $("#SSN").val(mask($("#SSN").val()));
+        if ('@TempData["ActualSSN"]' != '') {
+            SSNValidation();
+        }
+        $("#FirstName").focus();
+    });
+
+    jQuery.fn.EditNumeric = function () {
+        return this.each(function () {
+            $(this).keydown(function (e) {
+                var key = e.which || e.keyCode;
+
+                if (!e.shiftKey && !e.altKey && !e.ctrlKey && key == 8 || key == 46 || key == 45)
+                    $("#SSN").val('');
+
+                if ((e.shiftKey && key == 37) || (e.shiftKey && key == 39) || key == 35 || key == 36) {
+                    var val = $("#SSN").val();
+                    if (val.length > 0 || val != "") {
+                        $("#SSN").val(val).focus();
+                        $("#SSN").val(val).select();
+                    }
+                }
+
+                return true;
+            });
+        });
+    }
+
+    function formatPhoneNumber(phonenumber) {
+        var formatedPhoneNumber = "";
+        if (phonenumber != null && phonenumber != '') {
+            formatedPhoneNumber = phonenumber.substring(0, 3) + '-' + phonenumber.substring(3, 6) + '-' + phonenumber.substring(6);
+        }
+        return formatedPhoneNumber;
+    }
+
+    function setPersonalDetails(personalInfo) {
+
+        //Set Personal Details fields
+        $("#FirstName").val(personalInfo.personalDetail.FirstName);
+        $("#MiddleName").val(personalInfo.personalDetail.MiddleName);
+        $("#LastName").val(personalInfo.personalDetail.LastName);
+        $("#SecondLastName").val(personalInfo.personalDetail.SecondLastName);
+
+        //radio button
+        if (personalInfo.personalDetail.Gender != null && (personalInfo.personalDetail.Gender.toUpperCase() == "M" || personalInfo.personalDetail.Gender.toUpperCase() == "MALE")) {
+            $('#rbtMale').attr('checked', 'checked');
+        }
+        if (personalInfo.personalDetail.Gender != null && (personalInfo.personalDetail.Gender.toUpperCase() == "F" || personalInfo.personalDetail.Gender.toUpperCase() == "FEMALE")) {
+            $('#rbtFeMale').attr('checked', 'checked');
+        }
+
+        //Set Contact Details fields
+        $("#Address1").val(personalInfo.contactDetail.Address1);
+        $("#Address2").val(personalInfo.contactDetail.Address2);
+        $("#PrimaryPhone").val(formatPhoneNumber(personalInfo.contactDetail.PrimaryPhone));
+        $("#PrimaryPhoneType").val(personalInfo.contactDetail.PrimaryPhoneType);
+        $("#PrimaryPhoneProvider").val(personalInfo.contactDetail.PrimaryPhoneProvider);
+        $("#AlternativePhone").val(formatPhoneNumber(personalInfo.contactDetail.AlternativePhone));
+        $("#AlternativePhoneType").val(personalInfo.contactDetail.AlternativePhoneType);
+        $("#AlternativePhoneProvider").val(personalInfo.contactDetail.AlternativePhoneProvider);
+        $("#Email").val(personalInfo.contactDetail.Email);
+        $("#City").val(personalInfo.contactDetail.City);
+        $("#State").val(personalInfo.contactDetail.State);
+        $("#ZipCode").val(personalInfo.contactDetail.ZipCode);
+        if (personalInfo.contactDetail.AlternativePhone != '')
+        { $('#altPhType').css("display", "block"); }
+    }
+    function SSNValidation() {
+        $('#divError').text('');
+        $('#divError').hide();
+        var ssnval = $("#ActualSSN").val();
+      var isDuplicateSSNCheckRequired = true;//AL-232
+        if (ssnval == '888888888') {
+            isDuplicateSSNCheckRequired = false;
+        }
+        // if (ssnval != null && ssnval != '' && '@*@ViewBag.profileSyncIn*@' == 'True') {
+        if (ssnval != null && ssnval != '' && isDuplicateSSNCheckRequired)//AL-232 
+        {
+            showSpinner();
+            $.ajax({
+                url: PersonalInfoValidateSSNURL,
+                data: { SSN: ssnval },
+                type: 'POST',
+                datatype: 'json',
+                success: function (jsonData) {
+                    if (!jsonData.success) {
+                        $('#SSN').focus();
+                        hideSpinner();
+                        showExceptionPopupMsg(jsonData.data);
+                    }
+                    else if (jsonData.msg != null && jsonData.msg != '') {
+                        $('#divError').text(jsonData.msg);
+                        $('#SSN').val('');
+                        $('#SSN').focus();
+                        hideSpinner();
+                        showExceptionPopupMsg(jsonData.msg);
+                    }
+                    hideSpinner();
+                },
+                complete: function () {
+                    hideSpinner();
+                },
+                error: function (err) {
+                    hideSpinner();
+                    showExceptionPopupMsg(err.data);
+                }
+            });
+        }
+    }
+</script>
+@*Changes for loading starts*@
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<div id="loading">
+	<div id="loadingcontent">
+		<p id="loadingspinner">
+		</p>
+	</div>
+</div>
+@*Changes for loading ends*@
+<div id="divError" class="error_txt hide">
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.SSN, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.SSN, new { @class = "input_box", tabindex = 1, onfocus = "onFocus(this)", onblur = "mask(this)" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.SSN)@Html.HiddenFor(model => model.ActualSSN)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.FirstName, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.FirstName, new { @class = "input_box", tabindex = 2, autocomplete = "off", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_FirstName })
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.FirstName)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.MiddleName, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.MiddleName, new { @class = "input_box", tabindex = 3, autocomplete = "off", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.ToolTip_MiddleName })
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.MiddleName)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.LastName, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.LastName, new { @class = "input_box", tabindex = 4, autocomplete = "off", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_LastName })
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.LastName)
+	</div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.SecondLastName, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.SecondLastName, new { @class = "input_box", tabindex = 5, autocomplete = "off", @title = @MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.Tooltip_SecondLastName })
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.SecondLastName)
+	</div>
+</div>
+<div class="row new_cust_gender">
+	<div>
+		<span class="shift_down">
+			@Html.LabelFor(model => model.Gender, new { @class = "row_label_txt" })
+			<span>Male</span> <span id="divmale">@Html.RadioButtonFor(model => model.Gender, "Male", new { id = "rbtMale", tabindex = 6, autocomplete = "off", @class = "GenderName row_width30_fix" })</span>
+			<span>Female</span> <span id="divfemale">@Html.RadioButtonFor(model => model.Gender, "female", new { id = "rbtFeMale", tabindex = 6, @class = "GenderName row_width30_fix" })</span>
+		</span>
+	</div>
+	<div class="error_align_left cust_error_dis">
+		@Html.ValidationMessageFor(model => model.Gender)
+	</div>
+</div>

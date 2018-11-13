@@ -1,0 +1,16 @@
+﻿@model MGI.Channel.DMS.Web.Models.EmploymentDetails
+
+@{
+    ViewBag.Title = MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.EmploymentDetails;
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<script src="@Url.Content("~/Scripts/Customer/BaseCustomerValidator.js.axd")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Customer/" + @Model.ChannelPartnerName + "CustomerValidator.js.axd")" type="text/javascript"></script>
+<div align="center"><img src="@Url.Content("~/Content/images/Employment_" + @Model.ChannelPartnerName + ".png")"  usemap="#@Model.ChannelPartnerName"/></div>
+@using (Html.BeginForm("EmploymentDetails", "CustomerRegistration", FormMethod.Post, new { id = "frmEmploymentDetails" }))
+{
+    @Html.ValidationSummary(true)
+    <div class="error_txt">@ViewBag.ExceptionMessage</div>
+    @Html.Partial("_EmploymentDetails", Model)
+    @Html.Partial("_EmploymentNavigation")
+}

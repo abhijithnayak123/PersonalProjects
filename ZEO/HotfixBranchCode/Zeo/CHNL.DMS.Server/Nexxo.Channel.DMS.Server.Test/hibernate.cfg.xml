@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object id="transactionManager"
+		  type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<object id="NLoggerRef" type="MGI.Common.Util.NLoggerCommon, MGI.Common"/>
+	<tx:attribute-driven/>
+	<tx:attribute-driven transaction-manager="transactionManager" />
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <import resource="assembly://MGI.Biz.Customer/MGI.Biz.Customer/Biz.Customer.Services.Spring.xml" />
+	<import resource="assembly://MGI.Biz.MoneyTransfer/MGI.Biz.MoneyTransfer/Biz.MoneyTransfer.xml" />
+	<import resource="assembly://MGI.Biz.Partner/MGI.Biz.Partner/Biz.Partner.Services.Spring.xml" />
+	<import resource="assembly://MGI.Biz.FundsEngine/MGI.Biz.FundsEngine/Biz.Fund.xml" />
+	<import resource="assembly://MGI.Biz.BillPay/MGI.Biz.BillPay/Biz.BillPay.Services.Spring.xml" />
+	<import resource="assembly://MGI.Biz.Catalog/MGI.Biz.Catalog/Biz.Catalog.Services.Spring.xml" />
+	<import resource="assembly://MGI.Biz.CashEngine/MGI.Biz.CashEngine/Biz.Cash.xml" />
+	<import resource="assembly://MGI.Biz.CPEngine/MGI.Biz.CPEngine/Biz.CPEngine.Services.Spring.xml"/>
+
+	<import resource="assembly://MGI.Biz.Compliance/MGI.Biz.Compliance/Biz.Compliance.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Biz.MoneyOrderEngine/MGI.Biz.MoneyOrderEngine/Biz.MoneyOrderEngine.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Channel.Shared.Server.Impl/MGI.Channel.Shared.Server.Impl/MGI.Channel.Shared.Server.Impl.Spring.xml" />
+	<import resource="assembly://MGI.Biz.Receipt/MGI.Biz.Receipt/Biz.Receipt.Spring.xml" />
+
+
+	<object id="DesktopEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target">
+			<object type="MGI.Channel.DMS.Server.Impl.DesktopEngine, MGI.Channel.DMS.Server.Impl">
+				<property name="AgentService" ref="BIZPartnerAgentService" />
+				<property name="BizBillPayService" ref="BizBillPayService" />
+				<property name="CPEngineService" ref="BIZCPEngine" />
+				<property name="ProductCatalog" ref="ProductCatalog" />
+				<property name="ReportService" ref="BIZReportService" />
+				<property name="BizFundsService" ref="BIZFundsEngine"/>
+				<property name="bizMoneyTransferEngine" ref="BIZMoneyTransferEngine" />
+				<property name="CashEngine" ref="CashEngine" />
+				<property name="UserService" ref="BIZPartnerUserService" />
+				<property name="LocationService" ref="BIZPartnerLocationService" />
+				<property name="ChannelPartnerService" ref="BIZPartnerChannelPartnerService" />
+				<property name="BizCustomerService" ref="BIZCustomerEngine" />
+				<property name="BIZShoppingCartService" ref="BIZPartnerShoppingCartService" />
+				<property name="CustomerSessionSvc" ref="CustomerSessionService"/>
+				<property name="ChexarGateway" ref="IngoGateway" />
+				<property name="BIZPartnerNpsTerminalService" ref="BIZPartnerNpsTerminalService"/>
+				<property name="BIZPartnerTerminalService" ref="BIZPartnerTerminalService"/>
+				<property name="ReceiptService" ref="BIZReceiptService"/>
+				<property name="NexxoDataStructuresService" ref="BIZNexxoDataStructureService"/>
+				<property name="BizProspectService" ref="BIZCustomerProspectService"/>
+				<property name="BIZPartnerTransactionHistoryService" ref="BIZPartnerTransactionHistoryService"/>
+				<property name="LimitService" ref="BIZLimitService"/>
+				<property name="MoneyOrderEngineService" ref="BIZMoneyOrderEngine"/>
+				<property name="MessageCenterService" ref="BIZMessageCenterService"/>
+				<property name="LocationCounterIdService" ref="BIZPartnerLocationCounterIdService" />
+				<property name="LocationProcessorCredentialsService" ref="BIZPartnerLocationProcessorDetails" />
+				<property name="SharedEngine" ref="SharedEngine"/>
+			</object>
+		</property>
+		<property name="InterceptorNames">
+			<list>
+				<!--<value>ActivityLoggerAdvice</value>-->
+				<value>TraceAroundAdvice</value>
+				<value>ThrowsFaultAdvice</value>
+			</list>
+		</property>
+	</object>
+	<object id="TraceAroundAdvice" type="MGI.Channel.DMS.Server.Svc.Advice.TraceAroundAdvice, MGI.Channel.DMS.Server.Svc">
+		<property name="DetailedLogIgnoreList">
+			<object type="System.Collections.Generic.List&lt;string&gt;">
+				<constructor-arg>
+					<list element-type="string">
+						<value>Authenticate</value>
+						<value>ChangePassword</value>
+					</list>
+				</constructor-arg>
+			</object>
+		</property>
+		<property name="LogIgnoreList">
+			<object type="System.Collections.Generic.List&lt;string&gt;">
+				<constructor-arg>
+					<list element-type="string">
+						<value>SetSelf</value>
+						<value>ChannelPartnerConfig</value>
+						<value>GetManagersByChannelPartnerId</value>
+						<value>GetAll</value>
+						<value>GetTipsAndOffers</value>
+						<value>GetUserRoles</value>
+						<value>GetUserStatuses</value>
+						<value>IdCountries</value>
+						<value>IdRequirements</value>
+						<value>IdStates</value>
+						<value>IdTypes</value>
+						<value>LookupTerminal</value>
+						<value>MobileProviders</value>
+						<value>PhoneTypes</value>
+						<value>USStates</value>
+					</list>
+				</constructor-arg>
+			</object>
+		</property>
+		<property name="CardNumberLogging" value="${CardNumberLogging}" />
+	</object>
+	<object id="ActivityLoggerAdvice" type="MGI.Channel.DMS.Server.Svc.Advice.ActivityLoggerAdvice, MGI.Channel.DMS.Server.Svc">
+		<property name="LogIgnoreList">
+			<object type="System.Collections.Generic.List&lt;string&gt;">
+				<constructor-arg>
+					<list element-type="string">
+						<value>Authenticate</value>
+						<value>ChangePassword</value>
+						<value>SetSelf</value>
+						<value>ChannelPartnerConfig</value>
+						<value>GetManagersByChannelPartnerId</value>
+						<value>GetAll</value>
+						<value>GetTipsAndOffers</value>
+						<value>GetUserRoles</value>
+						<value>GetUserStatuses</value>
+						<value>IdCountries</value>
+						<value>IdRequirements</value>
+						<value>IdStates</value>
+						<value>IdTypes</value>
+						<value>LookupTerminal</value>
+						<value>MobileProviders</value>
+						<value>PhoneTypes</value>
+						<value>USStates</value>
+					</list>
+				</constructor-arg>
+			</object>
+		</property>
+		<property name="CardNumberLogging" value="${CardNumberLogging}" />
+		<property name="EventsQueue" value="${EventsQueue}" />
+	</object>
+	<object id="ThrowsFaultAdvice" type="MGI.Channel.DMS.Server.Svc.Advice.ThrowsFaultAdvice,MGI.Channel.DMS.Server.Svc">
+		<property name="MessageStore" ref="MessageStore" />
+	</object>
+
+	<!--<import resource="assembly://MGI.Channel.DMS.Server.Svc/MGI.Channel.DMS.Server.Svc/DMSServiceSpring.xml" />-->
+
+	<!--<hibernate-configuration xmlns="urn:nhibernate-configuration-2.2">
+  <session-factory name="NHibernate">
+    <property name="current_session_context_class">call</property>
+    <property name="connection.provider">NHibernate.Connection.DriverConnectionProvider</property>
+    <property name="connection.driver_class">NHibernate.Driver.SqlClientDriver</property>
+    <property name="connection.connection_string">Data Source=172.18.100.222;Initial Catalog=NexxoDev;User ID=sa;pwd=Opti@123</property>
+    <property name="dialect">NHibernate.Dialect.MsSql2008Dialect</property>
+    <property name="show_sql">true</property>
+  </session-factory>
+</hibernate-configuration>-->
+
+</objects>

@@ -1,0 +1,198 @@
+﻿@model MGI.Channel.DMS.Web.Models.BillpaymentReview
+@{
+	ViewBag.Title = "BillPayReview";
+	Layout = "~/Views/Shared/_Common.cshtml";	
+}
+<script src="@Url.Content("~/Scripts/Billpay/WUBillpayReview.js")" type="text/javascript"></script>
+
+@using (Html.BeginForm("BillPaySubmit", "WesternUnionBillPayment"))
+{
+	<div class="bill_pay_review">
+		<input type="hidden" id="PanelStatus" value="1" />
+		@Html.HiddenFor(model => model.BillpayTransactionId)
+		<div>
+			<ul class="page_head product_head">
+				<li>Bill Pay Review</li>
+			</ul>
+		</div>
+		<div class="row">
+			<div>
+				<div>
+					@if (@ViewBag.ErrorMessage != null)
+	 {
+						<div id="divErrorMsg" class="spacer">
+							<div style="color: Red; font-size: 12px; text-align: center; padding: 5px;" class="field-validation-error">@ViewBag.ErrorMessage</div>
+						</div>
+	 }
+				</div>
+				@Html.LabelFor(model => model.BillerName, new { @class = "row_label_txt bill_pay_review_pull" })
+				<span class="txt_left">@Html.DisplayFor(model => model.BillerName)</span>
+				@Html.HiddenFor(model => model.BillerName)
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.BillerName)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				@Html.LabelFor(model => model.BillerLocationName, new { @class = "row_label_txt bill_pay_review_pull" })
+				@if (string.IsNullOrEmpty(Model.BillerLocationName))
+	{<span class="txt_left">Not Applicable</span>}
+	else
+	{<span class="txt_left">@Html.DisplayFor(model => model.BillerLocationName)</span>}
+				@Html.HiddenFor(model => model.BillerLocationName)
+				@Html.HiddenFor(model => model.BillerLocationId)
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.BillerLocationName)
+			</div>
+		</div>
+		<div class="item_Info_wrap">
+			<ul class="page_head product_head product_head_c ">
+				<li class="send_info">Senders Information</li>
+				<li class="pay_info">Payment Information</li>
+			</ul>
+		</div>
+		<div class="sender_wrap">
+			<div class="sender_table_wrap">
+				<table class="sender_table">
+					<tr>
+						<td class="word_break">
+							@Html.DisplayFor(model => model.SenderName)
+							@Html.HiddenFor(model => model.SenderName)
+						</td>
+					</tr>
+					<tr>
+						<td class="word_break">
+							@Html.DisplayFor(model => model.SenderAddress1)
+							@Html.HiddenFor(model => model.SenderAddress1)
+						</td>
+					</tr>
+					<tr>
+						<td class="word_break">
+							@Html.DisplayFor(model => model.SenderAddress2)
+							@Html.HiddenFor(model => model.SenderAddress2)
+						</td>
+					</tr>
+					<tr>
+						<td class="word_break">
+							Phone:<span>@Html.DisplayFor(model => model.SenderPhoneNumber)@Html.HiddenFor(model => model.SenderPhoneNumber)</span>
+						</td>
+					</tr>
+					<tr>
+						<td class="word_break">
+							Email:<span>@Html.DisplayFor(model => model.SenderEmail)@Html.HiddenFor(model => model.SenderEmail)</span>
+						</td>
+					</tr>
+					<tr>
+						<td class="word_break">
+							My WU:<span>@Html.DisplayFor(model => model.SenderWUGoldcardNumber)@Html.HiddenFor(model => model.SenderWUGoldcardNumber)</span>
+						</td>
+					</tr>
+				</table>
+			</div>
+			<div class="paymet_table_wrap">
+				<table class="paymet_table">
+					<tr>
+						<td>
+							Account#:
+						</td>
+						<td>
+							@Html.DisplayFor(model => model.BillPaymentAccount)
+							@Html.HiddenFor(model => model.BillPaymentAccount)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Delivery Method:
+						</td>
+						<td>
+							@Html.DisplayFor(model => model.BillPaymentDeliveryMethod)
+							@Html.HiddenFor(model => model.BillPaymentDeliveryMethod)
+							@Html.HiddenFor(model => model.BillPaymentDeliveryMethodCode)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Payment Fee:
+						</td>
+						<td>
+							$@Html.DisplayFor(model => model.UnDiscountedFee)
+							@Html.HiddenFor(model => model.UnDiscountedFee)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Promo Discount:
+						</td>
+						<td>
+							@if (!string.IsNullOrEmpty(Model.CouponPromoCode))
+							{ 
+								<span>$</span>@Html.DisplayFor(model => model.DiscountedFee)
+							}
+							else
+							{
+								<span>NA</span>
+							}
+							@Html.HiddenFor(model => model.DiscountedFee)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Promo Code/Coupon:
+						</td>
+						<td>
+							@if (!string.IsNullOrEmpty(Model.CouponPromoCode))
+	   { 
+								@Html.DisplayFor(model => model.CouponPromoCode)}
+	   else
+	   {
+								<span>NA</span>
+	   }
+							@Html.HiddenFor(model => model.CouponPromoCode)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Net Fee:
+						</td>
+						<td>
+							$@Html.DisplayFor(model => model.BillPaymentFee)
+							@Html.HiddenFor(model => model.BillPaymentFee)
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Bill pay Amount:
+						</td>
+						<td>
+							$@Html.DisplayFor(model => model.BillpaymentAmount)
+							@Html.HiddenFor(model => model.BillpaymentAmount)
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+		<div>
+			<div>
+				<table class="consumer_Pro_wrap">
+					<tr>
+						<td>@Html.CheckBoxFor(m => Model.ConsumerProtectionMessage)
+							<span class="bold">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.BillPayConsumerProtectionMessage</span>
+							<span class="bill_w_union_txt bold">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.BillPayConsumerProtectionMessageCont</span>
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+		<div class="clear_both">
+			<ul class="txt_center">
+               <li>
+					@Html.ActionLink("Cancel", "CancelBillPayDetails", "WesternUnionBillPayment", new { id = Model.BillpayTransactionId }, new { @class = "anc_link_btn cancelBillPayReview red_btn", id = Model.BillpayTransactionId })
+				</li>
+				<li>
+					<input type="submit" value="Submit" disabled="disabled" id="btnSubmit" /></li>
+			</ul>
+		</div>
+	</div>
+}

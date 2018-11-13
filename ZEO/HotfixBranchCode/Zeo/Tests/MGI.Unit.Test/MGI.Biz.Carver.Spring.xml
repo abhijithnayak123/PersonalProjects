@@ -1,0 +1,39 @@
+﻿<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object type="Spring.Objects.Factory.Config.PropertyPlaceholderConfigurer, Spring.Core">
+		<property name="ConfigSections" value="databaseSettings"/>
+	</object>
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+	
+	<object name ="MockClientCustomerServiceCarver" type ="MGI.Unit.Test.MockData.MockClientCustomerServiceCarver, MGI.Unit.Test"></object>
+
+	<object id ="CarverClientCustomerService" type="MGI.Biz.Carver.Impl.CarverCustomer, MGI.Biz.Carver">
+		<property name ="CxnClientCustomerService" ref="TCISGateway"/>
+	</object>
+	
+	<object id="CarverCustomerRegistrationEventListener" type="MGI.Biz.Carver.Impl.CarverCustomerRegistrationEventListener, MGI.Biz.Carver">
+		<property name ="CXNClientCustomerSvc" ref="TCISGateway"/>
+		<property name="ClientCustomerSvc" ref ="InterceptedClientCustomerService"/>
+		<property name ="CCISAccountRepo" ref="CCISAccountRepo"/>
+		<property name="PartnerCustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="CXECustomerService" ref="CXECustomerService"/>
+	</object>
+
+	<object id="CarverCustomerEditEventListener" type="MGI.Biz.Carver.Impl.CarverCustomerEditEventListener, MGI.Biz.Carver">
+		<property name ="CXNClientCustomerSvc" ref="TCISGateway"/>
+		<property name="ClientCustomerSvc" ref ="InterceptedClientCustomerService"/>
+		<property name ="CCISAccountRepo" ref="CCISAccountRepo"/>
+		<property name="PTNRCustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="CXECustomerService" ref="CXECustomerService"/>
+	</object>
+
+	<object id="CCISAccountRepo" factory-object="MockClientCustomerServiceCarver" factory-method="CreateInstanceOfCCISAccount"></object>
+
+</objects>

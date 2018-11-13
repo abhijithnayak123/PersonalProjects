@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RCC_PAY_CFG documenttype="CHECK"> 
+	<param_definitions>
+		<!--  
+	Coordinates of Payee Endorsement is from the top left corner of the check image 
+	when rotated counterclockwise 90 degrees
+	-->
+		<REQUIRED>
+			<define param="payee_name"				value="20150428"/>
+			<define param="payee_account_nbr"		value="123456789012345"/>
+		</REQUIRED>
+	</param_definitions>
+	<zone_definitions>
+		<front>
+			<!--Issue Copy Field-->
+			<zone name="issue_copy" view="front" x="3.0" y="0.5" width="2.0" height="0.4" textlines="1"
+			font="MS Reference Sans Serif" size="14"
+			justification="center" orientation="horizontal" bold="true">
+				<line string="ZE0 ISSUE COPY"/>
+			</zone>
+		</front>
+		<back>
+			<!--Payee Endorsement Field-->
+			<zone name="payee_endorsement" view="back" x="1.5" y="1.5" width="5.0" height="0.6" textlines="2"
+			font="MS Reference Sans Serif" size="10" 
+			justification="center" orientation="horizontal" bold="false">
+				<line string="%1" var1="payee_name"/>
+				<line string="%1 &gt;291070001&lt;TCF NATL  Z" var1="payee_account_nbr"/>
+			</zone>
+		</back>
+	</zone_definitions>
+	<ICL_definitions>
+		<x937 Destination_routing_number ="291070001"/>
+		<!--18 character bank Name-->
+		<x937 Destination_name ="TCF Bank"/>
+
+		<!--Bank will assign a 9 digit number for the origin routing number below-->
+		<x937 Origin_routing_number="061003198"/>
+		<!--18 character bank Name-->
+		<x937 Origin_name ="MoneyGram"/>
+		<!--Set to "False" for Production file-->
+		<x937 Test_File ="True"/>
+		<x937 Destination_Format="78"/>
+
+		<!--This will be your account number at TCF-->
+		<x937 CreditAccount="011720029/"/>
+		<!--Replace the correct Bank Number in this field-->
+		<x937 Credit_Routing="5999-0001"/>
+		<x937 CreditCustomer="MoneyGram"/>
+		<x937 Update_Credit_Image="True"/>
+
+		<!--Replace the correct Bank Number in this field-->
+		<setRecordField record="10" field="11" all="False" afterconversion="False" value="MoneyGram"/>
+		<setRecordField record="10" field="12" all="False" afterconversion="False" value="6506855700"/>
+
+		<setRecordField record="25" field="4" all="True" afterconversion="False" value="5999-000"/>
+		<setRecordField record="25" field="5" all="True" afterconversion="False" value="2"/>
+		<setRecordField record="25" field="6" all="True" afterconversion="False" value="        011720061/40"/>
+		<setRecordField record="25" field="9" all="True" afterconversion="True" value="G"/>
+		<setRecordField record="25" field="12"  all="True" afterconversion="True" value="Y"/>
+		<setRecordField record="25" field="10"  all="True" afterconversion="True" value="0"/>
+
+		<setRecordField record="99" field="6" all="False" afterconversion="False" value="MoneyGram"/>
+		<setRecordField record="99" field="7" all="False" afterconversion="False" value="6506855700"/>
+
+		<x937 CreditFrontImage="..\Config\front61mo.tif"/>
+		<x937 CreditBackImage="..\Config\back61.tif"/>
+		<x937 Delete_Records="26,28,54"/>
+		<x937 Add28DepositRecord="False"/>
+		<x937 Add26DepositRecord="False"/>
+
+		<!-- activate any of these attributes to perform ICL conversions
+			Contact AMP for conversion number
+			<setOneRecordField record="25" field="6" CashLetter="1"  Bundle="1"  Item="1" value="12345678/ 51"/>
+			<x937 Destination_Format="##"/>
+			<x937 Delete_Records="26,54"/>
+			<setRecordField record="28" field="4" all="True" value="20130123"/>
+			<x937 CreditFrontImage="c:\front.tif"/>
+			<x937 CreditBackImage="c:\back.tif"/>
+			<x937 Add28DepositRecord="False"/>
+			<x937 Add26DepositRecord="False"/>
+			<setRecordField record="10" field="12" all="False" value="1112223333"/>
+			<setRecordField record="99" field="7" all="False" value="1112224444"/>
+			<setRecordField record="52" field="4" all="True" value="10"/>
+			<setOneRecordField record="10" field="10" CashLetter="1"  Bundle="0"  Item="0" value="nnnn0001"/>
+			<setOneRecordField record="10" field="10" CashLetter="2"  Bundle="0"  Item="0" value="nnnn0002"/>
+			<setOneRecordField record="10" field="10" CashLetter="3"  Bundle="0"  Item="0" value="nnnn0003"/>
+			<setOneRecordField record="10" field="10" CashLetter="4"  Bundle="0"  Item="0" value="nnnn0004"/>
+		-->
+	</ICL_definitions>
+</RCC_PAY_CFG>

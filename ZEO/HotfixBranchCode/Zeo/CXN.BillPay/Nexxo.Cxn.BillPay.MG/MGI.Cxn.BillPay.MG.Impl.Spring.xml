@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xmlns:db="http://www.springframework.net/database"
+		 xmlns:tx="http://www.springframework.net/tx"
+		 xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object id="transactionManager"
+	  type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+
+	<tx:attribute-driven/>
+
+  <import resource="assembly://MGI.Cxn.BillPay.MG/MGI.Cxn.BillPay.MG/MGI.Cxn.BillPay.MG.Db.Spring.xml"/>
+  <import resource="assembly://MGI.CXN.MG.Common/MGI.CXN.MG.Common/MGI.CXN.MG.Common.Spring.xml"/>
+  
+  <object id="MoneyGramGateway" type ="MGI.Cxn.BillPay.MG.Impl.Gateway, MGI.Cxn.BillPay.MG">
+    <property name="MoneyGramCommonIO" ref="MoneyGramCommonIO"/>
+    <property name="MgTransactionRepo" ref="MgTransactionRepo" />
+    <property name="MgAccountRepo" ref="MgAccountRepo" />
+    <property name="ProcessorDAL" ref="MgProcessorDAL" />
+    <property name="MoneyGramIO" ref="MoneyGramIO" />
+    <property name="CountryRepo" ref="MgCountryRepo" />
+    <property name="StateRepo" ref="MgStateRepo" />
+	<property name="MongoDBLogger" ref="TLoggerRef"/>
+  </object>
+
+  <object id="MoneyGramIO" type ="MGI.Cxn.BillPay.MG.Impl.${ProviderIO}, MGI.Cxn.BillPay.MG">
+	  <property name="MongoDBLogger" ref="TLoggerRef"/>
+  </object> 
+  
+  <object id="MgProcessorDAL" type="MGI.Cxn.BillPay.MG.Impl.ProcessorDAL, MGI.Cxn.BillPay.MG">
+    <property name="MGTransactionRepo" ref="MgTransactionRepo" />
+    <property name="MgBillerLimitRepo" ref="MgBillerLimitRepo" />
+    <property name="MgBillerDenominationRepo" ref="MgBillerDenominationRepo" />
+  </object>
+  
+  <object id="MgTransactionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.Transaction&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+  
+  <object id="MgAccountRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.Account&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+
+  <object id="MgCatalogRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.Catalog&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+  <object id="MgCountryRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.Country&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+  <object id="MgStateRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.State&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+  
+  <object id="MgBillerLimitRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.BillerLimit&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+
+  <object id="MgBillerDenominationRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.BillPay.MG.Data.BillerDenomination&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="Cxn.MG.BP.SessionFactory"></property>
+  </object>
+
+</objects>

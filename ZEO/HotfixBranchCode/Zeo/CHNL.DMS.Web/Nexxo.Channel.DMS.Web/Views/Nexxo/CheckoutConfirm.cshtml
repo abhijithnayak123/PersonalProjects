@@ -1,0 +1,42 @@
+﻿@model MGI.Channel.DMS.Web.Models.ShoppingCartSuccess
+@{
+    ViewBag.Title = "Checkout Confirm";
+    Layout = "~/Views/Shared/_Common.cshtml";
+}
+<div id="DivDone" class="checkout_confirm_div">
+    @if (Model.LoadToCard != 0)
+    {
+        <div class="successText">
+            Load to Card
+        </div>
+        <br />
+        <div class="successPrice">
+            $@Model.LoadToCard.ToString("0.00")
+        </div>
+        
+    }
+    @if (Model.CashToCustomer != 0)
+    {
+        <div class="successText">
+            Cash to Customer
+        </div>
+        <br />
+        <div class="successPrice">
+            $@Model.CashToCustomer.ToString("0.00")
+        </div>
+        
+    }
+    <div class="checkout_confirm_msg">
+        <p>
+            <strong>
+                Cash & Receipt to Customer </strong>
+        </p>
+    </div>
+    <div class="checkout_confirm_srch SrchButtonWdth">
+        <ul>
+            <li>
+                @Html.ActionLink("Done", "CustomerSearch", "CustomerSearch", null, new { @class = "anc_link_btn", style = "background-color:#006937" })
+            </li>
+        </ul>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+<div class="row_shift28">
+	<ul>
+		@if (Session["ClosedCustomerProfile"] != null && Session["ClosedCustomerProfile"] == "true" || Convert.ToInt32((Session["UserRoleId"])) == (int)UserRoles.Tech)
+		{
+			<li>@Html.ActionLink("Exit", "CustomerSearch", "CustomerSearch", null, new { @class = "anc_link_btn red_btn" })</li>
+			<li>@Html.ActionLink("Cancel", "ProductInformation", "Product", null, new { @class = "anc_link_btn" })</li>			
+		}
+		else
+		{
+			<li>@Html.ActionLink("Back", "PinDetails", "CustomerRegistration", null, new { @class = "anc_link_btn" })</li>
+			if (Session["EditProspect"] != null && (bool)Session["EditProspect"] == false)
+			{
+				<li class="row_width30 row_shift2"><input type="submit" value="Confirm" /></li>
+			}
+			else
+			{
+				<li class="row_width30 row_shift2"><input type="submit" value="Done" /></li>
+			}		
+		}		
+	</ul>
+</div>

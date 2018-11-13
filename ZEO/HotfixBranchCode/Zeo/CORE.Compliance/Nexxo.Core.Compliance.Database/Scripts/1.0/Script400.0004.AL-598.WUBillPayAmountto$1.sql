@@ -1,0 +1,1 @@
+update tTransactionMinimums set Minimum = '1' where ComplianceProgramPK = 'A1FFB6FE-21B6-47AC-AE8F-8B388AA3AB61'

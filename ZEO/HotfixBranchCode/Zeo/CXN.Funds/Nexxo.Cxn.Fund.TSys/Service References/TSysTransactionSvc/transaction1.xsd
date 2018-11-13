@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns="http://api.tsysprepaid.com/account" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://api.tsysprepaid.com/account" version="100" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:complexType name="accountData">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="classification" type="accountClass" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="userId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="programId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="time" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="type" type="accountType" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="subTypeId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="currency" type="currencyType" />
+      <xsd:element name="availableBalance" type="xsd:long" />
+      <xsd:element name="ledgerBalance" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="spanId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="markedFraudulent" type="xsd:boolean" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="statementPreference" type="statementPreferenceType" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="fraudType" type="fraudType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="spanData">
+    <xsd:sequence>
+      <xsd:element name="spanId" type="xsd:long" />
+      <xsd:element name="version" type="xsd:long" />
+      <xsd:element name="time" type="xsd:dateTime" />
+      <xsd:element name="name" type="xsd:string" />
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="startDate" type="xsd:dateTime" />
+      <xsd:element name="endDate" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="issuanceType" type="issuanceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="accountType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="DEFAULT" />
+      <xsd:enumeration value="OVERFLOW" />
+      <xsd:enumeration value="OTHER" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="currencyType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="USD" />
+      <xsd:enumeration value="EUR" />
+      <xsd:enumeration value="GBP" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="memoField">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="150" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="statementPreferenceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="NONE" />
+      <xsd:enumeration value="PAPER" />
+      <xsd:enumeration value="NULL" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createAccountRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element minOccurs="0" name="type" nillable="true" type="accountType" />
+      <xsd:element minOccurs="0" name="spanId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="subTypeId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="description" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="statementPreference" nillable="true" type="statementPreferenceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createAccountResponse">
+    <xsd:sequence>
+      <xsd:element name="account" type="accountData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createAccountError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_SUB_TYPE_ID" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="STATEMENT_POLICY_NOT_PRESENT" />
+      <xsd:enumeration value="INVALID_STATEMENT_PREFERENCE" />
+      <xsd:enumeration value="STATEMENT_PREFERENCE_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="closeAccountRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="closeAccountResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="closeAccountError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="ACCOUNT_HAS_UNBLOCKED_CARDS" />
+      <xsd:enumeration value="ACCOUNT_HAS_OUTSTANDING_HOLDS" />
+      <xsd:enumeration value="ACCOUNT_HAS_NEGATIVE_BALANCE" />
+      <xsd:enumeration value="ACCOUNT_HAS_NEGATIVE_LEDGER_BALANCE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createSpanRequest">
+    <xsd:sequence>
+      <xsd:element name="name" type="xsd:string" />
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="startDate" type="xsd:dateTime" />
+      <xsd:element name="endDate" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="issuanceType" nillable="true" type="issuanceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createSpanResponse">
+    <xsd:sequence>
+      <xsd:element name="span" type="spanData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createSpanError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getSpanRequest">
+    <xsd:sequence>
+      <xsd:element name="spanId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getSpanResponse">
+    <xsd:sequence>
+      <xsd:element name="span" type="spanData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getSpanError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getSpanIDRequest">
+    <xsd:sequence>
+      <xsd:element name="spanName" type="xsd:string" />
+      <xsd:element name="corpId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getSpanIDResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="spanIds" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getSpanIDError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CORP_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getAccountRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountResponse">
+    <xsd:sequence>
+      <xsd:element name="account" type="accountData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAccountError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserAccountsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserAccountsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="account" nillable="true" type="accountData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserAccountsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getCardAccountsRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getCardAccountsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="account" nillable="true" type="accountData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getCardAccountsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateAccountSpanRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="spanId" type="xsd:long" />
+      <xsd:element name="reason" type="memoField" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateAccountSpanResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateAccountSpanError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="INVALID_SPAN_END_DATE" />
+      <xsd:enumeration value="DIFFERENT_PROGRAM" />
+      <xsd:enumeration value="MANDATORY_ELEMENTS_MISSING" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateSpanRequest">
+    <xsd:sequence>
+      <xsd:element name="spanId" type="xsd:long" />
+      <xsd:element minOccurs="0" name="name" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="start" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="end" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="issuanceType" nillable="true" type="issuanceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateSpanResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateSpanError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="accountClass">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="CONSUMER" />
+      <xsd:enumeration value="CORPORATE" />
+      <xsd:enumeration value="SYSTEM" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="accountReferenceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="DIRECT_DEPOSIT" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="accountRefGenerationType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INTERNAL" />
+      <xsd:enumeration value="EXTERNAL" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="accountReferenceStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ACTIVE" />
+      <xsd:enumeration value="BLOCKED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="accountReferenceData">
+    <xsd:sequence>
+      <xsd:element name="referenceType" type="accountReferenceType" />
+      <xsd:element name="referenceGenerationType" type="accountRefGenerationType" />
+      <xsd:element name="referenceNumber" type="xsd:string" />
+      <xsd:element name="status" type="accountReferenceStatus" />
+      <xsd:element name="createDate" type="xsd:dateTime" />
+      <xsd:element name="statusAsOf" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="direcDepositRoutingNumber" type="routingNumber" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="accountReferenceOutput">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element minOccurs="1" maxOccurs="unbounded" name="accountReferenceData" type="accountReferenceData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="routingNumber">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[0-9]{9}" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getAccountReferenceNumberRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="accountReferenceType" type="accountReferenceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountReferenceNumberResponse">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="accountReference" type="accountReferenceData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAccountReferenceNumberError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="REFERENCE_NUMBER_NOT_FOUND" />
+      <xsd:enumeration value="ROUTING_NUMBER_NOT_FOUND" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getAccountReferenceNumberListRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="accountReferenceType" type="accountReferenceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountReferenceNumberListResponse">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element minOccurs="1" maxOccurs="unbounded" name="accountReference" type="accountReferenceData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAccountReferenceNumberListError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="REFERENCE_NUMBER_NOT_FOUND" />
+      <xsd:enumeration value="ROUTING_NUMBER_NOT_FOUND" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="externalAccountReferenceNumber">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[0-9]{1,17}" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createAccountReferenceNumberRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="accountReferenceType" type="accountReferenceType" />
+      <xsd:element minOccurs="0" name="externalReferenceNumber" type="externalAccountReferenceNumber" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createAccountReferenceNumberResponse">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="accountReference" type="accountReferenceData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createAccountReferenceNumberError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="DUPLICATE_REFERENCE_NUMBER" />
+      <xsd:enumeration value="ROUTING_NUMBER_NOT_FOUND" />
+      <xsd:enumeration value="EXTERNAL_REFERENCE_NUMBER_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="statementKey">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="cycleStartDate" type="xsd:dateTime" />
+        <xsd:attribute name="cycleEndDate" type="xsd:dateTime" />
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+  <xsd:complexType name="searchStatementRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="startDate" type="xsd:dateTime" />
+      <xsd:element name="endDate" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="searchStatementResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="100" name="statements" type="statementKey" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="searchStatementError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="requestOneTimeStatementRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="statementKey" type="statementKey" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="requestOneTimeStatementResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="requestOneTimeStatementError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_SATEMENT_POLICY" />
+      <xsd:enumeration value="INVALID_PROGRAM" />
+      <xsd:enumeration value="FRAUD_FLAG_ACCOUNT" />
+      <xsd:enumeration value="INVALID_ACCOUNT_STATE" />
+      <xsd:enumeration value="INVALID_TRANSACTION" />
+      <xsd:enumeration value="INVALID_FEE" />
+      <xsd:enumeration value="INVALID_CYCLE_SUMMARY" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateStatementPreferenceRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="statementPreference" type="statementPreferenceType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateStatementPreferenceResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateStatementPreferenceError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="STATEMENT_POLICY_NOT_PRESENT" />
+      <xsd:enumeration value="PREFERENCE_ALREADY_SET" />
+      <xsd:enumeration value="INVALID_STATEMENT_PREFERENCE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="issuanceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="NON_PERSONALIZED" />
+      <xsd:enumeration value="PERSONALIZED" />
+      <xsd:enumeration value="NOT_APPLICABLE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="fraudType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="NONE" />
+      <xsd:enumeration value="LEVEL_1" />
+      <xsd:enumeration value="LEVEL_2" />
+      <xsd:enumeration value="LEVEL_3" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="inputFraudType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="NONE" />
+      <xsd:enumeration value="LEVEL_1" />
+      <xsd:enumeration value="LEVEL_2" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateAccountFraudLevelRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="fraudType" type="inputFraudType" />
+      <xsd:element name="notes" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateAccountFraudLevelResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateAccountFraudLevelError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="CARD_NOT_FOUND" />
+      <xsd:enumeration value="INVALID_CARD_STATUS" />
+      <xsd:enumeration value="INVALID_CARD" />
+      <xsd:enumeration value="INVALID_CARD_BLOCK" />
+      <xsd:enumeration value="CARD_NOT_BLOCKED" />
+      <xsd:enumeration value="CARD_STATUS_IS_CLOSED" />
+      <xsd:enumeration value="ACCOUNT_STATUS_IS_CLOSED" />
+      <xsd:enumeration value="CARD_IS_EXPIRED" />
+      <xsd:enumeration value="USER_STATUS_IS_CLOSED" />
+      <xsd:enumeration value="CARD_ALREADY_REISSUED" />
+      <xsd:enumeration value="ACCOUNT_IS_ALREADY_FRAUD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:schema>

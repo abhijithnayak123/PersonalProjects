@@ -1,0 +1,38 @@
+﻿<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+
+	<object id="NLoggerRef" type="MGI.Common.Util.NLoggerCommon, MGI.Common"/>
+	<object id="ThrowsBizCashEngineExceptionAdvice" type="MGI.Biz.CashEngine.Impl.Advice.ThrowsBizCashEngineExceptionAdvice, MGI.Biz.CashEngine"/>
+
+	<object id="InterceptedBizCashEngine" type="MGI.Biz.CashEngine.Impl.CashEngine, MGI.Biz.CashEngine">
+		<property name="CashService" ref ="CXECashService"></property>
+		<property name="CashCustomerService" ref="CXECustomerService"></property>
+		<property name="PTNRCashService" ref="CashService"></property>
+		<property name="CustomerSessionService" ref="CustomerSessionService"/>
+	</object>
+	
+	
+</objects>

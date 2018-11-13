@@ -1,0 +1,57 @@
+﻿@model MGI.Channel.DMS.Web.Models.WesternUnionBanner
+@{
+	ViewBag.Title = "Agent Banner Message";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+    bool isAdminRole = (Convert.ToInt32(HttpContext.Current.Session["UserRoleId"]) == (int)UserRoles.SystemAdmin);
+}
+<script src="@Url.Content("~/Scripts/Common/AgentMenu.js")" type="text/javascript"></script>
+<script type="text/javascript">
+	var DisplayURLForChooseLocation = '@Url.Action("DisplayChooseLocation", "TerminalSetup")';
+	$(document).ready(function () {
+		var searchIcon = $('#searchCustomerIcon');
+		searchIcon.css('visibility', 'hidden');
+		var agentTitle = $('#titleInfo');
+		agentTitle.removeClass('cust_search').addClass('agent_banner_title');
+    	var IsChooseLocation = '@TempData["IsChooseLocation"]';
+	    if (IsChooseLocation == 'True') {
+    		DisplayChooseLocation();
+    	}
+	});
+</script>
+@{
+	string disableClass = string.Empty;
+	bool isTerminalSetup = false;
+	if (Session["IsTerminalSetup"] != null)
+	{
+		isTerminalSetup = Session["IsTerminalSetup"].ToString() == "1" ? true : false;
+	}
+
+	if (!isTerminalSetup && !isAdminRole) {
+		disableClass = "disable_txt";         
+	    <div class="field-validation-error page_head product_head"> Terminal not set up, Please contact administrator </div>
+	}
+}
+@if (@disableClass == string.Empty)
+{ 
+    using (Html.BeginForm("AgentBannerMessage", "WesternUnionBanner"))
+    {
+        <div class="w_union_wrap">
+	        <div>
+		        <ul class="page_head product_head">
+			        <li>Western Union Agent Banner Message</li>
+		        </ul>
+	        </div>
+ 
+	        <div class="w_union_banner_Msg">
+		        <p class="w_union_msg_head"> WESTERN UNION AGENT BANNER MESSAGE:</p>
+		        <p class="w_union_msg_txt">@Model.BannerMessage </p>
+	        </div>
+
+	        <div class="txt_center">
+		        <ul>
+			        <li class="ieWidth">@Html.ActionLink("OK", "CustomerSearch", "CustomerSearch", null, new { @class = "anc_link_btn" })</li>
+		        </ul>
+	        </div>	
+        </div>
+    }
+}

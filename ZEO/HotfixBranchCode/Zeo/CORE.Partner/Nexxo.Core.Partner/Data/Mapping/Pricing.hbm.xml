@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+	 assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+	<class name="Pricing" table="tPricing" >
+		<id name="rowguid">
+			<column name="PricingPK" sql-type="uniqueidentifier" not-null="true" />
+		</id>
+		
+		<property name="Id" column="PricingID" generated="insert" update="false" insert="false"/>
+
+		<property name="CompareType" column="CompareTypePK" update="false"/>
+
+		<property name="MinimumAmount">
+			<column name="MinimumAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="MaximumAmount">
+			<column name="MaximumAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="MinimumFee">
+			<column name="MinimumFee" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="Value">
+			<column name="Value" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="IsPercentage">
+			<column name="IsPercentage" sql-type="bit" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="DTTerminalCreate">
+			<column name="DTTerminalCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTTerminalLastModified">
+			<column name="DTTerminalLastModified" sql-type="datetime" not-null="false" />
+		</property>
+
+		<!--<many-to-one insert="false" update="false" lazy="false" name="CompareType">
+			<column name="CompareTypePK" sql-type="tinyint" not-null="false" />
+		</many-to-one>-->
+		
+		<many-to-one insert="false" update="false" lazy="false" name="PricingGroup">
+			<column name="PricingGroupPK" sql-type="uniqueidentifier" not-null="true" />
+		</many-to-one>
+	</class>
+</hibernate-mapping>

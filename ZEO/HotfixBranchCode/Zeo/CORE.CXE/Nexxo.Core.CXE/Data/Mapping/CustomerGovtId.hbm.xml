@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.CXE"
+                   namespace="MGI.Core.CXE.Data">
+
+  <class name="CustomerGovernmentId" table="tCustomerGovernmentIdDetails">
+    <id name="Id" column="CustomerPK">
+      <generator class="foreign">
+        <param name="property">Customer</param>
+      </generator>
+    </id>
+    <many-to-one name="Customer" class="Customer" column="CustomerPK" insert="false" update="false"/>
+    <property name="IdTypeId" />
+    <property name="Identification"/>
+    <property name="IssueDate" not-null="false"/>
+    <property name="ExpirationDate" not-null="false"/>
+    <property name="DTServerCreate" update="false"/>
+    <property name="DTServerLastModified" insert="false" not-null="false"/>
+		<property name="DTTerminalCreate" update="false"/>
+		<property name="DTTerminalLastModified" insert="false" not-null="false"/>
+  </class>
+
+</hibernate-mapping>

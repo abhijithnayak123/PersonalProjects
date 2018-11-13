@@ -1,0 +1,352 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Cxn.MoneyTransfer.WU"
+                   namespace="MGI.Cxn.MoneyTransfer.WU.Data">
+
+	<class name="WUCountry" table="tWUnion_Countries" lazy="true" >
+		<id name="rowguid" column="WUCountryPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUCountryID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="CountryCode">
+			<column name="ISOCountryCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUState" table="tWUnion_States" lazy="true" >
+		<id name="rowguid" column="WUStatePK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUStateID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="StateCode">
+			<column name="StateCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="ISOCountryCode">
+			<column name="ISOCountryCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUCity" table="tWUnion_Cities" lazy="true" >
+		<id name="rowguid" column="WUCityPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUCityID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="StateCode">
+			<column name="StateCode" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUCountryCurrencyDeliveryMethod" table="tWUnion_CountryCurrencyDeliveryMethods" lazy="true" >
+		<id name="rowguid" column="WUDeliveryMethodPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUDeliveryMethodID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="CountryCode">
+			<column name="CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CurrencyCode">
+			<column name="CurrencyCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SvcCode">
+			<column name="SvcCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SvcName">
+			<column name="SvcName" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Route">
+			<column name="Route" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Banner">
+			<column name="Banner" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Description">
+			<column name="Description" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Templt">
+			<column name="Templt" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CountryViewFilter">
+			<column name="CountryViewFilter" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ExclFlags">
+			<column name="ExclFlags" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SourceMinCurrency">
+			<column name="SourceMinCurrency" sql-type="money" not-null="false" />
+		</property>
+		<property name="SourceMaxCurrency">
+			<column name="SourceMaxCurrency" sql-type="money" not-null="false" />
+		</property>
+		<property name="SourceCurrencyIncr">
+			<column name="SourceCurrencyIncr" sql-type="money" not-null="false" />
+		</property>
+		<property name="DestinationMinCurrency">
+			<column name="DestinationMinCurrency" sql-type="money" not-null="false" />
+		</property>
+		<property name="DestinationMaxCurrency">
+			<column name="DestinationMaxCurrency" sql-type="money" not-null="false" />
+		</property>
+		<property name="DestinationCurrencyIncr">
+			<column name="DestinationCurrencyIncr" sql-type="money" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUDeliveryOption" table="tWUnion_DeliveryOptions" lazy="true" >
+		<id name="rowguid">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUDeliveryOptionID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="Product">
+			<column name="Product" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Category">
+			<column name="Category" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="T_Index">
+			<column name="T_Index" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Description">
+			<column name="Description" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUPaymentMethod"  table="tWUnion_PaymentMethods" lazy="true" >
+		<id name="rowguid" column="WUPaymentMethodsPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUPaymentMethodsID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="Description">
+			<column name="Description" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUPickupMethod" table="tWUnion_PickupMethods" lazy="true" >
+		<id name="rowguid" column="WUPickupMethodsPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUPickupMethodsID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="Name">
+			<column name="Name" sql-type="nvarchar" not-null="true" />
+		</property>
+		<property name="DescriptionEN">
+			<column name="DescriptionEN" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DescriptionES">
+			<column name="DescriptionES" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyConversionDescriptionEN">
+			<column name="CurrencyConversionDescriptionEN" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyConversionDescriptionES">
+			<column name="CurrencyConversionDescriptionES" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUPickupDetail" table="tWUnion_PickupDetails" lazy="true" >
+		<id name="rowguid" column="WUPickupDetailsPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUPickupDetailsID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+
+		<many-to-one name="WUnionRecipient" class="MGI.Cxn.MoneyTransfer.WU.Data.WUReceiver" column="WUnionAccountPK" insert="true" update="false" cascade ="none" not-null ="true" />
+
+		<property name="PickupPoPName">
+			<column name="PickupPoPName" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="PickupPoPRegion">
+			<column name="PickupPoPRegion" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="PickupPoPBranch">
+			<column name="PickupPoPBranch" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="PickupPoPBranchOperator">
+			<column name="PickupPoPBranchOperator" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="PickupPoPReferenceNumber">
+			<column name="PickupPoPReferenceNumber" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDType">
+			<column name="BeneficiaryGovernmentIDType" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDNumber">
+			<column name="BeneficiaryGovernmentIDNumber" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDIssuer">
+			<column name="BeneficiaryGovernmentIDIssuer" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDIssuerState">
+			<column name="BeneficiaryGovernmentIDIssuerState" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDIssuerCountry">
+			<column name="BeneficiaryGovernmentIDIssuerCountry" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="BeneficiaryGovernmentIDExpirationDate">
+			<column name="BeneficiaryGovernmentIDExpirationDate" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="BeneficiaryName">
+			<column name="BeneficiaryName" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+
+	<class name="WUCountryCurrency" table="tWUnion_CountryCurrencies" lazy="true" >
+		<id name="rowguid" column="WUCountryCurrencyPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUCountryCurrencyID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>		
+		<property name="CountryName">
+			<column name="CountryName" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CountryNumCode">
+			<column name="CountryNumCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CountryCode">
+			<column name="CountryCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyCode">
+			<column name="CurrencyCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyNumCode">
+			<column name="CurrencyNumCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyName">
+			<column name="CurrencyName" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+	<class name="WUQQCcompanyNames" table="tWUnion_Catalog" lazy="true" >
+		<id name="rowguid" column="WUCatalogPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUCatalogID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>		
+		<property name="CompanyName">
+			<column name="CompanyName" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="ISOCountryCode">
+			<column name="ISOCountryCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="Country">
+			<column name="Country" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="CurrencyCode">
+			<column name="CurrencyCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="IsActive">
+			<column name="IsActive" sql-type="bit" not-null="true" />
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<property name="ChannelPartnerId">
+			<column name="ChannelPartnerId" sql-type="bigint" not-null="true" />
+		</property>
+		
+	</class>
+	<class name="WUErrorMessages" table="tWUnion_ErrorMessages" lazy="true" >
+		<id name="rowguid" column="WUErrorMessagePK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUErrorMessageID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="ErrorCode">
+			<column name="ErrorCode" sql-type="nvarchar" not-null="false" />
+		</property>
+		<property name="ErrorDesc">
+			<column name="ErrorDesc" sql-type="nvarchar" not-null="false" />
+		</property>		
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+</hibernate-mapping>

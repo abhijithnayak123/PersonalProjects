@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		     xmlns:db="http://www.springframework.net/database"
+		     xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+  
+  <import resource="assembly://MGI.Channel.Shared.Server.Impl/MGI.Channel.Shared.Server.Impl/MGI.Channel.Shared.Server.Impl.Spring.xml" />
+
+  <object id="ConsumerEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+    <property name="Target">
+      <object type="MGI.Channel.Consumer.Server.Impl.ConsumerEngine, MGI.Channel.Consumer.Server.Impl">
+        <property name="BizCustomerService" ref="BIZCustomerEngine" />
+        <property name="SharedEngine" ref="SharedEngine"/>
+        <property name="TimeZones" ref="TimeZonesAbbr"/>
+		    <property name="MongoDBLogger" ref="TLoggerRef"/>
+      </object>
+    </property>
+  </object>
+  
+</objects>

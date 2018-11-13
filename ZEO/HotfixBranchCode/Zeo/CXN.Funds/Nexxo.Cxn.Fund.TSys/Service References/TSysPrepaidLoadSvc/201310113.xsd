@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:prepaidLoad="http://api.tsysprepaid.com/prepaidLoad/types" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:common="http://api.tsysprepaid.com/common" targetNamespace="http://api.tsysprepaid.com/prepaidLoad/types" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:import schemaLocation="file:///C:/Users/jaaron/Documents/TSysAPI/20131011.common.xsd" namespace="http://api.tsysprepaid.com/common" />
+  <xsd:annotation>
+    <xsd:documentation xml:lang="en">
+			PrepaidLoad Schema $HeadURL $Id
+		</xsd:documentation>
+  </xsd:annotation>
+  <xsd:complexType name="loadResponseData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="loadReferenceNumber" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="loadRequest">
+    <xsd:sequence>
+      <xsd:element minOccurs="1" name="cardNumber" type="xsd:string" />
+      <xsd:element minOccurs="1" name="amount" type="xsd:long" />
+      <xsd:element minOccurs="1" name="description" type="common:AlphanumericWithSpecialCharMax300" />
+      <xsd:element minOccurs="0" name="transactionSourceId" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="loadError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="GENERAL_DECLINE" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="VELOCITY_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="PROGRAM_NOT_FOUND_EXCEPTION" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="ACCOUNT_NOT_FOUND" />
+      <xsd:enumeration value="ACCOUNT_NOT_USEABLE" />
+      <xsd:enumeration value="LOAD_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+      <xsd:enumeration value="MAX_BALANCE_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="MIN_AMOUNT_LIMIT_EXCEPTION" />
+      <xsd:enumeration value="MAX_AMOUNT_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="CARD_NOT_ACTIVATED" />
+      <xsd:enumeration value="INVALID_CARD_NUMBER" />
+      <xsd:enumeration value="LOAD_CHANNEL_NOT_ACTIVE" />
+      <xsd:enumeration value="NO_PARTICIPATION" />
+      <xsd:enumeration value="MIN_BALANCE_LIMIT_NOT_MET" />
+      <xsd:enumeration value="GENERAL_SECURITY_ERROR" />
+      <xsd:enumeration value="MAX_BALANCE_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="MAX_AMOUNT" />
+      <xsd:enumeration value="MIN_AMOUNT" />
+      <xsd:enumeration value="TRANSACTION_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="VELOCITY_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="ACCOUNT_ALREADY_CLOSED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:schema>

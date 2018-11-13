@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns="http://api.tsysprepaid.com/fee" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://api.tsysprepaid.com/fee" version="100" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:simpleType name="feeType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ISSUE_CARD" />
+      <xsd:enumeration value="REPLACE_CARD" />
+      <xsd:enumeration value="ACH_STOP_PAYMENT_ACTIVITY" />
+      <xsd:enumeration value="PRIMARY_ISSUE_CARD" />
+      <xsd:enumeration value="DEPENDENT_ISSUE_CARD" />
+      <xsd:enumeration value="LOAD" />
+      <xsd:enumeration value="TRANSFER" />
+      <xsd:enumeration value="GIFT" />
+      <xsd:enumeration value="INACTIVITY" />
+      <xsd:enumeration value="PIN_DISTRIBUTION" />
+      <xsd:enumeration value="CLOSE_ACCOUNT" />
+      <xsd:enumeration value="OVERDRAFT" />
+      <xsd:enumeration value="MAINTENANCE" />
+      <xsd:enumeration value="IVR" />
+      <xsd:enumeration value="CONTACT" />
+      <xsd:enumeration value="EXPRESS_DELIVERY" />
+      <xsd:enumeration value="OVERNIGHT_DELIVERY" />
+      <xsd:enumeration value="BILL_PAYMENT" />
+      <xsd:enumeration value="BILLPAY_MONTHLY" />
+      <xsd:enumeration value="BILLPAY_REGISTRATION" />
+      <xsd:enumeration value="ISSUE_CARD_EXPEDITE" />
+      <xsd:enumeration value="DAMAGED_CARD" />
+      <xsd:enumeration value="CARD_NAME_CHANGED" />
+      <xsd:enumeration value="PLASTIC_CHANGED" />
+      <xsd:enumeration value="LOST_STOLEN_CARD" />
+      <xsd:enumeration value="RENEW_CARD" />
+      <xsd:enumeration value="DAMAGED_CARD_EXPEDITE" />
+      <xsd:enumeration value="CARD_NAME_CHANGED_EXPEDITE" />
+      <xsd:enumeration value="PLASTIC_CHANGED_EXPEDITE" />
+      <xsd:enumeration value="LOST_STOLEN_CARD_EXPEDITE" />
+      <xsd:enumeration value="RENEW_CARD_EXPEDITE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="feeSubClass">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ISSUE_CARD_FEE" />
+      <xsd:enumeration value="ISSUE_CHECK_FEE" />
+      <xsd:enumeration value="ACH_STOP_PAYMENT_ACTIVITY_FEE" />
+      <xsd:enumeration value="REPLACE_CARD_FEE" />
+      <xsd:enumeration value="PRIMARY_ISSUE_CARD_FEE" />
+      <xsd:enumeration value="DEPENDENT_ISSUE_CARD_FEE" />
+      <xsd:enumeration value="LOAD_FEE" />
+      <xsd:enumeration value="TRANSFER_FEE" />
+      <xsd:enumeration value="GIFT_FEE" />
+      <xsd:enumeration value="INACTIVITY_FEE" />
+      <xsd:enumeration value="PIN_DISTRIBUTION_FEE" />
+      <xsd:enumeration value="CLOSE_ACCOUNT_FEE" />
+      <xsd:enumeration value="OVERDRAFT_FEE" />
+      <xsd:enumeration value="MAINTENANCE_FEE" />
+      <xsd:enumeration value="IVR_FEE" />
+      <xsd:enumeration value="CONTACT_FEE" />
+      <xsd:enumeration value="EXPRESS_DELIVERY_FEE" />
+      <xsd:enumeration value="OVERNIGHT_DELIVERY_FEE" />
+      <xsd:enumeration value="BILL_PAYMENT_FEE" />
+      <xsd:enumeration value="BILLPAY_MONTHLY_FEE" />
+      <xsd:enumeration value="BILLPAY_REGISTRATION_FEE" />
+      <xsd:enumeration value="ISSUE_CARD_EXPEDITE_FEE" />
+      <xsd:enumeration value="DAMAGED_CARD_FEE" />
+      <xsd:enumeration value="CARD_NAME_CHANGED_FEE" />
+      <xsd:enumeration value="PLASTIC_CHANGED_FEE" />
+      <xsd:enumeration value="LOST_STOLEN_CARD_FEE" />
+      <xsd:enumeration value="RENEW_CARD_FEE" />
+      <xsd:enumeration value="DAMAGED_CARD_EXPEDITE_FEE" />
+      <xsd:enumeration value="CARD_NAME_CHANGED_EXPEDITE_FEE" />
+      <xsd:enumeration value="PLASTIC_CHANGED_EXPEDITE_FEE" />
+      <xsd:enumeration value="LOST_STOLEN_CARD_EXPEDITE_FEE" />
+      <xsd:enumeration value="RENEW_CARD_EXPEDITE_FEE" />
+      <xsd:enumeration value="TRANSFER_TO_BANK_ACCOUNT_FEE" />
+      <xsd:enumeration value="PRIMARY_REPLACE_CARD_FEE" />
+      <xsd:enumeration value="CARD_PURCHASE_FEE" />
+      <xsd:enumeration value="CORP_TRANSFER_MANUAL_REPLACEMENT_CARD_FEE" />
+      <xsd:enumeration value="ONLINE_STATEMENT_FEE" />
+      <xsd:enumeration value="PAPER_STATEMENT_FEE" />
+      <xsd:enumeration value="ON_DEMAND_STATEMENT_FEE" />
+      <xsd:enumeration value="LIVE_AGENT_FEE" />
+      <xsd:enumeration value="PERIODIC_FEE" />
+      <xsd:enumeration value="ACCOUNT_CYCLE_FEE" />
+      <xsd:enumeration value="ADDITIONAL_USER_FEE" />
+      <xsd:enumeration value="ADDITIONAL_USER_EXPEDITE_FEE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="periodType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="WEEKLY" />
+      <xsd:enumeration value="MONTHLY" />
+      <xsd:enumeration value="BIWEEKLY" />
+      <xsd:enumeration value="BIMONTHLY" />
+      <xsd:enumeration value="QUARTERLY" />
+      <xsd:enumeration value="ANNUALLY" />
+      <xsd:enumeration value="CUSTOM" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="chargeFeeRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="feeType" type="feeType" />
+      <xsd:element name="amount" type="xsd:long" />
+      <xsd:element name="description" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="chargeFeeResponse">
+    <xsd:sequence>
+      <xsd:element name="feeTransactionId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="feeTransactionData">
+    <xsd:sequence>
+      <xsd:element name="transactionId" type="xsd:long" />
+      <xsd:element name="amount" type="xsd:long" />
+      <xsd:element minOccurs="0" name="transaction_status" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="feeTransactionDataList">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="feeTransactions" nillable="true" type="feeTransactionData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="capData">
+    <xsd:sequence>
+      <xsd:element name="capReached" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="capAmount" type="xsd:long" />
+      <xsd:element minOccurs="0" name="capUnassessedAmount" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="tierData">
+    <xsd:sequence>
+      <xsd:element name="tieredFeeApplied" type="xsd:boolean" />
+      <xsd:element name="tierFactor" type="xsd:string" />
+      <xsd:element minOccurs="0" name="minTierValue" type="xsd:long" />
+      <xsd:element minOccurs="0" name="maxTierValue" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="pendingRecaptureFeeDetails">
+    <xsd:sequence>
+      <xsd:element name="feeDescription" type="xsd:string" />
+      <xsd:element name="feeAmount" type="xsd:long" />
+      <xsd:element name="pendingFeeAmount" type="xsd:long" />
+      <xsd:element name="feePostedDate" type="xsd:dateTime" />
+      <xsd:element name="recaptureExpiryDate" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="periodicFeeDetails">
+    <xsd:sequence>
+      <xsd:element name="feeDescription" type="xsd:string" />
+      <xsd:element name="feeType" type="feeSubClass" />
+      <xsd:element name="feeAmount" type="xsd:long" />
+      <xsd:element name="feePeriod" type="periodType" />
+      <xsd:element minOccurs="0" name="feeAssessmentDay" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="acctCycleDate" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="feeTransactionDetail">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="feeTransactionList" nillable="true" type="feeTransactionDataList" />
+      <xsd:element minOccurs="0" name="capDetails" nillable="true" type="capData" />
+      <xsd:element minOccurs="0" name="tierDetails" nillable="true" type="tierData" />
+      <xsd:element minOccurs="0" name="waived" nillable="true" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="accountFeeData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="pendingRecaptureFeeDetails" nillable="true" type="pendingRecaptureFeeDetails" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="periodicFeeDetails" nillable="true" type="periodicFeeDetails" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="applyFeeRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="feeSubClass" type="feeSubClass" />
+      <xsd:element name="amount" type="xsd:long" />
+      <xsd:element name="description" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="applyFeeResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="feeDetailTransaction" nillable="true" type="feeTransactionDetail" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="refundFeeRequest">
+    <xsd:sequence>
+      <xsd:element name="transactionId" type="xsd:long" />
+      <xsd:element name="description" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="refundFeeResponse">
+    <xsd:sequence>
+      <xsd:element name="reversalFeeTransactionId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountFeeDetailsRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountFeeDetailsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="accountFeeData" nillable="true" type="accountFeeData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="chargeFeeError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="ACCOUNT_NOT_USEABLE" />
+      <xsd:enumeration value="FEE_NOT_FOUND" />
+      <xsd:enumeration value="FEE_POLICY_NOT_DEFINED" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="applyFeeError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="ACCOUNT_NOT_USEABLE" />
+      <xsd:enumeration value="FEE_NOT_FOUND" />
+      <xsd:enumeration value="FEE_POLICY_NOT_DEFINED" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+      <xsd:enumeration value="MULTIPLE_FEE_POLICIES_EXIST" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="refundFeeError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="INVALID_TRANSACTION_ID" />
+      <xsd:enumeration value="FEE_ALREADY_REFUNDED" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="getAccountFeeDetailsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:schema>

@@ -1,0 +1,52 @@
+﻿<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object type="Spring.Objects.Factory.Config.PropertyPlaceholderConfigurer, Spring.Core">
+		<property name="ConfigSections" value="databaseSettings"/>
+	</object>
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/CommonDepedenciesForBizLayer.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.FundEngine.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.MoneyOrderEngine.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.CPEngine.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.MoneyTransfer.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.Partner.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.BillPay.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.CashEngine.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.Synovus.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.Customer.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.TCF.Spring.xml"/>
+	<import resource="assembly://MGI.Unit.Test/MGI.Unit.Test/MGI.Biz.Carver.Spring.xml"/>
+	
+	<object name="MockCompliance" type="MGI.Unit.Test.MockCompliance, MGI.Unit.Test"></object>
+	
+	<object id="NLoggerRef" type="MGI.Common.Util.NLoggerCommon, MGI.Common"></object>
+
+	<object id="TLoggerRef" type="MGI.Common.Util.TLoggerCommon, MGI.Common">
+		<property name="NLogger" ref="NLoggerRef" />
+	</object>
+	
+	<!--Compliance-->
+	<!--Starts Here-->
+	<object name="BIZLimitService" type="MGI.Biz.Compliance.Impl.LimitServiceImpl, MGI.Biz.Compliance">
+		<property name="CoreComplianceProgramService" ref="ComplianceProgramService"/>
+		<property name="ComplianceTransactionService" ref="ComplianceTxnRepo"/>
+		<property name="PartnerCustomerSessionService" ref="CustomerSessionService"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="MongoDBLogger" ref="TLoggerRef"/>
+	</object>
+	<!--Ends Here-->
+	
+	<object id="ComplianceProgramService" factory-object="MockCompliance" factory-method="CreateInstanceOfComplianceProgramService" ></object>
+	
+	<object id="ComplianceTxnRepo" factory-object="MockCompliance" factory-method="CreateInstanceOfComplianceTransaction" ></object>
+
+</objects>
+

@@ -1,0 +1,41 @@
+﻿@model MGI.Channel.DMS.Web.Models.TransactionHistoryCheckDetails
+@{
+    ViewBag.Title = "CHECK PROCESSING";
+    Layout = null;
+}
+<script src="@Url.Content("~/Scripts/Check/Check.js")" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+
+<div>
+    @Html.LabelFor(model => model.CheckNumber)
+    @Html.DisplayFor(model => model.CheckNumber)
+</div>
+<div>
+    @Html.LabelFor(model => model.Type)
+    @Html.DisplayFor(model => model.Type)
+</div>
+<div>
+    @Html.LabelFor(model => model.Amount)
+    @Html.DisplayFor(model => model.Amount)
+</div>
+<div>
+    @Html.LabelFor(model => model.Fee)
+    @Html.DisplayFor(model => model.Fee)
+</div>
+<div>
+    @Html.LabelFor(model => model.ConfirmationNumber)
+    @Html.DisplayFor(model => model.ConfirmationNumber)
+</div>
+<div>
+    <div class="check_req">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CheckFrontImageLabel</div>
+    <img id="CheckFrontImage" class="check_img" src="" alt="checkFrontImage" />
+    <div class="check_req">@MGI.Channel.DMS.Web.App_GlobalResources.Nexxo.CheckBackImageLabel</div>
+    <img id="CheckBackImage" class="check_img" src="" alt="checkBackImage" />
+</div>
+<script language="javascript" type="text/javascript">
+    $(document).ready(function () {
+        ShowCheckFrontImage("@Model.CheckFrontImage");
+        ShowCheckBackImage("@Model.CheckBackImage");
+    });
+</script>
+<br />

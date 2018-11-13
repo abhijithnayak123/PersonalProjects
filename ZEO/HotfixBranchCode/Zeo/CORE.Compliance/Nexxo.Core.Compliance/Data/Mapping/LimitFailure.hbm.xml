@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Compliance"
+                   namespace="MGI.Core.Compliance.Data">
+  <class name="LimitFailure" table="tLimitFailures">
+    <id name="rowguid" column="LimitFailurePK">
+      <generator class="guid"/>
+    </id>
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="LimitFailureID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="CustomerSessionId" />
+    <property name="TransactionType" />
+    <property name="TransactionAmount" />
+    <property name="LimitAmount" />
+    <property name="ComplianceProgramName"/>
+    <property name="DTServerCreate" update="false"/>
+    <property name="DTServerLastModified" insert="false" not-null="false"/>
+
+	<many-to-one insert="false" update="false" lazy="false" name="ComplianceProgram">
+		<column name="ComplianceProgramPK" sql-type="uniqueidentifier" not-null="true" />
+	</many-to-one>
+	<!--<property name="ComplianceProgramPK">
+		<column name="ComplianceProgramPK" sql-type="uniqueidentifier" not-null="true" />
+	</property>-->
+  </class>
+</hibernate-mapping>

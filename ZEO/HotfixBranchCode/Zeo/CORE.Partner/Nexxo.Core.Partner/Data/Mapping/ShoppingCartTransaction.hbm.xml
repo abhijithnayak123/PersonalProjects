@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+	<class name="ShoppingCartTransaction" table="tShoppingCartTransactions" lazy="true" >
+		<id name="CartTxnRowguid" column="CartTxnPK">
+			<generator class="guid"/>
+		</id>
+		<many-to-one lazy="false" name="ShoppingCart" class="ShoppingCart">
+			<column name="CartPK" sql-type="uniqueidentifier" not-null="true" />
+		</many-to-one>
+		<property name="CartItemStatus">
+			<column name="CartItemStatus" sql-type="varchar" not-null="false" />
+		</property>
+		<many-to-one name="Transaction" unique="true" column="TxnPK" class="MGI.Core.Partner.Data.Transactions.Transaction" cascade="save-update" lazy="false" />
+	</class>
+</hibernate-mapping>

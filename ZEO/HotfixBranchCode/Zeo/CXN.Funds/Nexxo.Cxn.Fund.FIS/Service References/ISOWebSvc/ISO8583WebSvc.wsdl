@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://ISO8583WebSvc.NexxoFinancial.com/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="http://ISO8583WebSvc.NexxoFinancial.com/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://ISO8583WebSvc.NexxoFinancial.com/">
+      <s:element name="ExchangeISOMessage">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="KioskId" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AppId" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="SessionId" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="MessageType" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="DataElements" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalWorkingKey" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ExchangeISOMessageResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ExchangeISOMessageResult" type="tns:ISO8583Result" />
+            <s:element minOccurs="0" maxOccurs="1" name="Response" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ISO8583Result">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="ErrorCode" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="ErrorMessage" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DisplayMessageEn" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DisplayMessageEs" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="SendEcho">
+        <s:complexType />
+      </s:element>
+      <s:element name="SendEchoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="SendEchoResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="Ping">
+        <s:complexType />
+      </s:element>
+      <s:element name="PingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="PingResult" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="HelloWorld">
+        <s:complexType />
+      </s:element>
+      <s:element name="HelloWorldResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="HelloWorldResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="IsConnected">
+        <s:complexType />
+      </s:element>
+      <s:element name="IsConnectedResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="IsConnectedResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetSystemTimeUTC">
+        <s:complexType />
+      </s:element>
+      <s:element name="GetSystemTimeUTCResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetSystemTimeUTCResult" type="s:dateTime" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GenericMethod">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AppId" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="SessionId" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GenericMethodResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GenericMethodResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="ExchangeISOMessageSoapIn">
+    <wsdl:part name="parameters" element="tns:ExchangeISOMessage" />
+  </wsdl:message>
+  <wsdl:message name="ExchangeISOMessageSoapOut">
+    <wsdl:part name="parameters" element="tns:ExchangeISOMessageResponse" />
+  </wsdl:message>
+  <wsdl:message name="SendEchoSoapIn">
+    <wsdl:part name="parameters" element="tns:SendEcho" />
+  </wsdl:message>
+  <wsdl:message name="SendEchoSoapOut">
+    <wsdl:part name="parameters" element="tns:SendEchoResponse" />
+  </wsdl:message>
+  <wsdl:message name="PingSoapIn">
+    <wsdl:part name="parameters" element="tns:Ping" />
+  </wsdl:message>
+  <wsdl:message name="PingSoapOut">
+    <wsdl:part name="parameters" element="tns:PingResponse" />
+  </wsdl:message>
+  <wsdl:message name="HelloWorldSoapIn">
+    <wsdl:part name="parameters" element="tns:HelloWorld" />
+  </wsdl:message>
+  <wsdl:message name="HelloWorldSoapOut">
+    <wsdl:part name="parameters" element="tns:HelloWorldResponse" />
+  </wsdl:message>
+  <wsdl:message name="IsConnectedSoapIn">
+    <wsdl:part name="parameters" element="tns:IsConnected" />
+  </wsdl:message>
+  <wsdl:message name="IsConnectedSoapOut">
+    <wsdl:part name="parameters" element="tns:IsConnectedResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetSystemTimeUTCSoapIn">
+    <wsdl:part name="parameters" element="tns:GetSystemTimeUTC" />
+  </wsdl:message>
+  <wsdl:message name="GetSystemTimeUTCSoapOut">
+    <wsdl:part name="parameters" element="tns:GetSystemTimeUTCResponse" />
+  </wsdl:message>
+  <wsdl:message name="GenericMethodSoapIn">
+    <wsdl:part name="parameters" element="tns:GenericMethod" />
+  </wsdl:message>
+  <wsdl:message name="GenericMethodSoapOut">
+    <wsdl:part name="parameters" element="tns:GenericMethodResponse" />
+  </wsdl:message>
+  <wsdl:portType name="ISO8583WebSvcSoap">
+    <wsdl:operation name="ExchangeISOMessage">
+      <wsdl:input message="tns:ExchangeISOMessageSoapIn" />
+      <wsdl:output message="tns:ExchangeISOMessageSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SendEcho">
+      <wsdl:input message="tns:SendEchoSoapIn" />
+      <wsdl:output message="tns:SendEchoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="Ping">
+      <wsdl:input message="tns:PingSoapIn" />
+      <wsdl:output message="tns:PingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="HelloWorld">
+      <wsdl:input message="tns:HelloWorldSoapIn" />
+      <wsdl:output message="tns:HelloWorldSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="IsConnected">
+      <wsdl:input message="tns:IsConnectedSoapIn" />
+      <wsdl:output message="tns:IsConnectedSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetSystemTimeUTC">
+      <wsdl:input message="tns:GetSystemTimeUTCSoapIn" />
+      <wsdl:output message="tns:GetSystemTimeUTCSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GenericMethod">
+      <wsdl:input message="tns:GenericMethodSoapIn" />
+      <wsdl:output message="tns:GenericMethodSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="ISO8583WebSvcSoap" type="tns:ISO8583WebSvcSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="ExchangeISOMessage">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/ExchangeISOMessage" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SendEcho">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/SendEcho" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Ping">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/Ping" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="HelloWorld">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/HelloWorld" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="IsConnected">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/IsConnected" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetSystemTimeUTC">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/GetSystemTimeUTC" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GenericMethod">
+      <soap:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/GenericMethod" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="ISO8583WebSvcSoap12" type="tns:ISO8583WebSvcSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="ExchangeISOMessage">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/ExchangeISOMessage" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SendEcho">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/SendEcho" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Ping">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/Ping" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="HelloWorld">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/HelloWorld" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="IsConnected">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/IsConnected" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetSystemTimeUTC">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/GetSystemTimeUTC" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GenericMethod">
+      <soap12:operation soapAction="http://ISO8583WebSvc.NexxoFinancial.com/GenericMethod" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="ISO8583WebSvc">
+    <wsdl:port name="ISO8583WebSvcSoap" binding="tns:ISO8583WebSvcSoap">
+      <soap:address location="https://192.168.206.57:5222/FIS/ISO8583WebSvc.asmx" />
+    </wsdl:port>
+    <wsdl:port name="ISO8583WebSvcSoap12" binding="tns:ISO8583WebSvcSoap12">
+      <soap12:address location="https://192.168.206.57:5222/FIS/ISO8583WebSvc.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
