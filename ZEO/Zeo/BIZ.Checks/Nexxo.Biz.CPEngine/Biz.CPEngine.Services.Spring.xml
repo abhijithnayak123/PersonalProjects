@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xmlns:db="http://www.springframework.net/database"
+		 xmlns:tx="http://www.springframework.net/tx"
+		 xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Cxn.Check.Chexar/MGI.Cxn.Check.Chexar/CxnChexarSpring.xml"/>
+  <!--<import resource="assembly://MGI.Cxn.Check.Certegy/MGI.Cxn.Check.Certegy/MGI.Cxn.Check.Certegy.Spring.xml"/>-->
+	<import resource="assembly://MGI.Biz.Compliance/MGI.Biz.Compliance/Biz.Compliance.Services.Spring.xml"/>
+
+	<object id="ThrowsBizCPEngineExceptionAdvice" type="MGI.Biz.CPEngine.Impl.Advice.ThrowsBizCPEngineExceptionAdvice, MGI.Biz.CPEngine"/>
+
+	<object id="InterceptedBizCPEngine" type="MGI.Biz.CPEngine.Impl.CPEngineServiceImpl, MGI.Biz.CPEngine">
+		<property name="SessionSvc" ref="CustomerSessionService"/>
+		<property name="CxeCustSvc" ref="CXECustomerService"/>
+		<property name="AcctSvc" ref="AccountService"/>
+		<property name="PTNRCheckSvc" ref="PartnerCheckService"/>
+		<property name="CxeCheckSvc" ref="CXECheckService"/>
+		<property name="CustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="FeeSvc" ref="PartnerFeeService"/>
+		<property name="NexxoIdTypeService" ref ="CoreNexxoDataStructuresService" />
+		<property name="PtnrSvc" ref ="CorePartnerChannelPartnerService" />
+		<property name="LimitService" ref="BIZLimitService" />
+		<property name="CheckFrankRepo" ref="BIZCheckFrankRepo"/>
+		<property name="ManageUserService" ref="CorePartnerUserService"></property>
+		<property name="MessageCenterService" ref="CoreMessageCenterService"></property>
+		<property name="AgentService" ref="AgentSessionService"></property>
+		<property name="MessageStore" ref="MessageStore"></property>
+		<property name="CustomerFeeAdjustmentService" ref="CoreCustomerFeeAdjustmentService"></property>
+		<property name="FeeAdjustmentService" ref="FeeAdjustmentService"></property>
+		<property name="CheckProcessorRouter" ref="CheckProcessorRouter"/>
+		<property name="MongoDBLogger" ref="TLoggerRef"></property>
+	</object>
+	<object id="BIZCPEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target" ref="InterceptedBizCPEngine"/>
+		<property name="InterceptorNames">
+			<list>
+				<value>ThrowsBizCPEngineExceptionAdvice</value>
+			</list>
+		</property>
+	</object>
+
+	<object id="BIZCheckFrankRepo" type="MGI.Biz.CPEngine.Impl.CheckFrankTemplateRepo, MGI.Biz.CPEngine">
+		<constructor-arg index="0" value="${ReceiptServerURL}"/>
+		<constructor-arg index="1" value="${ReceiptServerDBName}" />
+		<constructor-arg index="2" value="${ReceiptServerBucketName}" />
+		<property name="PrintTemplateRepo" ref="PrintTemplate"></property>
+	</object>
+
+	<object id="PrintTemplate" type="MGI.Biz.Common.Impl.PrintTemplate, MGI.Biz.Common">
+		<property name="NLogger" ref="NLoggerRef"></property>
+		<property name="MongoDBLogger" ref="TLoggerRef"></property>
+	</object>
+
+	<!-- The Check Processors -->
+	<object id="CheckProcessorRouter" type="MGI.Cxn.Common.Processor.Util.ProcessorRouter, MGI.Cxn.Common">
+		<property name="Processors">
+			<object id="CheckProcessorsDictionary" type="System.Collections.Generic.Dictionary&lt;string, MGI.Cxn.Common.Processor.Contract.IProcessor&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+						<entry key="Synovus">
+							<ref object="IngoGateway"/>
+						</entry>
+						<entry key="TCF">
+							<ref object="IngoGateway"/>
+						</entry>
+						<entry key="Carver">
+							<ref object="IngoGateway"/>
+						</entry>
+						<entry key="MGI">
+							<ref object="IngoGateway"/>
+						</entry>
+						<!--<entry key="Redstone">
+							<ref object="CxnCheckCertegyProcessor"/>
+						</entry>-->
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+
+		<!-- The Check Providers -->
+		<property name="Providers">
+			<object id="CheckProvidersDictionary" type="System.Collections.Generic.Dictionary&lt;string, string&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="string">
+						<entry key="Synovus">
+							<value type="string">Ingo</value>
+						</entry>
+						<entry key="TCF">
+							<value type="string">Ingo</value>
+						</entry>
+						<entry key="Carver">
+							<value type="string">Ingo</value>
+						</entry>
+						<entry key="MGI">
+							<value type="string">Ingo</value>
+						</entry>
+						<!--<entry key="Redstone">
+							<value type="string">Certegy</value>
+						</entry>-->
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+		<!-- EO Check Providers -->
+
+	</object>
+	<!-- EO Check Processors -->
+
+
+</objects>

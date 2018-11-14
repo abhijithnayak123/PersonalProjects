@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{75C808AC-C57F-485E-AF06-50A63A5D12CF}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Biz.Common</RootNamespace>
+    <AssemblyName>TCF.Zeo.Biz.Common</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AutoMapper">
+      <HintPath>..\..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IComplianceService.cs" />
+    <Compile Include="Contract\IFeeAdjustmentConditionValidation.cs" />
+    <Compile Include="Contract\IFeeService.cs" />
+    <Compile Include="Contract\IPrintTemplate.cs" />
+    <Compile Include="Data\Exceptions\AgentException.cs" />
+    <Compile Include="Data\Exceptions\BillPayException.cs" />
+    <Compile Include="Data\Exceptions\BizComplianceException.cs" />
+    <Compile Include="Data\Exceptions\CashServiceException.cs" />
+    <Compile Include="Data\Exceptions\CustomerException.cs" />
+    <Compile Include="Data\Exceptions\FeatureException.cs" />
+    <Compile Include="Data\Exceptions\FinalCommitException.cs" />
+    <Compile Include="Data\Exceptions\MoneyTransferException.cs" />
+    <Compile Include="Data\Exceptions\ChannelPartnerException.cs" />
+    <Compile Include="Data\Exceptions\CheckException.cs" />
+    <Compile Include="Data\Exceptions\FundsException.cs" />
+    <Compile Include="Data\Exceptions\LocationException.cs" />
+    <Compile Include="Data\Exceptions\MessageCenterException.cs" />
+    <Compile Include="Data\Exceptions\MoneyOrderException.cs" />
+    <Compile Include="Data\Exceptions\PromotionException.cs" />
+    <Compile Include="Data\Exceptions\ReceiptException.cs" />
+    <Compile Include="Data\Exceptions\ShoppingCartException.cs" />
+    <Compile Include="Data\Exceptions\TerminalException.cs" />
+    <Compile Include="Data\Exceptions\TransactionHistoryException.cs" />
+    <Compile Include="Data\Limit.cs" />
+    <Compile Include="Impl\ComplianceServiceImpl.cs" />
+    <Compile Include="Impl\FeeAdjustmentConditionValidationImpl.cs" />
+    <Compile Include="Impl\FeeServiceImpl.cs" />
+    <Compile Include="Impl\PrintTemplate.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TCF.Channel.Zeo.Data\TCF.Channel.Zeo.Data.csproj">
+      <Project>{b585779b-71b7-49e7-953a-5eaf00e4d2e8}</Project>
+      <Name>TCF.Channel.Zeo.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Common\TCF.Zeo.Common.csproj">
+      <Project>{5360e449-74f2-4abd-b3c1-d93eca6a8ded}</Project>
+      <Name>TCF.Zeo.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Core\TCF.Zeo.Core.csproj">
+      <Project>{45d28137-57c8-4fa3-b48e-ec22d9cea386}</Project>
+      <Name>TCF.Zeo.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

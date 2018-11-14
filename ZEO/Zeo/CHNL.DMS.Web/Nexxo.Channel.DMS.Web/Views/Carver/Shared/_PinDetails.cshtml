@@ -1,0 +1,29 @@
+﻿@model TCF.Channel.Zeo.Web.Models.PinDetails
+@Html.ValidationSummary(true)
+<div class="row">
+   <div>@Html.LabelFor(model => model.PhoneNumber, new { @class = "row_label_txt" })
+       
+    @Html.TextBoxFor(model => model.PhoneNumber, new { @class = "disable_txt", @disabled = "disabled", autocomplete = "off" })</div> 
+   
+    <div class="error_align_left">
+    @Html.ValidationMessageFor(model => model.PhoneNumber)</div>
+</div>
+
+<div class="row">
+    <div>
+		@Html.LabelFor(model => model.Pin, new { @class = "row_label_txt" })
+        @Html.EditorFor(model => model.Pin, new { @class = "input_box", tabindex = 3, maxLength = 4 })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.Pin)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.ReEnter, new { @class = "row_label_txt" })
+        @Html.EditorFor(model => model.ReEnter, new { @class = "input_box", tabindex = 4, maxLength = 4, onblur = "clearPinNumbers()" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.ReEnter)
+    </div>
+</div>

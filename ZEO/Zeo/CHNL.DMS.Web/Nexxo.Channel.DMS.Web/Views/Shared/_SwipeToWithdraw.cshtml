@@ -1,0 +1,31 @@
+﻿<script src="@Url.Content("~/Scripts/Common/lib/helper.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/ShoppingCart/WithdrawSwipe.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/MessageStore.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/encryption.js" language="JavaScript" type="text/javascript" id="pie_script"></script>
+<script src="@System.Web.Configuration.WebConfigurationManager.AppSettings["VoltagePieBaseUrl"]/tcf/getkey.js" language="JavaScript" type="text/javascript"></script>
+<script>
+    var CardBINs_URL = '@Url.Action("GetCardTypeByBIN", "CustomerSearch")';
+</script>
+
+<div class="txt_center">
+    <input type="text" id="MaskCardNumber" class="input_box card_number width_62 margin_top_20" maxlength="21"/>
+    <input type="text" id="CardNumber" class="hide"/>
+    <input type="text" id="CVV" class="hide" />
+</div>
+<div class="row">
+    <div class="label_col_left">
+    </div>
+    <div class="label_col_right">
+        <div class="hint_message_withdraw_swipe">
+            <p>Click this box before swiping card</p>
+        </div>
+    </div>
+</div>
+<div class="txt_center">
+    <ul>
+        <li class="SrchButtonWidth margin_top_15">
+            @Html.ActionLink("Ok", "ValidateCustomerByCardNumber", "CustomerSearch", null, new { @class = "anc_link_btn green_input", id = "submitCardData" })
+            <input type="button" class="anc_link_btn red_btn" onclick="RemovePopUp()" value="Cancel" />
+        </li>
+    </ul>
+</div>

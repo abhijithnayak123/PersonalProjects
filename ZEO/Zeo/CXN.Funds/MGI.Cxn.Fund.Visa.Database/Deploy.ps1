@@ -1,0 +1,1 @@
+﻿& .\MGI.Cxn.Fund.Visa.Database.exe | Write-Host

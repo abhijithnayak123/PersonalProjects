@@ -1,0 +1,40 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CustomerLookUp
+<center>
+	<div class="page_head product_head float_left">
+		Find Synovus Customer
+	</div>
+	<div class="customerlookup_hdg">
+		Use the following criteria to search for Synovus customer:
+	</div>
+	<div class="customerlookup_container">
+		<div class="row float_left customerlookup_row">
+			<label class="label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SSNITIN)</label>
+			@Html.TextBoxFor(model => model.SSN, new { @class = "input_box", tabindex = 1, id = "SSN", @maxLength = 11 })
+
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.SSN)
+				@Html.HiddenFor(model => model.ActualSSN)
+			</div>
+		</div>
+		<div class="row float_right">
+			<input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SearchButtonText" class="confirmButton customerlookup_btn" id="criteriaSubmit" />
+			<input type="submit" value="New Customer" class="anc_link_btn red_btn" id="btnNewCustomer" />
+		</div>
+	</div>
+	<div id="NoRecords" class="apprCheck noRecords">
+		@if (ViewBag.ErrorMessage != null)
+  {
+			@ViewBag.ErrorMessage
+  }
+	</div>
+	<div id="griddiv">
+		<div class="customerlookup_hdg float_left">
+			Select the customer to register:
+		</div>
+		<div class="customerlookup_grid" id="divJqTable">
+			<table id="jqTable" class="scroll">
+			</table>
+			<div id="jqTablePager" />
+		</div>
+	</div>
+</center>

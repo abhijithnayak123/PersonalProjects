@@ -1,0 +1,1408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns="http://api.tsysprepaid.com/user" xmlns:account="http://api.tsysprepaid.com/account" xmlns:card="http://api.tsysprepaid.com/card" xmlns:fee="http://api.tsysprepaid.com/fee" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://api.tsysprepaid.com/user" version="100" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:import schemaLocation="https://uat-api-4.tsysprepaid.com/api/user?xsd=card.xsd" namespace="http://api.tsysprepaid.com/card" />
+  <xsd:import schemaLocation="https://uat-api-4.tsysprepaid.com/api/user?xsd=account.xsd" namespace="http://api.tsysprepaid.com/account" />
+  <xsd:import schemaLocation="https://uat-api-4.tsysprepaid.com/api/user?xsd=fee.xsd" namespace="http://api.tsysprepaid.com/fee" />
+  <xsd:complexType name="userData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="userId" type="xsd:long" />
+      <xsd:element name="version" type="xsd:long" />
+      <xsd:element minOccurs="0" name="time" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="status" type="userStatus" />
+      <xsd:element minOccurs="0" name="programId" type="xsd:long" />
+      <xsd:element minOccurs="0" name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="emails" nillable="true" type="emailData" />
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+      <xsd:element minOccurs="0" name="phones" nillable="true" type="phoneData" />
+      <xsd:element minOccurs="0" name="idvData" type="idvData" />
+      <xsd:element minOccurs="0" name="cardHolderType" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="addressType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="HOME" />
+      <xsd:enumeration value="CORPORATE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="languagePreference">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="en-US" />
+      <xsd:enumeration value="es-MX" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="addressStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ACTIVE" />
+      <xsd:enumeration value="INACTIVE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="address">
+    <xsd:sequence>
+      <xsd:element name="type" type="addressType" />
+      <xsd:element name="street1" type="xsd:string" />
+      <xsd:element minOccurs="0" name="street2" type="xsd:string" />
+      <xsd:element minOccurs="0" name="street3" type="xsd:string" />
+      <xsd:element name="city" type="xsd:string" />
+      <xsd:element name="stateProv" type="xsd:string" />
+      <xsd:element name="postalCode" type="xsd:string" />
+      <xsd:element name="country" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="addressData">
+    <xsd:sequence>
+      <xsd:element name="primary" type="address" />
+      <xsd:element minOccurs="0" name="secondary" type="address" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateAddressData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="primary" type="address" />
+      <xsd:element minOccurs="0" name="secondary" type="address" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAddressesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAddressesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="addresses" nillable="true" type="addressData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAddressesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateAddressesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="updateAddressData" type="updateAddressData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateAddressesResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateAddressesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="PRIMARY_RECORD_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createUserAccountCardData">
+    <xsd:sequence>
+      <xsd:element name="userData" type="userData" />
+      <xsd:element name="accountData" type="account:accountData" />
+      <xsd:element name="cardData" type="card:cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="userAccountCardData">
+    <xsd:sequence>
+      <xsd:element name="userData" type="userData" />
+      <xsd:element minOccurs="0" name="accountData" type="account:accountData" />
+      <xsd:element minOccurs="0" name="cardData" type="card:cardData" />
+      <xsd:element minOccurs="0" name="transactionId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="authUserAccountCardDataWithFeeData">
+    <xsd:sequence>
+      <xsd:element name="userAccountCardData" type="userAccountCardData" />
+      <xsd:element minOccurs="0" name="feeDetailTransaction" type="fee:feeTransactionDetail" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="idvData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="idVerificationStatus" type="idVerificationStatus" />
+      <xsd:element minOccurs="0" name="idVerificationMsg" type="xsd:string" />
+      <xsd:element minOccurs="0" name="transactionId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="idvQuestions" type="idvQuestion" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="phoneCountryCode">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="1" />
+      <xsd:maxLength value="3" />
+      <xsd:pattern value="\d*" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="idvQuestion">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="prompt" type="xsd:string" />
+      <xsd:element minOccurs="0" name="type" type="xsd:string" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="answers" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="phoneAreaCode">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="1" />
+      <xsd:maxLength value="4" />
+      <xsd:pattern value="\d*" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="phoneLocalNumber">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="4" />
+      <xsd:maxLength value="11" />
+      <xsd:pattern value="\d*" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="phoneExtension">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="10" />
+      <xsd:pattern value="(\*|#)*\d*" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="internationalPhone">
+    <xsd:sequence>
+      <xsd:element name="countryCode" type="phoneCountryCode" />
+      <xsd:element name="areaCode" type="phoneAreaCode" />
+      <xsd:element name="localNumber" type="phoneLocalNumber" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="inputPhone">
+    <xsd:sequence>
+      <xsd:element name="type" type="phoneType" />
+      <xsd:choice>
+        <xsd:element name="internationalPhone" type="internationalPhone" />
+        <xsd:element name="usPhone" type="xsd:long" />
+      </xsd:choice>
+      <xsd:element minOccurs="0" name="extension" type="phoneExtension" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="phone">
+    <xsd:sequence>
+      <xsd:element name="type" type="phoneType" />
+      <xsd:element name="countryCode" type="phoneCountryCode" />
+      <xsd:element name="areaCode" type="phoneAreaCode" />
+      <xsd:element name="localNumber" type="phoneLocalNumber" />
+      <xsd:element minOccurs="0" name="usPhone" type="xsd:long" />
+      <xsd:element minOccurs="0" name="extension" type="phoneExtension" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updatePhoneData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="primary" type="inputPhone" />
+      <xsd:element minOccurs="0" name="secondary" type="inputPhone" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="inputPhoneData">
+    <xsd:sequence>
+      <xsd:element name="primary" type="inputPhone" />
+      <xsd:element minOccurs="0" name="secondary" type="inputPhone" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="phoneData">
+    <xsd:sequence>
+      <xsd:element name="primary" type="phone" />
+      <xsd:element minOccurs="0" name="secondary" type="phone" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="emailData">
+    <xsd:sequence>
+      <xsd:element name="primary" type="email" />
+      <xsd:element minOccurs="0" name="secondary" type="email" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateEmailData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="primary" type="email" />
+      <xsd:element minOccurs="0" name="secondary" type="email" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="identificationData">
+    <xsd:sequence>
+      <xsd:element name="primary" type="identification" />
+      <xsd:element minOccurs="0" name="secondary" type="identification" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateIdentificationData">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="primary" type="identification" />
+      <xsd:element minOccurs="0" name="secondary" type="identification" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="priorityType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PRIMARY" />
+      <xsd:enumeration value="SECONDARY" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="emailType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERSONAL" />
+      <xsd:enumeration value="BUSINESS" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="email">
+    <xsd:sequence>
+      <xsd:element name="type" type="emailType" />
+      <xsd:element name="emailAddress" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="gender" final="restriction">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="UNKNOWN" />
+      <xsd:enumeration value="MALE" />
+      <xsd:enumeration value="FEMALE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="groupType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="DEPARTMENT" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="group">
+    <xsd:sequence>
+      <xsd:element name="type" type="groupType" />
+      <xsd:element name="name" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="identification">
+    <xsd:sequence>
+      <xsd:element name="type" type="identificationType" />
+      <xsd:element name="country" type="xsd:string" />
+      <xsd:element minOccurs="0" name="stateProv" nillable="true" type="xsd:string" />
+      <xsd:element name="id" type="xsd:string" />
+      <xsd:element minOccurs="0" name="issueDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="userUpdateType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="USER_CREATED" />
+      <xsd:enumeration value="USER_CLOSED" />
+      <xsd:enumeration value="NAME_CHANGED" />
+      <xsd:enumeration value="GENDER_CHANGED" />
+      <xsd:enumeration value="DATE_OF_BIRTH_CHANGED" />
+      <xsd:enumeration value="PASSWORD_CHANGED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="profileDataStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ACTIVE" />
+      <xsd:enumeration value="CLOSED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="userUpdate">
+    <xsd:sequence>
+      <xsd:element name="updatedOn" type="xsd:dateTime" />
+      <xsd:element name="type" type="userUpdateType" />
+      <xsd:element name="user" type="userData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="addressUpdate">
+    <xsd:sequence>
+      <xsd:element name="updatedOn" type="xsd:dateTime" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="address" type="address" />
+      <xsd:element minOccurs="0" name="priority" type="priorityType" />
+      <xsd:element name="status" type="addressStatus" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="phoneUpdate">
+    <xsd:sequence>
+      <xsd:element name="updatedOn" type="xsd:dateTime" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="phone" type="phone" />
+      <xsd:element minOccurs="0" name="priority" type="priorityType" />
+      <xsd:element name="status" type="profileDataStatus" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="emailUpdate">
+    <xsd:sequence>
+      <xsd:element name="updatedOn" type="xsd:dateTime" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="email" type="email" />
+      <xsd:element minOccurs="0" name="priority" type="priorityType" />
+      <xsd:element name="status" type="profileDataStatus" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="identificationUpdate">
+    <xsd:sequence>
+      <xsd:element name="updatedOn" type="xsd:dateTime" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="identification" type="identification" />
+      <xsd:element minOccurs="0" name="priority" type="priorityType" />
+      <xsd:element name="status" type="profileDataStatus" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="userStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="OPEN" />
+      <xsd:enumeration value="CLOSED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="idVerificationStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="APPROVED" />
+      <xsd:enumeration value="DECLINED" />
+      <xsd:enumeration value="NO_IDV_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="identificationType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="AGE_CARD" />
+      <xsd:enumeration value="ARMY_ID" />
+      <xsd:enumeration value="COLLEGE_ID" />
+      <xsd:enumeration value="DIRECT_DEPOSIT_ACCOUNT" />
+      <xsd:enumeration value="DRIVERS_LICENSE" />
+      <xsd:enumeration value="NATIONAL_ID" />
+      <xsd:enumeration value="PASSPORT" />
+      <xsd:enumeration value="POLICY_NUMBER" />
+      <xsd:enumeration value="SOCIAL_SECURITY_NUMBER" />
+      <xsd:enumeration value="STATE_ID" />
+      <xsd:enumeration value="TAX_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="phoneType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="HOME" />
+      <xsd:enumeration value="BUSINESS" />
+      <xsd:enumeration value="FAX" />
+      <xsd:enumeration value="MOBILE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createUserRequest">
+    <xsd:sequence>
+      <xsd:element minOccurs="1" name="programId" type="xsd:long" />
+      <xsd:element minOccurs="1" name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="overrideIdverification" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createUserResponse">
+    <xsd:sequence>
+      <xsd:element name="user" type="userData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createUserError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createUserAccountCardFundedRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="accountType" nillable="true" type="account:accountType" />
+      <xsd:element minOccurs="0" name="spanId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="subTypeId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="accountDescription" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="statementPreference" nillable="true" type="account:statementPreferenceType" />
+      <xsd:element name="plastic" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="card:mailerText" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element name="amount" type="xsd:long" />
+      <xsd:element minOccurs="0" name="transactionSourceId" nillable="true" type="xsd:string" />
+      <xsd:element name="transactionDescription" type="xsd:string" />
+      <xsd:element name="issuanceType" type="card:issuanceType" />
+      <xsd:element minOccurs="0" name="deviceType" type="card:deviceType" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="attributes" nillable="true" type="card:attributeData" />
+      <xsd:element minOccurs="0" name="deliveryType" nillable="true" type="card:deliveryType" />
+      <xsd:element minOccurs="0" name="bulkShippingAddress" nillable="true" type="card:bulkShippingAddress" />
+      <xsd:element minOccurs="0" name="overrideIdverification" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="materialOverride" nillable="true" type="card:materialOverride" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createUserAccountCardFundedResponse">
+    <xsd:sequence>
+      <xsd:element name="userAccountCardData" type="userAccountCardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createUserAccountCardFundedError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_SUB_TYPE_ID" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="INVALID_CARD_NAME" />
+      <xsd:enumeration value="EMPTY_CARD_POOL" />
+      <xsd:enumeration value="INVALID_CARD_ISSUE_ID" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="TRANSACTION_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="INVALID_TRANSACTION_DESCRIPTION" />
+      <xsd:enumeration value="INVALID_BULK_ADDRESS" />
+      <xsd:enumeration value="BULK_SHIP_ADDRESS_REQUIRED" />
+      <xsd:enumeration value="BULK_ADDRESS_NOT_SUPPORTED_BY_SHIPPING_TYPE" />
+      <xsd:enumeration value="INAPPROPRIATE_LANGUAGE" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="INVALID_SOURCE_ID" />
+      <xsd:enumeration value="NO_PARTICIPATION" />
+      <xsd:enumeration value="MAX_BALANCE_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+      <xsd:enumeration value="STATEMENT_POLICY_NOT_PRESENT" />
+      <xsd:enumeration value="INVALID_STATEMENT_PREFERENCE" />
+      <xsd:enumeration value="STATEMENT_PREFERENCE_REQUIRED" />
+      <xsd:enumeration value="INVALID_EMBOSSER_ATTRIBUTES_GROUP" />
+      <xsd:enumeration value="INVALID_STICKER_ID" />
+      <xsd:enumeration value="INVALID_PLASTIC_ID" />
+      <xsd:enumeration value="INVALID_ENVELOPE_ID" />
+      <xsd:enumeration value="INVALID_LABEL_ID" />
+      <xsd:enumeration value="INVALID_CARRIER_ID" />
+      <xsd:enumeration value="INVALID_INSERT_CODE1" />
+      <xsd:enumeration value="INVALID_INSERT_CODE2" />
+      <xsd:enumeration value="INVALID_INSERT_CODE3" />
+      <xsd:enumeration value="INVALID_INSERT_CODE4" />
+      <xsd:enumeration value="INVALID_INSERT_CODE5" />
+      <xsd:enumeration value="INVALID_INSERT_CODE6" />
+      <xsd:enumeration value="INVALID_INSERT_CODE7" />
+      <xsd:enumeration value="INVALID_INSERT_CODE8" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="descriptionString">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="100" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="amountInCents">
+    <xsd:restriction base="xsd:long">
+      <xsd:minInclusive value="1" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="fundingData">
+    <xsd:sequence>
+      <xsd:element name="amount" type="amountInCents" />
+      <xsd:element name="transactionDescription" type="descriptionString" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createUserAccountCardRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="emails" nillable="true" type="emailData" />
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+      <xsd:element minOccurs="0" name="inputPhoneData" nillable="true" type="inputPhoneData" />
+      <xsd:element minOccurs="0" name="accountType" nillable="true" type="account:accountType" />
+      <xsd:element minOccurs="0" name="spanId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="subTypeId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="accountDescription" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" maxOccurs="1" name="statementPreference" nillable="true" type="account:statementPreferenceType" />
+      <xsd:element name="plastic" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="card:mailerText" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element name="issuanceType" type="card:issuanceType" />
+      <xsd:element minOccurs="0" name="deviceType" type="card:deviceType" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="attributes" nillable="true" type="card:attributeData" />
+      <xsd:element minOccurs="0" name="funding" type="fundingData" />
+      <xsd:element minOccurs="0" name="deliveryType" nillable="true" type="card:deliveryType" />
+      <xsd:element minOccurs="0" name="bulkShippingAddress" nillable="true" type="card:bulkShippingAddress" />
+      <xsd:element minOccurs="0" name="overrideIdverification" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="materialOverride" nillable="true" type="card:materialOverride" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createUserAccountCardResponse">
+    <xsd:sequence>
+      <xsd:element name="userAccountCardData" type="userAccountCardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createUserAccountCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_PHONE" />
+      <xsd:enumeration value="INVALID_EMAIL" />
+      <xsd:enumeration value="EMAIL_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="IDENTIFICATION_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_SUB_TYPE_ID" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="INVALID_CARD_NAME" />
+      <xsd:enumeration value="EMPTY_CARD_POOL" />
+      <xsd:enumeration value="INVALID_CARD_ISSUE_ID" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="TRANSACTION_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="INVALID_TRANSACTION_DESCRIPTION" />
+      <xsd:enumeration value="INVALID_BULK_ADDRESS" />
+      <xsd:enumeration value="BULK_SHIP_ADDRESS_REQUIRED" />
+      <xsd:enumeration value="BULK_ADDRESS_NOT_SUPPORTED_BY_SHIPPING_TYPE" />
+      <xsd:enumeration value="INAPPROPRIATE_LANGUAGE" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="PROGRAM_ISSUANCE_NOT_EXIST" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+      <xsd:enumeration value="STATEMENT_POLICY_NOT_PRESENT" />
+      <xsd:enumeration value="INVALID_STATEMENT_PREFERENCE" />
+      <xsd:enumeration value="STATEMENT_PREFERENCE_REQUIRED" />
+      <xsd:enumeration value="INVALID_EMBOSSER_ATTRIBUTES_GROUP" />
+      <xsd:enumeration value="INVALID_STICKER_ID" />
+      <xsd:enumeration value="INVALID_PLASTIC_ID" />
+      <xsd:enumeration value="INVALID_ENVELOPE_ID" />
+      <xsd:enumeration value="INVALID_LABEL_ID" />
+      <xsd:enumeration value="INVALID_CARRIER_ID" />
+      <xsd:enumeration value="INVALID_INSERT_CODE1" />
+      <xsd:enumeration value="INVALID_INSERT_CODE2" />
+      <xsd:enumeration value="INVALID_INSERT_CODE3" />
+      <xsd:enumeration value="INVALID_INSERT_CODE4" />
+      <xsd:enumeration value="INVALID_INSERT_CODE5" />
+      <xsd:enumeration value="INVALID_INSERT_CODE6" />
+      <xsd:enumeration value="INVALID_INSERT_CODE7" />
+      <xsd:enumeration value="INVALID_INSERT_CODE8" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="verifyCIPRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="verifyCIPResponse">
+    <xsd:sequence>
+      <xsd:element name="idvData" type="idvData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="verifyCIPError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="IDENTIFICATION_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="verifyOFACRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="verifyOFACResponse">
+    <xsd:sequence>
+      <xsd:element name="idvData" type="idvData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="verifyOFACError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="IDENTIFICATION_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserResponse">
+    <xsd:sequence>
+      <xsd:element name="user" type="userData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserByExternalKeyRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserByExternalKeyResponse">
+    <xsd:sequence>
+      <xsd:element name="user" type="userData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserByExternalKeyError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateUserRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element minOccurs="0" name="externalKey" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="firstName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="lastName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateUserResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateUserError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="closeUserRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="closeUserResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="closeUserError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="CANNOT_CLOSE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getPhonesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getPhonesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="1" name="phones" nillable="true" type="phoneData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getPhonesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updatePhonesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="updatePhoneData" type="updatePhoneData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updatePhonesResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updatePhonesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_PHONE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="PRIMARY_RECORD_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getGroupsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getGroupsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="groups" nillable="true" type="group" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getGroupsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateGroupsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="groups" nillable="true" type="group" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateGroupsResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateGroupsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getEmailsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getEmailsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="emails" nillable="true" type="emailData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getEmailsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateEmailsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="updateEmailData" type="updateEmailData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateEmailsResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateEmailsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_EMAIL" />
+      <xsd:enumeration value="EMAIL_NOT_UNIQUE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="PRIMARY_RECORD_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getIdentificationRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getIdentificationResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getIdentificationError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="updateIdentificationRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="updateIdentificationData" type="updateIdentificationData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="updateIdentificationResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="updateIdentificationError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="IDENTIFICATION_NOT_UNIQUE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="PRIMARY_RECORD_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserUpdatesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserUpdatesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="userUpdates" nillable="true" type="userUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserUpdatesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserUpdatesForProgramRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserUpdatesForProgramResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="userUpdates" nillable="true" type="userUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserUpdatesForProgramError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserAddressUpdatesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserAddressUpdatesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="addressUpdates" nillable="true" type="addressUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserAddressUpdatesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserAddressUpdatesForProgramRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserAddressUpdatesForProgramResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="addressUpdates" nillable="true" type="addressUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserAddressUpdatesForProgramError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserPhoneUpdatesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserPhoneUpdatesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="phoneUpdates" nillable="true" type="phoneUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserPhoneUpdatesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserPhoneUpdatesForProgramRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserPhoneUpdatesForProgramResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="phoneUpdates" nillable="true" type="phoneUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserPhoneUpdatesForProgramError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserEmailUpdatesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserEmailUpdatesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="emailUpdates" nillable="true" type="emailUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserEmailUpdatesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserEmailUpdatesForProgramRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserEmailUpdatesForProgramResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="emailUpdates" nillable="true" type="emailUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserEmailUpdatesForProgramError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserIdentificationUpdatesRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserIdentificationUpdatesResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="identificationUpdates" nillable="true" type="identificationUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserIdentificationUpdatesError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserIdentificationUpdatesForProgramRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserIdentificationUpdatesForProgramResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="identificationUpdates" nillable="true" type="identificationUpdate" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserIdentificationUpdatesForProgramError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="profileDataType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ADDRESS" />
+      <xsd:enumeration value="PHONE" />
+      <xsd:enumeration value="EMAIL" />
+      <xsd:enumeration value="IDENTIFICATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="deleteProfileData">
+    <xsd:sequence>
+      <xsd:element name="profileData" type="profileDataType" />
+      <xsd:element name="priority" type="priorityType" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="deleteUserProfileDataRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element minOccurs="1" maxOccurs="unbounded" name="profileData" type="deleteProfileData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="deleteUserProfileDataResponse" />
+  <xsd:simpleType name="deleteUserProfileDataError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="PRIMARY_PHONE_NOT_FOUND" />
+      <xsd:enumeration value="PRIMARY_EMAIL_NOT_FOUND" />
+      <xsd:enumeration value="PRIMARY_IDENTIFICATION_NOT_FOUND" />
+      <xsd:enumeration value="SECONDARY_PHONE_EXISTS" />
+      <xsd:enumeration value="SECONDARY_EMAIL_EXISTS" />
+      <xsd:enumeration value="SECONDARY_IDENTIFICATION_EXISTS" />
+      <xsd:enumeration value="UNABLE_DELETE_PRIMARY_ADDRESS" />
+      <xsd:enumeration value="SECONDARY_ADDRESS_NOT_FOUND" />
+      <xsd:enumeration value="PRIMARY_EMAIL_NOT_FOUND" />
+      <xsd:enumeration value="SECONDARY_EMAIL_NOT_FOUND" />
+      <xsd:enumeration value="PRIMARY_IDENTIFICATION_NOT_FOUND" />
+      <xsd:enumeration value="SECONDARY_IDENTIFICATION_NOT_FOUND" />
+      <xsd:enumeration value="PRIMARY_PHONE_NOT_FOUND" />
+      <xsd:enumeration value="SECONDARY_PHONE_NOT_FOUND" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="validateCIPAnswersRequest">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="transactionId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="IdvAnswer" type="idvAnswer" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="validateCIPAnswersResponse">
+    <xsd:sequence>
+      <xsd:element name="userAccountCardData" type="userAccountCardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="idvAnswer">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="questionType" type="xsd:string" />
+      <xsd:element minOccurs="0" name="answer" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="validateCIPAnswersError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="EXPECT_ID_NOT_FOUND_NOT_ELIGIBLE_FOR_QUESTIONS" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="UNANSWERD_QUESTIONS" />
+      <xsd:enumeration value="SYSTEM_IS_DOWN" />
+      <xsd:enumeration value="USER_NOT_CREATED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createAuthorizedUserRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+      <xsd:element name="externalKey" type="xsd:string" />
+      <xsd:element minOccurs="0" name="title" nillable="true" type="xsd:string" />
+      <xsd:element name="firstName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="middleName" nillable="true" type="xsd:string" />
+      <xsd:element name="lastName" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mothersMaidenName" nillable="true" type="xsd:string" />
+      <xsd:element name="addresses" type="addressData" />
+      <xsd:element minOccurs="0" name="gender" nillable="true" type="gender" />
+      <xsd:element minOccurs="0" name="dateOfBirth" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="emails" nillable="true" type="emailData" />
+      <xsd:element minOccurs="0" name="identificationData" nillable="true" type="identificationData" />
+      <xsd:element minOccurs="0" name="inputPhoneData" nillable="true" type="inputPhoneData" />
+      <xsd:element name="plastic" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="card:mailerText" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element name="issuanceType" type="card:issuanceType" />
+      <xsd:element minOccurs="0" name="deviceType" type="card:deviceType" />
+      <xsd:element minOccurs="0" name="deliveryType" nillable="true" type="card:deliveryType" />
+      <xsd:element minOccurs="0" name="bulkShippingAddress" nillable="true" type="card:bulkShippingAddress" />
+      <xsd:element minOccurs="0" name="overrideIdverification" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="materialOverride" nillable="true" type="card:materialOverride" />
+      <xsd:element minOccurs="0" name="chargeFee" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="feeSubClass" type="fee:feeSubClass" />
+      <xsd:element minOccurs="0" name="feeAmount" type="xsd:long" />
+      <xsd:element minOccurs="0" name="description" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="languagePreference" nillable="true" type="languagePreference" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createAuthorizedUserResponse">
+    <xsd:sequence>
+      <xsd:element name="authUserAccountCardDataWithFeeData" type="authUserAccountCardDataWithFeeData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createAuthorizedUserError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_EXTERNAL_KEY" />
+      <xsd:enumeration value="INVALID_NAME" />
+      <xsd:enumeration value="EXTERNAL_KEY_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_PHONE" />
+      <xsd:enumeration value="INVALID_EMAIL" />
+      <xsd:enumeration value="EMAIL_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_IDENTIFICATION" />
+      <xsd:enumeration value="IDENTIFICATION_NOT_UNIQUE" />
+      <xsd:enumeration value="INVALID_ADDRESS" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_SUB_TYPE_ID" />
+      <xsd:enumeration value="INVALID_SPAN_ID" />
+      <xsd:enumeration value="INVALID_CARD_NAME" />
+      <xsd:enumeration value="EMPTY_CARD_POOL" />
+      <xsd:enumeration value="INVALID_CARD_ISSUE_ID" />
+      <xsd:enumeration value="INSUFFICIENT_FUNDS" />
+      <xsd:enumeration value="TRANSACTION_LIMIT_EXCEEDED" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="INVALID_TRANSACTION_DESCRIPTION" />
+      <xsd:enumeration value="INVALID_BULK_ADDRESS" />
+      <xsd:enumeration value="BULK_SHIP_ADDRESS_REQUIRED" />
+      <xsd:enumeration value="BULK_ADDRESS_NOT_SUPPORTED_BY_SHIPPING_TYPE" />
+      <xsd:enumeration value="INAPPROPRIATE_LANGUAGE" />
+      <xsd:enumeration value="INVALID_MOTHERS_MAIDEN_NAME" />
+      <xsd:enumeration value="PROGRAM_ISSUANCE_NOT_EXIST" />
+      <xsd:enumeration value="ID_VERIFICATION_OVERRIDE_NOT_ALLOWED" />
+      <xsd:enumeration value="ID_VERIFICATION_NO_PARTICIPATION" />
+      <xsd:enumeration value="STATEMENT_POLICY_NOT_PRESENT" />
+      <xsd:enumeration value="INVALID_STATEMENT_PREFERENCE" />
+      <xsd:enumeration value="STATEMENT_PREFERENCE_REQUIRED" />
+      <xsd:enumeration value="INVALID_EMBOSSER_ATTRIBUTES_GROUP" />
+      <xsd:enumeration value="INVALID_STICKER_ID" />
+      <xsd:enumeration value="INVALID_PLASTIC_ID" />
+      <xsd:enumeration value="INVALID_ENVELOPE_ID" />
+      <xsd:enumeration value="INVALID_LABEL_ID" />
+      <xsd:enumeration value="INVALID_CARRIER_ID" />
+      <xsd:enumeration value="INVALID_INSERT_CODE1" />
+      <xsd:enumeration value="INVALID_INSERT_CODE2" />
+      <xsd:enumeration value="INVALID_INSERT_CODE3" />
+      <xsd:enumeration value="INVALID_INSERT_CODE4" />
+      <xsd:enumeration value="INVALID_INSERT_CODE5" />
+      <xsd:enumeration value="INVALID_INSERT_CODE6" />
+      <xsd:enumeration value="INVALID_INSERT_CODE7" />
+      <xsd:enumeration value="INVALID_INSERT_CODE8" />
+      <xsd:enumeration value="PROGRAM_DOES_NOT_SUPPORT_AUTH_USER" />
+      <xsd:enumeration value="MAX_AUTH_USERS_EXCEEDED" />
+      <xsd:enumeration value="INVALID_AMOUNT" />
+      <xsd:enumeration value="FEE_NOT_FOUND" />
+      <xsd:enumeration value="MULTIPLE_FEE_POLICIES_EXIST" />
+      <xsd:enumeration value="FEE_POLICY_NOT_DEFINED" />
+      <xsd:enumeration value="FEE_SUB_CLASS_NOT_SUPPORTED" />
+      <xsd:enumeration value="FEE_SUB_CLASS_REQUIRED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getAccountUsersRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountUsersResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="accountUsers" nillable="true" type="userData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAccountUsersError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:schema>

@@ -14,6 +14,7 @@ namespace EFBasicTutorials
     
     public partial class Teacher
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Teacher()
         {
             this.Courses = new HashSet<Course>();
@@ -23,6 +24,7 @@ namespace EFBasicTutorials
         public string TeacherName { get; set; }
         public Nullable<int> StandardId { get; set; }
     
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Course> Courses { get; set; }
         public virtual Standard Standard { get; set; }
     }

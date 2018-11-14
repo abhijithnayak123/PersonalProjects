@@ -1,0 +1,576 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{69028891-99EF-4A9A-9995-674D605156F2}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Cxn.WU.Common</RootNamespace>
+    <AssemblyName>TCF.Zeo.Cxn.WU.Common</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AutoMapper">
+      <HintPath>..\..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IWUCommonIO.cs" />
+    <Compile Include="Data\Address.cs" />
+    <Compile Include="Data\AgentBanners.cs" />
+    <Compile Include="Data\CardDetails.cs" />
+    <Compile Include="Data\CardInfo.cs" />
+    <Compile Include="Data\CardLookupDetails.cs" />
+    <Compile Include="Data\CardLookUpRequest.cs" />
+    <Compile Include="Data\Common.cs" />
+    <Compile Include="Data\ComplianceTemplate.cs" />
+    <Compile Include="Data\ConvenienceSearch.cs" />
+    <Compile Include="Data\CountryCurrencyInfo.cs" />
+    <Compile Include="Data\Financials.cs" />
+    <Compile Include="Data\PaymentDetails.cs" />
+    <Compile Include="Data\Receiver.cs" />
+    <Compile Include="Data\Sender.cs" />
+    <Compile Include="Data\Taxes.cs" />
+    <Compile Include="Data\WUBaseRequestResponse.cs" />
+    <Compile Include="Data\WUCommonException.cs" />
+    <Compile Include="Data\WUCommonProviderException.cs" />
+    <Compile Include="Data\WUCredential.cs" />
+    <Compile Include="Data\WUEnrollmentRequest.cs" />
+    <Compile Include="Data\WUEnums.cs" />
+    <Compile Include="Data\WUMasterCatalog.cs" />
+    <Compile Include="Data\WUPartnerCatalog.cs" />
+    <Compile Include="Impl\BaseIO.cs" />
+    <Compile Include="Impl\IO.cs" />
+    <Compile Include="Impl\SimulatorIO.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Service References\DASService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\WUCardEnrollmentService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\WUCardLookupService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\WUCustomerLookupService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Service References\DASService\DASReqResp.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\DAS_Service_H2H.wsdl" />
+    <None Include="Service References\DASService\TCF.Zeo.Cxn.WU.Common.DASService.DAS_Service_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\DASService\TCF.Zeo.Cxn.WU.Common.DASService.h2hdasreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\DASService\XRSIBasicTypes.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIClasses.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIDasReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIDasRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIErrorReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\TCF.Zeo.Cxn.WU.Common.WUCardEnrollmentService.wucardenrollmentreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\TCF.Zeo.Cxn.WU.Common.WUCardEnrollmentService.WUCardEnrollment_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\WUCard_Enrollment_Service_H2H.wsdl" />
+    <None Include="Service References\WUCardEnrollmentService\XRSIBasicTypes.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\XRSIClasses.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\XRSIErrorReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\XRSIWUCardEnrollmentReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardEnrollmentService\XRSIWUCardEnrollmentRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardLookupService\TCF.Zeo.Cxn.WU.Common.WUCardLookupService.wucardlookupreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCardLookupService\TCF.Zeo.Cxn.WU.Common.WUCardLookupService.WuCardLookup_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCardLookupService\WUCardLookup_Service_H2H.wsdl" />
+    <None Include="Service References\WUCardLookupService\XRSIBasicTypes.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardLookupService\XRSIClasses.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardLookupService\XRSIErrorReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardLookupService\XRSIWuCardLookupReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCardLookupService\XRSIWuCardLookupRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\CustomerLookup_Service_H2H.wsdl" />
+    <None Include="Service References\WUCustomerLookupService\TCF.Zeo.Cxn.WU.Common.WUCustomerLookupService.CustomerLookup_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\TCF.Zeo.Cxn.WU.Common.WUCustomerLookupService.wucustomerlookupreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\XRSIBasicTypes.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\XRSIClasses.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\XRSIErrorReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\XRSIWuCustomerLookupReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\WUCustomerLookupService\XRSIWuCustomerLookupRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\DASReqResp.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIAgentSupplyOrderReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIAgentSupplyOrderRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIBasicTypes.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSICancelSendReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSICancelSendRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIClasses.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSICurrencyConversionReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSICurrencyConversionRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIDasReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIDasRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIErrorReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFeeInquiryReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFeeInquiryRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFulfillSendSaveReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFulfillSendSaveRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFusionGoShoppingReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIFusionGoShoppingRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMakePaymentStoreReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMakePaymentStoreRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMakePaymentValidationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMakePaymentValidationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIModifySendMoneyReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIModifySendMoneyRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIModifySendMoneySearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIModifySendMoneySearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMyWULookupReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIMyWULookupRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSINewSignonReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSINewSignonRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPasswordAdministrationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPasswordAdministrationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPayOrDoNotPayReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPayOrDoNotPayRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPayStatusInquiryReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPayStatusInquiryRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPrepaidStoreReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPrepaidStoreRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPrepaidValidationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIPrepaidValidationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIQuickPayStoreReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIQuickPayStoreRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIQuickPayValidationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIQuickPayValidationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiptReprintSearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiptReprintSearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiptReprintSelectReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiptReprintSelectRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneyPayReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneyPayRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneySearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneySearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneySelectReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIReceiveMoneySelectRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIRefundReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIRefundRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISelectReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISelectRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISendMoneyStoreReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISendMoneyStoreRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISendMoneyValidationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISendMoneyValidationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISignonReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSISignonRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStagedReceiveMoneySearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStagedReceiveMoneySearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStagedSendMoneySearchReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStagedSendMoneySearchRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStageStoreReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStageStoreRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStageValidationReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIStageValidationRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIVigoGoShoppingReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIVigoGoShoppingRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWUCardEnrollmentReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWUCardEnrollmentRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWuCardLookupReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWuCardLookupRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWuCustomerLookupReply.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\schema\XRSIWuCustomerLookupRequest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="WU-WSDL\wsdl\AgentSupplyOrder_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\CancelSend_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\CurrencyConversion_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\CustomerLookup_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\DAS_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FeeInquiry_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FulfillReceiveSave_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FulfillReceiveSearch_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FulfillSendSave_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FulfillSendSearch_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\FusionGoShopping_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\MakePaymentStore_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\MakePaymentValidate_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ModifySendMoneySearch_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ModifySendMoney_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\MyWULookup_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\NewSignOn_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\PasswordAdministration_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\PayStatus_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\PrepaidStore_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\PrepaidValidate_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\QuickPayStore_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\QuickPayValidate_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ReceiptReprintSearch_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ReceiptReprintSelect_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ReceiveMoneyPay_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ReceiveMoneySearch_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\ReceiveMoneySelect_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\Refund_Service_H2HServiceService.wsdl" />
+    <None Include="WU-WSDL\wsdl\Search_Service_H2HServiceService.wsdl" />
+    <None Include="WU-WSDL\wsdl\Select_Service_H2HServiceService.wsdl" />
+    <None Include="WU-WSDL\wsdl\SendMoneyStore_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\SendMoneyValidation_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\SignOn_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\StageStore_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\StageValidation_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\VigoShopping_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\WUCardEnrollment_Service_H2HService.wsdl" />
+    <None Include="WU-WSDL\wsdl\WUCardLookup_Service_H2HService.wsdl" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\DASService\" />
+    <WCFMetadataStorage Include="Service References\WUCardEnrollmentService\" />
+    <WCFMetadataStorage Include="Service References\WUCardLookupService\" />
+    <WCFMetadataStorage Include="Service References\WUCustomerLookupService\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardLookupService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardLookupService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardLookupService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardEnrollmentService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardEnrollmentService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCardEnrollmentService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCustomerLookupService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCustomerLookupService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\WUCustomerLookupService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Miscellaneous\P3Net.Data\P3Net.Data.csproj">
+      <Project>{1b0a5012-94f0-4c5b-aaf5-371be4aa7481}</Project>
+      <Name>P3Net.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Common\TCF.Zeo.Common.csproj">
+      <Project>{5360e449-74f2-4abd-b3c1-d93eca6a8ded}</Project>
+      <Name>TCF.Zeo.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Common\TCF.Zeo.Cxn.Common.csproj">
+      <Project>{b3bd7591-db8d-4904-aa92-639269f5f958}</Project>
+      <Name>TCF.Zeo.Cxn.Common</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

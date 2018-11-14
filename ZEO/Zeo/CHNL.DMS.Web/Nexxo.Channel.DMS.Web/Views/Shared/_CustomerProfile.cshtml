@@ -1,0 +1,133 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CustomerProfile
+@{
+	string cardBalance = string.Empty;
+	string cardStatus = string.Empty;
+
+	if (Model.CardBalance.Balance == -1.00M)
+	{
+		cardBalance = "Unavailable";
+	}
+	else if (Model.CardBalance.Balance == decimal.MinValue)
+	{
+		cardBalance = "NA";
+	}
+		
+	else
+	{
+		cardBalance = Model.CardBalance.Balance.ToString("$0.00");
+	}
+}
+<script type="text/javascript">
+	var cardStatus = '@Model.CardBalance.CardStatus';
+	$(document).ready(function () {
+		var msg = '@ViewBag.ExceptionMessage';
+		var showExceptionPopup = '@ViewBag.IsException';
+		if (showExceptionPopup == 'True')
+			showExceptionPopupMsg(msg);
+	});
+</script>
+<div class="cust_profile">
+    <div class="txt_center">
+        <img src="~/Content/Images/Customer2.png" alt="profile" width="25px" class="cust_img"/>
+        <span class="cust_txt">Customer Profile</span>
+    </div>
+    <div>
+        <table class="cust_prof_data">
+			<tr class="oddColor">
+				<td class="txt_right">
+					@Html.LabelFor(model => model.CustomerSession.CustomerSessionId,"Session ID")
+				</td>
+				<td>
+					<span><strong>:</strong></span>
+				</td>
+				<td>
+					<span>@Html.DisplayFor(model => model.CustomerSession.CustomerSessionId)</span>				
+				</td>
+			</tr>
+            <tr>
+                <td class="txt_right">@Html.LabelFor(model => model.CustomerSession.Customer.FirstName, "Name") </td>
+                <td>
+                    <span><strong>:</strong></span>
+                </td>
+                @{
+                    var FullName = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(
+                         Model.CustomerSession.Customer.FirstName.ToLower() + " " + Model.CustomerSession.Customer.LastName.ToLower());
+                }
+                <td>@Html.LabelFor(model => model.CustomerSession.Customer.FirstName, FullName)
+                </td>
+            </tr>
+            @if (ViewBag.GPRCardExists)
+            {
+                <tr id="GprNoDiv" class="oddColor">
+                    <td class="txt_right">
+                        <label>@Html.Raw("Card&nbsp;Number")</label>
+                    </td>
+                    <td>
+                        <span><strong>:</strong></span>
+                    </td>
+               @*     <td>@Html.LabelFor(model => model.customerSession.Customer.Purse.ProcessorAccountId, Model.MaskedCardNumber.ToString())
+                    </td>*@
+                    <td>@Html.LabelFor(model => model.MaskedCardNumber, Model.MaskedCardNumber.ToString())
+                    </td>
+                </tr>
+                <tr id="GprBalDiv">
+                    @*<td class="txt_right">
+                        @Html.LabelFor(model => model.customerSession.Customer.Purse.Balance, "Card Balance")
+                    </td>*@
+                    <td class="txt_right">
+                        @Html.LabelFor(model => model.CardBalance, "Card Balance")
+                    </td>
+                    <td>
+                        <span><strong>:</strong></span>
+                    </td>
+                    @*<td>@Html.LabelFor(model => model.customerSession.Customer.Purse.Balance, cardBalance)
+                    </td>*@
+
+					<td>
+						<div>
+							@Html.LabelFor(model => model.CardBalance.Balance, cardBalance)
+						<br />
+						@Html.LabelFor(model => model.CardBalance.CardStatusDisplay, Model.CardBalance.CardStatusDisplay, new { id = "CardStatusLabel", @class = "card_status" })
+					</div>
+				</td>
+                  
+                </tr>
+            }
+            <tr class="oddColor">
+                <td class="txt_right">@Html.LabelFor(model => model.PhoneNumber, "Phone Number")
+                </td>
+                <td>
+                    <span><strong>:</strong></span>
+                </td>
+                <td>
+                   <span>@Html.DisplayFor(model => model.PhoneNumber)</span>
+                    (@{
+                        string var = Model.PhoneType;
+                        @Html.Label(var.Length > 0 ? var.Substring(0, 1) : "")})   
+                  </td>
+            </tr>
+            <tr>
+                <td class="txt_right">
+                    @Html.LabelFor(model => model.Address, "Address")
+                </td>
+                <td>
+                    <span><strong>:</strong></span>
+                </td>
+                <td>
+                    @* @Html.TextBoxFor(model => model.Address1, null, new { readOnly = "true", @class = "disable_txt" })
+				      @Html.TextBoxFor(model => model.City, null, new { readOnly = "true", @class = "disable_txt" })
+                     @Html.TextBoxFor(model => model.StateZipCode, null, new { readOnly = "true", @class = "disable_txt" })*@
+                    <span class="cust_Prof_txt">@Html.DisplayFor(model => model.Address1)</span><br />
+                    <span class="cust_Prof_txt">@Html.DisplayFor(model => model.City)</span>
+                    <span class="cust_Prof_txt">@Html.DisplayFor(model => model.StateZipCode)</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+   @* <input type="hidden" id="AlloyID" value="@Model.customerSession.Customer.Purse.ProcessorAccountId" />*@
+    <div class="row float_right">
+        <ul>
+            <li>@Html.ActionLink("Details", "ModifyCustomer", "CustomerSearch", new { id = @Model.CustomerSession.Customer.CustomerId }, new { @class = "anc_link_btn shift_btn_fix" })</li>
+        </ul>
+    </div>
+</div>

@@ -1,0 +1,61 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Chat
+<script type="text/javascript">
+	var ticketNumber = '@Model.TicketNumber';
+	var checkStatusURL = '@Url.Action("StatusChangedPopUp", "MessageCenter")';
+</script>
+<script src="@Url.Content("~/Scripts/MessageCenter/ChatCenter.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/PopupScript.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+<div id="loadingShadow" class="customizedSpinner">
+	<div id="loadingcontent">
+		<div id="loadingspinner">
+		</div>
+	</div>
+</div>
+
+<div class="margin_top_two">
+	<div>
+		<div>
+			<div class="cust_search_head float_left">
+				<h1>
+					Customer Name: @Html.DisplayFor(c => c.CustomerName)
+				</h1>
+			</div>
+		</div>
+		<div class="cust_search_head float_left ticketnumber">
+			&nbsp;
+		</div>
+		<div class="cust_search_head float_left">
+			<h1>
+				Ticket Number: @Html.DisplayFor(c => c.TicketNumber)@Html.HiddenFor(c => c.TicketNumber, new { id = "hdnTicketNumber" })
+			</h1>
+		</div>
+		<div>
+			<a class="nex_cls_button" onclick="javascript:$('#chatCenter').dialog('close').remove();">
+				Close
+			</a>
+		</div>
+	</div>
+	<div class="cust_search_head float_left margin_top_two">
+		<h1>
+			Check Amount: @Html.DisplayFor(c => c.CheckAmount)
+		</h1>
+	</div>
+	<div class="clr">
+	</div>
+	<div class="margin_top_two">
+		<div class="nex_message_block">
+			<p>
+				Messages
+			</p>
+		</div>
+		<div class="clr">
+		</div>
+		<div id="chatPanel">
+			<table id="chatMessagePanel"></table>
+		</div>
+		<div>
+			<textarea class="textarea" id="txtTextMessage" maxlength="200" placeholder="Type a message - max 200 Characters per message"></textarea>
+		</div>
+	</div>
+</div>

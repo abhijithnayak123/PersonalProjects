@@ -1,0 +1,61 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckTransaction
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ApprovedCheckTransaction;
+}
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css"/>
+<script src="@Url.Content("~/Scripts/Check/Check.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<div>
+    <ul class="page_head product_head" >
+        <li>Confirm Check Fee</li>
+    </ul>
+</div>
+<br />
+<div>
+    <img id="CheckFrontImage" alt=" " src="" class="check_img" />
+    <script language="javascript" type="text/javascript">
+        $(document).ready(function () {
+            ShowCheckFrontImage("@Model.CheckFrontImage")
+        });
+    </script>
+</div>
+<center class="status_msg">
+    <div class="error_txt"> @ViewBag.BalanceZeroMessage </div>
+    <br />
+    <span class="txt_center">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckAcceptStatusMessage</span>
+    <br />
+</center>
+@using (Html.BeginForm("AcceptFee", "ApprovedCheckTransaction", FormMethod.Post, new { id = "ApprovedCheckTransactionFormId" }))
+{   
+    <div class="row">
+        <div class="txt_center">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AmountCreditedAccount
+            <span class="row"><strong>$</strong>@Model.AmountCredited.ToString("0.00") </span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="txt_center">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckCashingFee
+            <span class="row padding10"><strong>$</strong>@Model.CheckCashingFee.ToString("0.00") </span>
+        </div>
+    </div>
+    <img src="@Url.Content("~/Content/images/Line2.jpg")" alt=" " />
+    <div class="row">
+        <div class="txt_center net_amount">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NetAmount
+            <span class="row padding10"><strong>$</strong>@Model.NetAmount.ToString("0.00") </span>
+        </div>
+    </div>
+    <br />
+    
+    <div class="check_cash_wrap">
+    <ul>
+    <li><input id="DeclineFee" type="button" name = "Source" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelTransactionText" onclick="showCancelAcceptFeePopup();" /></li>
+    <li><input type="submit" id="AcceptFee" name="Source" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AcceptFeeButton" class="feeAccept"/></li>
+    </ul>
+        @Html.HiddenFor(model => model.CheckCashingFee)
+        @Html.HiddenFor(model => model.AmountCredited)
+        @Html.HiddenFor(model => model.CheckFrontImage)
+        <input type="hidden" name="CheckId" id="CheckId" value="@Model.CheckId" />
+        <input type="hidden" name="CheckSubmissionDate" id="CheckSubmissionDate" value="@Model.CheckSubmissionDate" />
+        @Html.HiddenFor(model => model.CheckLimit)
+        @Html.HiddenFor(model => model.NetAmount)
+        @Html.HiddenFor(model => model.CheckStatus)
+    </div>
+}

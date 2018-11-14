@@ -1,0 +1,63 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SupportInformation
+    <script>
+        $(document).ready(function () {
+            //as we are giving option to click on close button to destroy popup
+            $(".ui-dialog-titlebar-close").click(function () {
+                $('#contactdetails').empty().dialog('destroy').remove();
+            });
+        });
+    </script>
+<div class="solid_border">
+    <div>
+        @if (!string.IsNullOrEmpty(Model.Name))
+        {
+            <div class="support_details">
+                Retail Banking Support (RBS) @Html.DisplayFor(model => model.Name)
+            </div>
+        }
+       
+        <div class="top_margin_2 txt_center">
+        @if (!string.IsNullOrEmpty(Model.EmailId))
+        {
+            <div class="row-with-two-col">
+                <div class="contact_details_email_phone_row1">
+                    @Html.LabelFor(model => model.EmailId)
+                </div>
+                <div class="contact_details_email_phone_row2">
+                    @Html.DisplayFor(model => model.EmailId)
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.Phone1))
+        {
+            <div class="row-with-two-col">
+                <div class="contact_details_email_phone_row1">
+                    @Html.LabelFor(model => model.Phone1)
+                </div>
+                <div class="contact_details_email_phone_row2">
+                    @Html.DisplayFor(model => model.Phone1)
+                </div>
+            </div>
+            <hr />
+        }
+        </div>
+        <div class="support_details">
+            @Html.LabelFor(model => model.ProviderContactDetails)
+        </div>
+
+        <div class="top_margin_2 txt_center">
+            @foreach (var item in Model.ProviderContactDetails)
+            {
+                <div class="row-with-two-col">
+                    <div class="provider_contact_details_email_phone_row1">
+                        <label>@item.Key</label>
+                    </div>
+                    <div class="contact_details_email_phone_row2">
+                        <label>@item.Value</label>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

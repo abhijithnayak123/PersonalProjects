@@ -1,0 +1,1 @@
+& .\TCF.Zeo.Database.exe | Write-Host

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+  <class name="Account" table="tAccounts">
+    <id name="rowguid" column="AccountPK">
+      <generator class="guid"/>
+    </id>
+    <property name="Id" column="AccountID"/>
+    <property name="CXEId"/>
+    <property name="CXNId"/>
+    <property name="ProviderId"/>
+    <many-to-one name="Customer" class="Customer" column="CustomerPK"/>
+    <property name="DTServerCreate" not-null="true" update="false"/>
+    <property name="DTServerLastModified" not-null="false" insert="false"/>
+  </class>
+</hibernate-mapping>

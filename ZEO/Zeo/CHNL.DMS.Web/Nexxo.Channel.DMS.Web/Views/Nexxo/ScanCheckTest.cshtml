@@ -1,0 +1,39 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckImage
+@{
+	ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ScanCheckTest;
+	Layout = "~/Views/Shared/_menu.cshtml";
+}
+<script src="@Url.Content("~/Scripts/PeripheralServices/EpsonTest.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+@*jquery-ui reference is needed for css allignment*@
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+@Html.Partial("_partialSpinner")
+@using (Html.BeginForm("ScanCheckTestPost", "TerminalSetup"))
+{
+	<div>
+		<ul class="page_head product_head">
+			<li>Scan Check Test</li>
+		</ul>
+	</div>
+	<div id="processCheck" class="txt_center">
+		<div class="page_head product_head">
+			<ul>
+				<li>Place the check upright in the scanner with front of check facing out</li>
+			</ul>
+		</div>
+		<div class="msg_statement">
+			<div>
+				<img id="CheckImage" alt="checkimage " src="@Url.Content("~/Content/images/CheckScanInstruction.JPG")" />
+			</div>
+		</div>
+		<div class="row_width30">
+			<ul class="scan_check_wrap">
+				<li class="row_width30 next_shift_fix"> <input type="button" id="btnNext" value="Next" onclick="ScanCheckTest()" class="green_input" /> </li>
+				<li class="submit_shift_fix"> <input type="button" value="CustId" onclick="CaputureCust();" class="hide" /> </li>
+				<li class="submit_shift_fix"> <input type="submit" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SubmitButtonText" id="Send" class="hide" /> </li>
+			</ul>
+		</div>
+	</div>
+	@Html.HiddenFor(model => model.CheckFrontImage)
+	@Html.HiddenFor(model => model.CheckBackImage)
+	@Html.TextBoxFor(model => model.MICRCode, new { style = "display:none" })
+}

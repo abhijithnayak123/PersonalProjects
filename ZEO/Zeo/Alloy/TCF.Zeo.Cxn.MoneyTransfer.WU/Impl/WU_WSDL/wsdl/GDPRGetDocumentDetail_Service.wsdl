@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.westernunion.com/GetDocumentDetail"
+	xmlns:xrsi="http://www.westernunion.com/kyc/schema/xrsi" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="GetDocumentDetail_Service_H2H"
+	xmlns:xsi="http://www.westernunion.com/schema/xrsi" 
+	targetNamespace="http://www.westernunion.com/GetDocumentDetail">
+	<wsdl:types>
+		<xsd:schema xmlns:mrm="http://www.westernunion.com/GetDocumentDetail" targetNamespace="http://www.westernunion.com/GetDocumentDetail" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+			<xsd:import namespace="http://www.westernunion.com/schema/xrsi" schemaLocation="../schema/XRSIErrorReply.xsd"/>
+			<xsd:import namespace="http://www.westernunion.com/kyc/schema/xrsi"  schemaLocation="../schema/XRSIGetDocumentDetailRequest.xsd" />
+			<xsd:import namespace="http://www.westernunion.com/kyc/schema/xrsi" schemaLocation="../schema/XRSIGetDocumentDetailReply.xsd" />
+		</xsd:schema>
+	</wsdl:types>
+	<wsdl:message name="GetDocumentDetail_in">
+		<wsdl:part element="xrsi:get_documentdetail_request" name="get_documentdetail_request" />
+	</wsdl:message>
+	<wsdl:message name="GetDocumentDetail_out">
+		<wsdl:part element="xrsi:get_documentdetail_reply" name="get_documentdetail_reply" />
+	</wsdl:message>
+	<wsdl:message name="GetDocumentDetail_fault1">
+		<wsdl:part element="xsi:error-reply" name="error-reply" />
+	</wsdl:message>
+	<wsdl:portType name="GetDocumentDetailPortType">
+		<wsdl:operation name="GetDocumentDetail">
+			<wsdl:input message="tns:GetDocumentDetail_in" name="GetDocumentDetail_Input" />
+			<wsdl:output message="tns:GetDocumentDetail_out" name="GetDocumentDetail_Output" />
+			<wsdl:fault message="tns:GetDocumentDetail_fault1" name="GetDocumentDetail_Fault" />
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="GetDocumentDetail_SOAP_HTTP_Binding"
+		type="tns:GetDocumentDetailPortType">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="GetDocumentDetail">
+			<soap:operation />
+			<wsdl:input name="GetDocumentDetail_Input">
+				<soap:body parts="get_documentdetail_request" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="GetDocumentDetail_Output">
+				<soap:body parts="get_documentdetail_reply" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="GetDocumentDetail_Fault">
+				<soap:fault name="GetDocumentDetail_Fault" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="GetDocumentDetail_Service_H2H">
+		<wsdl:port binding="tns:GetDocumentDetail_SOAP_HTTP_Binding" name="SOAP_HTTP_Port">
+			<soap:address location="http://www.westernunion.com/GetDocumentDetail_Service_H2H" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

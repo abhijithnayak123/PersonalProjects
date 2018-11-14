@@ -1,0 +1,31 @@
+﻿@model TCF.Channel.Zeo.Web.Models.DomesticConfirmation
+@{
+    ViewBag.Title = "DomesticConfirmation";
+    Layout = "~/Views/Shared/_Common.cshtml";
+}
+
+@using (Html.BeginForm("ShowDomesticTermsAndConditions", "DoddFrankConfirmation"))
+{
+    @Html.ValidationSummary(true)
+    <div>
+        <ul class="page_head product_head">
+            <li class="float_left">Confirmation</li>
+        </ul>
+    </div>   
+    if (@ViewBag.ErrorMessage != null) {
+        <center>
+            <div class="field-validation-error">@ViewBag.ErrorMessage</div><br />
+        </center>
+    }  
+
+    @Html.Partial("_DomesticConfirmation", Model)
+
+    
+ <div class="error_align_left">
+     <ul>
+         @*<li><input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DoddFrankConfirmationCancelbtnText" id="CancelTransaction" /></li>*@
+	 	<li class="row_width60"><input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText" onclick="_showCancelTransaction()" class="red_btn" /></li>
+         <li><input type="submit"  value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DoddFrankConfirmationAcceptbtnText" /></li>
+     </ul>
+</div>
+}

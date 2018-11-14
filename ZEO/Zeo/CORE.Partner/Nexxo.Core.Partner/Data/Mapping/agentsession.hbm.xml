@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Partner"
+                   namespace="MGI.Core.Partner.Data">
+	<class name="AgentSession" table="tAgentSessions">
+		<id name="rowguid" column="AgentSessionPK">
+			<generator class="guid"/>
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="AgentSessionID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="AgentId"/>
+
+		<many-to-one name="Terminal" class="Terminal" column="TerminalPK"  />
+
+		<property name="DTServerCreate" not-null="true" update="false"/>
+		<property name="DTServerLastModified" not-null="false" />
+		<property name ="BusinessDate" not-null ="false" update ="false">
+		<column name ="BusinessDate" not-null ="false" sql-type ="Date"/>      
+		</property>
+    <property name="ClientAgentIdentifier" column="ClientAgentIdentifier" update="false"/>
+		<many-to-one name="Agent" class ="UserDetails" column="AgentPK"/>
+	</class>
+</hibernate-mapping>

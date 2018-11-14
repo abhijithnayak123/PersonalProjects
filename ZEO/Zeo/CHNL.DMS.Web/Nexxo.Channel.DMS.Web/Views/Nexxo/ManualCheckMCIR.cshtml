@@ -1,0 +1,103 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CashACheck
+@{
+	ViewBag.Title = "Check MICR";
+	Layout = "~/Views/Shared/_Common.cshtml";
+}
+<script type="text/javascript">
+	var RoutingNumberRegx = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumberRegx';
+	var AccountNumberRegx = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumberRegx';
+	var CheckNumberRegex = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckNumberRegex';
+	var AccountNumberMaxlength = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumberMaxlength';
+	var RoutingNumberMaxlength = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumberMaxlength';
+	var CheckNumberMaxlength = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckNumberMaxlength';
+	var AccountNumberCompare = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumberCompare';
+	var RoutingNumberCompare = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumberCompare';
+	var RoutingNumberRequired = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumberRequired';
+	var AccountNumberRequired = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumberRequired';
+	var CheckNumberRequired = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckNumberRequired';
+</script>
+<script src="@Url.Content("~/Scripts/Check/CheckManualEntry.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+@using (Html.BeginForm("CheckDetailsPost", "CertegyProcessCheck", FormMethod.Post))
+{
+
+	<div class="check_post_img">
+		<div>
+			<ul class="page_head product_head">
+				<li>Check MICR</li>
+			</ul>
+		</div>
+		<br />
+		<ul>
+			<label class="label_txt">
+				@Html.Label("MICR Information :")
+			</label>
+		</ul>
+		<br />
+		<br />
+		<div class="row">
+			<div class="certegy_manual_check_label">
+				<label class="label_txt">
+					@Html.LabelFor(model => model.RoutingNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumber)
+					<span class="mandatory">*</span>
+				</label>
+			</div>
+			<div class="certegy_manual_check_txtbx">
+				@Html.TextBoxFor(model => model.RoutingNumber, null, new { @class = "input_box manual_check", tabindex = 1 })
+				<div class="certegy_manual_check_error">
+					@Html.ValidationMessageFor(model => model.RoutingNumber)
+				</div>
+			</div>
+			<div class="certegy_manual_check_txtbx2">
+				@Html.TextBoxFor(model => model.ConfirmRoutingNumber, null, new { @class = "input_box manual_check_second", tabindex = 2 })
+				<div class="certegy_manual_check_error2">
+					@Html.ValidationMessageFor(model => model.ConfirmRoutingNumber)
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="certegy_manual_check_label">
+				<label class="label_txt">
+					@Html.LabelFor(model => model.AccountNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumber)
+					<span class="mandatory">*</span>
+				</label>
+			</div>
+			<div class="certegy_manual_check_txtbx">
+				@Html.TextBoxFor(model => model.AccountNumber, null, new { @class = "input_box manual_check", tabindex = 3 })
+				<div class="certegy_manual_check_error">
+					@Html.ValidationMessageFor(model => model.AccountNumber)
+				</div>
+			</div>
+			<div class="certegy_manual_check_txtbx2">
+				@Html.TextBoxFor(model => model.ConfirmAccountNumber, null, new { @class = "input_box manual_check_second", tabindex = 4 })
+				<div class="certegy_manual_check_error2">
+					@Html.ValidationMessageFor(model => model.ConfirmAccountNumber)
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="certegy_manual_check_label">
+				<label class="label_txt">
+					@Html.LabelFor(model => model.CheckNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CertegyCheckNumber)
+					<span class="mandatory">*</span>
+				</label>
+			</div>
+			<div class="certegy_manual_check_txtbx">
+				@Html.TextBoxFor(model => model.CheckNumber, null, new { @class = "input_box manual_check", tabindex = 5 })
+				<div class="certegy_manual_check_error">
+					@Html.ValidationMessageFor(model => model.CheckNumber)
+				</div>
+			</div>
+		</div>
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<div class="profile_btn_wrap cash_check_btn_wrap ">
+			<ul>
+				<li>@Html.ActionLink("Cancel", "ProductInformation", "Product", null, new { @class = "anc_link_btn red_btn" })</li>
+				<li><input type="submit" value="Next" class="anc_link_btn" /></li>
+			</ul>
+		</div>
+	</div>
+}

@@ -1,0 +1,87 @@
+--===========================================================================================
+-- Auther:			<Kaushik Sakala>
+-- Date Created:	<07-July-2015>
+-- Description:		<Script for Alter vComplianceTransactions View>
+-- Jira ID:			<AL-594>
+--===========================================================================================
+
+ALTER VIEW [dbo].[vComplianceTransactions]
+AS
+SELECT	tBP.TxnPK rowguid, tBP.TransactionID AS TransactionId, tPC.CustomerID as CustomerId, tBP.DTTerminalCreate, 4 AS TransactionType,
+		tBP.Amount, tBP.Fee, tBP.CXEState AS [State], tA.ProviderId, NULL AS xRecipientId, NULL AS xRate, 
+		tBP.ProductId AS bpProductId, tBP.AccountNumber AS bpAccountNumber, sc.CartID AS ShoppingCartId
+FROM	tTxn_BillPay tBP
+		INNER JOIN tAccounts tA ON tBP.AccountPK = tA.AccountPK
+		INNER JOIN tPartnerCustomers tPC ON tPC.CustomerPK = tA.CustomerPK 		
+		LEFT OUTER JOIN tShoppingCartTransactions scT ON tBP.TxnPK=scT.TxnPK
+		LEFT OUTER JOIN tShoppingCarts sc ON scT.CartPK=sc.CartPK
+WHERE tBP.CXEState = 4
+
+UNION ALL
+SELECT	tC.txnPK rowguid, tC.TransactionID AS TransactionId, tPC.CustomerID as CustomerId, tC.DTTerminalCreate, 2 AS TransactionType,
+		tC.Amount, tC.Fee, tC.CXEState AS [State], tA.ProviderId, NULL AS xRecipientId, NULL AS xRate, 
+		NULL AS bpProductId, NULL AS bpAccountNumber, sc.CartID AS ShoppingCartId
+FROM	tTxn_Check tC
+		INNER JOIN tAccounts tA ON tC.AccountPK = tA.AccountPK
+		INNER JOIN tPartnerCustomers tPC ON tPC.CustomerPK = tA.CustomerPK 		
+		LEFT OUTER JOIN tShoppingCartTransactions scT ON tC.TxnPK=scT.TxnPK
+		LEFT OUTER JOIN tShoppingCarts sc ON scT.CartPK=sc.CartPK
+WHERE tC.CXEState = 4
+
+UNION ALL
+
+SELECT	tMO.txnPK rowguid, tMO.TransactionID AS TransactionId, tPC.CustomerID as CustomerId, tMO.DTTerminalCreate, 5 AS TransactionType,
+		tMO.Amount, tMO.Fee, tMO.CXEState AS [State], tA.ProviderId, NULL AS xRecipientId, NULL AS xRate, 
+		NULL AS bpProductId, NULL AS bpAccountNumber, sc.CartID AS ShoppingCartId
+FROM	tTxn_MoneyOrder tMO
+		INNER JOIN tAccounts tA ON tMO.AccountPK = tA.AccountPK
+		INNER JOIN tPartnerCustomers tPC ON tPC.CustomerPK = tA.CustomerPK 		
+		LEFT OUTER JOIN tShoppingCartTransactions scT ON tMO.txnPK=scT.txnPK
+		LEFT OUTER JOIN tShoppingCarts sc ON scT.cartPK=sc.cartPK
+WHERE tMO.CXEState = 4
+UNION ALL
+
+
+SELECT	tF.txnPK rowguid, tF.TransactionID AS TransactionId, tPC.CustomerID as CustomerId, tF.DTTerminalCreate, 
+		CASE tF.FundType WHEN 0 THEN 3 
+						 WHEN 1 THEN 8 
+						 ELSE 9 END AS TransactionType,
+		tF.Amount, tF.Fee, tF.CXEState AS [State], tA.ProviderId, NULL AS xRecipientId, NULL AS xRate, 
+		NULL AS bpProductId, NULL AS bpAccountNumber, sc.CartID AS ShoppingCartId
+FROM	tTxn_Funds tF
+		INNER JOIN tAccounts tA ON tF.AccountPK = tA.AccountPK
+		INNER JOIN tPartnerCustomers tPC ON tPC.CustomerPK = tA.CustomerPK 
+		LEFT OUTER JOIN tShoppingCartTransactions scT ON tF.txnPK=scT.txnPK
+		LEFT OUTER JOIN tShoppingCarts sc ON scT.cartPK=sc.cartPK
+WHERE tF.CXEState = 4
+--UNION ALL
+
+--SELECT	tCSH.txnRowguid rowguid, tCSH.Id AS TransactionId, tPC.Id CustomerId, tCSH.DTTerminalCreate, 
+--		CASE tCSH.CashType WHEN 1 THEN 1
+--							ELSE 7 END AS TransactionType,
+--		tCSH.Amount, tCSH.Fee, tCSH.CXEState AS [State], tA.ProviderId, lt.Id AS LedgerTransactionId, null as xRecipientId, null as xRate, 
+--		null AS bpProductId, null AS bpAccountNumber,sc.Id AS ShoppingCartId
+--FROM	tTxn_Cash tCSH
+--		INNER JOIN tAccounts tA ON tCSH.AccountPK = tA.rowguid
+--		INNER JOIN tPartnerCustomers tPC ON tPC.rowguid = tA.CustomerPK 
+--		LEFT OUTER JOIN tShoppingCartTransactions scT on tCSH.txnRowguid=scT.txnRowguid
+--		LEFT OUTER JOIN tShoppingCarts sc on scT.cartRowguid=sc.cartRowguid
+--WHERE tBP.CXEState = 4
+
+UNION ALL
+
+SELECT	tMT.txnPK rowguid, tMT.TransactionID AS TransactionId, tPC.CustomerID as CustomerId, tMT.DTTerminalCreate, 6 AS TransactionType,
+		tMT.Amount, tMT.Fee, tMT.CXEState AS [State], tA.ProviderId, tMT.RecipientId AS xRecipientId, 
+		tMT.ExchangeRate AS xRate, NULL AS bpProductId, NULL AS bpAccountNumber, sc.CartID AS ShoppingCartId
+FROM	tTxn_MoneyTransfer tMT
+		INNER JOIN tAccounts tA ON tMT.AccountPK = tA.AccountPK
+		INNER JOIN tPartnerCustomers tPC ON tPC.CustomerPK = tA.CustomerPK 
+		LEFT OUTER JOIN tShoppingCartTransactions scT ON tMT.txnPK=scT.txnPK
+		LEFT OUTER JOIN tShoppingCarts sc ON scT.cartPK=sc.cartPK
+WHERE tMT.CXEState = 4 and tMT.TransferType = 1
+GO
+
+
+
+
+

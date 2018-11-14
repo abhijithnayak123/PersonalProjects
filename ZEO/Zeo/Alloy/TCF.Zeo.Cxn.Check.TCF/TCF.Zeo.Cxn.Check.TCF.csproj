@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{8B346353-F8DB-400E-B5E2-33EFB76A0DF1}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Cxn.Check.TCF</RootNamespace>
+    <AssemblyName>TCF.Zeo.Cxn.Check.TCF</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AutoMapper">
+      <HintPath>..\..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IIO.cs" />
+    <Compile Include="Data\RCIFCredential.cs" />
+    <Compile Include="Data\TCFOnusStatus.cs" />
+    <Compile Include="Data\TCFOnusTransaction.cs" />
+    <Compile Include="Data\TCFCheckAccount.cs" />
+    <Compile Include="Data\Exceptions\TCFProviderException.cs" />
+    <Compile Include="Data\TEL7770OperationRequest.cs" />
+    <Compile Include="Data\TEL7770OperationResponse.cs" />
+    <Compile Include="Data\TellerMainFrameRequest.cs" />
+    <Compile Include="Data\TellerMainFrameResponse.cs" />
+    <Compile Include="Data\TELNexxcTranInfoRequest.cs" />
+    <Compile Include="Data\TELNexxcTranReturn.cs" />
+    <Compile Include="Impl\IO.cs" />
+    <Compile Include="Impl\SimulatorIO.cs" />
+    <Compile Include="Impl\TCFGateway.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\Miscellaneous\P3Net.Data\P3Net.Data.csproj">
+      <Project>{1b0a5012-94f0-4c5b-aaf5-371be4aa7481}</Project>
+      <Name>P3Net.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Common\TCF.Zeo.Common.csproj">
+      <Project>{5360e449-74f2-4abd-b3c1-d93eca6a8ded}</Project>
+      <Name>TCF.Zeo.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Check\TCF.Zeo.Cxn.Check.csproj">
+      <Project>{e114c170-4f72-4c93-8c24-e718406a3fca}</Project>
+      <Name>TCF.Zeo.Cxn.Check</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Common\TCF.Zeo.Cxn.Common.csproj">
+      <Project>{b3bd7591-db8d-4904-aa92-639269f5f958}</Project>
+      <Name>TCF.Zeo.Cxn.Common</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

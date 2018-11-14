@@ -1,0 +1,89 @@
+﻿@model TCF.Channel.Zeo.Web.Models.TransactionHistoryViewModel
+
+@{
+    Layout = null;
+}
+<html>
+<head>
+    @*<meta name="viewport" content="width=device-width" />*@
+    <title>Daily Summary Report</title>
+    <script type="text/javascript">
+		window.onload = function () {
+			var tfrow = document.getElementById('tfhover').rows.length;
+			var tbRow = [];
+			for (var i = 1; i < tfrow; i++) {
+				tbRow[i] = document.getElementById('tfhover').rows[i];
+				tbRow[i].onmouseover = function () {
+					this.style.backgroundColor = '#f3f8aa';
+				};
+				tbRow[i].onmouseout = function () {
+					this.style.backgroundColor = '#ffffff';
+				};
+			}
+		};
+    </script>
+    <link href="@Url.Content("~/Content/css/Common/module-rule.css")" rel="stylesheet" type="text/css" />
+</head>
+<body class="bodydailySummary">
+    <div class="headerbodydailySummary">
+        <div class="agentNamebodydailySummary"><b>Agent Name : @Model.AgentFullName</b></div> <div class="agentIdbodydailySummary"><b>Agent ID :	 @Model.AgentId</b></div>
+        <br />
+        <div>Date of the report : @Model.TransactionSummaryDate</div>
+    </div>
+    <br />
+    <br />
+
+    <table id="tfhover" class="tftable" border="1">
+        <tr>
+            <th>
+                Transaction Date
+            </th>
+            <th>
+                Session Id
+            </th>
+            <th>
+                Transaction#
+            </th>
+            <th>
+                Transaction Amount($)
+            </th>
+            <th>
+                Customer Name
+            </th>
+        </tr>
+
+        @foreach (var item in Model.Transactions)
+        {
+            <tr>
+                <td>
+                    @item.TransactionDate.ToString("MM/dd/yyyy")
+                </td>
+                <td>
+                    @item.SessionID
+                </td>
+                <td>
+                    @item.TransactionId
+                </td>
+                <td>
+                    @item.TotalAmount.ToString("0.00")
+                </td>
+                <td>
+                    @item.CustomerName
+                </td>
+			</tr>
+		}
+
+    </table>
+    <div style="text-align:center;">
+        <ul>
+            <li>
+                <input type="button" id="print" value="Print" onclick="printdiv('divagentDailySummaryReport');" class="confirmButton">
+            </li>
+            <li>
+                <input type="button" class="trxpopup_close_btn" value="Close" onclick="closediv();" />
+            </li>
+        </ul>
+    </div>
+
+</body>
+</html>

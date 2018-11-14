@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.CXE"
+                   namespace="MGI.Core.CXE.Data.Transactions.Commit" auto-import="false">
+  <class name="Cash" table="tTxn_Cash_Commit">
+    <id name="rowguid"  column="CashPK" />
+    <property name="Id" column="CashID" />
+    <many-to-one name="Account" class="MGI.Core.CXE.Data.Account" column="AccountPK" insert="true" update="false" cascade ="none" not-null ="true" />
+    <property name="Amount" />
+    <property name="Fee" />
+    <property name="CashTrxType"/>
+    <property name="DTTerminalCreate" update="false"/>
+    <property name="DTTerminalLastModified" insert="false" not-null="false"/>
+    <property name="DTServerCreate" update="false"/>
+    <property name="DTServerLastModified" insert="false" not-null="false"/>
+  </class>  
+</hibernate-mapping>

@@ -1,0 +1,4034 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:jxb="http://java.sun.com/xml/ns/jaxb" xmlns:xjc="http://java.sun.com/xml/ns/jaxb/xjc" xmlns:xrsi="http://www.westernunion.com/schema/xrsi" targetNamespace="http://www.westernunion.com/schema/xrsi" jxb:version="1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:annotation>
+    <xsd:documentation>
+			***********************************************************************************************************
+			Copyright 2010. Western Union Financial Services, Inc. All Worldwide Rights 
+			Reserved. This media contains unpublished, confidential and proprietary     
+			information of Western Union Financial Services, Inc. You may not disclose, 
+			copy, display, prepare derivative works or use any portion of these         
+			materials for any purpose without the express written consent of Western    
+			Union Financial Services, Inc. You must reproduce this copyright notice and 
+			any other copyright notices included in the machine-readable copies on all  
+			authorized copies.                                                          
+			***********************************************************************************************************
+			$Id$
+			$Revision$
+			$Date$
+		</xsd:documentation>
+    <xsd:appinfo>
+      <!-- 	typesafeEnumBase="xsd:NCName"	removing from below  -->
+      <!--	<jxb:globalBindings collectionType="java.util.ArrayList" fixedAttributeAsConstantProperty="true" generateIsSetMethod="false" enableFailFastCheck="false" choiceContentProperty="false" underscoreBinding="asWordSeparator" typesafeEnumMemberName="generateError" enableJavaNamingConventions="true"> -->
+      <!-- Make sure generated objects are serializeable -->
+      <!--	<xjc:serializable uid="12343"/>
+			</jxb:globalBindings> -->
+      <!--<jxb:schemaBindings>
+				<jxb:package name="com.wu.das.generated">
+					<jxb:javadoc><![CDATA[
+							<body>Package level documentation 
+							for generated package <b>com.nkp.testobjects</b>.
+							<br><br>
+							<b><I>**** WARNING ****</I></B><br>
+							Do <b>NOT</b> make ANY changes to any file in this
+							package since the files get regenerated and any changes
+							will be lost.
+							</body>
+						]]></jxb:javadoc>
+				</jxb:package>
+			</jxb:schemaBindings> -->
+    </xsd:appinfo>
+  </xsd:annotation>
+  <xsd:element name="MTML" type="xrsi:MTMLType">
+    <xsd:annotation />
+  </xsd:element>
+  <xsd:complexType name="MTMLType">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <MTML> response will be enclosed in a DASReqResp object-->
+        <jxb:class name="DASMtml" xmlns:jxb="http://java.sun.com/xml/ns/jaxb">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASReqResp</b> object contains the request or response from DAS <br>
+            				i.e. everything between <MTML>...</MTML> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:choice>
+      <xsd:element name="REQUEST" type="xrsi:REQUESTType">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASRequest" xmlns:jxb="http://java.sun.com/xml/ns/jaxb" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="REPLY" type="xrsi:REPLYType">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASReply" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:choice>
+  </xsd:complexType>
+  <xsd:complexType name="REQUESTType">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <REQUEST> section will be enclosed in a DASReply object-->
+        <jxb:class name="DASRequest">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASRequest</b> object contains the MTML Request details <br>
+            				i.e. everything between <REQUEST>...</REQUEST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="DATA_CONTEXT" type="xrsi:REQ_DATA_CONTEXT_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASReqDataContext" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="HOST">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Host" />
+        </xsd:appinfo>
+      </xsd:annotation>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:minLength value="1" />
+          <xsd:maxLength value="35" />
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
+    <xsd:attribute name="CLIENT">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Client" />
+        </xsd:appinfo>
+      </xsd:annotation>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:minLength value="1" />
+          <xsd:maxLength value="35" />
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
+    <xsd:attribute name="TYPE">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Type" />
+        </xsd:appinfo>
+      </xsd:annotation>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:minLength value="1" />
+          <xsd:maxLength value="35" />
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
+  </xsd:complexType>
+  <xsd:complexType name="REQ_DATA_CONTEXT_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <REQ_DATA_CONTEXT_Type> section will be enclosed in a DASDataContext object-->
+        <jxb:class name="DASReqDataContext">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASReqDataContext</b> object contains the Data Context details <br>
+            				i.e. everything between <DATA_CONTEXT>...</DATA_CONTEXT> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="QUERYDATA" type="xrsi:QUERYDATA_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="QUERYDATA_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <QUERYDATA_Type> section will be enclosed in a DASQueryData object-->
+        <jxb:class name="DASReqQueryData">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASReqDataContext</b> object contains the Data Context details <br>
+            				i.e. everything between <QUERYDATA>...</QUERYDATA> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="CLIENT_ID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryClientID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="3" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element name="NAME">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="31" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element name="ACCOUNT_NUM">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryAgentAccountNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="34" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FSID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFSID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="20" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COUNTER_ID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryCounterID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="12" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DB_NAME">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryDatabaseName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="20" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TERM_ID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryTermID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="4" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER1" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter1" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER2" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER3" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter3" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER4" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter4" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER5" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter5" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER6" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter6" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER7" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter7" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER8" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter8" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER9" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter9" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QUERYFILTER10" type="xrsi:QUERY_FILTER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFilter10" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="QUERY_FILTER_Type">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="0" />
+      <xsd:maxLength value="360" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="REPLYType">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <REPLY> section will be enclosed in a DASReply object-->
+        <jxb:class name="DASReply">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASReply</b> object contains the MTML Reply details <br>
+            				i.e. everything between <REPLY>...</REPLY> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="DATA_CONTEXT" type="xrsi:DATA_CONTEXT_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDataContext" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="HOST" type="xsd:string" use="optional">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Host" />
+        </xsd:appinfo>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="CLIENT" type="xsd:string" use="optional">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Client" />
+        </xsd:appinfo>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="TYPE" type="xsd:string" use="optional">
+      <xsd:annotation>
+        <xsd:appinfo>
+          <jxb:property name="Type" />
+        </xsd:appinfo>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+  <xsd:complexType name="DATA_CONTEXT_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DATA_CONTEXT> section will be enclosed in a DASDataContext object-->
+        <jxb:class name="DASDataContext">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASDataContext</b> object contains the Data Context details <br>
+            				i.e. everything between <DATA_CONTEXT>...</DATA_CONTEXT> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="HEADER" type="xrsi:HEADER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASHeader" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RECORDSET" type="xrsi:RECORDSET_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASRecordSet" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="HEADER_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <HEADER> section will be enclosed in a DASHeader object-->
+        <jxb:class name="DASHeader">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASHeader</b> object contains the Header details <br>
+            				i.e. everything between <HEADER>...</HEADER> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="FSID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryFSID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="20" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COUNTER_ID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryCounterID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="12" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TERM_ID">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryTermID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:minLength value="1" />
+            <xsd:maxLength value="4" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ACCOUNT_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AgentAccountNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" default="N" name="DATA_MORE">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AnyMoreRecords" />
+          </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleType>
+          <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="Y" />
+            <xsd:enumeration value="N" />
+          </xsd:restriction>
+        </xsd:simpleType>
+      </xsd:element>
+      <xsd:element minOccurs="0" default="0" name="DATA_NUM_RECS" type="xsd:int">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="NumberRecsReturned" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQueryName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERROR_MSG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorMsg" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="RECORDSET_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <RECORD> section will be enclosed in a DASRecordSet object    -->
+        <jxb:class name="DASRecord">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASRecord</b> object contains the result records <br>
+            				i.e. everything between <RECORD>...</RECORD> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:choice>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETORIGINATIONCURRENCIES" type="xrsi:ISOCURRENCY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASOrigCurrencyList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETMEXICOCITYSTATE" type="xrsi:MEXICOCITYSTATEINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASMexCityStateInfoList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETUSSTATELIST" type="xrsi:USSTATEINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASUSStateInfoList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETDELIVERYSERVICES" type="xrsi:DELIVERYSERVICE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDeliverySvcList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETDELIVERYOPTIONTEMPLATE" type="xrsi:DELIVERYOPTIONTEMPLATE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDelivOptTemplate" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETSENDERCOMPLIANCE" type="xrsi:COMPLIANCE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASCompliance" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETWUBANNERMSGS" type="xrsi:BANNERMESSAGE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASWUBannerMsgList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETWUAGENTBANNERMSGS" type="xrsi:BANNERMESSAGE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASWUAgentBannerMsgList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETDESTINATIONCURRENCIES" type="xrsi:ISOCURRENCY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDestCurrencyList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETDESTINATIONCOUNTRIES" type="xrsi:ISOCOUNTRY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDestCountryList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETISOCURRENCIES" type="xrsi:ISOCURRENCY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASISOCurrencyList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETISOCOUNTRIES" type="xrsi:ISOCOUNTRY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASISOCountryList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETAGENTFIELDSTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASAgentFieldsTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETHOSTREQUESTTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASHostRequestTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETPRIVACYTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASPrivacyTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCOUNTRYINFO" type="xrsi:COUNTRYINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASCountryInfoList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETUNIVERSALADDRESSTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASUATemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETQQCACCOUNTTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQQCAccountTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETQQCCOMPANYNAME" type="xrsi:QQCCOMPANYNAME_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQQCCompanyList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETWUCARDDETAILSTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASWUCardDtlsTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="GETWUCARDPERCHANGES" type="xrsi:DESCRIPTION_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASWUCardPermChanges" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETERRORMESSAGESINFO" type="xrsi:ERRORINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASErrorInfoList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETTRANSACTIONHISTORY" type="xrsi:TXNHISTORY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASTxnHistoryList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="GETTRANSACTIONDETAIL" type="xrsi:TXNDETAIL_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASTxnDetail" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETATMLOCATIONS" type="xrsi:ATMLOCINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASATMLocationsList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETBANKLIST" type="xrsi:D2BBANKINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASD2BBanksList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETUNIVERSALCOMPLIANCETEMPLATE" type="xrsi:COMPLIANCE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASUnivComplTemplates" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETMODIFYTRANSACTIONTEMPLATE" type="xrsi:MODIFYTRANSACTIONTEMPLATE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASModifyTxnTemplates" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETSUPPLYORDERLIST" type="xrsi:SUPPLYORDER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASSupplyOrderList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCHECKWRITERLIST" type="xrsi:CHECKWRITER_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASCheckWriterList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCOMBOLISTTEMPLATE" type="xrsi:DASTEMPLATELINE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASComboTemplateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETACCOUNTTABLEINFO" type="xrsi:ACCOUNTTABLEINFO_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASAccountTableInfo" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCOUNTRIESCURRENCIES" type="xrsi:COUNTRY_CURRENCY_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDestinationCountriesCurrencies" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETBANKTRANSACTIONDATA" type="xrsi:BANK_TRANSACTION_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASBankTransactionData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETREASONLIST" type="xrsi:REASONLIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASReasonList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCITYSTATELIST" type="xrsi:DASCITYSTATELIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASCityStateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETACHSTATUS" type="xrsi:ACHBANKDATA_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASAchBank" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETERRORTRANSLATIONS" type="xrsi:GETERRORTRANSLATIONS_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASErrorTranslation" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETDELIVERYTRANSLATION" type="xrsi:DASDELIVERYTRANSLATE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASDELIVERYTRANSLATE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETQQCFIELDSTEMPLATE" type="xrsi:DASQQCFIELDSTEMPLATE_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASQQCFIELDSTEMPLATE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETREASONCODELIST" type="xrsi:GETREASONCODELIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASReasonCodeList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETCASCADELIST" type="xrsi:CASCADE_LIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASCascadeList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETREASONOFTRANSACTION" type="xrsi:GETREASONOFTRANSACTION_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASGetReasonOfTransactionList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETSTAGEDFULFILLMENTREGIONS" type="xrsi:GETSTAGEDFULFILLMENTREGIONS_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASGetStagedFulfillmentRegionsList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETMESSAGELIST" type="xrsi:GETMESSAGELIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASGetMessageList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="GETSTATELIST" type="xrsi:GETSTATELIST_Type">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DASGetStateList" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:choice>
+  </xsd:complexType>
+  <xsd:element name="T_INDEX" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <jxb:property name="TemplateIndex" />
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="DESCRIPTION" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <jxb:property name="TemplateLineData" />
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="ERR_CODE" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--	<jxb:property name="TemplateIndex"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="ERR_MESSAGE" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--	<jxb:property name="BannerMessage"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="STATE_CODE" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--<jxb:property name="StateCode"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="STATE_NAME" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--<jxb:property name="StateName"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="CURRENCY_CD" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--	<jxb:property name="ISOCurrencyCode"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="ISO_COUNTRY_CD" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!--	<jxb:property name="ISOCountryCode"/>-->
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="CITY" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <jxb:property name="City" />
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="CATEGORY" type="xsd:string">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <jxb:property name="Category" />
+      </xsd:appinfo>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:complexType name="MEXICOCITYSTATEINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <MEXICOCITYSTATEINFO_Type> type is mapped to a DASMexCityStateInfo object-->
+        <jxb:class name="DASMexCityStateInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASMexCityStateInfo</b> object contains the Mexico State City details 
+            				for one Mexican City/State combinations.<br>
+            				e.g. everything between <GETMEXICOCITYSTATE>...</GETMEXICOCITYSTATE> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="STATE_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="STATE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="City" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="USSTATEINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <USSTATEINFO_Type> type is mapped to a DASUSStateInfo object-->
+        <jxb:class name="DASUSStateInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASUSStateInfo</b> object contains the US State Code and Name 
+            				for one US State<br>
+            				e.g. everything between <GETUSSTATELIST>...</GETUSSTATELIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="STATE_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="STATE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DELIVERYSERVICE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DELIVERYSERVICE_Type> type is mapped to a DASDeliverySvcs object-->
+        <jxb:class name="DASDeliverySvc">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASDeliverySvc</b> object contains the information for one Delivery Service.<br>
+            				e.g. everything between <GETDELIVERYSERVICES>...</GETDELIVERYSERVICES> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="DESTINATION_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestinationCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="SVC_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ServiceCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="SVC_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ServiceName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ROUTE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Route" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANNER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Banner" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Description" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="TEMPLT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateKey" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CTRY_VIEW_FILTER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CountryFilter" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EXCL_FLAGS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ExclusionFlags" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SOURCE_MIN_CURRENCY" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SourceMinCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SOURCE_MAX_CURRENCY" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SourceMaxCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SOURCE_CURRENCY_INCR" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SourceIncrCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_MIN_CURRENCY" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestMinCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_MAX_CURRENCY" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestMaxCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_CURRENCY_INCR" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestIncrCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DELIVERYOPTIONTEMPLATE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DELIVERYOPTIONTEMPLATE_Type> type is mapped to a DASDelivOptTemplate object-->
+        <jxb:class name="DASDelivOptTemplate">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASDelivOptTemplate</b> object contains one line of a Delivery Option 
+            				template.<br>
+            				e.g. everything between <GETDELIVERYOPTIONTEMPLATE>...</GETDELIVERYOPTIONTEMPLATE> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="PRODUCT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Product" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CATEGORY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Category" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="T_INDEX" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateIndex" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateLineData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MESSAGE_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MESSAGE_TEXT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="COMPLIANCE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <COMPLIANCE_Type> type is mapped to a DASCompliance object-->
+        <jxb:class name="DASCompliance">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASCompliance</b> object contains one line of the 
+            				Send or Pay Compliance Template<br>
+            				e.g. everything between <GETSENDERCOMPLIANCE>...</GETSENDERCOMPLIANCE> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="CATEGORY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ComplianceLevel" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="T_INDEX" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateIndex" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateLineData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="BANNERMESSAGE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <BANNERMESSAGE_Type> type is mapped to a DASBannerMsg object-->
+        <jxb:class name="DASBannerMsg">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASBannerMsg</b> object contains one banner message<br>
+            				and is currently used for WU (Global)and WU Agent Specific
+            				banner messages.
+            				e.g. everything between <GETWUBANNERMSGS>...</GETWUBANNERMSGS> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="ERR_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateIndex" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERR_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BannerMessage" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ISOCURRENCY_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ISOCURRENCY_Type> type is mapped to a DASISOCurrency object-->
+        <jxb:class name="DASISOCurrency">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASISOCurrency</b> object contains information for one 
+            				ISO Currency.<br>
+            				e.g. everything between <GETDESTINATIONCURRENCIES>...</GETDESTINATIONCURRENCIES> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="CURRENCY_CD" type="xsd:string" />
+      <xsd:element minOccurs="0" name="DISP_CURRENCY_CD" type="xsd:string" />
+      <xsd:element name="CURRENCY_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CurrencyName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EQUIVALENCE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="EquivalanceEnglish" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PREFIX_FORMAT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PrefixFormat" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FORMAT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Format" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SUFFIX_FORMAT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SuffixFormat" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DECIMAL" type="xsd:int">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Decimal" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CURRENCY_REGIME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CurrencyRegime" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="MAJOR_UNIT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MajorUnit" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MINOR_UNIT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MinorUnit" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MAJOR_UNIT_PLURAL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MajorUnitPlural" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MINOR_UNIT_PLURAL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MinorUnitPlural" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SERVICES" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Services" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DIVISION" type="xsd:int">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ScalingFactor" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MIN_AMOUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MinAmount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MAX_AMOUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MaxAmount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FRAUD_LIMIT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FraudLimit" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CONSUMER_LIMIT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ConsumerLimit" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ISOCOUNTRY_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ISOCOUNTRY_Type> type is mapped to a DASISOCountry object-->
+        <jxb:class name="DASISOCountry">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASISOCountry</b> object contains information for one 
+            				ISO Country.<br>
+            				e.g. everything between <GETDESTINATIONCOUNTRIES>...</GETDESTINATIONCOUNTRIES> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="ISO_COUNTRY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCountryCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="COUNTRY_LONG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="NameLong" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SERVICE_FLAGS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ServiceFlags" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COUNTRY_SHORT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DoNotUseThisField" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DASTEMPLATELINE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DASTEMPLATELINE_Type> type is mapped to a DASTemplateLine object-->
+        <jxb:class name="DASTemplateLine">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASTemplateLine</b> object contains one basic template line.<br>
+            				e.g. everything between <GETPRIVACYTEMPLATE>...</GETPRIVACYTEMPLATE> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="PRODUCT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ProductInfo" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="T_INDEX" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateIndex" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateLineData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="COUNTRYINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <COUNTRYINFO_Type> type is mapped to a DASCountryInfo object-->
+        <jxb:class name="DASCountryInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASCountryInfo</b> object contains textual Country information.<br>
+            				e.g. everything between <GETCOUNTRYINFO>...</GETCOUNTRYINFO> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="REC_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LineNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="INFO" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CountryInfoLine" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DESCRIPTION_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DESCRIPTION_Type> type is mapped to a DASTemplateLine object-->
+        <jxb:class name="DASFlag">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASFlag</b> object contains one basic description line.<br>
+            				e.g. everything between <GETWUCARDPERCHANGES>...</GETWUCARDPERCHANGES> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateLineData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="QQCCOMPANYNAME_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ISOCOUNTRY_Type> type is mapped to a DASISOCountry object-->
+        <jxb:class name="DASQQCCompany">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASQQCCompany</b> object contains information for one 
+            				QQC Company.<br>
+            				e.g. everything between <GETQQCCOMPANYNAME>...</GETQQCCOMPANYNAME> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="CLIENT_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ClientID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="COMPANY_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CompanyName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CpcCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="ISO_COUNTRY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCountryCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CURRENCY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCurrencyCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AVAILABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOAvailable" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PREPAID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOPrepaid" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PRECONFIG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOPreconfig" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ACCT_REQD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOAcctReqd" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TEMPLT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOTemplt" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MKT_VERTICAL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOMktVertical" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CC_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCcflag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ERRORINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ERRORINFO_Type> type is mapped to a DASErrorInfo object-->
+        <jxb:class name="DASErrorInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASErrorInfo</b> object contains error message information.<br>
+            				e.g. everything between <GETERRORMESSAGESINFO>...</GETERRORMESSAGESINFO> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="ERROR_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERROR_DESC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FUNC_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FunctionCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="TXNHISTORY_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <TXNHISTORY_Type> type is mapped to a DASTxnHistory object-->
+        <jxb:class name="DASTxnHistory">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASTxnHistory</b> object contains money transfer transaction history information<br>
+            				e.g. everything between <GETTRANSACTIONHISTORY>...</GETTRANSACTIONHISTORY> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="MTCN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Mtcn" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_DATE_MONTH" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingDateMonth" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_DATE_DAY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingDateDay" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_DATE_YEAR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingDateYear" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_TIME_HOUR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingTimeHour" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_TIME_MINUTE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingTimeMinute" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FILING_TIME_SEC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FilingTimeSec" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Type" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="TERM_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TermId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ORIG_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OrigCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ORIG_CURRENCY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OrigCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_CURRENCY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Name" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="AMOUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Amount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TXN_STATUS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="txnstatus" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TXN_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="txntype" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DLVS_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DlvsCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="TXNDETAIL_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <TXNDETAIL_Type> type is mapped to a DASTxnDetail object-->
+        <jxb:class name="DASTxnDetail">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASTxnDetail</b> object contains money transfer transaction detail information<br>
+            				e.g. everything between <GETTRANSACTIONDETAIL>...</GETTRANSACTIONDETAIL> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="TERM_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TermId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="OP_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OpId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ACCOUNT_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AccountNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PRINCIPAL" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Principal" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PRINCIPAL_INTL" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PrincipalIntl" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CHARGES" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Charges" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TOLLS" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Tolls" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MUNICIPAL_TAX" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MunicipalTax" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COUNTY_TAX" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CountyTax" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="STATE_TAX" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateTax" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="GROSS" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Gross" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PLUS_CHARGES_AMOUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PlusChargesAmount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="WORD_COUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="WordCount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MT_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MtType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TRANS_MODS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TransMods" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MTCN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Mtcn" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SENDER_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SenderName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SENDER_UA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SenderUa" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PAYEE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PayeeName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PAYEE_UA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PayeeUa" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BILLING_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BillingName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BILLING_UA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BillingUa" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DATE_TIME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DateTime" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TQ_QUESTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TqQuestion" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PLUS_CHARGES_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PlusChargesCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CLERK_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ClerkId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CURRENT_FX" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CurrentFx" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FX_FEE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FxFee" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CURRENT_FX2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CurrentFx2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FX_FEE2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FxFee2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ORIG_CURRENCY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OrigCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEST_CURRENCY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DestCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SITE_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SiteId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DELIVERY_INFO" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DeliveryInfo" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="OVERRIDE_CHARGES_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OverrideChargesFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RESEND_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ResendFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Text" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BINGO_CARD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BingoCard" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BINGO_COORD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BingoCoord" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BINGO_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BingoNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SIN_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SinNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CMO_VAL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CmoVal" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PC_VERSION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PcVersion" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PHYSICAL_DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PhysicalDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PAY_WOID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PayWoid" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ANI" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Ani" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MT_KEY" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MtKey" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERROR_Q_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorQFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PFC_CARD_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PfcCardNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BINGO_OVERRIDE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BingoOverride" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CHANGE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ChangeFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PD_ROUTING_ACCOUNT_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PdRoutingAccountNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_REF_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcRefNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_CREDIT_ACOUNT_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcCreditAcountNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ID_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IdType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ID_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IdNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ID_TYPE2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IdType2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ID_NUMBER2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IdNumber2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CREDIT_CARD_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CreditCardNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AUTH_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AuthCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EXP_DATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ExpDate" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANNER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Banner" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RATE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RateFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PAYMENT_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PaymentType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PERMANENT_CHANGE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PermanentChangeFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_ADDRESS_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvAddressType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DLVS_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DlvsCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DLVS_FLAGS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DlvsFlags" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QCVS_RESPONSE_CODE" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcvsResponseCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_ORIG_CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcOrigCity" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_ORIG_COMPANY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcOrigCompany" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_ORIG_ACCOUNT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcOrigAccount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcMessage" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PROMO_PIN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PromoPin" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PROMO_PIN_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PromoPinText" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PROMOS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Promos" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FIRST_USE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FirstUseFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_NAME_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndNameType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_ADDRESS_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndAddressType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RECY_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RecyType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_ADDR_LINE1" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndAddrLine1" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_ADDR_LINE2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndAddrLine2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_ADDR_LINE3" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndAddrLine3" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndCity" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_STATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndState" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_POSTAL_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndPostalCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_ADDR_LINE1" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvAddrLine1" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_ADDR_LINE2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvAddrLine2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_ADDR_LINE3" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvAddrLine3" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvCity" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_STATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvState" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_POSTAL_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvPostalCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_COOKIE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndCookie" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_COOKIE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvCookie" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_NAME_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvNameType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_ADDR_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvAddrType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PIN_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PinFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QC_ERROR_COUNT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QcErrorCount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SYS_TRACE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SysTrace" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CHECK_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CheckNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SPLIT_INDICATOR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SplitIndicator" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SENDER_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SenderId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="NET_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="NetId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MERCHANT_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MerchantName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MERCHANT_LOCATION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MerchantLocation" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CONFIRM_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ConfirmCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="INTERCONNECT_DATA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="InterconnectData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="INTERCONNECT_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="InterconnectId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DC_PIN_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DcPinNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FILE_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FileNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DEVICE_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DeviceId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MODEL_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ModelId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REFUND_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RefundType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PIN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Pin" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="OPERATOR_COMMENTS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OperatorComments" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ISSUING_BANK" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IssuingBank" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SSN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Ssn" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DOB" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Dob" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EMAIL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Email" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_EMAIL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvEmail" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CVVII" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Cvvii" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ORIG_EMAIL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OrigEmail" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DRIVERS_LICENSE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DriversLicense" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CHECK_ROTING_INFO" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CheckRotingInfo" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CHECK_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CheckType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SEND_MTCN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SendMtcn" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DRIVERS_LICENSE_STATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DriversLicenseState" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TRANS_MODIFIER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TransModifier" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SND_USER_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SndUserId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RCV_USER_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RcvUserId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IP_ADDRESS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpAddress" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_CARD_NUM" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsCardNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_CARD_BAL" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsCardBal" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_CARD_NUM_LOADED" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsCardNumLoaded" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPD_FUNDS_LOADED" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpdFundsLoaded" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_FUNDS_PARTNER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsFundsPartner" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_DATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsDate" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_STATUS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsStatus" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_PIN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsPin" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_MAIDEN_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsMaidenName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="IPS_AUTH_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="IpsAuthCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CONTACT_PHONE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ContactPhone" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CUSTOMER_LEVEL" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CustomerLevel" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SHARE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ShareFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MAIL_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MailFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="OPT_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OptFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="LEVEL_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LevelCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="POINTS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Points" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RULE_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RuleId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REDEMPTION_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RedemptionType" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REDEMPTION_VALUE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RedemptionValue" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PIN_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PinText" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="LAST_SCORE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LastScore" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="LEXNEX_FLAGS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LexnexFlags" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CALLING_PHONE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CallingPhone" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ADDR_VER_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AddrVerCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REFUND_FLAGS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RefundFlags" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REFUND_REASON" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RefundReason" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AVS_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AvsCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CSC_CAUTION_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CscCautionFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FIRST_TMT_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FirstTmtFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PHONE_USED_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PhoneUsedFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PHONE_LISTING" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PhoneListing" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EMPLOY_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="EmployCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CANCEL_REASON" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CancelReason" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BUSINESS_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BusinessName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BUSINESS_UA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BusinessUa" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="COMMENT_LINE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CommentLine" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FIXED_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="FixedFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ATTENTION_LINE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AttentionLine" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TMT_STAGING" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TmtStaging" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ROUTE_DESIGNATOR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RouteDesignator" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SERVER_ERROR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ServerError" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PROMO_SEQUENCE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PromoSequence" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DISCOUNT_AMOUNT" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DiscountAmount" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CONNECTION_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ConnectionId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TOTAL_POINTS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TotalPoints" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANKREG_DATA" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankregData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TP_OPTION_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TpOptionFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="LANGUAGE_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LanguageFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="HOST_CUST_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="HostCustId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="HOST_UPDATE_FIELD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="HostUpdateField" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="EC_INDICATOR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="EcIndicator" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ACS_VER_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AcsVerId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="HOST_MESSAGE2" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="HostMessage2" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RECEIPT_OPT_OUT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ReceiptOptOut" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PROMO_DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PromoDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AUTO_ENROLL_FLAG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AutoEnrollFlag" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AUTO_ENROLL_RULE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AutoEnrollRule" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="AUTO_ENROLL_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AutoEnrollText" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ORIG_COUNTRY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OrigCountry" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ATMLOCINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ATMLOCINFO_Type> type is mapped to a DASATMLocInfo object-->
+        <jxb:class name="DASATMLocInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASATMLocInfo</b> object contains the US ATM Location information 
+            				by City and State for US locations<br>
+            				e.g. everything between <GETATMLOCATIONS>...</GETATMLOCATIONS> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="STATE_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="City" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ATM_LOC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ATMLocation" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="D2BBANKINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <D2BBANKINFO_Type> type is mapped to a DASBankInfo object-->
+        <jxb:class name="DASBankInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASBankInfo</b> object contains D2B bank information for 
+            				a destination D2B bank<br>
+            				e.g. everything between <GETBANKLIST>...</GETBANKLIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="MODIFYTRANSACTIONTEMPLATE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <MODIFYTRANSACTIONTEMPLATE_Type> type is mapped to a DASModifyTxnTemplates object-->
+        <jxb:class name="DASModifyTxnTemplates">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASModifyTxnTemplates</b> object contains template data for
+            				modify transaction.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element ref="xrsi:CATEGORY" />
+      <xsd:element ref="xrsi:T_INDEX" />
+      <xsd:element ref="xrsi:DESCRIPTION" />
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="SUPPLYORDER_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <SUPPLYORDER_Type> type is mapped to a DASSupplyItemInfo object-->
+        <jxb:class name="DASSupplyItemInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASSupplyItemInfo</b> object contains the Supply Order Item info 
+            				for one item
+            				e.g. everything between <GETSUPPLYORDERLIST>...</GETSUPPLYORDERLIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="ITEM_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ItemCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="ITEM_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ItemName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="Q_DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ItemDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="CHECKWRITER_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <CHECKWRITER_Type> type is mapped to a DASCheckWriterInfo object-->
+        <jxb:class name="DASCheckWriterInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASCheckWriterInfo</b> object contains the location information for 
+            				for one chech writer (e.g. Casino) location where money can be sent.
+            				e.g. everything between <GETCHECKWRITERLIST>...</GETCHECKWRITERLIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="CKW_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CheckWriterID" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="NOTE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Note" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CASINO" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CasinoName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="STREET" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Street" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element ref="xrsi:CITY" />
+      <xsd:element name="STATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="State" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ACCOUNTTABLEINFO_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ACCOUNTTABLEINFO_Type> type is mapped to a DASAccountTableInfo object-->
+        <jxb:class name="DASAccountTableInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASAccountTableInfo</b> object contains information for one 
+            				account table<br>
+            				e.g. everything between <GETACCOUNTTABLEINFO>...</GETACCOUNTTABLEINFO> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="ACCOUNT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AccountNum" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="ISO_COUNTRY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCountryCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CURRENCY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ISOCurrencyCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CT1_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CountryTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RAT_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RateTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DSV_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DeliveryTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TMP_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERC_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorCodeTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="QQC_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="QuickCollectTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MEX_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MexicanCityStateTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FIF_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ForeignInformationTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BNK_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AtmBankTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SUP_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SupplyOrderTableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CKW_TABLE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CheckwritertableSuffix" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="COUNTRY_CURRENCY_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <COUNTRY_CURRENCY_Type> type is mapped to a DASCountryCurrency object-->
+        <jxb:class name="DASCountryCurrency">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASISOCurrency</b> object contains information for one 
+            				ISO Currency.<br>
+            				e.g. everything between <GETCOUNTRIESCURRENCIES>...</GETCOUNTRIESCURRENCIES> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="COUNTRY_LONG" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <!--	<jxb:property name="EquivalanceEnglish"/> -->
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ISO_COUNTRY_NUM_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <!--	<jxb:property name="EquivalanceEnglish"/>-->
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ISO_COUNTRY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="EquivalanceEnglish" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CURRENCY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="PrefixFormat" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DISP_CURRENCY_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DisplayCurrency" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ISO_CURRENCY_NUM_CD" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Format" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CURRENCY_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SuffixFormat" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="BANK_TRANSACTION_Type">
+    <xsd:all>
+      <xsd:element name="TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Type" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="OP_ID" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="OpId" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Date" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TIME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Time" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MTCN" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Mtcn" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="PRINCIPAL" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Principal" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="FEES" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Fees" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="TOTAL" type="xsd:decimal">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Total" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="REASONLIST_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <REASONLIST_Type> type is mapped to a DASReasonList object-->
+        <jxb:class name="DASReasonList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASReasonList</b> object contains Reason List for Refund and Cancel transactions.<br>
+            				e.g. everything between <GETREASONLIST>...</GETREASONLIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="REASON_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ReasonCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REASON_DESC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ReasonDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DASCITYSTATELIST_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DASCITYSTATEINFO_Type> type is mapped to a DASCityStateInfo object-->
+        <jxb:class name="DASCityStateInfo">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASCityStateInfo</b> object contains the State City details 
+            				for one City/State combination.<br>
+            				e.g. everything between <GETCITYSTATELIST>...</GETCITYSTATELIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="STATE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="StateName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="City" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="ACHBANKDATA_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ACHBANKDATA_Type> type is mapped to a DASACHBANKDATA object-->
+        <jxb:class name="DASACHBankData">
+          <jxb:javadoc><![CDATA[
+	            				The <b>DASACHBankData</b> object contains money transfer transaction history information<br>
+	            				e.g. everything between <GETTACHACCOUNT>...</GETTACHACCOUNT> tags.
+	            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="BANK_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankName" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANK_ADDRESS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankAddress" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANK_CITY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankCity" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANK_STATE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankState" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANK_ZIP" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankZip" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="BANK_PHONE_NUMBER" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="BankPhoneNumber" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ACH_STATUS" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AchStatus" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETERRORTRANSLATIONS_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <ERRORINFO_Type> type is mapped to a DASErrorInfo object-->
+        <jxb:class name="DASErrorTranslation">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASErrorTranslation</b> object contains error message information.<br>
+            				e.g. everything between <GETERRORTRANSLATIONS>...</GETERRORTRANSLATIONS> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="ERR_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorDCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="HOST_ERR" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="HostError" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ENG_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="EnglishMessage" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ERR_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ErrorMessage" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DASDELIVERYTRANSLATE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <DASDELIVERYTRANSLATE_Type> type is mapped to a DASDELIVERYTRANSLATE_Type object-->
+        <jxb:class name="DASDELIVERYTRANSLATE">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASDELIVERYTRANSLATE_Type</b> object contains the DASDELIVERYTRANSLATE_Type details 
+            				for one City/State combination.<br>
+            				e.g. everything between <GETCITYSTATELIST>...</GETCITYSTATELIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element name="ENGLISH_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ENGLISH_MESSAGE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="TRANSL_MESSAGE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TRANSL_MESSAGE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="DASQQCFIELDSTEMPLATE_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <QQCFIELDSTEMPLATE_Type> type is mapped to a DASQQCFieldsTemplate object-->
+        <jxb:class name="DASQQCFieldsTemplate">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASQQCFieldsTemplate</b> object contains additional fields to collect for partners.<br>
+            				e.g. everything between <GETQQCFIELDSTEMPLATE>...</GETQQCFIELDSTEMPLATE> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="CATEGORY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="Category" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="T_INDEX" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateIndex" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DESCRIPTION" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="TemplateLineData" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETREASONCODELIST_Type">
+    <xsd:annotation />
+    <xsd:all>
+      <xsd:element name="REASON_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ReasonCode" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REASON_DESC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="ReasonDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ADJ_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AdjustmentTypeDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="ADJ_SUBTYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="AdjustmentSubTypeDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="DF_IND" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="DFIndicatorDescription" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="CASCADE_LIST_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <CASCADE_LIST_Type> type is mapped to a DASCascadeList object-->
+        <jxb:class name="DASCascadeList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASCascadeList</b> object contains the next level List OR Result 
+            				for given List<br>
+            				e.g. everything between <GETCASCADELIST>...</GETCASCADELIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="LIST_VALUE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LIST_VALUE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="LIST_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="LIST_TEXT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RESULT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RESULT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MESSAGE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MESSAGE_NAME" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETREASONOFTRANSACTION_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <CASCADE_LIST_Type> type is mapped to a DASCascadeList object-->
+        <jxb:class name="DASGetReasonOfTransactionList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASGetReasonOfTransactionList</b> object contains the next level List OR Result 
+            				for given List<br>
+            				e.g. everything between <GETREASONOFTRANSACTION>...</GETREASONOFTRANSACTION> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="REASON_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="REASON_CODE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REASON_DESC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="REASON_DESC" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="RECEIPT_DESC" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="RECEIPT_DESC" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETSTAGEDFULFILLMENTREGIONS_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <GETSTAGEDFULFILLMENTREGIONS_Type> type is mapped to a DASGetStagedFulfillmentRegions object-->
+        <jxb:class name="DASGetStagedFulfillmentRegionsList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASGetStagedFulfillmentRegions</b> object contains the next level List OR Result 
+            				for given List<br>
+            				e.g. everything between <GETSTAGEDFULFILLMENTREGIONS>...</GETSTAGEDFULFILLMENTREGIONS> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="REGION_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="REGION_CODE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="REGION_CURRENCY" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="REGION_CURRENCY" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="CPC_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="CPC_CODE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SUBREGION_TYPE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SUBREGION_TYPE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="SUBREGION_VALUE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="SUBREGION_VALUE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="STAGING_AGENT_ACCOUNT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="STAGING_AGENT_ACCOUNT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="STAGING_PROFILE_ACCOUNT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="STAGING_PROFILE_ACCOUNT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETMESSAGELIST_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <GETMESSAGELIST_Type> type is mapped to a DASGetMessageList object-->
+        <jxb:class name="DASGetMessageList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASGetMessageList</b> object contains the next level List OR Result 
+            				for given List<br>
+            				e.g. everything between <GETMESSAGELIST>...</GETMESSAGELIST> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="MESSAGE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MSG_NAME" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="MESSAGE_TEXT" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="MESSAGE_TEXT" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+  <xsd:complexType name="GETSTATELIST_Type">
+    <xsd:annotation>
+      <xsd:appinfo>
+        <!-- The <GETSTATELIST_Type> type is mapped to a DASGetStateList object-->
+        <jxb:class name="DASGetStateList">
+          <jxb:javadoc><![CDATA[
+            				The <b>DASGetStateList</b> object contains the next level List OR Result 
+            				for given List<br>
+            				e.g. everything between <GETSTATELIST_Type>...</GETSTATELIST_Type> tags.
+            			]]></jxb:javadoc>
+        </jxb:class>
+      </xsd:appinfo>
+    </xsd:annotation>
+    <xsd:all>
+      <xsd:element minOccurs="0" name="STATE_CODE" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="STATE_CODE" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element minOccurs="0" name="STATE_NAME" type="xsd:string">
+        <xsd:annotation>
+          <xsd:appinfo>
+            <jxb:property name="STATE_NAME" />
+          </xsd:appinfo>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:all>
+  </xsd:complexType>
+</xsd:schema>

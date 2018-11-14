@@ -1,0 +1,56 @@
+﻿@model TCF.Channel.Zeo.Web.Models.AccountBalance
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NonGPRCards;
+}
+
+<script src="@Url.Content("~/Scripts/ShoppingCart/PrintReceipt.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+
+@using (Html.BeginForm("CheckCancel", "CheckCancel"))
+{
+<div class="main_div">
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <div class="main_div"> 
+        @{var uniqueId = Guid.NewGuid().ToString();}
+        <script language="javascript" type="text/javascript">
+            $(document).ready(function () {
+                var printParams = {UniqueId:"@uniqueId",
+                                    KioskName : "", 
+                                    Location:"@Session["Location"].ToString()",
+                                    ChannelPartnerName:"@Model.ChannelPartnerName",
+                                    TransactionIDValue:"@Model.CheckId",
+                                    TransactionDateValue:"@DateTime.Now.ToString("MM-dd-yyyy hh:mm:ss")",
+                                    CheckAmountValue:"$@Model.CheckAmount.ToString("#0.00")",
+                                    NexxoCardBalanceValue:"$@Model.AccountBalanceAmount.ToString("#0.00")",
+                                    CardHolderValue:"@Model.customerSession.Customer.PersonalInformation.FName @Model.customerSession.Customer.PersonalInformation.LName",
+                                    CheckDateValue:"@Model.CheckSubmissionDate.ToString("MM-dd-yyyy hh:mm:ss")",
+                                    CardNoValue:"@Model.customerSession.Customer.Fund.CardNumber",
+                                    ReceiptNoValue:"@Model.customerSession.CustomerSessionId",
+                                    TotalAmount:"$@Model.NetAmount.ToString("#0.00")",
+                                    FeeAmount:"$@Model.CheckCashingFee.ToString("#0.00")",
+                                    ReceiptType:"CashCheckReceipt"
+                                    };
+                PrintReceipt(NPSbaseURL, printParams); 
+            });
+        </script>
+            <center class="thank_you"> <h6>$@Model.NetAmount.ToString("#0.00")</h6> </center>
+        <br />
+        <center>
+            <div class="name_area nogpr_card_msg_wrap">
+                <strong>@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NonGPRCheckCashingMessage</strong>
+            </div>
+        </center>
+    </div>
+    <br />
+    <br />
+    <br />
+    <input type="submit" id="Exit" name="Exit" class="nogpr_card_done_btn" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckCancelExitButton" />
+</div>
+}    

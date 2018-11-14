@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.net/tx" xmlns:db="http://www.springframework.net/database" xsi:schemaLocation="http://www.springframework.net          http://www.springframework.net/xsd/spring-objects.xsd">
+	
+  <import resource="assembly://MGI.Channel.DMS.NpsInstallerServer.Impl/MGI.Channel.DMS.NpsInstallerServer.Impl/NpsInstallerServer.Spring.xml" />
+  
+	<object  id="NpsInstallerEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target">
+			<object type="MGI.Channel.DMS.NpsInstallerServer.Impl.NpsInstallerEngine, MGI.Channel.DMS.NpsInstallerServer.Impl">
+				<property name="NpsTerminalRepo" ref="NpsTerminalRepository"/>
+				<property name="NpsLocationRepo" ref="LocationRepo"/>
+				<property name="NpsChannelPartnerRepo" ref="ChannelPartnerServiceRepo"/>
+			</object>
+		</property>
+	</object>
+</objects>

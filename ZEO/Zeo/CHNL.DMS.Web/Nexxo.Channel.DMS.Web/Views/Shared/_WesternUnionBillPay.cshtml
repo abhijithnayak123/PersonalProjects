@@ -1,0 +1,218 @@
+﻿@model TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel
+@{
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillPayee =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BillPayee<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> AccountAuthDescription =
+	@<text>
+	@Model.AccountAuthDescription<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> AccountNumber =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumber<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> ConfirmAccountNumber =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ConfirmAccountNumber<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillAmount =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BillPayAmount<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillPaymentFee =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BillPaymentFee<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillerName =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SelectBillPayee<span class="mandatory">*</span>
+	</text>;
+
+	Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillerDeliveryMethod =
+	@<text>
+	@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DeliveryMethod<span class="mandatory">*</span>
+	</text>;
+
+    Func<TCF.Channel.Zeo.Web.Models.WesternUnionBillPayViewModel, object> BillerLocation = 
+    @<text>
+    @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BillerLocation<span id="BillerLocationRequired" class="mandatory">*</span>
+    </text>;
+}
+<!--added new labels starts here -->
+@Html.Partial("_partialSpinner")
+
+<div class="row">
+	<div>
+		<label class="row_label_txt">@BillerName(@Model)</label>
+		@Html.TextBoxFor(model => model.BillerName, new { @class = "input_box" ,tabindex="3" })
+		@Html.Hidden("hdnBillerName")
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.BillerName)
+	</div>
+</div>
+<div class="row">
+	<div>
+		<label id="LabelAccountAuthDescription" class="row_label_txt">@AccountNumber(@Model)</label>
+		@Html.TextBoxFor(model => model.AccountNumber, new { @class = "input_box", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_BillPayAccountNumber, tabindex="4", @maxlength = "20" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.AccountNumber)
+	</div>
+</div>
+<div class="line_Sep">
+</div>
+<div class="row">
+	@if (!string.IsNullOrEmpty(Model.AccountAuthDescription))
+ {
+		<div>
+			<label id="LabelConfirmAccountAuthDescription" class="row_label_txt">@AccountAuthDescription(@Model)</label>
+			@Html.TextBoxFor(model => model.ConfirmAccountNumber, new { @class = "input_box", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_BillPayConfirmAccountNumber, tabindex = "5", @maxlength = "20" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.ConfirmAccountNumber)
+		</div>
+ }
+ else
+ {
+		<div>
+			<label id="LabelConfirmAccountAuthDescription" class="row_label_txt">@ConfirmAccountNumber(@Model)</label>
+			@Html.TextBoxFor(model => model.ConfirmAccountNumber, new { @class = "input_box", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_BillPayConfirmAccountNumber, tabindex = "5", @maxlength = "20" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.ConfirmAccountNumber)
+		</div>
+ }
+</div>
+<div class="row">
+	<div>
+		<label class="row_label_txt">@BillAmount(@Model)</label>
+		@Html.TextBoxFor(model => model.BillAmount, new { @class = "input_box", tabindex = "6", onblur = "changeAmountPrecision(this)" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.BillAmount)
+	</div>
+</div>
+<div class="row">
+	<div>
+        <label class="row_label_txt">@BillerLocation(@Model)</label>
+		@*@Html.LabelFor(model => model.BillerLocation, new { @class = "row_label_txt" })*@
+		@Html.DropDownListFor(model => model.BillerLocation, Model.LLocations, new { @class = "dropdown_box", tabindex = "7" })
+		@Html.HiddenFor(model => model.BillerLocationName)
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.BillerLocation)
+	</div>
+</div>
+<div class="row">
+	<div>
+		<label class="row_label_txt">@BillerDeliveryMethod(@Model)</label>
+		@Html.DropDownListFor(model => model.BillerDeliveryMethod, Model.LDeliveryMethods, new { @class = "dropdown_box", tabindex = "8" })
+		@Html.HiddenFor(model => model.SelectedDeliveryMethod)
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.BillerDeliveryMethod)
+	</div>
+</div>
+<div class="row">
+	<div>
+		<label class="row_label_txt">@Html.Raw(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BillPaymentFee)</label>
+		@Html.TextBoxFor(model => model.BillPaymentFee, String.Format("{0:0.00}", @Model.BillPaymentFee), new { @class = "disable_txt", readOnly = "true" })
+		@Html.HiddenFor(model => model.SessionCookie, @Model.SessionCookie)
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.BillPaymentFee)
+	</div>
+</div>
+<div class="line_Sep">
+</div>
+<div class="row dynamicField" id="dvAttention" >
+    <div>
+        @Html.LabelFor(model => model.Attention, new { @class = "row_label_txt" })<span id="spanAttention"
+                                                                                        class="positionrelative mandatory v_hidden margin_left_2 margin_top_1 float_left z-index_9">*</span>
+        @Html.TextBoxFor(model => model.Attention, new { @class = "input_box positionrelative", tabindex = "9" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.Attention)
+    </div>
+</div>
+<div class="row dynamicField" id="dvReference" >
+    <div>
+        @Html.LabelFor(model => model.Reference, new { @class = "row_label_txt" })<span id="spanReference"
+                                                                                        class="positionrelative mandatory v_hidden margin_left_2 margin_top_1 float_left z-index_9">*</span>
+        @Html.TextBoxFor(model => model.Reference, new { @class = "input_box positionrelative", tabindex = "10" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.Reference)
+    </div>
+</div>
+
+<div class="row dynamicField" id="dvAccountHolder">
+	<div>
+		@Html.LabelFor(model => model.AccountHolder, new { @class = "row_label_txt" })<span
+			id="spanAccountHolder" class="positionrelative mandatory v_hidden margin_left_2 margin_top_1 float_left z-index_9">*</span>
+		@Html.TextBoxFor(model => model.AccountHolder, new { @class = "input_box positionrelative", tabindex = "11" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.AccountHolder)
+	</div>
+</div>
+<div class="row dynamicField" id="dvAailableBalance">
+	<div>
+		@Html.LabelFor(model => model.AvailableBalance, new { @class = "row_label_txt" })<span
+			class="positionrelative mandatory v_hidden margin_left_2 margin_top_1 float_left z-index_9"
+			id="spanAvailableBalance">*</span>
+		@Html.TextBoxFor(model => model.AvailableBalance, new { @class = "input_box positionrelative", tabindex = "12" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.AvailableBalance)
+	</div>
+</div>
+<div class="row dynamicField" id="dvDateOfBirth" >
+    <div>
+        @Html.LabelFor(model => model.DateOfBirth, new { @class = "row_label_txt" })<span class="positionrelative mandatory v_hidden margin_left_2 margin_top_1 float_left z-index_9"
+                                                                                          id="spanDateOfBirth">*</span>
+        @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "input_box positionrelative", tabindex = "13" })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.DateOfBirth)
+    </div>
+</div>
+<div class="row">
+	<div>
+		@Html.LabelFor(model => model.CouponPromoCode, new { @class = "row_label_txt" })
+		@Html.TextBoxFor(model => model.CouponPromoCode, new { @class = "input_box", MaxLength = 20, tabindex = "14" })
+	</div>
+	<div class="error_align_left">
+		@Html.ValidationMessageFor(model => model.CouponPromoCode)
+	</div>
+    <div id="promodiv" class="error_align_left">
+        <span id="promocode" class="error_txt"></span>
+    </div>
+</div>
+<div class="line_Sep">
+</div>
+
+<!--added new labels ends here -->
+@Html.TextBoxFor(model => model.BillerId, new { @class = "hide" })
+@Html.TextBoxFor(model => model.ProviderName, @Model.ProviderName, new { @class = "hide" })
+@*User Story Number: US1763 | Web | TA3928
+	   Developed by: Sunil Shetty
+	   Date: 14.01.2014
+	   Purpose: The below myInput stores values of autocomplete in CSV Format*@
+<input type="hidden" id="hdnBillerCsvValues" />
+@*Defect Number: DE3299| Web |
+	Developed by: Sunil Shetty
+	Date: 04.11.2014
+	Purpose: this is to pass billertransaction id which we recieve on getDeliverymethod call*@
+@Html.TextBoxFor(model => model.BillPayTransactionId, @Model.BillPayTransactionId, new { @class = "hide" })
+
+@Html.HiddenFor(model => model.PromotionId)
+

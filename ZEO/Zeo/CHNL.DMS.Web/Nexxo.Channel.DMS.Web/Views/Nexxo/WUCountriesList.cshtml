@@ -1,0 +1,43 @@
+﻿@{
+    ViewBag.Title = "Western Union Countries";
+}
+<script src="@Url.Content("~/Scripts/SendMoney/BlockedCountries.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.leftrightmultiselect.js")" type="text/javascript"></script>
+<script>
+    var SaveBlockedCountriesUrl = '@Url.Action("SaveBlockedCountries", "WesternUnionBanner")';
+    var SuccessUrl = '@Url.Action("SaveBlockedCountriesSuccessPopup", "WesternUnionBanner")';
+    var blockedCountries = @Html.Raw(Json.Encode(ViewBag.BlockedCountries));
+    var unblockedCountries = @Html.Raw(Json.Encode(ViewBag.UnblockedCountries));
+</script>
+
+<div class="grid_header grid_header_width" >
+    <ul class="">
+        <li>All Countries</li>
+    </ul>
+</div>
+<div class="grid_border grid_small grid_border_width" id="">
+    <div>
+        <div class="Blocked_label marginleft_125">
+            Unblocked Countries
+        </div>
+        <div class="Blocked_label marginleft_336">
+            Blocked Countries
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="countries_holder" id="">
+        <select  name="from[]" id="multiselect" size="8" multiple="multiple">
+            
+        </select>
+    </div>
+    <div class="button_holder">
+        <button type="button" id="multiselect_rightSelected" class="btn"><i class="ui-icon ui-icon-arrowthick-1-e"></i></button>
+        <button type="button" id="multiselect_leftSelected" class="btn"><i class="ui-icon ui-icon-arrowthick-1-w"></i></button>
+    </div>
+    <div class="blocked_countries_holder">
+        <select name="to[]" id="multiselect_to"  size="8" multiple="multiple"></select>
+    </div>
+    <div class="blocked_countries_save">
+        <button class="green_input anc_link_btn" onclick="saveBlockedCountries();">Save</button>
+    </div>
+</div>

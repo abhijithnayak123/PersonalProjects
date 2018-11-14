@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns:tx="http://www.springframework.net/tx"
+          xmlns:db="http://www.springframework.net/database"
+          xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <object id="serviceEngine" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+    <property name="Target">
+      <object type=" TCF.Channel.Zeo.Service.Impl.ZeoServiceImpl, TCF.Channel.Zeo.Service.Impl">
+      </object>
+    </property>
+    <property name="InterceptorNames">
+      <list>
+        <value>TraceAroundAdvice</value>
+      </list>
+    </property>
+  </object>
+  <object id="TraceAroundAdvice" type="TCF.Channel.Zeo.Service.Svc.Advice.TraceAroundAdvice, TCF.Channel.Zeo.Service.Svc">
+  </object>
+</objects>

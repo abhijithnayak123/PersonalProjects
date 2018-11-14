@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net"
+         xmlns:db="http://www.springframework.net/database">
+
+	<import resource="assembly://MGI.Common/MGI.Common/MGICommon.xml" />
+
+	<!-- Database and NHibernate Configuration -->
+  <db:provider id="CxnFundsTSysDbProvider"
+			provider="SqlServer-2.0"
+			connectionString="${PTNRDBConnection.connectionString}"/>
+
+  <!--Session factory-->
+  <object id="SessionFactoryCXNFundsTSys" type="Spring.Data.NHibernate.LocalSessionFactoryObject, Spring.Data.NHibernate32">
+    <property name="DbProvider" ref="CxnFundsTSysDbProvider"/>
+    <property name="MappingAssemblies">
+      <list>
+        <value>MGI.Cxn.Fund.TSys</value>
+      </list>
+    </property>
+    <property name="HibernateProperties">
+      <dictionary>
+        <entry key="connection.provider" value="NHibernate.Connection.DriverConnectionProvider"/>
+        <entry key="dialect" value="NHibernate.Dialect.MsSql2008Dialect"/>
+        <entry key="connection.driver_class" value="NHibernate.Driver.SqlClientDriver"/>
+        <entry key="show_sql" value="true"/>
+      </dictionary>
+    </property>
+    <property name="ExposeTransactionAwareSessionFactory" value="true"/>
+  </object>
+
+  <object id="NHibTSysAccountRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.Fund.TSys.Data.TSysAccount&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="SessionFactoryCXNFundsTSys"/>
+  </object>
+  <object id="NHibTSysTransactionRepo" type="MGI.Common.DataAccess.Impl.NHibRepository&lt;MGI.Cxn.Fund.TSys.Data.TSysTransaction&gt;, MGI.Common.DataAccess">
+    <property name="SessionFactory" ref="SessionFactoryCXNFundsTSys"/>
+  </object>
+
+  <object id="TSysGateway" type="MGI.Cxn.Fund.TSys.Impl.${ProviderIO}, MGI.Cxn.Fund.TSys">
+    <property name="APIUserName" value="${TSysAPIUsername}" />
+    <property name="APIPassword" value="${TSysAPIPassword}" />
+    <property name="CardNumberLogging" value="${CardNumberLogging}"/>
+    <property name="NLogger" ref="NLoggerRef"></property>
+	 <property name="MongoDBLogger" ref="TLoggerRef"/>
+  </object>
+
+
+  <object id="CxnFundsTSysService" type="MGI.Cxn.Fund.TSys.Impl.TSysGateway, MGI.Cxn.Fund.TSys">
+    <property name="TSysAccountRepo" ref="NHibTSysAccountRepo"/>
+    <property name="TSysTrxRepo" ref="NHibTSysTransactionRepo"/>
+    <property name="TSysIO" ref="TSysGateway"/>
+    <property name="DataProtectionSvc" ref="CXNFundsDataProtection${DataProtectionService}"/>
+    <property name="NLogger" ref="NLoggerRef"></property>
+	  <property name="MongoDBLogger" ref="TLoggerRef"/>
+  </object>
+</objects>

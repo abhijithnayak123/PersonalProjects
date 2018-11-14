@@ -1,0 +1,213 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Provision
+@{
+    ViewBag.Title = "Add Provision";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+
+    Func<TCF.Channel.Zeo.Web.Models.Provision, object> Value =
+        @<text>
+            @Html.LabelFor(model => model.Value)<span class="requiredfield-label" id="value">*</span>
+        </text>;
+    Func<TCF.Channel.Zeo.Web.Models.Provision, object> DiscountType =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DiscountType<span class="requiredfield-label" id="discType">*</span>
+        </text>;
+}
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-grid/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/JqueryMultiSelect/jquery.multiselect.css")" rel="stylesheet"  type="text/css"/>
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.8.14.custom.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.9.2.custom.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/grid.locale-en.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/jquery.jqGrid.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.multiselect.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/AddProvision.js.axd?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/PromotionGrid.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script type="text/javascript">
+    var getProvisions_Url = '@Url.Action("GetProvisions", "Promotion")';
+    var EditProvisions_Url = '@Url.Action("AddProvision", "Promotion")';
+    var ProvisionDeleteConfirm_Url = '@Url.Action("ShowPopWarringProvision", "Promotion")';
+    var ProvisionDelete_Url = '@Url.Action("DeleteProvision", "Promotion")';
+    var PageLeavePopup_Url = '@Url.Action("ShowPageLeavePopup", "Promotion")';
+    var ProvisionSummaryRedirectUrl = '@Url.Action("RedirectToProvisionOrSummary", "Promotion")';
+    var selectedCheckTypes = @Html.Raw(Html.ParseJsonForMultiSelect(Json.Encode(Model.CheckTypes)));
+    var selectedGroups = @Html.Raw(Html.ParseJsonForMultiSelect(Json.Encode(Model.LGroup)));
+    var disableTrainStop = '@ViewBag.DisableTrainStop';
+    var disable_Check_Type = '@ViewBag.DisableCheckType';
+    var selectedLocations = @Html.Raw(Json.Encode(ViewBag.StateLocations));
+</script>
+<div>
+    <div class="promo-container">
+        <br />
+        <br />
+        <ul class="train_stop train_stop-tabs">
+            <li class="train_stop-item">
+                <a class="train_stop-link" href="@Url.Action("AddPromotion", "Promotion")">
+                    <h5>Promotion</h5>
+                </a>
+            </li>
+            <li class="train_stop-item">
+                <a class="train_stop-link" href="@Url.Action("AddQualifier", "Promotion")">
+                    <h5>Qualifiers</h5>
+                </a>
+            </li>
+            <li class="train_stop-item">
+                <a class="train_stop-link select" href="@Url.Action("AddProvision", "Promotion")">
+                    <h5>Provisions</h5>
+                </a>
+            </li>
+
+            <li class="train_stop-item">
+                <a class="train_stop-link" id="provisionSummaryTrainStop" href="@Url.Action("PromotionSummary", "Promotion")">
+                    <h5>Summary</h5>
+                </a>
+            </li>
+        </ul>
+        <br />
+    </div>
+
+    <div class="promo-container promo_container_border promo-fonts">
+        <div class="promo-padding">
+            @using (Html.BeginForm("AddProvision", "Promotion", FormMethod.Post, new {id = "provisionForm" }))
+            {
+                @Html.HiddenFor(model => model.RowId)
+                <div class="margin_top_two">
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.PromotionName)
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.Location)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProLocationsToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.CheckType)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProCheckTypesToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.GroupName)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProGroupsToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.PromotionName, new { @class = "promoname-textbox", disabled = "disabled" })
+                        </div>
+                        <div class="widht-column">
+                            @*@Html.DropDownListFor(model => model.Location, Model.Locations, new { @class = "promo-drop promolocations", tabindex = 2, multiple = "multiple" })*@
+                            <select class="promo-drop promostatelocations" multiple = "multiple" ></select>
+                        </div>
+                        <div class="widht-column">
+                            @Html.DropDownListFor(model => model.CheckType, Model.CheckTypes, new { @class = "promo-drop promochecktypes", multiple = "multiple" })
+                        </div>
+                        <div class="widht-column">
+                            @Html.DropDownListFor(model => model.GroupName, Model.LGroup, new { @class = "promo-drop promoGroupNames", multiple = "multiple" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="margin_top_two">
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.MinAmount)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProTrxMinAmountToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.MaxAmount)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProTrxMaxAmountToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            <label>@Value(@Model)</label>
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProValueToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            <label>@DiscountType(@Model)</label>
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DiscountTypeToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.MinAmount, new { @class = "promoname-textbox", tabindex = 1, @maxlength = 10 })
+                            @Html.TextBoxFor(model => model.MinAmountWithCurrency, new { @class = "promoname-textbox", tabindex = 1, hidden = "hidden" })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.MinAmount)
+                            </div>
+                        </div>
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.MaxAmount, new { @class = "promoname-textbox", tabindex = 2, @maxlength = 10 })
+                            @Html.TextBoxFor(model => model.MaxAmountWithCurrency, new { @class = "promoname-textbox", tabindex = 2, hidden = "hidden" })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.MaxAmount)
+                            </div>
+                        </div>
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.Value, new { @class = "promoname-textbox", tabindex = 3, @maxlength = 6 })
+                            @Html.TextBoxFor(model => model.DiscountValueWithSymbol, new { @class = "promoname-textbox", tabindex = 3, hidden = "hidden" })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.Value)
+                            </div>
+                        </div>
+                        <div class="widht-column">
+                            @Html.DropDownListFor(model => model.DiscountType, Model.DiscountTypes, new { @class = "promo-drop", tabindex = 4, id = "discountType" })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.DiscountType)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @Html.HiddenFor(model => model.ProvisionId)
+                <div class="margin_top_two">
+                    <div class="txt_right">
+                        <ul>
+                            <li>@Html.ActionLink("Clear", "AddProvision", "Promotion", null, new { @class = "anc_link_btn grey_btn", tabindex = 6 })</li>
+                            <li><input type="submit" value="@ViewBag.ChangeButtonText" class="" name="save" tabindex="5" /></li>
+                        </ul>
+                    </div>
+                </div>
+
+                @Html.HiddenFor(model => model.SelectedCheckTypes)
+                @Html.HiddenFor(model => model.SelectedLocations)
+                @Html.HiddenFor(model => model.SelectedGroupNames)
+                @Html.HiddenFor(model => model.PromotionId)
+            }
+            <br />
+            <div class="clearfix"></div>
+            <div class="grid_header">
+                <ul class="">
+                    <li>List of Provision</li>
+                </ul>
+            </div> 
+            <div class="grid_border grid_small" id="">
+                <div class="" id="">
+                    <table id="jqProvision" class="scroll word_wrap_text"> </table>
+                    <div id="jqTableProvisionPager"></div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            <div class="margin_top_two">
+                <div class="txt_right">
+                    <ul>
+                        <li>@Html.ActionLink("Cancel", "GetPromotion", "Promotion", null, new { @class = "anc_link_btn red_btn", tabindex = 8 })</li>
+                        <li>
+                            <input type="button" class="green_input" id="provisionSummaryButton" value="Save and Continue" onclick="javascript: ShowPageLeavePopup(false);" tabindex="7" />
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="clearfix"></div>

@@ -1,0 +1,195 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Promotion
+@{
+    ViewBag.Title = "Promotion Summary";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-grid/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.8.14.custom.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.9.2.custom.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/grid.locale-en.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/jquery.jqGrid.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/PromotionGrid.js")" type="text/javascript"></script>
+<script type="text/javascript">
+    var getQualifiers = '@Url.Action("GetQualifiers", "Promotion")';
+    var getProvisions_Url = '@Url.Action("GetProvisions", "Promotion")';
+    $(document).ready(function () {
+        qulifierForSummary();
+        provisionsForSummary();
+    });
+</script>
+<div class="promo-container">
+    <br />
+    <br />
+    <ul class="train_stop train_stop-tabs">
+        <li class="train_stop-item">
+            <a class="train_stop-link" href="@Url.Action("AddPromotion", "Promotion")">
+                <h5>Promotion</h5>
+            </a>
+        </li>
+        <li class="train_stop-item">
+            <a class="train_stop-link" href="@Url.Action("AddQualifier", "Promotion")">
+                <h5>Qualifiers</h5>
+            </a>
+        </li>
+        <li class="train_stop-item">
+            <a class="train_stop-link" href="@Url.Action("AddProvision", "Promotion")">
+                <h5>Provisions</h5>
+            </a>
+        </li>
+        <li class="train_stop-item">
+            <a class="train_stop-link select" href="@Url.Action("PromotionSummary", "Promotion")">
+                <h5>Summary</h5>
+            </a>
+        </li>
+    </ul>
+    <br />
+</div>
+<div class="promo-container promo_container_border promo-fonts">
+    <div class="promo-padding">
+        <div class="grid_header">
+            <ul class="">
+                <li>Promotion Details &nbsp;<a href="@Url.Action("AddPromotion", "Promotion")" class="edit_link_summary">[edit]</a></li>
+            </ul>
+        </div>
+        <br />
+        <br />
+        <div class="padding_10">
+            <div class="">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.PromotionName)
+                    </div>
+                    <div class="">
+                        @Html.LabelFor(model => model.PromoDescription)
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.PromotionName, new { @class = "promoname-textbox", disabled = "disabled", tabindex = 1 })
+                    </div>
+                    <div class="promo-descp">
+                        @Html.TextAreaFor(model => model.PromoDescription, new { @class = "promo-desc-textbox Background_Color_Grey", disabled = "disabled", tabindex = 2, rows = "1" })
+                    </div>
+                </div>
+            </div>
+            <div class="margin_top_two">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.ProductType)
+                    </div>
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.Provider)
+                    </div>
+                    <div class="widht-column hide">
+                        @Html.LabelFor(model => model.Priority)
+                    </div>
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.StartDate)
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.ProductType, new { @class = "promoname-textbox", disabled = "disabled", tabindex = 4 })
+                    </div>
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.Provider, new { @class = "promoname-textbox", disabled = "disabled", tabindex = 5 })
+                    </div>
+                    <div class="widht-column hide">
+                        @Html.TextBoxFor(model => model.Priority, new { @class = "promoname-textbox", disabled = "disabled", tabindex = 6 })
+                    </div>
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.StartDate, new { @class = "promoname-textbox", id = "promostartdate", disabled = "disabled", placeholder = "MM/DD/YYYY" })
+                    </div>
+                </div>
+            </div>
+            <div class="margin_top_two">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.EndDate)
+                    </div>
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.FreeTxnCount)
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.EndDate, new { @class = "promoname-textbox", id = "promoenddate", disabled = "disabled", placeholder = "MM/DD/YYYY" })
+                    </div>
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.FreeTxnCount, new { @class = "promoname-textbox", id = "freetxncount", disabled = "disabled" })
+                    </div>
+                    
+                    @*<div class="widht-column">
+                        @Html.CheckBoxFor(model => model.IsActive, new { tabindex = 9, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsActive)</b>
+                        @Html.CheckBoxFor(model => model.IsPrintable, new { tabindex = 10, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsPrintable)</b>
+                    </div>
+                    <div class="widht-column">
+                        @Html.CheckBoxFor(model => model.IsSystemApplied, new { tabindex = 7, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsSystemApplied)</b>
+                        @Html.CheckBoxFor(model => model.IsOverridable, new { tabindex = 8, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsOverridable)</b>
+                    </div>
+                    <div class="widht-column">
+                        @Html.CheckBoxFor(model => model.IsNextCustomerSession, new { tabindex = 11, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsNextCustomerSession)</b>
+                    </div>*@
+                </div>
+            </div>
+            <div class="margin_top_two">
+                <div>
+                    @Html.CheckBoxFor(model => model.IsPrintable, new { tabindex = 10, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsPrintable)</b>&nbsp;
+                    @Html.CheckBoxFor(model => model.IsOverridable, new { tabindex = 8, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsOverridable)</b>&nbsp;
+                    @Html.CheckBoxFor(model => model.IsNextCustomerSession, new { tabindex = 11, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsNextCustomerSession)</b>&nbsp;
+                    @Html.CheckBoxFor(model => model.Stackable, new { tabindex = 11, disabled = "disabled" }) <b>@Html.LabelFor(model => model.Stackable)</b>
+                    @Html.CheckBoxFor(model => model.IsPromotionHidden, new { tabindex = 12, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsPromotionHidden)</b>
+                </div>
+            </div>
+            @*<div class="margin_top_two">
+                <div class="promo-row bottompadding">
+                    
+                </div>
+            </div>*@
+        </div>
+        <hr />
+        <div class="clearfix"></div>
+        <div class="margin_top_two">
+            <div class="clearfix"></div>
+            <div class="grid_header">
+                <ul class="">
+                    <li>List of Qualifier &nbsp;<a href="@Url.Action("AddQualifier", "Promotion")" class="edit_link_summary">[edit]</a></li>
+                </ul>
+            </div> 
+            <div class="grid_border" id="summaryQualifier">
+                <div class="" id="">
+                    <table id="jqQualifier" class="scroll word_wrap_text"> </table>
+                    <div id="jqTablePagerSummaryQualifier"></div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+        <div class="margin_top_two">
+            <div class="clearfix"></div>
+            <div class="grid_header">
+                <ul class="">
+                    <li>List of Provision &nbsp;<a href="@Url.Action("AddProvision", "Promotion")" class="edit_link_summary">[edit]</a> </li>
+                </ul>
+            </div> 
+            <div class="grid_border" id="summaryProm">
+                <div class="" id="">
+                    <table id="jqProvision" class="scroll word_wrap_text"> </table>
+                    <div id="jqTableProSummaryPager"></div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+        @using (Html.BeginForm("PromotionSummary", "Promotion", FormMethod.Post))
+        {
+            <div class="txt_right margin_top_two">
+                <ul>
+                    <li>@Html.ActionLink("Cancel", "GetPromotion", "Promotion", null, new { @class = "anc_link_btn red_btn", tabindex = 10 })</li>
+                    <li><input type="submit" value="Submit" class="" tabindex="1" /></li>
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+<div class="clearfix"></div>

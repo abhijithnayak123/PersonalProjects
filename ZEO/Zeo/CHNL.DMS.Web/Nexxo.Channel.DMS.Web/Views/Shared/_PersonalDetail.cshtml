@@ -1,0 +1,90 @@
+﻿@model TCF.Channel.Zeo.Web.Models.PersonalInformation
+<script language="javascript" type="text/javascript">
+    var customerAutoSearchURL = '@Url.Action("AutoSearchCustomers", "CustomerSearch")';
+    var autoSearchCustomersPopUp = '@Url.Action("AutoSearchCustomersPopUp", "CustomerSearch")';
+    var customerConformation = '@Url.Action("CustomerConformation", "CustomerSearch")';
+    var autoSearchGrid = '@Url.Action("AutoSearchCustomerGrid", "CustomerSearch")';
+
+    var isAutoSearchRequired = @Html.Raw(Json.Encode(Model.IsAutoSearchRequired));
+        
+</script>
+@*Changes for loading starts*@
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<div id="loading">
+    <div id="loadingcontent">
+        <p id="loadingspinner">
+        </p>
+    </div>
+</div>
+@*Changes for loading ends*@
+<input type="hidden" id="customerMinimumAge" value="@Model.channelPartner.CustomerMinimumAge" />
+<input type="hidden" id="minimumAgeMessage" value="@Model.CustomerMinimumAgeMessage" />
+@Html.HiddenFor(model => model.IsAutoSearchRequired)
+<div id="divError" class="error_txt hide">
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.SSN, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.SSN, new { @class = "input_box", tabindex = 1 })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.SSN)@Html.HiddenFor(model => model.ActualSSN)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.DateOfBirth, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "input_box", @placeholder = "MM/DD/YYYY", tabindex = 2 })
+    </div>
+    <div class="error_align_left">
+        @Html.ValidationMessageFor(model => model.DateOfBirth)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.LastName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.LastName, new { @class = "input_box", tabindex = 3, autocomplete = "off", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_LastName })
+    </div>
+    <div class="error_align_left cust_error_dis">
+        @Html.ValidationMessageFor(model => model.LastName)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.SecondLastName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.SecondLastName, new { @class = "input_box", tabindex = 4, autocomplete = "off", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_SecondLastName })
+    </div>
+    <div class="error_align_left cust_error_dis">
+        @Html.ValidationMessageFor(model => model.SecondLastName)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.FirstName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.FirstName, new { @class = "input_box", tabindex = 5, autocomplete = "off", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_FirstName })
+    </div>
+    <div class="error_align_left cust_error_dis">
+        @Html.ValidationMessageFor(model => model.FirstName)
+    </div>
+</div>
+<div class="row">
+    <div>
+        @Html.LabelFor(model => model.MiddleName, new { @class = "row_label_txt" })
+        @Html.TextBoxFor(model => model.MiddleName, new { @class = "input_box", tabindex = 6, autocomplete = "off", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ToolTip_MiddleName })
+    </div>
+    <div class="error_align_left cust_error_dis">
+        @Html.ValidationMessageFor(model => model.MiddleName)
+    </div>
+</div>
+<div class="row new_cust_gender">
+    <div>
+        <span class="shift_down">
+            @Html.LabelFor(model => model.Gender, new { @class = "row_label_txt" })
+            <span>Male</span> <span id="divmale">@Html.RadioButtonFor(model => model.Gender, "Male", new { id = "rbtMale", tabindex = 7, autocomplete = "off", @class = "GenderName row_width30_fix" })</span>
+            <span>Female</span> <span id="divfemale">@Html.RadioButtonFor(model => model.Gender, "female", new { id = "rbtFeMale", tabindex = 7, @class = "GenderName row_width30_fix" })</span>
+        </span>
+    </div>
+    <div class="error_align_left cust_error_dis">
+        @Html.ValidationMessageFor(model => model.Gender)
+    </div>
+</div>

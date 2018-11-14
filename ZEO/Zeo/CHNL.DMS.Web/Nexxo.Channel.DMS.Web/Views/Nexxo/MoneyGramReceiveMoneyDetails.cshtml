@@ -1,0 +1,106 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyGramReceiveMoneyViewModel
+@{
+    ViewBag.Title = "MoneyGramReceiveMoneyDetails";
+}
+
+@using (Html.BeginForm("ReceiveMoneyValidate", "MoneyGramReceiveMoney"))
+{
+    <div>
+        <ul class="page_head product_head">
+            <li class="banner_txt">Receive Money</li>
+        </ul>
+    </div>
+    <br />
+    <div class="row">
+        <div>
+            <label class="row_label_txt">
+                @Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MGramRMReferenceNumber)</label>
+            @Html.TextBoxFor(model => model.ReferenceNumber, null, new { @class = "disable_txt", readOnly = "true", @maxlength = "19" })
+        </div>
+    </div>
+    <br />
+   
+    <br />
+    <div class="row">
+        <div>
+            <input type="hidden" id="PanelStatus" value="1" />
+            @Html.LabelFor(model => model.ReceiverName, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.ReceiverName, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.ReceiverName)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.SenderName, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.SenderName, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.SenderName)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TestQuestion, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TestQuestion, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestQuestion)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.TestAnswer, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.TestAnswer, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.TestAnswer)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.ReceiveAmount, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.ReceiveAmountWithCurrency, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+        <div class="error_align_left">
+            @Html.ValidationMessageFor(model => model.ReceiveAmount)
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            @Html.LabelFor(model => model.SenderStateCode, new { @class = "row_label_txt" })
+            @Html.TextBoxFor(model => model.SenderStateCode, null, new { @class = "disable_txt", readOnly = "true"})
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            @Html.HiddenFor(model => model.TransactionId)
+            @Html.HiddenFor(model => model.ReceiveAmount)
+            @Html.HiddenFor(model => model.ReceiveCurrency)
+        </div>
+    </div>
+    
+    <div class="line_Sep">
+    </div>
+    
+    <div class="row" id="divDynamicControl">
+        @if (Model != null && Model.DynamicFields != null && Model.DynamicFields.Count > 0)
+        {
+            @Html.Partial("_DynamicFieldsReceiveMoney", Model)
+        }
+    </div>
+
+    <div class="row_shift28">
+        <ul>
+            <li class="">
+                @*Send Money And Receive Money uses the same cancel method*@
+                @Html.ActionLink("Cancel", "CancelSendMoneyDetails", "SendMoney", new { id = Model.TransactionId }, new { @class = "anc_link_btn cancelMoneyTransfer red_btn", id = Model.TransactionId, name = "ReceiveMoney" })
+            </li>
+            <li class="row_width30">
+                <input type="submit" id="btnUpdate" value="Submit" name="submit" class="send_money_search_btn" />
+            </li>
+        </ul>
+    </div>
+}

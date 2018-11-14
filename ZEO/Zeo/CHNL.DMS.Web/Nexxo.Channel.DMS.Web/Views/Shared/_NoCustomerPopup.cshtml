@@ -1,0 +1,61 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SystemMessage
+<div class="system_msg_wrap">
+    <div class="m_type">
+        @Html.LabelFor(model => model.Type)
+        <span class="m_type_span">@Html.DisplayFor(model => model.Type, new { @disabled = "disabled" })</span>
+    </div>
+    <div class="m_num">
+        @Html.LabelFor(model => model.Number)
+        <span class="m_num_span">@Html.DisplayFor(model => model.Number, new { @disabled = "disabled" })</span>
+    </div>
+    <br />
+    <br />
+    <div class="float_left">
+        @Html.LabelFor(model => model.Message)
+        @{
+            string errorimgUrl = Url.Content(string.Format("~/Content/images/{0}.jpg", @Model.ErrorType));
+            <img width="23" height="23" alt=" " src="@errorimgUrl" class="m_err_img">
+        }
+    </div>
+    <div class="m_msg_wrap_extrawidth">
+        @Html.ParseHTMLTags(Model.Message)
+    </div>
+
+    <br />
+    @if (!string.IsNullOrWhiteSpace(Model.AddlDetails))
+    {
+
+        <br />
+        <div class="clear_both float_left">
+            @Html.LabelFor(model => model.AddlDetails, new { @class = "m_add_det" })
+        </div>
+        <div class="m_add_det_lbl_extraheight">
+            @Model.AddlDetails
+        </div>
+
+        <br />
+        <br />
+    }
+
+    <div class="push_top23_fix txt_center">
+        <ul>
+            <li class="SrchButtonWidth margin_left_8">
+                <input type="button" value="Cancel" id="btnOk" onclick="RemovePopUp()"
+                       class="red_btn push_top10_fix" />
+            </li>
+
+            <li class="SrchButtonWidth">
+                <input type="submit" value="Continue to Registration" id="registrationbtn" class="green_input push_top10_fix_extrawidth" />
+            </li>
+
+        </ul>
+    </div>
+
+</div>
+
+<script>
+    $("#registrationbtn").click(function () {
+        window.location.href = '@Url.Action("CustomerRegistrationFromNoCustomerPopUp", "CustomerSearch")';
+    });
+
+</script>

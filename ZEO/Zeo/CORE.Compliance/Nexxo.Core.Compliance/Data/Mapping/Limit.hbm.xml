@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Core.Compliance"
+                   namespace="MGI.Core.Compliance.Data">
+	<class name="Limit" table="tLimits">
+		<id name="rowguid" column="LimitPK">
+			<generator class="guid"/>
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="LimitID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+
+		<many-to-one name="LimitType" class="MGI.Core.Compliance.Data.LimitType" column="LimitTypePK"/>
+
+		<property name="PerTransactionMaximum"/>
+		<property name="PerTransactionMinimum"/>
+		<property name="RollingLimits"/>
+		<property name="DTServerCreate" column="DTServerCreate" update="false"/>
+		<property name="DTServerLastModified" column="DTServerLastModified" not-null="false"/>
+
+	</class>
+</hibernate-mapping>

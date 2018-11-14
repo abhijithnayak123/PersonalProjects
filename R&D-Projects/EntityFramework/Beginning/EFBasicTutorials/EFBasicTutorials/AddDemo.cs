@@ -13,7 +13,7 @@ namespace EFBasicTutorials
             Console.WriteLine("****Starting AddSingleEntity****");
 
             Student newStudent = new Student() { StudentName = "Student1" };
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Students.Add(newStudent);
                 context.SaveChanges();
@@ -37,7 +37,7 @@ namespace EFBasicTutorials
             //add new course with new teacher into student.courses
             newStudent.Courses.Add(new Course() { CourseName = "New Course for single student", Teacher = new Teacher() { TeacherName = "New Teacher" } });
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Students.Add(newStudent);
                 context.SaveChanges();

@@ -1,0 +1,91 @@
+﻿@model TCF.Channel.Zeo.Web.Models.AgentTransactionHistory
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.TellerTransactionHistory;
+    Layout = "~/Views/Shared/_Menu.cshtml"; 
+}
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/grid.locale-en.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/jquery.jqGrid.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/TransactionHistory/AgentTransHistory.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/Common.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-ui.js")" type="text/javascript"></script>
+
+<script type="text/javascript">
+	var isAgentTeller = '@ViewBag.IsAgentTeller';
+	var agentSummaryReport = '@Url.Action("AgentDailySummaryReport", "TransactionHistory")';
+    var agentSummaryPDFPreviewPopUp = '@Url.Action("AgentSummaryPDFPreviewPopUp", "TransactionHistory")';
+    var agentSummaryPrintPDF_URL = '@Url.Action("AgentSummaryPDFPreview", "TransactionHistory")';
+    var createPdf_Url = '@Url.Action("CreatePDFFile", "TransactionHistory")';
+</script>
+
+@using (Html.BeginForm())
+{
+	
+<input type ="hidden" id = "PrintError" value = "@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PrintError" />	
+	
+<div class="agent_trns_his_wrap">
+    <div>
+        <ul class="page_head product_head trans_head">
+            <li>Transaction History</li>
+        </ul>
+    </div>
+    <br />
+	@Html.Partial("_partialSpinner")
+    <div class="agent_trans agent_search_range">
+        <div class="search-row">
+            <div class="trans_column">
+                @Html.LabelFor(model => model.TransactionType)
+                @Html.DropDownListFor(model => model.TransactionType, Model.TransactionTypes, new { @class = "trans_input", tabindex = 2 })
+            </div>
+            <div class="trans_column_short">
+                @Html.LabelFor(model => model.Agent)
+                @Html.DropDownListFor(model => model.Agent, Model.Agents, new { @class = "trans_input", tabindex = 3 })
+            </div>
+            <div class="">
+                @Html.LabelFor(model => model.TransactionID)
+                @Html.TextBoxFor(model => model.TransactionID, null, new { @class = "search-row-column", @maxlength = "19", tabindex = 4 })
+                <div class="float_left"> @Html.ValidationMessageFor(model => model.TransactionID) </div>
+            </div>   
+        </div>
+
+        <div class="search-row2">
+            <div class="">
+                <label>Date Range</label>
+                @Html.TextBoxFor(model => model.StartDate, new { @class = "search-row-column2 date_picker_margin", id = "pickstartdate", readOnly = "true", placeholder = "MM/DD/YYYY" })
+                <label> &nbsp;&nbsp;To&nbsp;&nbsp;</label>
+                @Html.TextBoxFor(model => model.EndDate, new { @class = "search-row-column2", id = "pickenddate", readOnly = "true", placeholder = "MM/DD/YYYY" })
+            </div> 
+        </div>  
+
+        <div class="search_wrap top_margin_4">
+            <div class="search_row">
+                <span class="trans_history_ldl">Date : </span>                    
+                <span class="trans_history_ldl">@DateTime.Now.ToString("MMMM dd yyyy") </span>
+            </div>
+            <div class="trans_history_ldl">
+                @Html.LabelFor(model => model.IsTransactionStatusSelected, new { @class = "trans_history_ldl trans_his_head" })
+                @Html.CheckBoxFor(model => model.IsTransactionStatusSelected, new { @class = "trans_history_ldl trans_his_sel", tabindex = 5 })
+            </div>
+            <div style="float:right">
+				<input type="submit" id="map" value="Search" tabindex="6" />
+				<input type="button" id="agentDailySummaryReport" class="cancel_btn_color" value="Print Summary" />
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+<div class="trans_grid_tab_wrap margin_top_eight" id="griddiv">
+    <div>
+        <span id="trancnt" class="shp_cart trans_grid_shp_left"></span>
+        <img src="@Url.Content("~/Content/Images/printer-icon.png")" title="Print PDF" alt="print" height="25px;" class="icon_print" onclick="previewPDF()" />
+    </div>
+    <div class="trans_grid_tab" id="divJqTable">
+        <table id="jqTable1" class="scroll"> </table>
+        <div id="jqTablePager" />
+    </div>
+</div>
+<div> &nbsp;</div>
+

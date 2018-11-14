@@ -1,0 +1,97 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyOrderSetup
+@{
+	ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MoneyOrderDescription;
+}
+<script src="@Url.Content("~/Scripts/Common/lib/spin.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/MoneyOrder/MoneyOrderPromotionCodeValidation.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script type="text/javascript">
+	var errMsg = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromotionCodeValidation';
+	var MO_Promotion_Url = '@Url.Action("CalculateFee", "MoneyOrderSetup")';
+    var url_GetMoneyOrderFee = '@Url.Action("GetMoneyOrderFee","MoneyOrderSetup")';
+    var GetFee_URL_PC = '@Url.Action("GetMoneyOrderPromotion", "MoneyOrderSetup")';
+</script>
+@using (Html.BeginForm("SetUpMoneyOrder", "MoneyOrderSetup", new { id="moform"}))
+{
+    <div>
+        <ul class="page_head product_head">
+            <li>Set Up Money Order</li>
+        </ul>
+    </div>
+	@Html.Partial("_partialSpinner")
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MoneyOrderAmount) </label>
+            @Html.TextBoxFor(model => model.Amount, null, new { @class = "input_box", id = "txtAmount", tabindex= 2, @Value = (Model.Amount > 0 ? Model.Amount.ToString() : string.Empty), onblur = "changeAmountPrecision(this)", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_MoneyOrderAmount })
+        </div>
+        <div class="error_align_left"> @Html.ValidationMessageFor(model => model.Amount) </div>
+    </div>
+    <div class="row">
+ <div>
+     <label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.BaseFee)
+            </label>
+            @Html.TextBoxFor(model => model.BaseFeeWithCurrency, null, new { @class = "input_box disable_txt", @readonly = "readonly", Value = String.Format("$ {0:0.00}", Model.BaseFee) })
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@Html.LabelFor(model => model.PromotionCode)
+            </label>
+            @Html.DropDownListFor(model => model.PromotionCode, Model.LPromotionCodes, new { @class = "dropdown_box", tabindex = 4 })
+        </div>
+		<div id="promodiv" class="error_align_left">
+			<span id="promocode" class="error_txt"></span>
+		</div>
+    </div>
+    <div class="row hide manual_entry_mo">
+        <div>
+            <label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ManualPromocode)</label>
+            @Html.TextBoxFor(model => model.ManualPromocode, new { @class = "input_box" })
+        </div>
+        <div class="error_align_left manual_promo">
+            <span class="txt_red"></span>
+            @Html.ValidationMessageFor(model => model.ManualPromocode)
+        </div>
+    </div>
+    <div class="spacer">
+        <div>
+            <label class="row_label_txt">@Html.LabelFor(model => model.DiscountName)
+            </label>
+   			@Html.TextAreaFor(model => model.DiscountName, 4, 69, new { @class = "textarea disable_txt", @readonly = "readonly" })
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@Html.LabelFor(model => model.DiscountApplied)
+            </label>
+            @Html.TextBoxFor(model => model.DiscountAppliedWithCurrency, null, new { @class = "input_box disable_txt", @readonly = "readonly", Value = String.Format("$ {0:0.00}", Model.DiscountApplied) })
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@Html.LabelFor(model => model.NetFee)
+            </label>
+            @Html.TextBoxFor(model => model.NetFeeWithCurrency, null, new { @class = "input_box disable_txt", @readonly = "readonly", Value = String.Format("$ {0:0.00}", Model.NetFee) })
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label class="row_label_txt">@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MoneyOrderTotal) </label>
+            @Html.TextBoxFor(model => model.Total, null, new { @class = "input_box disable_txt", @readonly = "readonly", id = "txtTotal", Value = String.Format("{0:0.00}", Model.Total) })
+        </div>
+    </div>
+	
+	 @Html.TextBoxFor(model => model.Fee, new { id=  "txtFee", style = "display:none"}) 
+	 @Html.TextBoxFor(model => model.BaseFee, new { style = "display:none" })
+	 @Html.TextBoxFor(model => model.NetFee, new { style = "display:none" })
+	 @Html.TextBoxFor(model => model.DiscountApplied, new { style = "display:none" })
+	 @Html.HiddenFor(model => model.IsSystemApplied)
+	<input id="SystemPromotionCode" type="hidden" value="@Model.PromotionCode" />
+    <div class="profile_btn_wrap">
+        <ul>
+			<li class="row_width60"><input type="button" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CancelButtonText" onclick="_showCancelTransaction()" class="red_btn" tabindex="5" /></li>
+            <li>
+				<input type="button" value="Submit" id="btnSubmit" style="background-color: rgb(0, 105, 55)" tabindex="4" />
+            </li>
+        </ul>
+    </div>
+}

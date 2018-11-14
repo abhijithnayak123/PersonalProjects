@@ -1,0 +1,295 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{0CAC639C-DF77-4F69-93FD-64A60283EECF}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Cxn.Fund.Visa</RootNamespace>
+    <AssemblyName>TCF.Zeo.Cxn.Fund.Visa</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IIO.cs" />
+    <Compile Include="Data\Exceptions\VisaProviderException.cs" />
+    <Compile Include="Impl\Gateway.cs" />
+    <Compile Include="Impl\IO.cs" />
+    <Compile Include="Impl\SimulatorIO.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Service References\Prepaid\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CMMN\DataProtection\TCF.Zeo.Common.DataProtection.csproj">
+      <Project>{95ae0a6f-cf72-4439-987c-0c7c4d26432b}</Project>
+      <Name>TCF.Zeo.Common.DataProtection</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Miscellaneous\P3Net.Data\P3Net.Data.csproj">
+      <Project>{1B0A5012-94F0-4C5B-AAF5-371BE4AA7481}</Project>
+      <Name>P3Net.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Common\TCF.Zeo.Common.csproj">
+      <Project>{5360e449-74f2-4abd-b3c1-d93eca6a8ded}</Project>
+      <Name>TCF.Zeo.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Common\TCF.Zeo.Cxn.Common.csproj">
+      <Project>{b3bd7591-db8d-4904-aa92-639269f5f958}</Project>
+      <Name>TCF.Zeo.Cxn.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Fund\TCF.Zeo.Cxn.Fund.csproj">
+      <Project>{15d8b558-d497-48fe-99b9-9f7a00297aa1}</Project>
+      <Name>TCF.Zeo.Cxn.Fund</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Service References\Prepaid\PrepaidServices1.wsdl" />
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.ClaimListHeader.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetAccountholderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetAccountholderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetBuyerContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetBuyerMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetCardholderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetCardholderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetDiagnosticContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetDiagnosticMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetExceptionsContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetExceptionsMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetFraudContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetFraudMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetInstantIssueContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetInstantIssueMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetInventoryControlContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetInventoryControlMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetLcoContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetLcoMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetLocationContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetLocationMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetMailOrderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetMailOrderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetPedConfigurationContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetPedConfigurationMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetReferenceDataContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetReferenceDataMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetSearchContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetSearchMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetSecurityFunctionContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.GetSecurityFunctionMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateAccountholderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateAccountholderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateBuyerContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateBuyerMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateCardholderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateCardholderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateExceptionsContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateExceptionsMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateFraudContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateFraudMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateInstantIssueContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateInstantIssueMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateInventoryControlContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateInventoryControlMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateLcoContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateLcoMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateLocationContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateLocationMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateMailOrderContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateMailOrderMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdatePedConfigurationContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdatePedConfigurationMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateSecurityFunctionContractResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Prepaid\TCF.Zeo.Cxn.Fund.Visa.Prepaid.UpdateSecurityFunctionMessageResponseType.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\Prepaid\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Prepaid\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Prepaid\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Prepaid\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

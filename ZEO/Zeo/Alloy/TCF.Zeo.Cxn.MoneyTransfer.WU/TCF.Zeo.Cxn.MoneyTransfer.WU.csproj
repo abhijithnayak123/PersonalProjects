@@ -1,0 +1,564 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{8A1017BF-51F7-474E-9223-987F58EC1306}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Cxn.MoneyTransfer.WU</RootNamespace>
+    <AssemblyName>TCF.Zeo.Cxn.MoneyTransfer.WU</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AutoMapper">
+      <HintPath>..\..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contract\IIO.cs" />
+    <Compile Include="Data\CommitRequest.cs" />
+    <Compile Include="Data\ImportReceiver.cs" />
+    <Compile Include="Data\MasterData.cs" />
+    <Compile Include="Data\MoneyTransferProviderException.cs" />
+    <Compile Include="Data\WUAccount.cs" />
+    <Compile Include="Data\WUCountryCurrency.cs" />
+    <Compile Include="Impl\BaseIO.cs" />
+    <Compile Include="Impl\IO.cs" />
+    <Compile Include="Impl\ProcessorDAL.cs" />
+    <Compile Include="Impl\SimulatorIO.cs" />
+    <Compile Include="Impl\WUGateway.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Service References\DASService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\FeeInquiry\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\ModifySendMoneySearch\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\ModifySendMoney\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\ReceiveMoneyPay\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\ReceiveMoneySearch\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\Search\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\SendMoneyPayStatus\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\SendMoneyRefund\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\SendMoneyStore\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+    <Compile Include="Service References\SendMoneyValidation\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TCF.Zeo.Common\TCF.Zeo.Common.csproj">
+      <Project>{5360e449-74f2-4abd-b3c1-d93eca6a8ded}</Project>
+      <Name>TCF.Zeo.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Miscellaneous\P3Net.Data\P3Net.Data.csproj">
+      <Project>{1b0a5012-94f0-4c5b-aaf5-371be4aa7481}</Project>
+      <Name>P3Net.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.Common\TCF.Zeo.Cxn.Common.csproj">
+      <Project>{b3bd7591-db8d-4904-aa92-639269f5f958}</Project>
+      <Name>TCF.Zeo.Cxn.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.MoneyTransfer\TCF.Zeo.Cxn.MoneyTransfer.csproj">
+      <Project>{195fb39a-ab4d-461a-bb6d-e470f06d48fd}</Project>
+      <Name>TCF.Zeo.Cxn.MoneyTransfer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TCF.Zeo.Cxn.WU.Common\TCF.Zeo.Cxn.WU.Common.csproj">
+      <Project>{69028891-99ef-4a9a-9995-674d605156f2}</Project>
+      <Name>TCF.Zeo.Cxn.WU.Common</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Service References\DASService\DASReqResp1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\DAS_Service_H2H1.wsdl" />
+    <None Include="Service References\DASService\TCF.Zeo.Cxn.MoneyTransfer.WU.DASService.DAS_Service_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\DASService\TCF.Zeo.Cxn.MoneyTransfer.WU.DASService.h2hdasreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\DASService\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIDasReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIDasRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\DASService\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\FeeInquiry\FeeInquiry_Service_H2H1.wsdl" />
+    <None Include="Service References\FeeInquiry\TCF.Zeo.Cxn.MoneyTransfer.WU.FeeInquiry.feeinquiryreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\FeeInquiry\TCF.Zeo.Cxn.MoneyTransfer.WU.FeeInquiry.FeeInquiry_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\FeeInquiry\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\FeeInquiry\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\FeeInquiry\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\FeeInquiry\XRSIFeeInquiryReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\FeeInquiry\XRSIFeeInquiryRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\ModifySendMoneySearch_Service_H2H_Service1.wsdl" />
+    <None Include="Service References\ModifySendMoneySearch\TCF.Zeo.Cxn.MoneyTransfer.WU.ModifySendMoneySearch.modifysendmoneysearchreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\TCF.Zeo.Cxn.MoneyTransfer.WU.ModifySendMoneySearch.ModifySendMoneySearch_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\XRSIModifySendMoneySearchReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoneySearch\XRSIModifySendMoneySearchRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoney\ModifySendMoney_MSet1.wsdl" />
+    <None Include="Service References\ModifySendMoney\TCF.Zeo.Cxn.MoneyTransfer.WU.ModifySendMoney.modifysendmoneyreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ModifySendMoney\TCF.Zeo.Cxn.MoneyTransfer.WU.ModifySendMoney.ModifySendMoney_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ModifySendMoney\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoney\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoney\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoney\XRSIModifySendMoneyReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ModifySendMoney\XRSIModifySendMoneyRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\ReceiveMoneyPay_Service_H2H1.wsdl" />
+    <None Include="Service References\ReceiveMoneyPay\TCF.Zeo.Cxn.MoneyTransfer.WU.ReceiveMoneyPay.receivemoneypayreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\TCF.Zeo.Cxn.MoneyTransfer.WU.ReceiveMoneyPay.ReceiveMoneyPay_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\XRSIReceiveMoneyPayReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneyPay\XRSIReceiveMoneyPayRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\ReceiveMoneySearch_Service_H2H1.wsdl" />
+    <None Include="Service References\ReceiveMoneySearch\TCF.Zeo.Cxn.MoneyTransfer.WU.ReceiveMoneySearch.receivemoneysearchreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\TCF.Zeo.Cxn.MoneyTransfer.WU.ReceiveMoneySearch.ReceiveMoneySearch_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\XRSIReceiveMoneySearchReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ReceiveMoneySearch\XRSIReceiveMoneySearchRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\Search\Search_Service_H2HService1.wsdl" />
+    <None Include="Service References\Search\TCF.Zeo.Cxn.MoneyTransfer.WU.Search.searchreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Search\TCF.Zeo.Cxn.MoneyTransfer.WU.Search.Search_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\Search\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\Search\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\Search\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\Search\XRSISearchReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\Search\XRSISearchRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\PayStatus_Service_H2H1.wsdl" />
+    <None Include="Service References\SendMoneyPayStatus\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyPayStatus.paystatusinquiryreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyPayStatus.PayStatus_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\XRSIPayStatusInquiryReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyPayStatus\XRSIPayStatusInquiryRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyRefund\Refund_Service_H2HService1.wsdl" />
+    <None Include="Service References\SendMoneyRefund\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyRefund.refundreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyRefund\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyRefund.Refund_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyRefund\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyRefund\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyRefund\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyRefund\XRSIRefundReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyRefund\XRSIRefundRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyStore\SendMoneyStore_Service_H2H1.wsdl" />
+    <None Include="Service References\SendMoneyStore\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyStore.sendmoneystorereply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyStore\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyStore.SendMoneyStore_H2H_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyStore\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyStore\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyStore\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyStore\XRSISendMoneyStoreReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyStore\XRSISendMoneyStoreRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyValidation\sendmoneyValidation_Service_H2H1.wsdl" />
+    <None Include="Service References\SendMoneyValidation\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyValidation.sendmoneyvalidationreply.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyValidation\TCF.Zeo.Cxn.MoneyTransfer.WU.SendMoneyValidation.sendmoneyValidation_Output.datasource">
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </None>
+    <None Include="Service References\SendMoneyValidation\XRSIBasicTypes1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyValidation\XRSIClasses1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyValidation\XRSIErrorReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyValidation\XRSISendMoneyValidationReply1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\SendMoneyValidation\XRSISendMoneyValidationRequest1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\DASService\" />
+    <WCFMetadataStorage Include="Service References\FeeInquiry\" />
+    <WCFMetadataStorage Include="Service References\ModifySendMoneySearch\" />
+    <WCFMetadataStorage Include="Service References\ModifySendMoney\" />
+    <WCFMetadataStorage Include="Service References\ReceiveMoneyPay\" />
+    <WCFMetadataStorage Include="Service References\ReceiveMoneySearch\" />
+    <WCFMetadataStorage Include="Service References\Search\" />
+    <WCFMetadataStorage Include="Service References\SendMoneyPayStatus\" />
+    <WCFMetadataStorage Include="Service References\SendMoneyRefund\" />
+    <WCFMetadataStorage Include="Service References\SendMoneyStore\" />
+    <WCFMetadataStorage Include="Service References\SendMoneyValidation\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\DASService\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\FeeInquiry\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\FeeInquiry\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\FeeInquiry\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoney\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoney\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoney\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoneySearch\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoneySearch\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ModifySendMoneySearch\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneyPay\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneyPay\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneyPay\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneySearch\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneySearch\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ReceiveMoneySearch\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Search\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Search\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\Search\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyPayStatus\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyPayStatus\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyPayStatus\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyRefund\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyRefund\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyRefund\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyStore\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyStore\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyStore\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyValidation\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyValidation\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\SendMoneyValidation\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

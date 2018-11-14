@@ -1,0 +1,27 @@
+﻿@model TCF.Channel.Zeo.Web.Models.ProfileSummary
+<div class="row_shift28">
+<ul>
+@if (Convert.ToInt32((Session["UserRoleId"])) == (int)TCF.Zeo.Common.Util.Helper.UserRoles.Tech || Convert.ToInt32((Session["UserRoleId"])) == (int)TCF.Zeo.Common.Util.Helper.UserRoles.ComplianceManager)
+{
+	<li>@Html.ActionLink("Exit", "CustomerSearch", "CustomerSearch", null, new { @class = "anc_link_btn red_btn", tabIndex = "1" })</li>
+	<li>@Html.ActionLink("Cancel", "ProductInformation", "Product", null, new { @class = "anc_link_btn", tabIndex = "1", })</li>	
+}
+else
+{
+	<li>@Html.ActionLink("Back", "EmploymentDetails", "CustomerRegistration", null, new { @class = "anc_link_btn", tabindex = 2})</li>
+
+    if (Session["EditProspect"] != null && (bool)Session["EditProspect"] == false)
+    {
+		<li class="row_width30 row_shift2">
+            <input type="button" value="Confirm" tabindex="1" id="summarySubmit" class="green_input" />
+        </li>        
+    }
+    else
+    {
+		<li class="row_width30 row_shift2">
+            <input type="button" value="Done" tabindex="1" id="summarySubmit" class="green_input" />
+        </li>       
+    }
+}
+</ul>
+</div>

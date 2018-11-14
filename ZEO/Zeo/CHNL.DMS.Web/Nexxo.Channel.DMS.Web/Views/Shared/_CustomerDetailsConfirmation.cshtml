@@ -1,0 +1,144 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CustomerDetails
+
+@if (!Model.IsRcifCustomer)
+{
+    <div class="bottom_margin5">
+        <p class="row_shift15"> <b>Verify the customer's government issued ID </b></p>
+    </div>
+}
+<div class="">
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.FirstName)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.FirstName) &nbsp;@Html.DisplayFor(model => model.LastName)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.DateOfBirth)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.DateOfBirth)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.Address)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.Address)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.GovermentId)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.GovermentId)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.PhoneNumber)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.PhoneNumber)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.SSN)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.SSN)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row-with-two-col">
+        <div class="row-with-two-col-first">
+            @Html.LabelFor(model => model.CardNumber)
+        </div>
+        <div class="row-with-two-col-second">
+            @Html.DisplayFor(model => model.CardNumber)
+        </div>
+    </div>
+    <div class="clearfix"></div>
+    @Html.TextBoxFor(model => model.ActualSSN, new { @class = "hide", id = "actualSSN" })
+    @Html.TextBoxFor(model => model.CustomerId, new { @class = "hide" })
+    <div class="row_shift12 margin_top_1">
+        <ul>
+            <li class="">
+                <input type="button" value="Cancel" id="custDetailBtnCancel" class="red_btn" onclick="RemovePopUp()" />
+            </li>
+            @if (Model.IsRcifCustomer)
+            {
+                <li class="">
+                    <input type="submit" value="Continue to Registration" style="width:140px !important; font-size:11.5px !important" id="regipagebtn" />
+                </li>
+            }
+            else
+            {
+                if (Model.IsExpiring)
+                {
+                    <li class="">
+                        @Html.ActionLink("Continue", "IdentificationInformation", "CustomerRegistration", new { isExpiring = true }, new { @class = "anc_link_btn", @id = "custDetailBtnContinue" })
+                    </li>
+                }
+                else if (Model.IsExpired)
+                {
+                    <li class="">
+                        @Html.ActionLink("Continue", "IdentificationInformation", "CustomerRegistration", null, new { @class = "anc_link_btn", @id = "custDetailBtnContinue" })
+                    </li>
+                }
+                else
+                {
+                    <li class="">
+                        @Html.ActionLink("Continue", "InitiateCustomerSession", "CustomerSearch", null, new { @class = "anc_link_btn", @id = "custDetailBtnContinue" })
+                    </li>
+                }
+            }
+
+        </ul>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#regipagebtn").click(function () {
+            validateAndPopulateCustomerDetails($("#CustomerId").val(), $("#actualSSN").val());
+        });
+
+        function validateAndPopulateCustomerDetails(Id, SSN) {
+            var isCompanionSearch = 'false';//$('#IsCompanionSearch').val();
+            $.ajax({
+                url: PopulateRCIFCustomerDetailsUrl,
+                data: { "id": Id, "ssn": SSN }, //parameters go here in object literal form 
+                type: 'POST',
+                datatype: 'json',
+                success: function (data) {
+                    if (data.success === true) {
+                        if (data.data === true) {
+                            window.location.href = ProfileSummaryNavigationURL + '?IsException=false&ExceptionMessage=""';
+                        }
+                        else {
+                            window.location.href = PersonalInfoNavigationURL + '?IsException=false&ExceptionMessage=""';
+                        }
+                    }
+                    else {
+                        showExceptionPopupMsg(data.data);
+                    }
+                },
+                error: function (err) {
+                    showExceptionPopupMsg(err);
+                }
+            });
+        }
+    });
+</script>

@@ -1,0 +1,1 @@
+c:\nexxo\Alloy\packages\NUnit.Runners.2.6.4\tools\nunit-console-x86.exe C:\nexxo\Alloy\Tests\MGI.Integration.Test\bin\x86\Debug\MGI.Integration.Test.dll /noshadow

@@ -1,0 +1,737 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns="http://api.tsysprepaid.com/card" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://api.tsysprepaid.com/card" version="100" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:complexType name="cardData">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="version" type="xsd:long" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="status" type="cardStatus" />
+      <xsd:element name="type" type="cardType" />
+      <xsd:element name="name1" type="xsd:string" />
+      <xsd:element minOccurs="0" name="name2" nillable="true" type="xsd:string" />
+      <xsd:element name="number" type="xsd:long" />
+      <xsd:element name="expiryDate" type="xsd:dateTime" />
+      <xsd:element name="issueDate" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="verificationCode" nillable="true" type="xsd:long" />
+      <xsd:element name="cardMaterialId" type="xsd:long" />
+      <xsd:element name="time" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="activatedOn" nillable="true" type="xsd:dateTime" />
+      <xsd:element name="issuanceState" type="issuanceState" />
+      <xsd:element name="issuanceType" type="issuanceType" />
+      <xsd:element name="deviceType" type="deviceType" />
+      <xsd:element minOccurs="0" name="atcCounter" nillable="true" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createCardData">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="active" type="xsd:boolean" />
+      <xsd:element name="plastic" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="mailerText" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element name="issuanceType" type="issuanceType" />
+      <xsd:element name="deviceType" type="deviceType" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="attributes" nillable="true" type="attributeData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="issuanceState">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INITIAL" />
+      <xsd:enumeration value="REISSUANCE" />
+      <xsd:enumeration value="RENEWAL" />
+      <xsd:enumeration value="LOSTSTOLEN" />
+      <xsd:enumeration value="EMERGENCY" />
+      <xsd:enumeration value="OVERFLOW" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="issuanceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERSONALIZED" />
+      <xsd:enumeration value="NONPERSONALIZED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="deviceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="MAGSTRIPE" />
+      <xsd:enumeration value="MOBILE" />
+      <xsd:enumeration value="ECARD" />
+      <xsd:enumeration value="VOUCHER" />
+      <xsd:enumeration value="CONTACTLESS" />
+      <xsd:enumeration value="STICKER" />
+      <xsd:enumeration value="COUPON" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="mailerData">
+    <xsd:sequence>
+      <xsd:element name="mailerId" type="xsd:long" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cards" nillable="true" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="attributeData">
+    <xsd:sequence>
+      <xsd:element name="name" type="xsd:string" />
+      <xsd:element name="value" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="cardType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PHYSICAL" />
+      <xsd:enumeration value="VIRTUAL" />
+      <xsd:enumeration value="CHIP" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="cardStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ACTIVATED" />
+      <xsd:enumeration value="INACTIVE" />
+      <xsd:enumeration value="BLOCKED" />
+      <xsd:enumeration value="REPLACED" />
+      <xsd:enumeration value="CLOSED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="requestType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="CHANGE_CARD_NAME" />
+      <xsd:enumeration value="DAMAGED_PLASTIC" />
+      <xsd:enumeration value="PLASTIC_CHANGE" />
+      <xsd:enumeration value="LOST_STOLEN" />
+      <xsd:enumeration value="RENEWAL" />
+      <xsd:enumeration value="VIRTUAL_TO_PHYSICAL" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="deliveryType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="REGULAR" />
+      <xsd:enumeration value="EXPEDITED" />
+      <xsd:enumeration value="BULK_NORMAL" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="addressType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PRIMARY" />
+      <xsd:enumeration value="SECONDARY" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="shipStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ORDERED" />
+      <xsd:enumeration value="SHIPPED" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="maintenanceType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PLASTIC" />
+      <xsd:enumeration value="PIN_MAILER" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="shippingType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="EXPRESS" />
+      <xsd:enumeration value="NORMAL" />
+      <xsd:enumeration value="STANDARD_NEXT_DAY" />
+      <xsd:enumeration value="REISSUE" />
+      <xsd:enumeration value="REISSUE_FOREIGN" />
+      <xsd:enumeration value="FOREIGN" />
+      <xsd:enumeration value="SATURDAY" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="embossingData">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="maintType" type="maintenanceType" />
+      <xsd:element name="shippingStatus" type="shipStatus" />
+      <xsd:element name="deliveryType" type="shippingType" />
+      <xsd:element name="requestDate" type="xsd:dateTime" />
+      <xsd:element name="lastUpdateDate" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="shipDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="trackingNumber" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="recordNumber" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="batchId" nillable="true" type="xsd:long" />
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="status" type="cardStatus" />
+      <xsd:element name="type" type="cardType" />
+      <xsd:element name="name1" type="xsd:string" />
+      <xsd:element minOccurs="0" name="name2" nillable="true" type="xsd:string" />
+      <xsd:element name="number" type="xsd:long" />
+      <xsd:element name="expiryDate" type="xsd:dateTime" />
+      <xsd:element name="issueDate" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="verificationCode" nillable="true" type="xsd:long" />
+      <xsd:element name="cardMaterialId" type="xsd:long" />
+      <xsd:element name="time" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="activatedOn" nillable="true" type="xsd:dateTime" />
+      <xsd:element name="issuanceState" type="issuanceState" />
+      <xsd:element name="issuanceType" type="issuanceType" />
+      <xsd:element name="deviceType" type="deviceType" />
+      <xsd:element minOccurs="0" name="atcCounter" nillable="true" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="memoField">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="150" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="activateCardRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="activateCardResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="activateCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="CARD_ACTIVE" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="CANNOT_ACTIVATE_CARD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="blockCardRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="blockReason" type="blockCardReason" />
+      <xsd:element name="circumstances" type="xsd:string" />
+      <xsd:element name="blockedBy" type="cardChangedBy" />
+      <xsd:element minOccurs="0" name="captureCard" nillable="true" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="notify" nillable="true" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="blockCardReason">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="CARD_CHANGED" />
+      <xsd:enumeration value="CARD_COMPROMISED" />
+      <xsd:enumeration value="CARD_GUARD_AUTO_BLOCK" />
+      <xsd:enumeration value="CLOSED_ACCOUNT" />
+      <xsd:enumeration value="DEACTIVATED_USER" />
+      <xsd:enumeration value="FRAUD" />
+      <xsd:enumeration value="FRAUD_INVESTIGATION_PENDING" />
+      <xsd:enumeration value="LOST" />
+      <xsd:enumeration value="NEGATIVE_BALANCE" />
+      <xsd:enumeration value="OTHER" />
+      <xsd:enumeration value="OUTGOING_CHARGEBACK" />
+      <xsd:enumeration value="PIN_FAILURE" />
+      <xsd:enumeration value="PIN_UNBLOCK_FAILURE" />
+      <xsd:enumeration value="STOLEN" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="blockCardResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="blockCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="CARD_BLOCKED" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="linkCardToAccountRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="linkCardToAccountResponse">
+    <xsd:sequence />
+  </xsd:complexType>
+  <xsd:simpleType name="linkCardToAccountError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+      <xsd:enumeration value="INVALID_ACCOUNT_STATUS" />
+      <xsd:enumeration value="INVALID_CARD_STATUS" />
+      <xsd:enumeration value="CARD_ALREADY_LINKED" />
+      <xsd:enumeration value="NOT_USER_ACCOUNT" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="createCardRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+      <xsd:element name="plastic" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="mailerText" />
+      <xsd:element minOccurs="0" name="expiryDate" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element name="issuanceType" type="issuanceType" />
+      <xsd:element minOccurs="0" name="deviceType" type="deviceType" />
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="attributes" nillable="true" type="attributeData" />
+      <xsd:element minOccurs="0" name="deliveryType" nillable="true" type="deliveryType" />
+      <xsd:element minOccurs="0" name="bulkShippingAddress" nillable="true" type="bulkShippingAddress" />
+      <xsd:element minOccurs="0" name="materialOverride" nillable="true" type="materialOverride" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="createCardResponse">
+    <xsd:sequence>
+      <xsd:element name="card" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="createCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+      <xsd:enumeration value="INVALID_CARD_NAME" />
+      <xsd:enumeration value="EMPTY_CARD_POOL" />
+      <xsd:enumeration value="INVALID_CARD_ISSUE_ID" />
+      <xsd:enumeration value="INVALID_ATTRIBUTE" />
+      <xsd:enumeration value="INVALID_BULK_ADDRESS" />
+      <xsd:enumeration value="BULK_SHIP_ADDRESS_REQUIRED" />
+      <xsd:enumeration value="BULK_ADDRESS_NOT_SUPPORTED_BY_SHIPPING_TYPE" />
+      <xsd:enumeration value="INAPPROPRIATE_LANGUAGE" />
+      <xsd:enumeration value="INVALID_EMBOSSER_ATTRIBUTES_GROUP" />
+      <xsd:enumeration value="INVALID_STICKER_ID" />
+      <xsd:enumeration value="INVALID_PLASTIC_ID" />
+      <xsd:enumeration value="INVALID_ENVELOPE_ID" />
+      <xsd:enumeration value="INVALID_LABEL_ID" />
+      <xsd:enumeration value="INVALID_CARRIER_ID" />
+      <xsd:enumeration value="INVALID_INSERT_CODE1" />
+      <xsd:enumeration value="INVALID_INSERT_CODE2" />
+      <xsd:enumeration value="INVALID_INSERT_CODE3" />
+      <xsd:enumeration value="INVALID_INSERT_CODE4" />
+      <xsd:enumeration value="INVALID_INSERT_CODE5" />
+      <xsd:enumeration value="INVALID_INSERT_CODE6" />
+      <xsd:enumeration value="INVALID_INSERT_CODE7" />
+      <xsd:enumeration value="INVALID_INSERT_CODE8" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getCardsRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getCardsResponse">
+    <xsd:sequence>
+      <xsd:element maxOccurs="unbounded" name="cards" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getCardsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="unblockCardRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="unblockReason" type="unblockCardReason" />
+      <xsd:element name="unblockedBy" type="cardChangedBy" />
+      <xsd:element name="circumstances" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="unblockCardReason">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ACCOUNT_BALANCE_RECONCILIATION" />
+      <xsd:enumeration value="ACTIVATED_USER" />
+      <xsd:enumeration value="CARD_FOUND" />
+      <xsd:enumeration value="CHARGEBACK_SETTLED" />
+      <xsd:enumeration value="FRAUD_BALANCE_RECONCILIATION" />
+      <xsd:enumeration value="NEGATIVE_BALANCE_RECONCILIATION" />
+      <xsd:enumeration value="OPERATOR_ERROR" />
+      <xsd:enumeration value="OTHER" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="unblockCardResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="unblockCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="CARD_NOT_BLOCKED" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="verifyCardRequest">
+    <xsd:sequence>
+      <xsd:element name="number" type="xsd:long" />
+      <xsd:element minOccurs="0" name="pin" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="verificationCode" nillable="true" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="verifyCardResponse">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="verifyCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="CARD_NOT_FOUND" />
+      <xsd:enumeration value="INVALID_PIN" />
+      <xsd:enumeration value="INVALID_VERIFICATION_CODE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getCreatedCardsRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getCreatedCardsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cards" nillable="true" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getCreatedCardsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getUserCardsRequest">
+    <xsd:sequence>
+      <xsd:element name="userId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getUserCardsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cards" nillable="true" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getUserCardsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_USER_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getAccountCardsRequest">
+    <xsd:sequence>
+      <xsd:element name="accountId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getAccountCardsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cards" nillable="true" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getAccountCardsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_ACCOUNT_ID" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="cardChangedBy">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="USER" />
+      <xsd:enumeration value="AGENT" />
+      <xsd:enumeration value="BATCH" />
+      <xsd:enumeration value="IVR" />
+      <xsd:enumeration value="UNKNOWN" />
+      <xsd:enumeration value="PROCESS" />
+      <xsd:enumeration value="SERVICE_OPERATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="lostOrStolenReason">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="LOST" />
+      <xsd:enumeration value="STOLEN" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="cardBlockData">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="blockedOn" type="xsd:dateTime" />
+      <xsd:element name="blockReason" type="blockCardReason" />
+      <xsd:element name="blockedBy" type="cardChangedBy" />
+      <xsd:element name="blockCircumstances" type="xsd:string" />
+      <xsd:element name="captureCard" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="unblockedOn" nillable="true" type="xsd:dateTime" />
+      <xsd:element minOccurs="0" name="unblockReason" nillable="true" type="unblockCardReason" />
+      <xsd:element minOccurs="0" name="unblockCircumstances" nillable="true" type="xsd:string" />
+      <xsd:element name="unblockedBy" type="cardChangedBy" />
+      <xsd:element name="notify" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getCardBlocksRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getCardBlocksResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cardBlock" nillable="true" type="cardBlockData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getCardBlocksError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="getActivatedCardsRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getActivatedCardsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="cards" nillable="true" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getActivatedCardsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="setPinRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="pin" type="xsd:long" />
+      <xsd:element name="changedBy" type="cardChangedBy" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="setPinResponse">
+    <xsd:sequence>
+      <xsd:element name="newVersion" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="setPinError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="INVALID_CARD" />
+      <xsd:enumeration value="INVALID_PIN" />
+      <xsd:enumeration value="OPTIMISTIC_LOCK_VIOLATION" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="canSetPinRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="canSetPinResponse">
+    <xsd:sequence>
+      <xsd:element name="canSet" type="xsd:boolean" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="canSetPinError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="INVALID_CARD" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="requestCardRequest">
+    <xsd:sequence>
+      <xsd:element name="cardId" type="xsd:long" />
+      <xsd:element name="requestType" type="requestType" />
+      <xsd:element minOccurs="0" name="deliveryType" nillable="true" type="deliveryType" />
+      <xsd:element minOccurs="0" name="cardName1" nillable="true" type="xsd:string" />
+      <xsd:element minOccurs="0" name="cardName2" nillable="true" type="xsd:string" />
+      <xsd:element name="addressType" type="addressType" />
+      <xsd:element minOccurs="0" name="cardIssueId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="lostOrStolenReason" nillable="true" type="lostOrStolenReason" />
+      <xsd:element minOccurs="0" name="comments" nillable="true" type="memoField" />
+      <xsd:element minOccurs="0" name="mailerText" nillable="true" type="mailerText" />
+      <xsd:element minOccurs="0" name="bulkShippingAddress" nillable="true" type="bulkShippingAddress" />
+      <xsd:element minOccurs="0" name="materialOverride" nillable="true" type="materialOverride" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="requestCardResponse">
+    <xsd:sequence>
+      <xsd:element name="card" type="cardData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="requestCardError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_CARD_ID" />
+      <xsd:enumeration value="MANDATORY_ELEMENTS_MISSING" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="USER_STATUS_IS_CLOSED" />
+      <xsd:enumeration value="ACCOUNT_STATUS_IS_CLOSED" />
+      <xsd:enumeration value="INVALID_CARD_STATUS" />
+      <xsd:enumeration value="INVALID_CARD_ISSUANCE_TYPE" />
+      <xsd:enumeration value="INVALID_CARD_ISSUE_ID" />
+      <xsd:enumeration value="INSUFFICIENT_BALANCE" />
+      <xsd:enumeration value="CARD_NOT_BLOCKED" />
+      <xsd:enumeration value="EMPTY_CARD_POOL" />
+      <xsd:enumeration value="INVALID_ADDRESS_TYPE" />
+      <xsd:enumeration value="INVALID_CARD_TYPE" />
+      <xsd:enumeration value="PROGRAM_ISSUE_NOT_FOUND" />
+      <xsd:enumeration value="ACCOUNT_MARKED_FRAUD" />
+      <xsd:enumeration value="INVALID_BULK_ADDRESS" />
+      <xsd:enumeration value="BULK_SHIP_ADDRESS_REQUIRED" />
+      <xsd:enumeration value="BULK_ADDRESS_NOT_SUPPORTED_BY_SHIPPING_TYPE" />
+      <xsd:enumeration value="INAPPROPRIATE_LANGUAGE" />
+      <xsd:enumeration value="INVALID_EMBOSSER_ATTRIBUTES_GROUP" />
+      <xsd:enumeration value="INVALID_STICKER_ID" />
+      <xsd:enumeration value="INVALID_PLASTIC_ID" />
+      <xsd:enumeration value="INVALID_ENVELOPE_ID" />
+      <xsd:enumeration value="INVALID_LABEL_ID" />
+      <xsd:enumeration value="INVALID_CARRIER_ID" />
+      <xsd:enumeration value="INVALID_INSERT_CODE1" />
+      <xsd:enumeration value="INVALID_INSERT_CODE2" />
+      <xsd:enumeration value="INVALID_INSERT_CODE3" />
+      <xsd:enumeration value="INVALID_INSERT_CODE4" />
+      <xsd:enumeration value="INVALID_INSERT_CODE5" />
+      <xsd:enumeration value="INVALID_INSERT_CODE6" />
+      <xsd:enumeration value="INVALID_INSERT_CODE7" />
+      <xsd:enumeration value="INVALID_INSERT_CODE8" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="bulkAttentionTo">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="40" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="bulkStreetLine1">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="40" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="bulkStreetLine2">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="40" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="bulkCity">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="19" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="bulkStateProvince">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="3" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="bulkShippingAddress">
+    <xsd:sequence>
+      <xsd:element name="bulkAttentionTo" type="bulkAttentionTo" />
+      <xsd:element name="bulkStreetLine1" type="bulkStreetLine1" />
+      <xsd:element minOccurs="0" name="bulkStreetLine2" type="bulkStreetLine2" />
+      <xsd:element name="bulkCity" type="bulkCity" />
+      <xsd:element name="bulkStateProvince" type="bulkStateProvince" />
+      <xsd:element name="bulkPostalCode" type="xsd:string" />
+      <xsd:element name="bulkCountry" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="mailerTextLine">
+    <xsd:restriction base="xsd:string">
+      <xsd:maxLength value="30" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="mailerText">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="mailerTextLine1" type="mailerTextLine" />
+      <xsd:element minOccurs="0" name="mailerTextLine2" type="mailerTextLine" />
+      <xsd:element minOccurs="0" name="mailerTextLine3" type="mailerTextLine" />
+      <xsd:element minOccurs="0" name="mailerTextLine4" type="mailerTextLine" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getProducedPlasticsRequest">
+    <xsd:sequence>
+      <xsd:element name="programId" type="xsd:long" />
+      <xsd:element name="rangeBegin" type="xsd:dateTime" />
+      <xsd:element name="rangeEnd" type="xsd:dateTime" />
+      <xsd:element name="recursive" type="xsd:boolean" />
+      <xsd:element minOccurs="0" name="shippingStatus" nillable="true" type="shipStatus" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="getProducedPlasticsResponse">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" maxOccurs="unbounded" name="producedPlastics" nillable="true" type="embossingData" />
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:simpleType name="getProducedPlasticsError">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PERMISSION_DENIED" />
+      <xsd:enumeration value="OPERATION_NOT_ALLOWED" />
+      <xsd:enumeration value="OPERATION_NOT_IMPLEMENTED" />
+      <xsd:enumeration value="INVALID_PARAMETER_VALUE" />
+      <xsd:enumeration value="SYSTEM_ERROR" />
+      <xsd:enumeration value="INVALID_PROGRAM_ID" />
+      <xsd:enumeration value="INVALID_DATE_RANGE" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="materialOverride">
+    <xsd:sequence>
+      <xsd:element minOccurs="0" name="stickerId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="plasticId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="envelopeId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="carrierId" nillable="true" type="xsd:long" />
+      <xsd:element minOccurs="0" name="insertCodes" nillable="true" type="xsd:string" />
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>

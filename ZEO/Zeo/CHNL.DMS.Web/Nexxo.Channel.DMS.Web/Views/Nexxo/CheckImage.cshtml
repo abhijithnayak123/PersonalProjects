@@ -1,0 +1,105 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CheckImage
+@{
+    ViewBag.Title = "Check Image";
+
+    var browserName = Request.Browser.Browser;
+    var browserVersion = Request.Browser.Version;
+}
+<script src="@Url.Content("~/Scripts/Check/CheckManualEntry.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Check/Check.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+<script>
+    @*var showMicrErrorPop = '@Model.ShowMicrErrorPopUp';*@
+    var errorMessage = '@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.MicrInfoWarning';
+</script>
+@using (Html.BeginForm("PostCheckImage", "CheckImage"))
+{
+    <input type="hidden" id="PanelStatus" value="1" />
+    <div class="check_post_img">
+        <ul class="page_head product_head">
+            <li>Check Image</li>
+        </ul>
+    </div>
+
+    @Html.ValidationSummary(true)
+
+    <div class="txt_center">
+        <div>
+            <div class="fltleft labelText cardSwipeText center-lable">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckFrontImageText</div>
+            <img id="CheckFrontImage" class="checkImg" src="" alt="checkFrontImage" />
+
+            @if(Model.ProductProviderCode == TCF.Channel.Zeo.Web.ServiceClient.ZeoService.HelperProviderId.TCFCheck && Convert.ToBoolean(System.Configuration.ConfigurationManager.AppSettings["DisplayCheckInfo"].ToString()))
+            {
+                <br />
+                <br />
+                <div class="row display-inline">
+                    <div class="certegy_manual_check_label">
+                        <label class="label_txt">
+                            @Html.LabelFor(model => model.RoutingNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.RoutingNumber)
+                            <span class="mandatory">*</span>
+                        </label>
+                    </div>
+                    <div class="certegy_manual_check_label">
+                        <label class="label_txt">
+                            @Html.LabelFor(model => model.AccountNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.AccountNumber)
+                            <span class="mandatory">*</span>
+                        </label>
+                    </div>
+                    <div class="certegy_manual_check_label">
+                        <label class="label_txt">
+                            @Html.LabelFor(model => model.CheckNumber, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CertegyCheckNumber)
+                            <span class="mandatory">*</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="row display-inline">
+                    <div class="certegy_manual_check_txtbx">
+                        @Html.TextBoxFor(model => model.RoutingNumber, null, new { @class = "input_box manual_check", tabindex = 1 })
+                        <div class="certegy_manual_check_error">
+                            @Html.ValidationMessageFor(model => model.RoutingNumber)
+                        </div>
+                    </div>
+                    <div class="certegy_manual_check_txtbx">
+                        @Html.TextBoxFor(model => model.AccountNumber, null, new { @class = "input_box manual_check", tabindex = 1 })
+                        <div class="certegy_manual_check_error">
+                            @Html.ValidationMessageFor(model => model.AccountNumber)
+                        </div>
+                    </div>
+                    <div class="certegy_manual_check_txtbx">
+                        @Html.TextBoxFor(model => model.CheckNumber, null, new { @class = "input_box manual_check", tabindex = 1 })
+                        <div class="certegy_manual_check_error">
+                            @Html.ValidationMessageFor(model => model.CheckNumber)
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @Html.HiddenFor(m => m.RoutingNumber)
+                @Html.HiddenFor(m => m.AccountNumber)
+                @Html.HiddenFor(m => m.CheckNumber)
+            }
+
+            <div class="fltleft labelText cardSwipeText center-lable">@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.CheckBackImageText</div>
+            <img id="CheckBackImage" class="checkImg" src="" alt="checkBackImage" />
+            <div id="errorMessage" class="checkScanError">@Model.MicrErrorMessage</div>
+        </div>
+        <script language="javascript" type="text/javascript">
+            $(document).ready(function () {
+                ShowCheckFrontImage("@Model.CheckFrontImage");
+                ShowCheckBackImage("@Model.CheckBackImage");
+            });
+        </script>
+        <div class="model_wrap">
+            @Html.Partial("_CheckImageDetails", Model)
+        </div>
+        <div class="scan_recheck_wrap">
+            <ul>
+                <li>@Html.ActionLink("Re-Scan", "ReScanCheck", "INGOProcessCheck", null, new { @class = "anc_link_btn red_btn" })</li>
+                <li class="row_width25">
+                    <input type="submit" disabled="@Model.IsDisabled" name="Source" id="btnsubmit" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.NextButtonText" />
+                </li>
+            </ul>
+        </div>
+    </div>
+}

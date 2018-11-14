@@ -1,0 +1,85 @@
+﻿@model TCF.Channel.Zeo.Web.Models.TerminalModel
+@{
+	ViewBag.Title = "TerminalSetup";
+	Layout = "~/Views/Shared/_menu.cshtml";
+}
+
+@using (Html.BeginForm("TerminalSetup", "TerminalSetup", new { id="terminalSetup"}))
+{
+	<div>
+		<ul class="page_head product_head">
+			<li class="float_left">Terminal Mapping</li>
+		</ul>
+	</div>
+	
+	<div id="divSetupMessage"  class="field-validation-error"> Please setup a peripheral server for this location </div>
+	if (@ViewBag.Message != null)
+	{
+	    <div id="divViewBag" align="center" class="field-validation-error">@ViewBag.Message</div>
+	    <br />
+	}
+	
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.TerminalName, new { @class = "row_label_txt" })
+			@if (Model.TIM == (short)TCF.Zeo.Common.Util.Helper.TerminalIdentificationMechanism.HostName)
+			{ 
+				@Html.TextBoxFor(model => model.TerminalName, null, new { readOnly = "true", @class = "disable_txt" })
+			}
+			else
+			{
+				@Html.TextBoxFor(model => model.TerminalName, null, new { @class = "input_box" })
+			}
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.TerminalName)
+			@Html.HiddenFor(model => model.Id)
+		</div>
+	</div>
+	
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.IpAddress, new { @class = "row_label_txt" })
+			@Html.TextBoxFor(model => model.IpAddress, null, new { readOnly = "true", @class = "disable_txt" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.IpAddress)
+		</div>
+	</div> 
+	
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.Location, new { @class = "row_label_txt" })
+			@Html.DropDownListFor(model => model.Location, Model.Locations, new { @class = "dropdown_box" })
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.Location)
+		</div>
+	</div> 
+	
+	<div class="row">
+		<div>
+			@Html.LabelFor(model => model.NpsTerminal, new { @class = "row_label_txt" })
+            @Html.DropDownListFor(model => model.NpsTerminal, Model.NpsTerminals, new { @class = "dropdown_box"})
+		</div>
+		<div class="error_align_left">
+			@Html.ValidationMessageFor(model => model.NpsTerminal)
+		</div>
+	</div>
+	
+	<div class="btn_wrap">
+		<ul>
+			<li class="row_width30">
+				<input type="submit" id="map" value="Setup" class="terminal_setup_btn" />
+			</li>
+		</ul>
+	</div>
+	
+    <script>
+        var npsUrl = '@ViewBag.PeripheralUrl';
+        if (npsUrl) {
+            window.NPSbaseURL = npsUrl;
+        }
+    </script>
+    <script src="@Url.Content("~/Scripts/PeripheralServices/terminalSetup.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+}

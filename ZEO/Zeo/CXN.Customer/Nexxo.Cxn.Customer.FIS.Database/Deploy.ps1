@@ -1,0 +1,1 @@
+& .\Nexxo.Cxn.Customer.FIS.Database.exe | Write-Host

@@ -1,0 +1,265 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SendMoney
+@{
+    ViewBag.Title = "SendMoney";
+    Layout = "~/Views/Shared/_Common.cshtml";
+
+}
+@{
+    Func<TCF.Channel.Zeo.Web.Models.SendMoney, object> SendMoneyPickUpStateProvince =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyPickUpStateProvince<span class="mandatory hide" id="pickUpStateRequiredStar">*</span>
+        </text>;
+
+    Func<TCF.Channel.Zeo.Web.Models.SendMoney, object> PickUpCity =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpCity<span class="mandatory hide"
+                                                                                   id="pickUpCityRequiredStar">*</span>
+        </text>;
+}
+<script>
+    var initSendMoneyReceiverID = '@Model.ReceiverID';
+    //var initSendMoneyAutoComplete = '@Url.Action("AutoCompleteReceiver", "SendMoney")';
+    var initSendMoneyReceiverByFullName = '@Url.Action("ReceiverByFullName", "SendMoney")';
+    var initSendMoneyErrorMessage = '@ViewBag.ErrorMessage';
+    var initSendMoneyImportPastReceiver = '@Url.Action("ImportPastReceiver", "SendMoney")';
+    var initSendMoneyPopulateReceiverDetails = '@Url.Action("PopulateReceiverDetails", "SendMoney")';
+    var initSendMoneyGetReceiverForEdit = '@Url.Action("GetReceiverForEdit", "SendMoney")?ReceiverId=';
+    var initSendMoneyWUDeliveryMethods = '@Url.Action("WUDeliveryMethods", "SendMoney")';
+    var initSendMoneyWUDeliveryOptions = '@Url.Action("WUDeliveryOptions", "SendMoney")';
+    var initGetValuesForActOnMyBehalf = '@Url.Action("GetValuesForActOnMyBehalf", "SendMoney")';;
+    var imgSendMoneyfreqRec = '@Url.Content("~/Content/images/frequentReceiverLogo.png")';
+    var imgSendMoneyselectedRec = '@Url.Content("~/Content/images/selectedfrequentReceiverLogo.png")';
+
+    var imgFreqRecURL = '@Url.Content("~/Content/images/frequentReceiverLogo.png")';
+    var imgSelectedFreqRecURL = '@Url.Content("~/Content/images/selectedfrequentReceiverLogo.png")';
+    var ReceiverID = '@Model.ReceiverID';
+    var showBSAWarningURL = '@Url.Action("ShowBSAWarning", "SendMoney")';
+    var verifyBSAWarnig = '@Url.Action("VerifyBSAWarning", "SendMoney")'
+    var CheckPNotificationDetails = '@Url.Action("CheckNotificationDetails", "SendMoney")';
+
+    var isFormPost = false;
+    var IsFraudCheck = false;
+    var fraudWarningPopUp_URL = '@Url.Action("FraudWarningPopUp", "SendMoney")';
+    var fraudLimitCheck_URL = '@Url.Action("FraudLimitCheck", "SendMoney")';
+    var fraudNotificationPopUp_URL = '@Url.Action("FraudNotificationPopUp", "SendMoney")';
+
+</script>
+<script src="@Url.Content("~/Scripts/SendMoney/initSendMoney.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.placeholder.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/SendMoney/CancelMoneytransfer.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+@Html.Partial("_partialSpinner")
+@using (Html.BeginForm("Validate", "SendMoney", FormMethod.Post, new { id = "sendMoneyForm" }))
+{
+	<div>
+		<ul class="page_head product_head">
+			<li class="fav_payee_banner_txt">Select Receiver</li>
+			@if (!string.IsNullOrWhiteSpace(Model.WUCardNumber))
+   {
+				<li class="import_payee_button"><a href="#">
+					<img src="@Url.Content("~/Content/Images/Import-Frequent-BillPayee-Button.png")" id="Import_Fav_Receiver" onclick="importPastReceiver()" alt=""  
+                    class="import_payee_img opaqueButtonShadow"/></a></li>
+   }
+			<li class="txt_right"><a href="@Url.Action("EnrollWesternUnionGoldCard", "EnrollWesternUnion", new { editgoldcardfrom = "sendmoney" })">
+				<img src="@Url.Content("~/Content/Images/Edit-WU-Card-Button.png")" alt="" class="edit_gold_card_img opaqueButtonShadow"/></a>
+			</li>
+		</ul>
+	</div>
+	<div id="frequentReceiver">
+		@Html.Partial("_FrequentReceivers", Model)
+	</div>
+	<div>
+		<div class="spacer">
+			<div>
+				<span>
+					<label class="labelText " style="width: 80%; text-align: left; float: left;">
+						@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ActOnMyBehalf)</label></span>
+				@Html.DropDownListFor(model => model.ActOnMyBehalf, Model.LActOnMyBehalf, new { @class = "optDropDownSmall" })
+			</div>
+		</div>
+		<div class="line_Sep">
+		</div>
+		<div class="row float_left">
+			<div class="send_mny_trns_firstname_wrap">
+				@Html.LabelFor(model => model.FirstName, new { @class = "row_label_txt send_money_txt row_width50" })
+				@Html.TextBoxFor(model => model.FirstName, null, new { @class = "input_box row_input_bg", @maxlength = "20", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_FirstName , tabindex = 3, @readonly = "readonly"  })
+				<div class="error_align_left">
+					@Html.ValidationMessageFor(model => model.FirstName)
+				</div>
+			</div>
+			<div class="send_mny_trns_lastname_wrap">
+				@Html.LabelFor(model => model.LastName, new { @class = "row_label_txt send_money_txt row_width50" })
+				@Html.TextBoxFor(model => model.LastName, null, new { @class = "input_box row_input_bg", @maxlength = "30", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_LastName , tabindex = 4, @readonly = "readonly"})
+				<div class="error_align_left">
+					@Html.ValidationMessageFor(model => model.LastName)
+				</div>
+			</div>
+		</div>
+		<div class="row clear_both">
+			<div>
+				@Html.LabelFor(model => model.SecondLastName, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.SecondLastName, null, new { @class = "input_box", @maxlength = "30", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_SecondLastName ,tabindex = 5 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.SecondLastName)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt dropdown_width">
+					@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyCountry)</label>
+				@Html.DropDownListFor(model => model.Country, Model.LCountry, new { @class = "dropdown_box" ,tabindex = 6})
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.Country)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt dropdown_width">@SendMoneyPickUpStateProvince(@Model)</label>
+				@Html.DropDownListFor(model => model.StateProvince, Model.LStates, new { @class = "dropdown_box", tabindex = 7 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.StateProvince)
+			</div>
+			<div id="divRequiredPickUpState" class="error_align_left error_txt hide">
+				@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpStateRequired
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt dropdown_width">@PickUpCity(@Model)</label>
+				@Html.DropDownListFor(model => model.City, Model.LCities, new { @class = "dropdown_box", tabindex = 8 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.City)
+			</div>
+			<div id="divRequiredPickUpCity" class="error_align_left error_txt hide">
+				@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ReceiverPickUpCityRequired
+			</div>
+		</div>
+		<div class="row hide" id="transamt">
+			<div>
+				@Html.LabelFor(model => model.Amount, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.Amount, null, new { @class = "input_box" , tabindex = 9 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.Amount)
+			</div>
+		</div>
+		<div class="row" id="transamtwithSymbols">
+			<div>
+				@Html.LabelFor(model => model.Amount, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.AmountWithCurrency, null, new { @class = "input_box" , tabindex = 10  })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.Amount)
+			</div>
+		</div>
+		<div class="row hide" id="destAmount">
+			<div>
+				@Html.LabelFor(model => model.DestinationAmount, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.DestinationAmount, null, new { @class = "input_box", tabindex = 11 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.DestinationAmount)
+			</div>
+		</div>
+		<div class="row" id="destAmountSymbols">
+			<div>
+				@Html.LabelFor(model => model.DestinationAmount, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.DestinationAmountWithCurrency, null, new { @class = "input_box", tabindex = 12 })
+			</div>
+			<div class="error_align_left" id="destinationAmountErrormsg">
+				@Html.ValidationMessageFor(model => model.DestinationAmountWithCurrency)
+			</div>
+			<div class="error_align_left" id="destAmtmsg">
+				@Html.ValidationMessageFor(model => model.DestinationAmount)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt dropdown_width">
+					@Html.RequiredField(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyDeliveryMethod)</label>
+				@Html.DropDownListFor(model => model.DeliveryMethod, Model.LDelivertyMethods, new { @class = "dropdown_box",tabindex=13 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.DeliveryMethod)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt dropdown_width">
+					@Html.LabelFor(model => model.DeliveryOptions, @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyDeliveryOptions)</label>
+				@Html.DropDownListFor(model => model.DeliveryOptions, Model.LDeliveryOptions, new { @class = "dropdown_box", tabindex = 14 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.DeliveryOptions)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				<label class="row_label_txt">
+					@Html.Raw(@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SendMoneyPersonalMessage)</label>
+				@Html.TextAreaFor(model => model.PersonalMessage, 4, 69, new { @class = "textarea", placeholder = "Max. 966 characters", @maxlength = "966" , tabindex = 15 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.PersonalMessage)
+			</div>
+		</div>
+		<div class="row">
+			<div>
+				@Html.LabelFor(model => model.CouponPromoCode, new { @class = "row_label_txt" })
+				@Html.TextBoxFor(model => model.CouponPromoCode, null, new { @class = "input_box", MaxLength = 20 ,tabindex = 16 })
+			</div>
+			<div class="error_align_left">
+				@Html.ValidationMessageFor(model => model.CouponPromoCode)
+			</div>
+            <div id="promodiv" class="error_align_left">
+                <span id="promocode" class="error_txt"></span>
+            </div>
+		</div>
+	</div>
+	@Html.TextBoxFor(model => model.ReceiverID, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.CountryCode, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.StateProvinceCode, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.CityID, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.isDomesticTransfer, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.CurrencyType, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.DestinationAmountFromFeeEnquiry, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.CityName, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.LastNameFirstName, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.TransactionId, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.IsFixedOnSend, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.ReferenceNo, new { style = "display:none" })
+	@Html.TextBoxFor(model => model.ActOnMyBehalf, new { style = "display:none" })
+
+    if (@ViewBag.ErrorMessage != null)
+    {
+        <div id="divErrorMsg">
+            <center>
+                <div align="center" class="error_txt">@ViewBag.ErrorMessage</div>
+                <br />
+            </center>
+        </div>
+    }
+
+    <div class="send_many_btn_shift">
+        <ul>
+            <li class="add_rec_btn_wrap">
+                @Html.ActionLink("Add Receiver", "AddEditReceiver", "SendMoney", null, new { @class = "anc_link_btn yellow_btn add_rec", id = "addreceiver", onclick = "javascript:return false" })
+                @Html.ActionLink("Edit Receiver", "GetReceiverForEdit", "SendMoney", new { ReceiverId = Model.ReceiverID }, new { @class = "anc_link_btn yellow_btn edit_rec hide", id = "editreceiver" })
+            </li>
+            <li class="row_width30">
+                @Html.ActionLink("Cancel", "CancelSendMoneyDetails", "SendMoney", new { id = Model.TransactionId }, new { @class = "anc_link_btn cancelMoneyTransfer red_btn", id = Model.TransactionId, name = "SendMoneyDetails" })
+            </li>
+            <li class="next_btn_wrap">
+                <input type="submit" id="continueButton" value="Next" tabindex="14" />
+            </li>
+        </ul>
+    </div>
+
+    @Html.HiddenFor(model => model.PromotionId);
+    @Html.HiddenFor(model => model.IsFraudCheck);
+    @Html.HiddenFor(model => model.ConsumerFraudPromptQuestion);
+}

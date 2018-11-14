@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object id="NLoggerRef" type="MGI.Common.Util.NLoggerCommon, MGI.Common"/>
+
+	<object id="transactionManager"
+		  type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	
+	<tx:attribute-driven/>
+
+  <object type="Spring.Objects.Factory.Config.VariablePlaceholderConfigurer, Spring.Core">
+    <property name="VariableSources">
+      <list>
+        <object type="Spring.Objects.Factory.Config.ConnectionStringsVariableSource, Spring.Core"/>
+        <object type="Spring.Objects.Factory.Config.ConfigSectionVariableSource, Spring.Core">
+          <property name="SectionNames" value="appSettings">
+          </property>
+        </object>
+      </list>
+    </property>
+  </object>
+
+  <import resource="assembly://MGI.Core.CXE/MGI.Core.CXE/CXESpring.xml"/>
+	<import resource="assembly://MGI.Core.Catalog/MGI.Core.Catalog/Core.Catalog.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Cxn.BillPay.WU/MGI.Cxn.BillPay.WU/MGI.Cxn.BillPay.WU.Impl.Spring.xml"/>
+	<import resource="assembly://MGI.Cxn.BillPay.MG/MGI.Cxn.BillPay.MG/MGI.Cxn.BillPay.MG.Impl.Spring.xml"/>
+	<import resource="assembly://MGI.Biz.Compliance/MGI.Biz.Compliance/Biz.Compliance.Services.Spring.xml"/>
+	<import resource="assembly://MGI.Core.Partner/MGI.Core.Partner/Core.Partner.Services.Spring.xml"/>
+
+	<object id="ThrowsBizBillPayExceptionAdvice" type="MGI.Biz.BillPay.Impl.Advice.ThrowsBizBillPayExceptionAdvice, MGI.Biz.BillPay"/>
+
+	<object id="BizBillPayService" type="MGI.Biz.BillPay.Impl.BillPayServiceImpl, MGI.Biz.BillPay">
+		<property name="CXEBillPayService" ref="CXEBillPayService" />
+		<property name="CXEAccountService" ref="AccountService" />
+		<property name="CXEBillPaySetup" ref="CXEBillPaySetup" />
+		<property name="CustomerService" ref="CXECustomerService" />
+		<property name="ProductService" ref="ProductService" />
+		<property name="PRTNRBillSvc" ref="BillPayService"/>
+		<property name="PTNRCustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="SessionSvc" ref="CustomerSessionService"/>
+		<property name="ProcessorRouter" ref="BillPayProcessorRouter"/>
+		<property name="CoreChannelPartnerService" ref="CorePartnerChannelPartnerService" />
+		<property name="PTNRDataStructureService" ref="CoreNexxoDataStructuresService"/>
+		<property name="FeeSvc" ref="PartnerFeeService"/>
+		<property name="LimitService" ref="BIZLimitService" />
+		<property name="LocationCounterIdService" ref="CorePartnerLocationCounterIdService"></property>
+		<property name="CustomerSessionCounterIdService" ref="CustomerSessionCounterIdService"></property>
+	</object>
+
+	<!-- The BillPay Processors -->
+	<object id="BillPayProcessorRouter" type="MGI.Cxn.Common.Processor.Util.ProcessorRouter, MGI.Cxn.Common">
+		<property name="ParentProcessors">
+			<object id="BillPayProcessorsDictionary" type="System.Collections.Generic.Dictionary&lt;string, System.Collections.Generic.Dictionary&lt;string,MGI.Cxn.Common.Processor.Contract.IProcessor&gt;&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="System.Collections.Generic.Dictionary&lt;string,MGI.Cxn.Common.Processor.Contract.IProcessor&gt;">
+						<entry key="Synovus">
+							<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+								<entry key="WesternUnionBillPay">
+									<ref object="WesternUnionGateway"/>
+								</entry>
+							</dictionary>
+						</entry>
+						<entry key="Carver">
+							<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+								<entry key="WesternUnionBillPay">
+									<ref object="WesternUnionGateway"/>
+								</entry>								
+							</dictionary>
+						</entry>
+						<entry key="TCF">
+							<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+								<entry key="WesternUnionBillPay">
+									<ref object="WesternUnionGateway"/>
+								</entry>
+							</dictionary>
+						</entry>
+						<entry key="MGI">
+							<dictionary key-type="string" value-type="MGI.Cxn.Common.Processor.Contract.IProcessor">
+								<entry key="MoneyGramBillPay">
+									<ref object="MoneyGramGateway"/>
+								</entry>
+							</dictionary>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+
+		<property name="Providers">
+			<object id="MoneyTransferProvidersDictionary" type="System.Collections.Generic.Dictionary&lt;string, string&gt;, mscorlib">
+				<constructor-arg>
+					<dictionary key-type="string" value-type="string">
+						<entry key="Synovus">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="Carver">
+							<value type="string">WesternUnion</value>
+						</entry>
+						<entry key="TCF">
+							<value type="string">MoneyGram</value>
+						</entry>
+					</dictionary>
+				</constructor-arg>
+			</object>
+		</property>
+	</object>
+
+
+	<!--<object id="BizBillPayService" type="Spring.Aop.Framework.ProxyFactoryObject, Spring.Aop">
+		<property name="Target" ref="InterceptedBizBillPayService"/>
+		<property name="InterceptorNames">
+			<list>
+				<value>ThrowsBizBillPayExceptionAdvice</value>
+			</list>
+		</property>
+	</object>-->
+
+</objects>

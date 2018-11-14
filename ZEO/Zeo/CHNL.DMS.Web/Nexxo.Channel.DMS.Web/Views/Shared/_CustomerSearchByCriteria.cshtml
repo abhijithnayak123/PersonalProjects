@@ -1,0 +1,75 @@
+﻿@model TCF.Channel.Zeo.Web.Models.CustomerSearch
+@{
+    Func<TCF.Channel.Zeo.Web.Models.CustomerSearch, object> DOB =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.DateOfBirth<span class="mandatory" id="">*</span>
+        </text>;
+}
+
+@using (Html.BeginForm("CustomerSearch", "CustomerSearch", FormMethod.Post, new { @class = "cust_critical_search", id = "CriSearchForm" }))
+{
+    <div class="cust_search_head">
+        <hgroup>
+            <h1 class="header-option">2. Search by Customer Information: </h1>
+            <p class="cri_hint_message"><b>Enter Date of Birth and <u>ONE</u> other search option</b></p>
+        </hgroup>
+    </div>
+    <div class="cri_search_cus">
+        <div class="main_search_content">
+            <div class="row">
+                <div class="label_col_left">
+                    <label class="label_txt">@DOB(@Model)</label>
+                </div>
+                <div class="label_col_right">
+                    @Html.TextBoxFor(model => model.DateOfBirth, new { @class = "input_box search_criteria max_wid_box", @maxlength = "30", @placeholder = "MM/DD/YYYY", tabindex = 1 })
+                    <div class="valid_error">
+                        @Html.ValidationMessageFor(model => model.DateOfBirth)
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="label_col_left">
+                    @Html.LabelFor(model => model.LastName, new { @class = "label_txt" })
+                </div>
+                <div class="label_col_right">
+                    @Html.TextBoxFor(model => model.LastName, new { @class = "input_box search_criteria max_wid_box", @maxlength = "30", @title = @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.Tooltip_LastName, tabindex = 1 })
+                    <a href="#" class="errspan" bubbletooltip="Enter first three characters of last name and asterisk(*) for the partial search - Example: abc*"></a>
+                    <div class="valid_error">
+                        @Html.ValidationMessageFor(model => model.LastName)
+                    </div>
+                </div>
+            </div>
+            <div class="row top-margin-2">
+                <div class="label_col_left">
+                    @Html.LabelFor(model => model.SSN, new { @class = "label_txt" })
+                </div>
+                <div class="label_col_right">
+                    @Html.TextBoxFor(model => model.SSN, new { @class = "input_box search_criteria max_wid_box", @maxlength = "30", @placeholder = "###-##-####", tabindex = 1 })
+                    <div class="valid_error">
+                        @Html.ValidationMessageFor(model => model.SSN)
+                        @Html.HiddenFor(model => model.ActualSSN)
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="label_col_left">
+                    @Html.LabelFor(model => model.AccountNumber, new { @class = "label_txt" })
+                </div>
+                <div class="label_col_right">
+                    @Html.TextBoxFor(model => model.AccountNumber, new { @class = "input_box search_criteria max_wid_box", @maxlength = "18", tabindex = 1 })
+                    <div class="valid_error">
+                        @Html.ValidationMessageFor(model => model.AccountNumber)
+                    </div>
+                </div>
+            </div>
+        </div>
+        @Html.HiddenFor(model => model.SearchType, new { Value = "criteria" })
+        <div class="row">
+            <div class="label_col_left">
+            </div>
+            <div class="label_col_right">
+                <input type="submit" value="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.SearchButtonText" class="cri_search_find_btn" tabindex="1" id="criseachsubmit" disabled="disabled" />
+            </div>
+        </div>
+    </div>
+}

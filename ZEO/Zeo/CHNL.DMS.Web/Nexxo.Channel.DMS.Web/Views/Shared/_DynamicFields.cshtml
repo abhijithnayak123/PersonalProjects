@@ -1,0 +1,46 @@
+﻿@model TCF.Channel.Zeo.Web.Models.MoneyGramSendMoneyDetail
+@for (int i = 0; i < Model.DynamicFields.Count; i++)
+{
+	if (Model.DynamicFields[i].DataType == "Dropdown")
+	{
+		<div class="row">
+			@if (Model.DynamicFields[i].IsRequired)
+			{
+				<label class="row_label_txt dropdown_width">
+					@Html.RequiredField(Model.DynamicFields[i].Label)
+				</label>
+			}
+			else
+			{
+				@Html.Label(Model.DynamicFields[i].Label, new { @class = "row_label_txt" })
+			}
+			@Html.HiddenFor(model => model.DynamicFields[i].Label)
+			@Html.HiddenFor(model => model.DynamicFields[i].IsDynamic)
+			@Html.HiddenFor(model => model.DynamicFields[i].TagName)
+			@Html.HiddenFor(model => model.DynamicFields[i].RegularExpression)
+            
+			@Html.DropDownListFor(model => model.DynamicFields[i].Value, Model.DynamicFields[i].Values, "Select", new { @class = "dropdown_box" })
+		</div>
+	}
+	else
+	{
+		<div class="row">
+			@if (Model.DynamicFields[i].IsRequired)
+			{
+				<label class="row_label_txt dropdown_width">
+					@Html.RequiredField(Model.DynamicFields[i].Label)
+				</label>
+			}
+			else
+			{
+				@Html.Label(Model.DynamicFields[i].Label, new { @class = "row_label_txt" })
+			}
+
+			@Html.HiddenFor(model => model.DynamicFields[i].Label)
+			@Html.HiddenFor(model => model.DynamicFields[i].IsDynamic)
+			@Html.HiddenFor(model => model.DynamicFields[i].TagName)
+			@Html.HiddenFor(model => model.DynamicFields[i].RegularExpression)
+			@Html.TextBoxFor(model => model.DynamicFields[i].Value, new { @class = "input_box " + Model.DynamicFields[i].DataType, @maxlength = Convert.ToString(Model.DynamicFields[i].MaxLength) })
+		</div>
+	}
+}

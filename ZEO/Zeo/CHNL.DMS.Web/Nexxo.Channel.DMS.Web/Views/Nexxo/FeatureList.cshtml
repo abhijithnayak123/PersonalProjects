@@ -1,0 +1,40 @@
+﻿@model TCF.Channel.Zeo.Web.Models.FeatureModel
+@{
+    ViewBag.Title = "Feature";
+}
+
+@using (Html.BeginForm("SaveFeatureStatus", "Product", FormMethod.Post, new { id = "provisionForm" }))
+{
+    <div>
+        <ul class="page_head product_head">
+            <li class="float_left">Enable/Disable the Features</li>
+        </ul>
+        <br />
+        <br />
+        <br />
+        <div id="tableContainer" class="tableContainer">
+            <table>
+                <thead>
+                    <tr class="sum_grid_head grid_head_wrap">
+                        <td class="grid_head"> Feature Name </td>
+                        <td class="grid_head"> Feature Status </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Features)
+                    {
+                        <tr>
+                            <td >
+                                @item.FeatureName
+                            </td>
+                            <td >
+                                @Html.CheckBoxFor(model => item.IsEnabled)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <br />
+    </div>
+}

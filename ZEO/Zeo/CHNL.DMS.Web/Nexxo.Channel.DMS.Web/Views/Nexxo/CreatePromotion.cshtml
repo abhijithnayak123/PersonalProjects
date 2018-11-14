@@ -1,0 +1,262 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Promotion
+@{
+    ViewBag.Title = "Add Promotion";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+
+    Func<TCF.Channel.Zeo.Web.Models.Promotion, object> PromoName =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromotionName<span class="requiredfield-label" id="promoName">*</span>
+        </text>;
+    Func<TCF.Channel.Zeo.Web.Models.Promotion, object> Product =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ProductType<span class="requiredfield-label" id="producttype">*</span>
+        </text>;
+    Func<TCF.Channel.Zeo.Web.Models.Promotion, object> StartDate =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.StartDate<span class="requiredfield-label" id="startdate">*</span>
+        </text>;
+    Func<TCF.Channel.Zeo.Web.Models.Promotion, object> EndDate =
+        @<text>
+            @TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.EndDate<span class="requiredfield-label" id="enddate">*</span>
+        </text>;
+}
+<script src="@Url.Content("~/Scripts/Promotion/Promotion.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/PromotionGrid.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script type="text/javascript">
+    var getProviders_Url = '@Url.Action("GetProviders", "Promotion")';
+    var copyExisting_Url = '@Url.Action("GetExistingPromotions", "Promotion")';
+    var validatePromoName_Url = '@Url.Action("ValidatePromoName", "Promotion")';
+    var promodetails_Url = '@Url.Action("SavePromoDetails", "Promotion")';
+    $(document).ready(function () {
+        $("#PromotionName").change(function () {
+            validatePromoName();
+        });
+
+        if ($("#ProductType").val() == "")
+            $("#promoClear").attr("disabled", false).removeClass("isDisabled");
+        else
+            $("#promoClear").attr("disabled", "disabled").addClass("isDisabled");
+    });
+</script>
+@using (Html.BeginForm("AddPromotion", "Promotion", FormMethod.Post,new { id = "frmPromotion"}))
+{
+    @Html.Partial("_partialSpinner")
+ <div class="">
+     @* Train stop div *@
+    <div class="promo-container">
+        <br />
+        <br />
+        <ul class="train_stop train_stop-tabs">
+            <li class="train_stop-item">
+                <a class="train_stop-link select" href="@Url.Action("AddPromotion", "Promotion")">
+                    <h5>Promotion</h5>
+                </a>
+            </li>
+            @if (ViewBag.Disabled)
+            {
+                <li class="train_stop-item">
+                    <a class="train_stop-link isDisabled" href="@Url.Action("AddQualifier", "Promotion")">
+                        <h5>Qualifiers</h5>
+                    </a>
+                </li>
+                <li class="train_stop-item">
+                    <a class="train_stop-link isDisabled" href="@Url.Action("AddProvision", "Promotion")">
+                        <h5>Provisions</h5>
+                    </a>
+                </li>
+                <li class="train_stop-item">
+                    <a class="train_stop-link isDisabled" href="@Url.Action("PromotionSummary", "Promotion")">
+                        <h5>Summary</h5>
+                    </a>
+                </li>
+            }
+            else
+            {
+                <li class="train_stop-item">
+                    <a class="train_stop-link" href="@Url.Action("AddQualifier", "Promotion")">
+                        <h5>Qualifiers</h5>
+                    </a>
+                </li>
+                <li class="train_stop-item">
+                    <a class="train_stop-link" href="@Url.Action("AddProvision", "Promotion")">
+                        <h5>Provisions</h5>
+                    </a>
+                </li>
+                if (ViewBag.DisableTrainStop)
+                {
+                    <li class="train_stop-item">
+                        <a class="train_stop-link isDisabled" href="@Url.Action("PromotionSummary", "Promotion")">
+                            <h5>Summary</h5>
+                        </a>
+                    </li>
+                }
+                else
+                {
+                    <li class="train_stop-item">
+                        <a class="train_stop-link" href="@Url.Action("PromotionSummary", "Promotion")">
+                            <h5>Summary</h5>
+                        </a>
+                    </li>
+                }
+            }
+        </ul>
+        <br />
+    </div>
+     @* Main div *@
+    <div class="promo-container promo_container_border promo-fonts">
+        <div class="promo-padding">
+            <div class="">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        <label >@PromoName(@Model)</label>
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoNameToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                    <div class="">
+                        @Html.LabelFor(model => model.PromoDescription)
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoDescToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.PromotionName, new { @class = "promoname-textbox", tabindex = 1 , @maxlength = 20})
+                        <label class="promonamecharcount">Characters left: <span id="promonamecount"></span></label>
+                        <div class="">
+                            @Html.ValidationMessageFor(model => model.PromotionName)
+                        </div>
+                    </div>
+                    <div class="promo-descp">
+                        @Html.TextAreaFor(model => model.PromoDescription, new { @class = "promo-desc-textbox", tabindex = 2, rows="1", @maxlength = 250 })
+                        <label class="promodesccharcount">Characters left: <span id="promodesccount"></span> </label>
+                        </div>
+                    </div>
+                </div>
+            <div class="margin_top_two">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        <label>@Product(@Model)</label>
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProductToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.Provider)
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoProviderToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                    <div class="widht-column hide">
+                        @Html.LabelFor(model => model.Priority)
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoPriorityToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.DropDownListFor(model => model.ProductType, Model.ProductTypes, new { @class = "promo-drop", tabindex = 3 })
+                        <div class="">
+                            @Html.ValidationMessageFor(model => model.ProductType)
+                        </div>
+                    </div>
+                    <div class="widht-column">
+                        @Html.DropDownListFor(model => model.Provider, Model.ProviderIds, new { @class = "promo-drop", tabindex = 4 })
+                        <div class="">
+                            @Html.ValidationMessageFor(model => model.Provider)
+                        </div>
+                    </div>
+                    <div class="widht-column hide">
+                        @Html.TextBoxFor(model => model.Priority, new { @class = "promoname-textbox hide", tabindex = 5, @maxlength = 5 })
+                    </div>
+                </div>
+            </div>
+            <div class="margin_top_two">
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        <label>@StartDate(@Model)</label>
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoStartDateToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                    <div class="widht-column">
+                        <label>@EndDate(@Model)</label>
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoEndDateToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                    <div class="widht-column">
+                        @Html.LabelFor(model => model.FreeTxnCount)
+                        <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoFreeTrxToolTip">
+                            <img src="~/Content/images/Information.png" />
+                        </a>
+                    </div>
+                </div>
+                <div class="promo-display-inline promo-row">
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.StartDate, new { @class = "promoname-textbox", id = "promostartdate", readOnly = "true", placeholder = "MM/DD/YYYY"})
+                        <div class="">
+                            @Html.ValidationMessageFor(model => model.StartDate)
+                        </div>
+                    </div>
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.EndDate, new { @class = "promoname-textbox", id = "promoenddate", readOnly = "true", placeholder = "MM/DD/YYYY"})
+                        <div class="">
+                            @Html.ValidationMessageFor(model => model.EndDate)
+                        </div>
+                    </div>
+                    <div class="widht-column">
+                        @Html.TextBoxFor(model => model.FreeTxnCount, new { @class = "promoname-textbox", tabindex = 6, @maxlength = 5 })
+                    </div>
+                </div>
+            </div>
+            <div class="margin_top_two">
+                <div class="promo-row bottompadding">
+                    @Html.CheckBoxFor(model => model.IsPromotionHidden, new { tabindex = 7 }) <b>@Html.LabelFor(model => model.IsPromotionHidden)</b>
+                    <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoHiddenToolTip">
+                        <img src="~/Content/images/Information.png" />
+                    </a>
+                </div>   
+                <div class="promo-row bottompadding">
+                    @Html.CheckBoxFor(model => model.IsOverridable, new { tabindex = 7 }) <b>@Html.LabelFor(model => model.IsOverridable)</b>
+                    <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoOverridableToolTip">
+                        <img src="~/Content/images/Information.png" /></a>
+                </div>               
+                <div class="promo-row bottompadding">
+                    @Html.CheckBoxFor(model => model.IsPrintable, new { tabindex = 8, disabled = "disabled" }) <b>@Html.LabelFor(model => model.IsPrintable)</b>
+                    <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoPrintableToolTip">
+                        <img src="~/Content/images/Information.png" />
+                    </a>
+                </div>
+                <div class="promo-row bottompadding">
+                    @Html.CheckBoxFor(model => model.IsNextCustomerSession, new { tabindex = 9 }) <b>@Html.LabelFor(model => model.IsNextCustomerSession)</b>
+                    <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoNextCustomerSessionToolTip">
+                        <img src="~/Content/images/Information.png" />
+                    </a>
+                </div>
+                <div class="promo-row bottompadding">
+                    @Html.CheckBoxFor(model => model.Stackable, new { tabindex = 10, disabled = "disabled" }) <b>@Html.LabelFor(model => model.Stackable)</b>
+                    <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoStackalbe">
+                        <img src="~/Content/images/Information.png" />
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="promo-container promo-fonts margin_top_two">
+        <div class="txt_right">
+            <ul>
+                <li>@Html.ActionLink("Cancel", "GetPromotion", "Promotion", null, new { @class = "anc_link_btn red_btn", tabindex = 12 })</li>
+                <li>@Html.ActionLink("Clear", "AddPromotion", "Promotion", null, new { @class = "anc_link_btn grey_btn", tabindex = 13, id = "promoClear" })</li>
+                <li><input type="submit" class="float_left margin_top_0" value="Save and Continue" tabindex="11" /></li>
+            </ul>
+        </div>
+    </div>
+    </div>
+    @Html.HiddenFor(model => model.PromotionId)
+    @Html.HiddenFor(model => model.ProviderId)
+    @Html.HiddenFor(model => model.PromotionStatus)
+}

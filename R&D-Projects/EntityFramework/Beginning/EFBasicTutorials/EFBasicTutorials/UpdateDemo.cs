@@ -15,14 +15,14 @@ namespace EFBasicTutorials
 
             Student disconnectedStudent = null;
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 disconnectedStudent = context.Students.Where(s => s.StudentID == 1).FirstOrDefault<Student>();
             }
 
             disconnectedStudent.StudentName = "Edited Student Name";
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Entry(disconnectedStudent).State = EntityState.Modified;
                 context.SaveChanges();
@@ -39,7 +39,7 @@ namespace EFBasicTutorials
 
             Standard disconnectedStandard = null;
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Configuration.ProxyCreationEnabled = false;
 
@@ -52,7 +52,7 @@ namespace EFBasicTutorials
             disconnectedStandard.Teachers.ElementAt(0).TeacherName = "Edited Teacher Name";
             disconnectedStandard.Teachers.Add(new Teacher() { TeacherName = "New Teacher", StandardId = disconnectedStandard.StandardId });
 
-            using (var newContext = new SchoolDBEntities())
+            using (var newContext = new SchoolDatabaseEntities())
             {
                 //mark standard based on StandardId
                 newContext.Entry(disconnectedStandard).State = disconnectedStandard.StandardId == 0 ? EntityState.Added : EntityState.Modified;
@@ -90,7 +90,7 @@ namespace EFBasicTutorials
         {
             //Teacher existingTeacher = null;
 
-            //using (var context = new SchoolDBEntities())
+            //using (var context = new SchoolDatabaseEntities())
             //{
             //    context.Configuration.ProxyCreationEnabled = false;
             //    existingTeacher = context.Teachers.FirstOrDefault<Teacher>();
@@ -103,7 +103,7 @@ namespace EFBasicTutorials
             ////add new standard
             //disconnectedStandard.Teachers.Add(new Teacher() { TeacherName = "New teacher", StandardId = disconnectedStandard.StandardId, ObjectState = EntityObjectState.Added });
 
-            //using (var newContext = new SchoolDBEntities())
+            //using (var newContext = new SchoolDatabaseEntities())
             //{
             //    //check the ObjectState property and mark appropriate EntityState 
             //    if (disconnectedStandard.ObjectState == EntityObjectState.Added)

@@ -1,0 +1,1 @@
+﻿& .\Nexxo.CXN.BP.WU.Database.exe | Write-Host

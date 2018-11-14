@@ -1,0 +1,187 @@
+﻿@model TCF.Channel.Zeo.Web.Models.Qualifier
+@{
+    ViewBag.Title = "Add Qualifier";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<link href="@Url.Content("~/Content/css/Common/jquery-ui.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-grid/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/css/JqueryMultiSelect/jquery.multiselect.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.8.14.custom.css")" rel="stylesheet" type="text/css" />
+<link href="@Url.Content("~/Content/jquery-ui/redmond/jquery-ui-1.9.2.custom.css")" rel="stylesheet" type="text/css" />
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/grid.locale-en.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery-grid/jquery.jqGrid.min.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Common/lib/jquery.multiselect.js")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/AddQualifier.js.axd?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Promotion/PromotionGrid.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+<script type="text/javascript">
+    var getQualifiers = '@Url.Action("GetQualifiers", "Promotion")';
+    var EditQualifiers_Url = '@Url.Action("AddQualifier", "Promotion")';
+    var QualifierDeleteConfirm_Url = '@Url.Action("ShowPopWarringQualifier", "Promotion")';
+    var QualifierDelete_Url = '@Url.Action("DeleteQualifier", "Promotion")';
+    var PageLeavePopup_Url = '@Url.Action("ShowPageLeavePopup", "Promotion")';
+    var ProvisionSummaryRedirectUrl = '@Url.Action("RedirectToProvisionOrSummary", "Promotion")';
+    var selectedTxnStates = @Html.Raw(Html.ParseJsonForMultiSelect(Json.Encode(Model.TrxStates)));
+    var promoStartDate = '@ViewBag.PromoStartDate';
+    var promoEndDate = '@ViewBag.PromoEndDate';
+    var disableTrainStop = '@ViewBag.DisableTrainStop';
+</script>
+
+<div>
+    <div class="promo-container">
+        <br />
+        <br />
+        <ul class="train_stop train_stop-tabs">
+            <li class="train_stop-item">
+                <a class="train_stop-link" href="@Url.Action("AddPromotion", "Promotion")">
+                    <h5>Promotion</h5>
+                </a>
+            </li>
+            <li class="train_stop-item">
+                <a class="train_stop-link select" href="@Url.Action("AddQualifier", "Promotion")">
+                    <h5>Qualifiers</h5>
+                </a>
+            </li>
+            <li class="train_stop-item">
+                <a class="train_stop-link" href="@Url.Action("AddProvision", "Promotion")">
+                    <h5>Provisions</h5>
+                </a>
+            </li>
+            <li class="train_stop-item">
+                <a class="train_stop-link" id="qualifierSummaryTrainStop" href="@Url.Action("PromotionSummary", "Promotion")">
+                    <h5>Summary</h5>
+                </a>
+            </li>
+            
+        </ul>
+        <br />
+    </div>
+
+    <div class="promo-container promo_container_border promo-fonts">
+        <div class="promo-padding">
+            @using (Html.BeginForm("AddQualifier", "Promotion", FormMethod.Post, new { id = "qualifierForm" }))
+            {
+                @Html.HiddenFor(model => model.RowId)
+                <div class="margin_top_two">
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.PromotionName)
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.QualifierProduct)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaProductToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.TransactionEndDate)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaTrxEndDateToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.TransactionAmount)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaTrxAmountToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.PromotionName, new { @class = "promoname-textbox", disabled = "disabled" })
+                        </div>
+                        <div class="widht-column">
+                            @Html.DropDownListFor(model => model.QualifierProduct, Model.ProductTypes, new { @class = "promo-drop", tabindex = 1 })
+                        </div>
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.TransactionEndDate, new { @class = "promoname-textbox", id = "trxenddate", readOnly = "true", placeholder = "MM/DD/YYYY" })
+                        </div>
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.TransactionAmount, new { @class = "promoname-textbox", tabindex = 1, @maxlength = 10 })
+                            @Html.TextBoxFor(model => model.TransactionAmountWithCurrency, new { @class = "promoname-textbox", tabindex = 1, hidden="hidden" })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.TransactionAmount)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="margin_top_two">
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.LabelFor(model => model.MinimumTrxCount)
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaTrxCountToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                        <div class="">
+                            <span>Transaction Status</span>
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaTrxStatusToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="promo-display-inline promo-row">
+                        <div class="widht-column">
+                            @Html.TextBoxFor(model => model.MinimumTrxCount, new { @class = "promoname-textbox", tabindex = 1, @maxlength = 5 })
+                            <div class="">
+                                @Html.ValidationMessageFor(model => model.MinimumTrxCount)
+                            </div>
+                        </div>
+                        <div class="widht-column">
+                            @Html.DropDownListFor(model => model.TrxState, Model.TrxStates, new { @class = "promo-drop transactionStates", multiple = "multiple" })
+                            @Html.HiddenFor(model => model.SelectedTxnStates)
+                        </div>
+                        <div class="widht-column">
+                            @Html.CheckBoxFor(model => model.IsPaidFee, new { tabindex = 3 }) <b><span>Paid Fee</span></b>
+                            <a href="#" class="tooltip" bubbletooltipright="@TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.PromoQuaTrxPaidFeeToolTip">
+                                <img src="~/Content/images/Information.png" />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="txt_left">
+                    <div class="txt_red" id="qualifier_summary_error">
+
+                    </div>
+                </div>
+                <div class="txt_right">
+                    <ul>
+                        <li>@Html.ActionLink("Clear", "AddQualifier", "Promotion", null, new { @class = "anc_link_btn grey_btn", tabindex = 5 })</li>
+                        <li><input type="submit" value="@ViewBag.ChangeButtonText" name="save" class="" tabindex="4" /></li>
+                    </ul>
+                </div>
+
+                @Html.HiddenFor(model => model.PromotionId)
+                @Html.HiddenFor(model => model.QualifierId)
+            }
+            <br />
+            <div class="clearfix"></div>
+            <div class="grid_header">
+                <ul class="">
+                    <li>List of Qualifier</li>
+                </ul>
+            </div> 
+            <div class="grid_border grid_small" id="">
+                <div class="" id="">
+                    <table id="jqQualifier" class="scroll word_wrap_text"> </table>
+                    <div id="jqTablePagerQualifier"></div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            <div class="margin_top_two">
+                <div class="txt_right">
+                    <ul>
+                        <li>@Html.ActionLink("Cancel", "GetPromotion", "Promotion", null, new { @class = "anc_link_btn red_btn", tabindex = 7 })</li>
+                        <li>
+                            <input type="button" class="green_input" id="addProvisionBtn" value="Save and Continue" onclick="javascript: ShowPageLeavePopup(true);" tabindex="6" />
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<div class="clearfix"></div>
+
+

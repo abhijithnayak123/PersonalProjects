@@ -1,0 +1,50 @@
+﻿@model TCF.Channel.Zeo.Web.Models.ProfileSummary
+@{
+    ViewBag.Title = "Profile Summary";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<h2 align="center">
+    <div align="center">
+        <img src="~/Content/images/Summary.png" usemap="#Map"/>
+    </div>
+    Profile Summary</h2>
+@using (Html.BeginForm())
+{
+    @Html.ValidationSummary(true)    
+    <fieldset>
+        <table>
+            <tr>
+                <td valign="top">
+                    <p class="row5">
+                        <span class="GreenColor"><u >Personal Information</u></span>
+                    </p>
+                    <table>
+                        @if (Model.channelPartner.AuthenticationType.ToLower() == "card")
+                        {
+                            <tr>
+                                <td>
+                                    <div class="editor-label profilesummary">
+                                        @Html.LabelFor(model => model.CardNumber)
+                                    </div>
+                                </td>
+                                <td>
+                                </td>
+                                <td>
+                                    <div class="editor-field">
+                                        @Html.TextBoxFor(model => model.CardNumber, new { @class = "TxtDisable", @disabled = "disabled", title = Model.CardNumber })
+                                        @*@Html.TextBoxFor(model => model.Name, new { @class = "TxtDisable", @disabled = "disabled", title = Model.Name })*@
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @Html.Partial("_ProfileSummary", Model)
+                    </table>
+                </td>
+                <td>
+                </td>
+            </tr>
+        </table>
+    </fieldset>
+    
+    @Html.Partial("_ProfileNavigation")
+}

@@ -1,0 +1,8 @@
+IF NOT EXISTS(SELECT * FROM SYS.COLUMNS WHERE NAME = N'FilingDate' AND OBJECT_ID = OBJECT_ID(N'tWUnion_Trx'))
+BEGIN
+   ALTER TABLE [dbo].tWUnion_Trx ADD FilingDate VARCHAR(10)
+END
+IF NOT EXISTS(SELECT * FROM SYS.COLUMNS WHERE  NAME = N'FilingTime' and Object_ID = Object_ID(N'tWUnion_Trx'))
+BEGIN
+   ALTER TABLE [dbo].tWUnion_Trx ADD  FilingTime VARCHAR(10)
+END

@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Cxn.BillPay.MG"
+                   namespace="MGI.Cxn.BillPay.MG.Data">
+
+  <class name="BillerLimit" table="tMGram_BillerLimit">
+    <id name="rowguid" column="MGBillerLimitPK">
+      <generator class="guid" />
+    </id>
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="MGBillerLimitID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="AgentUnitOffice">
+      <column name="AgentUnitOffice" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="AgentID">
+      <column name="AgentID" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="ModifiedDate">
+      <column name="ModifiedDate" sql-type="datetime" not-null="false" />
+    </property>
+    <property name="ModifiedUser">
+      <column name="ModifiedUser" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="AmtFlag">
+      <column name="AmtFlag" sql-type="bit" not-null="false" />
+    </property>
+    <property name="MinimumAmount">
+      <column name="MinimumAmount" sql-type="decimal" not-null="false" />
+    </property>
+    <property name="MaximumAmount">
+      <column name="MaximumAmount" sql-type="decimal" not-null="false" />
+    </property>
+    <property name="MinimumAmountMessage">
+      <column name="MinimumAmountMessage" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="MaximumAmountMessage">
+      <column name="MaximumAmountMessage" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="MessageForAmtNotInList">
+      <column name="MessageForAmtNotInList" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="ReceiveCode">
+      <column name="ReceiveCode" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="TransactingAgentID">
+      <column name="TransactingAgentID" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="ChannelPartnerId">  
+      <column name="ChannelPartnerId" sql-type="int" not-null="false" />
+    </property>
+
+    <bag name="Denominations" lazy="false" cascade="all-delete-orphan">
+      <key column="BillerLimitPK" />
+      <one-to-many class="BillerDenomination" />
+    </bag>
+  </class>
+</hibernate-mapping>

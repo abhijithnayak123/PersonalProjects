@@ -1,0 +1,71 @@
+﻿<objects xmlns="http://www.springframework.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:db="http://www.springframework.net/database"
+   xmlns:tx="http://www.springframework.net/tx"
+   xsi:schemaLocation="http://www.springframework.net http://www.springframework.net/xsd/spring-objects.xsd">
+
+	<object type="Spring.Objects.Factory.Config.PropertyPlaceholderConfigurer, Spring.Core">
+		<property name="ConfigSections" value="databaseSettings"/>
+	</object>
+	<object id="transactionManager"
+		type="Spring.Data.Core.TxScopeTransactionManager, Spring.Data">
+		<property name="TransactionSynchronization" value="Always"/>
+	</object>
+	<tx:attribute-driven/>
+	
+	<object name="MockClientCustomerServiceSynovus" type="MGI.Unit.Test.MockData.MockClientCustomerServiceSynovus,  MGI.Unit.Test"></object>
+
+	<!--<object id="SynovusEventListenerDictionary" type="System.Collections.Generic.Dictionary&lt;string, MGI.Biz.Events.Contract.INexxoBizEventListener&gt;, mscorlib">
+		<constructor-arg>
+			<dictionary key-type="string" value-type="MGI.Biz.Events.Contract.INexxoBizEventListener">
+				<entry key="GPRAdd">
+					<ref object="SynovusGPRAddEventListener"/>
+				</entry>
+				<entry key="Customer-Registration">
+					<ref object="SynovusCustomerRegistrationEventListener"/>
+				</entry>
+				<entry key="Customer-Edit">
+					<ref object="SynovusCustomerEditEventListener"/>
+				</entry>
+			</dictionary>
+		</constructor-arg>
+	</object>-->
+
+	<object id ="InterceptedClientCustomerService" type="MGI.Biz.Synovus.Impl.SynovusCustomer,MGI.Biz.Synovus">
+		<!--<property name="DBProvider" ref="Cxn.Synovus.DbProvider"/>-->
+		<property name ="CxnClientCustomerService" ref="TCISGateway"/>
+		<property name ="CxnFISCustomer" ref="FISConnect"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+	</object>
+	
+	<object id="SynovusCustomerEditEventListener" type="MGI.Biz.Synovus.Impl.SynovusCustomerEditEventListener,MGI.Biz.Synovus">
+		<property name ="CXNClientCustomerSvc" ref="TCISGateway"/>
+		<property name ="CXNCustomerSvc" ref="FISConnect"/>
+		<property name="ClientCustomerSvc" ref ="InterceptedClientCustomerService"/>
+		<property name ="FISAccountRepo" ref="FISAccountRepo"/>
+		<property name ="BIZFundsEngineSvc" ref="InterceptedBIZFundsEngine"/>
+		<property name="PTNRCustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="CXECustomerService" ref="CXECustomerService"/>
+	</object>
+
+
+	<object id="SynovusCustomerRegistrationEventListener" type="MGI.Biz.Synovus.Impl.SynovusCustomerRegistrationEventListener,MGI.Biz.Synovus">
+		<property name ="CXNClientCustomerSvc" ref="TCISGateway"/>
+		<property name ="CXNCustomerSvc" ref="FISConnect"/>
+		<property name="ClientCustomerSvc" ref ="InterceptedClientCustomerService"/>
+		<property name ="FISAccountRepo" ref="FISAccountRepo"/>
+		<property name ="BIZFundsEngineSvc" ref="InterceptedBIZFundsEngine"/>
+		<property name="PartnerCustomerService" ref="Core.Partner.CustomerService"/>
+		<property name="CXECustomerService" ref="CXECustomerService"/>
+	</object>
+
+	<object id="SynovusGPRAddEventListener" type="MGI.Biz.Synovus.Impl.SynovusGprAddEventListener,MGI.Biz.Synovus">
+		<property name ="CXNClientCustomerSvc" ref="TCISGateway"/>
+		<property name ="CXNClientFISRepo" ref="FISAccountRepo"/>
+		<property name="NLogger" ref="NLoggerRef"></property>
+	</object>
+	
+	<object id="FISConnect" factory-object="MockClientCustomerServiceSynovus" factory-method="CreateFISCustomer" ></object>
+	
+	<object id="FISAccountRepo" factory-object="MockClientCustomerServiceSynovus" factory-method="CreateIntsanceOfFISAccount" ></object>
+
+</objects>

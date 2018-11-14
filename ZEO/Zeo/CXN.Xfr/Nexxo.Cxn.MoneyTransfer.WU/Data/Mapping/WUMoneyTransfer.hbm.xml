@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="MGI.Cxn.MoneyTransfer.WU"
+                   namespace="MGI.Cxn.MoneyTransfer.WU.Data">
+  
+    <class name="WUReceiver" table="tWUnion_Receiver" lazy="true" >
+      <id name="rowguid" column="WUReceiverPK">
+        <generator class="guid"/>
+      </id>
+      <property name="Id" generated="insert" update="false" insert="false">
+        <column name="WUReceiverID" sql-type="bigint IDENTITY(1000000000,1)" not-null="true" />
+      </property>
+      <property name="FirstName">
+        <column name="FirstName" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="LastName">
+        <column name="LastName" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="SecondLastName">
+        <column name="SecondLastName" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="PickupCountry">
+        <column name="PickupCountry" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="Country">
+	<column name="Country" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="PickupState_Province">
+        <column name="[PickupState/Province]" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="PickupCity">
+        <column name="PickupCity" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="DeliveryMethod">
+        <column name="DeliveryMethod" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="DeliveryOption">
+        <column name="DeliveryOption" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="Address">
+        <column name="Address" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="City">
+        <column name="City" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="State_Province">
+        <column name="[State/Province]" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="ZipCode">
+        <column name="ZipCode" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="PhoneNumber">
+        <column name="PhoneNumber" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="Status">
+        <column name="Status" sql-type="varchar" not-null="false" />
+      </property>
+      <property name="CustomerId" update="false">
+        <column name="CustomerId" sql-type="bigint" not-null="false" />
+      </property>
+      <property name="DTServerCreate" update="false">
+        <column name="DTServerCreate" sql-type="datetime" not-null="false" />
+      </property>
+      <property name="DTServerLastModified" insert="false">
+        <column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+      </property>
+      <property name="DTTerminalCreate" update="false">
+      	<column name="DTTerminalCreate" sql-type="datetime" not-null="false" />
+      </property>
+      <property name="DTTerminalLastModified" insert="false">
+      	<column name="DTTerminalLastModified" sql-type="datetime" not-null="false" />
+      </property>
+      <property name="GoldCardNumber">
+      	<column name="GoldCardNumber" sql-type="varchar" not-null="false" />
+      </property>
+      <!--Added this new property to map the Receiver Index in the tWUnion_Receiver table from WU Service User Story # US1645-->
+      
+      <property name="ReceiverIndexNo" insert="true">
+        <column name="ReceiverIndexNo" sql-type="varchar" not-null="false" />
+      </property>
+    </class>
+
+
+  <class name="WUAccount" table="tWUnion_Account" lazy="true" >
+    <id name="rowguid" column="WUAccountPK">
+      <generator class="guid"/>
+    </id>
+    <property name="Id" generated="insert" update="false" insert="false">
+      <column name="WUAccountID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+    </property>
+    <property name="DTTerminalCreate">
+      <column name="DTTerminalCreate" sql-type="datetime" not-null="true" />
+    </property>
+    <property name="DTTerminalLastModified">
+      <column name="DTTerminalLastModified" sql-type="datetime" not-null="false" />
+    </property>
+    <property name="NameType">
+      <column name="NameType" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="FirstName">
+      <column name="FirstName" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="LastName">
+      <column name="LastName" sql-type="varchar" not-null="false" />
+    </property>
+	<property name="MiddleName">
+      <column name="MiddleName" sql-type="varchar" not-null="false" />
+    </property>
+	<property name="SecondLastName">
+      <column name="SecondLastName" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="Address">
+      <column name="Address" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="City">
+      <column name="City" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="State">
+      <column name="State" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="PostalCode">
+      <column name="PostalCode" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="PreferredCustomerAccountNumber">
+      <column name="PreferredCustomerAccountNumber" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="PreferredCustomerLevelCode">
+      <column name="PreferredCustomerLevelCode" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="Email">
+      <column name="Email" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="ContactPhone">
+      <column name="ContactPhone" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="MobilePhone">
+      <column name="MobilePhone" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="SmsNotificationFlag">
+      <column name="SmsNotificationFlag" sql-type="varchar" not-null="false" />
+    </property>
+    <property name="DTServerCreate">
+    	<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+    </property>
+    <property name="DTServerLastModified">
+    	<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+    </property>
+	</class>
+  
+</hibernate-mapping>

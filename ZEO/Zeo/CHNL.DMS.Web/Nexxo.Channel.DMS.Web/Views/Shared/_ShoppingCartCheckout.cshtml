@@ -1,0 +1,161 @@
+﻿@model TCF.Channel.Zeo.Web.Models.ShoppingCartDetail
+@{string LoadToCardEnable;
+string cssClass;
+
+bool withDrawTextBoxStatus = true;
+bool isGPR = Convert.ToBoolean(Model.CardHolder);
+
+bool isDisableWithdrawCNP = Convert.ToBoolean(Session["DisableWithdrawCNP"]);
+bool isCardPresent = Model.CustomerSession.CardPresent;
+
+if (isDisableWithdrawCNP)
+{
+	if (isCardPresent)
+	{
+		withDrawTextBoxStatus = false;
+	}
+	else
+	{
+		withDrawTextBoxStatus = true;
+	}
+}
+else
+{
+	if (isCardPresent)
+	{
+		withDrawTextBoxStatus = false;
+	}
+	else
+	{
+		withDrawTextBoxStatus = false;
+	}
+}
+if (ViewBag.cardStatus != null)
+{
+	int cardStatus = ViewBag.cardStatus;
+	if ((((isGPR == true) && (isCardPresent == false)) || ((isGPR == true) && (isCardPresent == true))) && (cardStatus == 100))
+	{
+		withDrawTextBoxStatus = true;
+	}
+}
+}
+
+@if (isGPR)
+{ 
+<table class="row_shit17">
+	<tr>
+		<td class="cart_row" id="lblLoadToCard">
+			<span>Load to Card $ <input type="hidden" name="MinimumLoadAmount" id="MinimumLoadAmount" value="@Model.MinimumLoadAmount" /></span>
+		</td>
+		<td>
+			@Html.TextBoxFor(c => c.LoadToCard, Model.LoadToCard.ToString("0.00"), new { @class = "cart_input", onblur = "changeAmountPrecision(this)", @maxlength = "8" })
+		</td>
+		<td class="shpng_cart_lbl_font">
+			<span id="minIntiLoadAmt" class="color_black">Min. initial load amount = $@Model.MinimumLoadAmount.ToString("0.00")</span>
+			<span id="minIntiLoadAmtError" class="color_black hide">
+				@*Load amount should be greater than the min. initial load amount of $@Model.MinimumLoadAmount.ToString("0.00")*@
+			Min. initial load amount = $@Model.MinimumLoadAmount.ToString("0.00")
+		</span>
+		@*@Html.HiddenFor(model => model.LoadFee)*@
+		<input type="hidden" name="LoadFee" value="@Model.LoadFee" />
+		@{
+			double LoadFee = Convert.ToDouble(Model.LoadFee);
+			if (LoadFee > 0)
+			{
+				<span id="LoadFee" class="color_black">
+					$@Model.LoadFee.ToString("0.00") fee will be
+					deducted from load amount
+				</span>
+			}
+		}
+	</td>
+</tr>
+<tr>
+	<td class="cart_checkout_card_err_msg" id="LoadTOCardErrMsg" colspan="2">
+		@Html.ValidationMessageFor(c => c.LoadToCard)
+	</td>
+	<td></td>
+</tr>
+</table>
+@*@Html.HiddenFor(m => m.WithdrawFee)*@
+<input type="hidden" name="WithdrawFee" value="@Model.WithdrawFee" />
+      if (Model.Items.FindAll(c => c.Product.ToLower() == TCF.Channel.Zeo.Web.Common.ProductType.GPRActivation.ToString().ToLower()).Count == 0 && isDisableWithdrawCNP == false && isCardPresent == true)
+	  {
+<table class="row_shift12">
+	<tr>
+		<td class="shpng_withdraw_lbl shpng_withdraw_lbl_nonIe">
+			Withdraw from Card $
+		</td>
+		@if (withDrawTextBoxStatus)
+		{
+			<td>
+				@Html.TextBoxFor(c => c.WithdrawFromCard, Model.WithdrawFromCard.ToString("0.00"), new { @class = "cart_input", readOnly = false, disabled = "disabled", onblur = "changeAmountPrecision(this)" })
+		</td>
+		}
+		else
+		{
+			<td>
+				@Html.TextBoxFor(c => c.WithdrawFromCard, Model.WithdrawFromCard.ToString("0.00"), new { @class = "cart_input", onblur = "changeAmountPrecision(this)" })
+		</td>
+		}
+		<td class="WithdrawFee cart_checkout_withdraw_fee">
+			@{ double WithdrawFee = Convert.ToDouble(Model.WithdrawFee);
+			 if (WithdrawFee > 0)
+			 {
+				<span id="WithdrawFee" class="WithdrawFee">
+					$@Model.WithdrawFee.ToString("0.00") fee
+					will be deducted from load amount
+				</span>
+			 }
+			}
+		</td>
+	</tr>
+	<tr>
+		<td class="cart_checkout_withdraw_fromcard" colspan="2"></td>
+		<td>
+			@Html.ValidationMessageFor(c => c.WithdrawFromCard)
+		</td>
+	</tr>
+</table>
+	  }
+	  else
+	  {
+
+<table class="row_shift12">
+	<tr>
+		<td class="shpng_withdraw_lbl shpng_withdraw_lbl_nonIe">
+			<span>Withdraw from Card $</span>
+		</td>
+		@if (withDrawTextBoxStatus)
+		{
+			<td>
+				@Html.TextBoxFor(c => c.WithdrawFromCard, Model.WithdrawFromCard.ToString("0.00"), new { @class = "cart_input", readOnly = false, disabled = "disabled", onblur = "changeAmountPrecision(this)" })
+		</td>
+		}
+		else
+		{
+			<td>
+				@Html.TextBoxFor(c => c.WithdrawFromCard, Model.WithdrawFromCard.ToString("0.00"), new { @class = "cart_input", onblur = "changeAmountPrecision(this)" })
+		</td>
+		}
+		<td class="WithdrawFee cart_checkout_withdraw_fee">
+			@{ double WithdrawFee = Convert.ToDouble(Model.WithdrawFee);
+			 if (WithdrawFee > 0)
+			 {
+				<span id="WithdrawFee" class="WithdrawFee">
+					$@Model.WithdrawFee.ToString("0.00") fee
+					will be added to the Withdraw amount
+				</span>
+			 }
+			}
+		</td>
+	</tr>
+	<tr>
+		<td class="cart_checkout_withdraw_fromcard" colspan="2"></td>
+		<td>
+			@Html.ValidationMessageFor(c => c.WithdrawFromCard)
+		</td>
+	</tr>
+</table>
+	  }
+}

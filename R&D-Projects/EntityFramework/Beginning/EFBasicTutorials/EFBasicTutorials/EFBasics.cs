@@ -18,7 +18,7 @@ namespace EFBasicTutorials
         public static void ChangeTrackingDemo()
         {
             Console.WriteLine("*** ChangeTrackingDemo Start ***");
-            using (var ctx = new SchoolDBEntities())
+            using (var ctx = new SchoolDatabaseEntities())
             {
                 ctx.Configuration.ProxyCreationEnabled = false;
 
@@ -74,7 +74,7 @@ namespace EFBasicTutorials
         public static void DBEntityEntryDemo()
         {
             Console.WriteLine("*** DBEntityEntryDemo Start ***");
-            using (var dbCtx = new SchoolDBEntities())
+            using (var dbCtx = new SchoolDatabaseEntities())
             {
                 //get student whose StudentId is 1
                 var student = dbCtx.Students.Find(1);
@@ -116,7 +116,7 @@ namespace EFBasicTutorials
         {
             Console.WriteLine("*** CRUDOperationInConnectedScenarioDemo Start ***");
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 var projectionQuery = from s in context.Students
                                       select s;
@@ -144,13 +144,13 @@ namespace EFBasicTutorials
         public static void ReadDataUsingStoredProcedure()
         {
             Console.WriteLine("*** ReadDataUsingStoredProcedure Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 //get all the courses of student whose id is 1
                 var courses = context.GetCoursesByStudentId(1);
 
-                foreach (Course cs in courses)
-                    Console.WriteLine(cs.CourseName);
+                //foreach (Course cs in courses)
+                //    Console.WriteLine(cs.CourseName);
             }
             Console.WriteLine("*** ReadDataUsingStoredProcedure Finished ***");
         }
@@ -160,7 +160,7 @@ namespace EFBasicTutorials
             ////Map Insert, Update, Delete stored procedure info for Student entity before runing following code
             //Console.WriteLine("*** CUDOperationUsingStoredProcedureDemo Start ***");
            
-            //using (var context = new SchoolDBEntities())
+            //using (var context = new SchoolDatabaseEntities())
             //{
             //    Student newStudent = new Student() { StudentName = "New Student using SP" };
 
@@ -179,7 +179,7 @@ namespace EFBasicTutorials
         public static void FindEntityDemo()
         {
             Console.WriteLine("*** FindEntityDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 var stud = context.Students.Find(1);
 
@@ -193,7 +193,7 @@ namespace EFBasicTutorials
         {
             Console.WriteLine("*** GetPropertyValuesDemo Start ***");
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 var stud = context.Students.Include("StudentAddress").Where(s => s.StudentID== 1).FirstOrDefault<Student>();
                 stud.StudentName = "Changed Student Name";
@@ -224,7 +224,7 @@ namespace EFBasicTutorials
         {
 
             Console.WriteLine("*** LocalDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Students.Add(new Student() { StudentName = "New Student for Local demo" });
 
@@ -258,7 +258,7 @@ namespace EFBasicTutorials
             try
             {
                 Console.WriteLine("*** ValidationErrorDemo Start ***");
-                using (var context = new SchoolDBEntities())
+                using (var context = new SchoolDatabaseEntities())
                 {
                     context.Students.Add(new Student() { StudentName = "" });
                     context.Standards.Add(new Standard() { StandardName = "" });
@@ -288,7 +288,7 @@ namespace EFBasicTutorials
         {
             Console.WriteLine("*** LazyLoadingDemo Start ***");
             
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Database.Log = Console.Write;
                 //Loading students only
@@ -306,7 +306,7 @@ namespace EFBasicTutorials
         {
             Console.WriteLine("*** ExplicitLoadingDemo Start ***");
 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 //Loading students only
                 IList<Student> studList = context.Students.ToList<Student>();
@@ -326,7 +326,7 @@ namespace EFBasicTutorials
         public static void DynamicProxyDemo()
         {
             Console.WriteLine("*** DynamicProxyDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 var stud1 = context.Students.Include("Standard.Teachers").Where(s => s.StudentName == "Student1")
                         .FirstOrDefault<Student>();
@@ -355,7 +355,7 @@ namespace EFBasicTutorials
         public static void RawSQLtoEntityTypeDemo()
         {
             Console.WriteLine("*** RawSQLtoEntityTypeDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 var studentList = context.Students.SqlQuery("Select * from Student").ToList<Student>();
 
@@ -368,7 +368,7 @@ namespace EFBasicTutorials
         public static void RawSQLCommandDemo()
         {
             Console.WriteLine("*** RawSQLCommandDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 //Get student name of string type
                 string standardName = context.Database.SqlQuery<string>("Select standardName from Standard where standardid=1").FirstOrDefault<string>();
@@ -387,9 +387,9 @@ namespace EFBasicTutorials
         public static void EntitySQLDemo()
         {
             Console.WriteLine("*** EntitySQLDemo Start ***");
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
-                string sqlString = "SELECT VALUE st FROM SchoolDBEntities.Students " +
+                string sqlString = "SELECT VALUE st FROM SchoolDatabaseEntities.Students " +
                            "AS st WHERE st.StudentID = 1";
                 var objctx = (context as IObjectContextAdapter).ObjectContext;
 
@@ -405,11 +405,11 @@ namespace EFBasicTutorials
         public static void EntitySQLUsingEntityConnectionDemo()
         {
             Console.WriteLine("*** EntitySQLUsingEntityConnectionDemo Start ***");
-            using (var con = new EntityConnection("name=SchoolDBEntities"))
+            using (var con = new EntityConnection("name=SchoolDatabaseEntities"))
             {
                 con.Open();
                 EntityCommand cmd = con.CreateCommand();
-                cmd.CommandText = "SELECT VALUE st FROM SchoolDBEntities.Students as st where st.StudentID = 1";
+                cmd.CommandText = "SELECT VALUE st FROM SchoolDatabaseEntities.Students as st where st.StudentID = 1";
                 Dictionary<int, string> dict = new Dictionary<int, string>();
                 using (EntityDataReader rdr = cmd.ExecuteReader(CommandBehavior.SequentialAccess | CommandBehavior.CloseConnection))
                 {
@@ -434,7 +434,7 @@ namespace EFBasicTutorials
             StudentDTO studDTO = new StudentDTO();
             studDTO.StudentName = "StudentName from DTO";
 
-            using (var ctx = new SchoolDBEntities())
+            using (var ctx = new SchoolDatabaseEntities())
             {
                 var stud = ctx.Students.Find(1);
 
@@ -454,7 +454,7 @@ namespace EFBasicTutorials
 
         //public static void TVFDemo()
         //{
-        //    using (var ctx = new SchoolDBEntities())
+        //    using (var ctx = new SchoolDatabaseEntities())
         //    {
         //        //Execute stored procedure as a function
         //        var courseList = ctx.GetCourseListByStudentID(1).Where(c => c.CourseName == "Course1").ToList<GetCourseListByStudentID_Result>();
@@ -469,7 +469,7 @@ namespace EFBasicTutorials
         public static void SpatialDataTypeDemo()
         {
             Console.WriteLine("*** SpatialDataTypeDemo Start ***");
-            using (var ctx = new SchoolDBEntities())
+            using (var ctx = new SchoolDatabaseEntities())
             {
                 //Add Location using System.Data.Entity.Spatial.DbGeography
                 ctx.Courses.Add(new Course() { CourseName = "New Course from SpatialDataTypeDemo", Location = DbGeography.FromText("POINT(-122.360 47.656)") });
@@ -488,13 +488,13 @@ namespace EFBasicTutorials
             Student student1WithUser2 = null;
 
             //User 1 gets student
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Configuration.ProxyCreationEnabled = false;
                 student1WithUser1 = context.Students.Where(s => s.StudentID == 1).Single();
             }
             //User 2 also get the same student
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 context.Configuration.ProxyCreationEnabled = false;
                 student1WithUser2 = context.Students.Where(s => s.StudentID == 1).Single();
@@ -506,7 +506,7 @@ namespace EFBasicTutorials
             student1WithUser2.StudentName = "Edited from user2";
             
             //User 1 saves changes first
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 try
                 {
@@ -521,7 +521,7 @@ namespace EFBasicTutorials
 
             //User 2 saves changes after User 1. 
             //User 2 will get concurrency exection because CreateOrModifiedDate is different in the database 
-            using (var context = new SchoolDBEntities())
+            using (var context = new SchoolDatabaseEntities())
             {
                 try
                 {

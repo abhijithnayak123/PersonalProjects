@@ -1,0 +1,14 @@
+IF EXISTS(SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tTxn_FeeAdjustments' AND COLUMN_NAME = 'FeeAdjustmentId')
+BEGIN
+    EXEC sp_RENAME 'tTxn_FeeAdjustments.FeeAdjustmentId', 'PromotionId' , 'COLUMN'
+END
+GO
+
+IF NOT EXISTS(SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tTxn_FeeAdjustments' AND COLUMN_NAME = 'CustomerId')
+BEGIN
+    ALTER TABLE tTxn_FeeAdjustments
+	ADD CustomerId BIGINT
+END
+GO
+
+

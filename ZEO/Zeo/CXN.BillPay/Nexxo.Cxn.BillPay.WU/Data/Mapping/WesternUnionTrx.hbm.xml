@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<hibernate-mapping assembly="MGI.Cxn.BillPay.WU" namespace="MGI.Cxn.BillPay.WU.Data" xmlns="urn:nhibernate-mapping-2.2">
+	<class name="WesternUnionTrx" table="tWUnion_BillPay_Trx" lazy="true" >
+		<id name="rowguid" column="WUBillPayTrxPK">
+			<generator class="guid" />
+		</id>
+		<property name="Id" generated="insert" update="false" insert="false">
+			<column name="WUBillPayTrxID" not-null="true" sql-type="bigint IDENTITY(1000000000,1)"/>
+		</property>
+		<property name="DTServerCreate">
+			<column name="DTServerCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTServerLastModified">
+			<column name="DTServerLastModified" sql-type="datetime" not-null="false" />
+		</property>
+		<many-to-one name="WesternUnionAccount" class="WesternUnionAccount" column="`WUBillPayAccountPK`" />
+		<property name="ChannelParterId">
+			<column name="ChannelParterId" sql-type="int" not-null="true" />
+		</property>
+		<property name="ProviderId">
+			<column name="ProviderId" sql-type="int" not-null="true" />
+		</property>
+		<property name="ChannelType">
+			<column name="Channel_Type" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="ChannelName">
+			<column name="Channel_Name" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="ChannelVersion">
+			<column name="Channel_Version" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderFirstName">
+			<column name="Sender_FirstName" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderLastname">
+			<column name="Sender_Lastname" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderAddressLine1">
+			<column name="Sender_AddressLine1" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderCity">
+			<column name="Sender_City" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderState">
+			<column name="Sender_State" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="SenderPostalCode">
+			<column name="Sender_PostalCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderCountryCode">
+			<column name="Sender_CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderCurrencyCode">
+			<column name="Sender_CurrencyCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderAddressLine2">
+			<column name="Sender_AddressLine2" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderStreet">
+			<column name="Sender_Street" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="WesternUnionCardNumber">
+			<column name="WesternUnionCardNumber" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="LevelCode">
+			<column name="LevelCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderEmail">
+			<column name="Sender_Email" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderContactPhone">
+			<column name="Sender_ContactPhone" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderDateOfBirth">
+			<column name="Sender_DateOfBirth" sql-type="varchar" not-null="false"/>
+		</property>
+		<property name="BillerName">
+			<column name="BillerName" sql-type="varchar" not-null="true" />
+		</property>
+		<property name="BillerCityCode">
+			<column name="Biller_CityCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CustomerAccountNumber">
+			<column name="Customer_AccountNumber" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CountryCode">
+			<column name="CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="CurrencyCode">
+			<column name="CurrencyCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="QPCompanyDepartment">
+			<column name="QPCompany_Department" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FinancialsMunicipalTax">
+			<column name="Financials_MunicipalTax" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FinancialsStateTax">
+			<column name="Financials_StateTax" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FinancialsCountTax">
+			<column name="Financials_CountTax" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FinancialsOriginatorsPrincipalAmount">
+			<column name="Financials_OriginatorsPrincipalAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsDestinationPrincipalAmount">
+			<column name="Financials_DestinationPrincipalAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsFee">
+			<column name="Financials_Fee" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsGrossTotalAmount">
+			<column name="Financials_GrossTotalAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsTotal">
+			<column name="Financials_Total" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsUndiscountedCharges">
+			<column name="Financials_UndiscountedCharges" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsDiscountedCharges">
+			<column name="Financials_DiscountedCharges" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="PaymentDetailsRecordingCountryCode">
+			<column name="PaymentDetails_Recording_CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsRecordingCountryCurrency">
+			<column name="PaymentDetails_Recording_CountryCurrency" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsDestinationCountryCode">
+			<column name="PaymentDetails_Destination_CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsDestinationCountryCurrency">
+			<column name="PaymentDetails_Destination_CountryCurrency" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsOriginatingCountryCode">
+			<column name="PaymentDetails_Originating_CountryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsOriginatingCountryCurrency">
+			<column name="PaymentDetails_Originating_CountryCurrency" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsOriginatingCity">
+			<column name="PaymentDetails_Originating_City" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsOriginatingState">
+			<column name="PaymentDetails_Originating_State" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsTransactionType">
+			<column name="PaymentDetails_TransactionType" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsPaymentType">
+			<column name="PaymentDetails_PaymentType" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsExchangeRate">
+			<column name="PaymentDetails_ExchangeRate" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsFixOnSend">
+			<column name="PaymentDetails_FixOnSend" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsReceiptOptOut">
+			<column name="PaymentDetails_ReceiptOptOut" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PaymentDetailsAuthStatus">
+			<column name="PaymentDetails_AuthStatus" sql-type="varchar" not-null="false" />
+		</property>
+
+		<property name="PromotionsCouponsPromotions">
+			<column name="promotions_coupons_promotions" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsPromoCodeDescription">
+			<column name="promotions_promo_code_description" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsPromoSequenceNo">
+			<column name="promotions_promo_sequence_no" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsPromoName">
+			<column name="promotions_promo_name" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsPromoMessage">
+			<column name="promotions_promo_message" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsPromoDiscountAmount">
+			<column name="promotions_promo_discount_amount" sql-type="money" not-null="false" />
+		</property>
+		<property name="PromotionsPromotionError">
+			<column name="promotions_promotion_error" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="PromotionsSenderPromoCode">
+			<column name="promotions_sender_promo_code" sql-type="varchar" not-null="false" />
+		</property>
+
+		<property name="SenderComplianceDetailsTemplateID">
+			<column name="Sender_ComplianceDetails_TemplateID" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsIdDetailsIdType">
+			<column name="Sender_ComplianceDetails_IdDetails_IdType" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsIdDetailsIdCountryOfIssue">
+			<column name="Sender_ComplianceDetails_IdDetails_IdCountryOfIssue" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsIdDetailsIdPlaceOfIssue">
+			<column name="Sender_ComplianceDetails_IdDetails_IdPlaceOfIssue" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsIdDetailsIdNumber">
+			<column name="Sender_ComplianceDetails_IdDetails_IdNumber" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsSecondIDIdType">
+			<column name="Sender_ComplianceDetails_SecondID_IdType" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsSecondIDIdCountryOfIssue">
+			<column name="Sender_ComplianceDetails_SecondID_IdCountryOfIssue" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsSecondIDIdNumber">
+			<column name="Sender_ComplianceDetails_SecondID_IdNumber" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsDateOfBirth">
+			<column name="Sender_ComplianceDetails_DateOfBirth" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsOccupation">
+			<column name="Sender_ComplianceDetails_Occupation" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsCurrentAddressAddrLine1">
+			<column name="Sender_ComplianceDetails_CurrentAddress_AddrLine1" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsCurrentAddressAddrLine2">
+			<column name="Sender_ComplianceDetails_CurrentAddress_AddrLine2" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsCurrentAddressCity">
+			<column name="Sender_ComplianceDetails_CurrentAddress_City" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsCurrentAddressStateCode">
+			<column name="Sender_ComplianceDetails_CurrentAddress_StateCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsCurrentAddressPostalCode">
+			<column name="Sender_ComplianceDetails_CurrentAddress_PostalCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsContactPhone">
+			<column name="Sender_ComplianceDetails_ContactPhone" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsIActOnMyBehalf">
+			<column name="Sender_ComplianceDetails_I_ActOnMyBehalf" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsAckFlag">
+			<column name="Sender_ComplianceDetails_Ack_Flag" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="SenderComplianceDetailsComplianceDataBuffer">
+			<column name="Sender_ComplianceDetails_ComplianceData_Buffer" sql-type="varchar" not-null="false" />
+		</property>
+
+		<property name="FillingDate">
+			<column name="FillingDate" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FillingTime">
+			<column name="FillingTime" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="Mtcn">
+			<column name="MTCN" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="NewMTCN">
+			<column name="NewMTCN" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DfFieldsPdsrequiredflag">
+			<column name="DfFields_PDSRequiredFlag" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DfFieldsTransactionFlag">
+			<column name="DfFields_TransactionFlag" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DfFieldsDeliveryServiceName">
+			<column name="DfFields_DeliveryServiceName" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DeliveryCode">
+			<column name="DeliveryCode" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="FusionScreen">
+			<column name="FusionScreen" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ConvSessionCookie">
+			<column name="ConvSessionCookie" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ForeignRemoteSystemIdentifier">
+			<column name="ForeignRemoteSystem_Identifier" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ForeignRemoteSystemReferenceNo">
+			<column name="ForeignRemoteSystem_Reference_no" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ForeignRemoteSystemCounterId">
+			<column name="ForeignRemoteSystem_CounterId" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="InstantNotificationAddlServiceCharges">
+			<column name="InstantNotification_AddlServiceCharges" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="InstantNotificationAddlServiceLength">
+			<column name="InstantNotification_AddlServiceLength" sql-type="varchar" not-null="false" />
+		</property>
+
+		<property name="FinancialsPlusChargesAmount">
+			<column name="Financials_PlusChargesAmount" sql-type="decimal" not-null="false" />
+		</property>
+		<property name="FinancialsTotalDiscount">
+			<column name="Financials_TotalDiscount" sql-type="decimal" not-null="false" />
+		</property>
+
+		<property name="RequestXml">
+			<column name="Request_XML" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="ResponseXml">
+			<column name="Response_XML" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="WuCardTotalPointsEarned">
+			<column name="WUCard_TotalPointsEarned" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="MessageArea">
+			<column name="MessageArea" sql-type="varchar" not-null="false" />
+		</property>
+		<property name="DTTerminalCreate">
+			<column name="DTTerminalCreate" sql-type="datetime" not-null="true" />
+		</property>
+		<property name="DTTerminalLastModified">
+			<column name="DTTerminalLastModified" sql-type="datetime" not-null="false" />
+		</property>
+	</class>
+</hibernate-mapping>

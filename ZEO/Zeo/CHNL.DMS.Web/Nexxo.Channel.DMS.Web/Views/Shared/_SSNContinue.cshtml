@@ -1,0 +1,49 @@
+﻿@model TCF.Channel.Zeo.Web.Models.SystemMessage
+<div class="system_msg_wrap">
+    <div class="m_type">
+        @Html.LabelFor(model => model.Type)
+        <span class="m_type_span">@Model.Type</span>
+    </div>
+    <div class="m_num">
+        @Html.LabelFor(model => model.Number)
+        <span class="m_num_span">@Model.Number</span>
+    </div>
+    <br />
+    <br />
+    <div class="float_left">
+        @Html.LabelFor(model => model.Message)
+        @{
+            <img width="23" height="23" alt=" " src="~/Content/images/error.jpg" class="m_err_img">
+        }
+    </div>
+    <div class="m_msg_wrap">
+        @Model.Message
+    </div>
+
+        <br />
+        <br />
+
+        <div class="clear_both float_left">
+            @Html.LabelFor(model => model.AddlDetails, new { @class = "m_add_det" })
+        </div>
+        <div class="m_add_det_lbl">
+            @Model.AddlDetails
+        </div>
+        <br />
+        <br />
+
+    <div class="txt_center">
+        <ul>
+            <li class="SrchButtonWidth margin_top_two">
+                <input type="button" value="Continue" id="btnOk" onclick="personalInformation()"
+                       class="green_input push_top10_fix" />
+            </li>
+        </ul>
+    </div>
+</div>
+<script type="text/javascript">
+    function personalInformation() {
+        var personalInformation = '@Url.Action("PersonalInformation", "CustomerRegistration")';
+        window.location.href = personalInformation;
+    }
+</script>

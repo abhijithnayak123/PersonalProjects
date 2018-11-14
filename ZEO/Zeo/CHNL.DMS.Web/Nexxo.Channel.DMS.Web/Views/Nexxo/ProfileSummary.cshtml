@@ -1,0 +1,61 @@
+﻿@model TCF.Channel.Zeo.Web.Models.ProfileSummary
+@{
+    ViewBag.Title = TCF.Channel.Zeo.Web.App_GlobalResources.Nexxo.ProfileSummary;
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<script src="@Url.Content("~/Scripts/Customer/BaseCustomerValidator.js.axd")" type="text/javascript"></script>
+<script src="@Url.Content("~/Scripts/Customer/" + @Model.ChannelPartnerName + "CustomerValidator.js.axd")" type="text/javascript"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('form').submit(function () {
+            var val = $('form').validate();
+            if (val.valid()) {
+                var submitbutton = $('input[type="submit"]');
+
+                submitbutton.addClass('DisableSubmitButtons')
+                    .addClass('OpaqueViewCart')
+                    .attr('disabled', 'disabled');
+
+                $('.aLinkButton').addClass('DisableHyperLinks')
+                    .addClass('OpaqueViewCart')
+                    .attr('disabled', 'disabled');
+            }
+            else {
+                getMessage(CustomerExceptions.Customer_Profile_Error);
+                return;
+            }
+        });
+    });
+</script>
+<h2 align="center">
+@if (Convert.ToInt32((Session["UserRoleId"])) == (int)TCF.Zeo.Common.Util.Helper.UserRoles.Tech || Convert.ToInt32((Session["UserRoleId"])) == (int)TCF.Zeo.Common.Util.Helper.UserRoles.ComplianceManager)
+{
+	<div align="center">
+		<img src="@Url.Content("~/Content/images/Summary_" + @Model.ChannelPartnerName + ".png")" />
+	</div>
+}
+else
+{
+	<div align="center">
+		<img class="nav_disable" src="@Url.Content("~/Content/images/Summary_" + @Model.ChannelPartnerName + ".png")" usemap="#@Model.ChannelPartnerName" />
+	</div>
+}
+	
+   
+</h2>
+@using (Html.BeginForm("ProfileSummary", "CustomerRegistration", FormMethod.Post, new { id = "frmProfileSummary" }))
+{
+    <div class="field-validation-error">
+        @Html.ValidationSummary(true)
+    </div>
+    <br />
+    <div>
+        <p class="profile_heading row5"> Personal Information </p>
+    </div>
+        
+    @Html.Partial("_ProfileSummary", Model)       
+	@*Begin TA-170 Changes
+	User Story Number: TA-170 | ALL |   Developed by: Sunil Shetty     Date: 17.03.2015
+	Purpose: The partial View is moved to channelpartner specific folder and will be called here after on convetional way*@
+    @Html.Partial("_ProfileNavigation", Model)
+}

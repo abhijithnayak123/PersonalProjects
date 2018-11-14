@@ -1,0 +1,24 @@
+﻿@model TCF.Channel.Zeo.Web.Models.IdentificationInformation
+@{
+    ViewBag.Title = "Identification Information";
+    Layout = "~/Views/Shared/_Menu.cshtml";
+}
+<div align="center">
+    <img src="~/Content/images/Identification.png" usemap="#Map"  />
+</div>
+<h2 align="center">
+    Identification Information
+</h2>
+<script language="javascript" type="text/javascript">
+    var base_url_GetStates = '@Url.Action("GetStates", "CustomerRegistration")';
+    var base_url_GovtIdType = '@Url.Action("GovtIdType", "CustomerRegistration")';
+    var base_url_GetIdRequirements = '@Url.Action("GetIdRequirements", "CustomerRegistration")';
+</script>
+
+<script src="@Url.Content("~/Scripts/Common/DropdownScript.js?version=" + @DateTime.Now.Ticks)" type="text/javascript"></script>
+
+@using (Html.BeginForm())
+{
+    @Html.Partial("_IdentificationInformation", Model)
+    @Html.Partial("_IdentificationNavigation")
+}

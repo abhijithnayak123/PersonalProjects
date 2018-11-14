@@ -1,0 +1,1 @@
+﻿UPDATE tSkins SET ValueEn='866-340-6392', ValueEs='866-340-6392' WHERE ChannelPartnerId = 27

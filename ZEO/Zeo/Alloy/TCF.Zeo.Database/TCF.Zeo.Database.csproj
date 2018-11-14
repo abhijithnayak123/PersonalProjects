@@ -1,0 +1,972 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{642CAD59-7BAF-45BB-881C-91084FAF0F04}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TCF.Zeo.Database</RootNamespace>
+    <AssemblyName>TCF.Zeo.Database</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DbUp, Version=3.3.5.0, Culture=neutral, PublicKeyToken=4b419c53bdfd4cbf, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\dbup.3.3.5\lib\net35\DbUp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Deploy.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.1002.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.1001.usp_UpdateFeatures.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0998.Create_tFeatures.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0800.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0799.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0795.Alter_usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0798.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0794.Update_tRCIF_Credentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0795.Alter_usp.GetRCIFCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0797.Update_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0796.Insert_tCheckClassifications.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0794.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0791.Create_tGovtIdMapping.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0792.usp_GetGovtIdTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0793.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0792.Alter_usp_CheckIsOnusProvider.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0791.usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0790.Alter_usp_GetShoppingCartCheckout.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0789.Alter_usp_PricingCluster.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0787.Alter_usp_GetWUCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0788.Alter_usp_GetUnBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0783.Alter_tTxn_Check.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0784.Alter_usp_UpdateCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0785.Alter_usp_GetCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0786.Alter_usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0783.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0776.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0782.Insert_tChannelPartnerProductProcessorsMapping.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0781.Update_OnUS_PricingCluster.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0780.Alter_usp_GetCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0779.Update_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0775.Alter_usp_CheckIsCountryBlocked.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0774.Alter_usp_GetUnBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0772.usp_CheckIsCountryBlocked.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0773.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0771.usp_InsertBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0767.Create_tBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0768.usp_GetBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0769.usp_GetUnBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0770.usp_GetBlockedUnBlockedCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0768.Update_OnUS_PricingCluster.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0762.Update_tNPSterminals.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0761.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0763.Update_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0764.Alter_usp_GetCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0765.Alter_vTransactionHistory.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0766.Alter_usp_GetProcessCheckReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0677.Alter_tTxn_Check.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0678.Alter_usp_CreateCheckTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0676.Alter_usp_UpdateCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0681.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0680.Create_usp_GetCheckType.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0679.Alter_usp.GetRCIFCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0678.Update_tRCIF_Credentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0677.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0676.Alter_tRCIF_Credentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0673.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0675.Alter_usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0672.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0674.usp_UpdateTCFOnusTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0670.Create_tTCFOnus_Trx.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0671.usp_CreateTCFOnusTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0669.Alter_usp.GetRCIFCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0668.Alter_tRCIF_Credentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0666.usp_GetTCFOnusAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0665.Create_tTCFOnusAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0664.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0660.Alter_trg_tChannelPartnerPricing_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0661.Alter_tChannelPartnerPricing.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0662.Alter_trg_tChannelPartnerPricing_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0663.usp_PricingCluster.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0658.Alter_usp_GetCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0659.Update_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0652.Create_tCheckClassifications.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0653.Alter_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0654.Insert_tProductProcessorsMapping.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0655.Insert_tCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0656.Insert_tCheckClassifications.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0657.Create_usp_CheckIsOnusProvider.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0650.Alter_tChannelPartnerFeeadjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0760.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0759.Update_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0758.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0757.Update_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0756.Alter_usp_ValidatePromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0755.Update_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0754.Update_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0753.Alter_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0730.Alter_usp_PopulateWUCountriesCurrency.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0733.Insert_MessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0732.usp_GetFraudLimit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0731.Alter_tWunion_Trx.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0734.Alter_usp_UpdateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0735.Alter_usp_UpdateWUTransactionFromValidateRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0736.Alter_usp_GetCommitRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0729.Alter_tWUnion_CountryCurrencies.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0752.Alter_usp_ValidatePromotionName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0750.Alter_usp_ValidatePromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0751.Alter_usp_UpdatePromotionStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0747.Alter_usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0748.Alter_usp_GetPromotionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0749.Alter_usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0739.usp_GetTerminalByName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0740.Update_tChannelPartnerIDTypeMapping.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0741.Update_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0742.Update_tNexxoidTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0746.Update_tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0740.Alter_tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0741.Alter_usp_InsertOrUpdatePromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0742.Alter_usp_SavePromoDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0743.Alter_usp_GetPromotionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0744.Alter_usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0745.Alter_usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0738.Delete_tPromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0736.Alter_usp_InsertOrUpdatePromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0735.Alter_usp_SaveProvision.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0734.Alter_usp_InsertOrUpdateProvions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0733.Update_tSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0737.Alter_tPromoProvision_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0732.Alter_tPromoProvisions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0731.Alter_usp_UpdateMoneyOrderStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0729.Alter_usp_GetSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0730.MigrationScript.tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0728.Update_tSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0726.usp_InsertOrUpdateQualifiers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0727.usp_InsertOrUpdateProvions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0727.Alter_usp_GetStateNameAndIdByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0726.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0722.Alte_tTxnFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0723.usp_CreateTrxFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0724.Alter_usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0725.Alter_usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0722.Alter_usp_ValidatePromotionName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0680.ufn_VerifyProvisions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0681.ufn_VerifyQualifiers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0682.Alter_usp_UpdatePromotionStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0683.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0684.Alter_Promotion_Column.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0669.Alter_usp_GetSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0632.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0663.Update_tSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0664.Alter_usp_GetSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0665.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0666.ufn_GetStateCodeBasedOnLacationId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0667.Alter_usp_GetErrorMessageByMessageKey.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0668.Alter_usp_GetErrorMessage.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0663.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0662.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0685.usp_SavePromoDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0686.usp_SaveProvision.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0687.usp_SaveQualifier.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0688.usp_DeleteProvison.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0689.usp_DeleteQualifier.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0690.usp_GetStateNameAndIdByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0691.Alter_tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0692.Alter_usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0693.Alter_usp_GetPromotionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0694.Alter_usp_InsertOrUpdatePromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0695.Alter_usp_SavePromoDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0696.Alter_usp_UpdatePromotionStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0697.Alter_usp_GetAlloyContextByAgentSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0698.Alter_usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0699.Alter_tr_tpromotions_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0739.Alter_usp_GetBillpayReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0750.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0767.Alter_usp_GetAllParkedTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0769.Create_usp_CheckIsOnusProvider.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0770.usp_UpdateTransactionFrankedForOnUS.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0778.Alter_usp_UpdateTCFOnusTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.1000.usp_GetFeatures.sql" />
+    <Content Include="Scripts\2.0\Script100.0700.PromotionJob.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0701.Alter_usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0702.Alter_tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0703.Alter_usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0704.usp_CreateTrxFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0705.usp_CancelCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0706.ufn_IsPromotionApplied.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0707.ufn_ValidateQualifiers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0708.Alter_usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0709.Alter_usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0710.Alter_usp_GetPromotionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0711.Alter_usp_SavePromoDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0712.Alter_usp_SaveQualifier.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0713.Alter_usp_SaveProvision.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0714.Alter_usp_InsertOrUpdatePromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0715.Alter_tr_tpromotions_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0716.Alter_tr_tPromoQualifiers_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0718.Alter_tr_tPromoProvisions_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0719.Alter_usp_UpdateStateTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0720.Alter_usp_UpdateBillPayTransactionState.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0721.Alter_usp_GetFundTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0659.Create_tSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0660.Insert_tSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0661.usp_GetSupportInformation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0659.Update_tMessageStores.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0658.Alter_usp_CreateAgentSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0679.unf_SplitString.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0678.Alter_usp_ValidatePromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0671.ufn_IsCustomerBelongsToGroup.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0674.Create_Promotion_Audit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0675.tr_tPromoProvisions_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0676.tr_tPromoQualifiers_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0677.tr_tpromotions_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0672.usp_ValidatePromotionName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0673.usp_UpdatePromotionStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0670.Alter_usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0671.usp_CreateTrxFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0665.ufn_IsItemInList.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0665.usp_GetPromotionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0666.usp_GetPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0667.usp_GetPromotionTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0668.usp_GetProvidersAndProductsByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0669.usp_InsertOrUpdatePromotion.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0658.Alter_tTxn_FeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0665.MigrationScript_tTxn_FeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0659.Create_tPromotions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0660.ufn_IsPromotionApplied.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0661.ufn_GetTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0662.ufn_GetTransactionAmount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0663.ufn_ValidateQualifiers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0664.usp_GetPromotionEligibility.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0656.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0657.Dorpusp_GetCustomerLastNameByTerm.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0655.usp_GetCustomerLastNameByTerm.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0654.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0653.Alter_usp_GetFundReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0652.Alter_vTransactionHistory.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0651.Alter_usp_GetFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0649.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0648.Alter_usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0647.Update_tChannelPartnerFeeAdjustments_GETONE_Promo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0646.Create_usp_GetCommittedMOTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0644.Insert_tChannelPartnerFeeAdjustments_BOGO_Promo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0645.Create_usp_GetCommittedCheckTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0644.Alter_usp_GetAgentTransactionHistoryBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0642.Alter_usp_GetMessagesByAgentId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0643.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0641.Alter_usp_UpdateChexarTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0632.Alter_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0635.Alter_tChxr_Trx.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0636.Create_usp_GetDeclineMessageByKey.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0637.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0638.Alter_usp_UpdateChexarTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0639.Alter_usp_GetChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0640.Alter_usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0633.Alter_usp_UpdateWUTransactionFromFeeRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0634.Alter_usp_UpdateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0631.Alter_usp_GetErrorMessage.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0630.Alter_usp_SearchCustomerByCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0629.usp_GetCustomersForAutoSearch.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0628.UnUsedColumnsRemovedFromTables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0624.usp_UpdateCustomerFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0627.Alter_usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0623.usp_UpdateMoneyOrderStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0625.usp_CommitCheckTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0620.Alter_usp_GetRcifCustomersByPky.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0621.Alter_usp_SearchCustomerByCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0622.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0619.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0618.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0617.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0616.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0615.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0614.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0612.Alter_usp_GetRcifCustomersByPky.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0613.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0611.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0610.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0609.AddIndex_tTcisAccount_PAN.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0608.usp_GetRcifCustomersByPky.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0607.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0606.Alter_usp_SearchCustomerByCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0605.Insert_tCardDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0601.Create_tCardDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0602.Create_usp_GetCardDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0604.usp_GetRcifCustomersByPky.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0603.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0563.Create_tRCIFCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0564.usp.GetRCIFCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0565.Insert_tRCIF_Credentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0566.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0600.Alter_usp_GetReceiptTemplate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0599.Alter_usp_GetBillpayReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0598.usp_ReleaseWUCounterId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0597.Alter_usp_GetReceiptTemplate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0596.AddIndex_tTxn_FeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0594.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0595.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0591.CreateReceiptsTable.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0592.usp_UploadReceiptTemplate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0593.usp_GetReceiptTemplate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0588.Alter_usp_UpdateFundsCXNTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0589.Alter_usp_UpdateAccountByAliasId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0590.Alter_usp_CreateOrUpdateChexarSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0587.usp_UpdateGoldCardPoints.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0586.Alter_usp_GetFundTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0585.usp_Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0584.Alter_usp_GetCheckTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0583.usp_Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0582.usp_Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0581.usp_Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0580.Alter_usp_UpdateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0571.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0530.Alter_usp_GetAllChexarPendingChecks.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0532.Alter_tr_tShoppingCarts_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0533.Alter_usp_GetChexarAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0530.UnUsedTablesRemoved.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0531.UnUsedColumnsRemovedFromTables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0528.Alter_tIdentificationConfirmation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0529.Alter_usp_CreateCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0525.usp_CashOutAndUpdateCartStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0528.Alter_usp_GetAgentTransactionHistoryBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0550.Insert_tMessageStore_Pre-PostLflush.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0544.ScriptForIndex.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0553.Alter_usp_CreateCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0554.Alter_usp_UnParkShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0551.usp_GetMOTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0552.Alter_usp_GetFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0579.Alter_usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0578.usp_Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0576.Update_PromotionDescription_THREETHENFREE.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0577.usp_GetCheckTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0575.Alter_usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0574.Update_tChannelPartnerGroups.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0573.Alter_usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0572.Alter_UnUsedColumnsRemovedFromTables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0514.Alter_usp_GetShoppingCartCheckout.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0570.Alter_usp_SendMoneyModifyorRefund.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0569.Alter_usp_GetWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0568.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0565.Alter_tWUnionTrx.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0567.Alter_usp_CreateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0562.Alter_usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0563.usp_GetCheckTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0564.usp_GetMOTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0555.Insert_tChannelPartnerFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0556.usp_GetCheckTrxCountByPromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0558.Alter_usp_GetMOTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0559.Alter_usp_GetCPTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0560.Alter_tChannelPartnerGroups.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0561.Alter_usp_GetGroupsByChannelPartner.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0548.ALter_usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0549.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0545.Alter_table_tCustomers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0546.usp_UpdateCustomerRegistrationStatusbyCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0547.Alter_usp_ValidateSSNByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0544.Alter_usp_CreateMoneyTransferTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0543.Alter_usp_GetChexarAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0541.Alter_usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0539.usp_GetSenderStateCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0538.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0537.Alter_usp_UpdateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0536.Alter_usp_CashOutAndUpdateCartStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0535.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0529.MigrationScriptForCustomerGroups.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0527.usp_ImageArchive.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0526.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0525.Alter_Create_trgLocationCounterIdInsertUpdate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0524.Update_tLocationProcessorCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0523.Alter_vTransactionHistory.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0522.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0520.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0521.Alter_usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0517.usp_GetAllChexarPendingChecks.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0518.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0519.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0516.Alter_VTransactionHistory.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0515.Alter_usp_GetWUBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0511.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0511.Alter_tShoppingCartMigrationScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0511.Alter_usp_UnParkShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0510.usp_GetCashDrawerReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0509.Alter_usp_GetCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0508.Alter_usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0501.tr_tTxn_MoneyOrder_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0502.tr_PopulateBillPayTransaction_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0503.tr_tTxn_Funds_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0504.tr_tChxr_Trx_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0505.tr_tTxn_Cash_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0506.tr_tTxn_MoneyTransfer_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0507.tr_tTxn_CheckAudit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0500.Alter_usp_GetWUBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0499.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0496.Alter_ufn_IsOtherReceiverExists.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0497.Alter_usp_SaveReceiversql.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0498.Alter_usp_SendMoneyModifyorRefund.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0495.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0494.Alter_usp_GetAgentTransactionHistoryBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0493.Alter_usp_ImportReceivers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0492.Alter_usp_GetStateNameByCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0492.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0492.Alter_usp_SaveReceiver.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0491.Alter_ufn_IsOtherReceiverExists.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0491.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0490.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0489.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0487.usp_CreateVisaAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0488.usp_UpdateVisaAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0486.Alter_usp_UpdateChexarTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0485.Alter_usp_CanCloseCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0483.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0484.Alter_usp_GetCustomerByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0482.usp_CheckAccountExists.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0481.usp_GetVisaAccountByCustomerIdandStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0480.Alter_usp_CreateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0478.Alter_usp_GetWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0479.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0477.Alter_usp_GetWUBillPayRequestDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0476.Alter_usp_UpdateWUTransactionFromValidateRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0475.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0474.usp_GetStateNameByCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0477.Alter_Migration_X9Tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0471.Alter_usp_GetSummaryReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0472.Alter_usp_GetWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0473.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0470.Alter_usp_GetMessagesByAgentId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0469.Alter_usp_GetMessagesByAgentId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0468.usp_UpdateCustIndByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0467.Alter_usp_GetChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0465.Alter_usp_CreateMoneyTransferTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0466.Alter_usp_GetCommitRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0462.Alter_usp_UpdateWUTransactionFromFeeRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0463.Alter_usp_UpdateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0464.Alter_usp_GetWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0461.Alter_usp_GetMessagesByAgentId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0460.Alter_usp_GetChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0459.Alter_usp_UpdateReceiverDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0458.Alter_usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0456.Alter_tr_TCIS_Account_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0457.Update_tTCIS_Account.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0455.usp_GetValidateRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0454.Alter_usp_GetWUBillPayRequestDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0453.Update_tLimitTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0452.Alter_usp_ImportReceivers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0453.Alter_usp_CreateOrUpdateWUImportBillers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0451.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0450.Alter_usp_UpdateAccountByAliasId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0449.Alter_usp_GetWUBillPayRequestDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0448.Alter_usp_CreateUpdateSSOAgent.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0447.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0446.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0445.usp_UpdateAccountByAliasId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0442.Alter_usp_GetMOTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0443.Alter_usp_GetFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0444.Alter_usp_GetCPTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0441.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0440.usp_GetWUCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0439.Insert_tMessageStore .sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0438.Alter_usp_UpdateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0437.Alter_usp_TCF_AddTCISAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0436.Alter_usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0435.Alter_usp_UpdateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0431.Alter_tUserRolesPermissionsMapping_tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0432.Migrate_tUserRolesPermissionsMapping_tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0433.ufn_CanUnParkTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0434.Alter_usp_UnParkShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0430.Alter_usp_GetVisaTransactionByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0429.Alter_usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0428.Alter_usp_GetSummaryReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0427.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0426.Alter_usp_UpdateStatesForTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0425.Alter_usp_GetSummaryReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0417.usp_UpdateModifyTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0424.usp_GetCustomerSessionIdByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0423.Update_tVisa_credential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0421.Alter_usp_GetFundReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0420.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0422.Update_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0419.Alter_usp_GetShoppingCartForReceipts.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0417.Alter_usp_CreateCustomerSessionCounterId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0418.Alter_usp_CreateOrUpdateFavouriteBiller.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0416.Customer_Exception_message_tmessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0414.usp_GetBillPayCxnTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0415.usp_UpdateCXNIDInBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0413.usp_GetCheckCxnTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0411.usp_GetFundsCXNTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0412.usp_UpdateFundsCXNTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0409._Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0407.ufn_GetDeclineMessageByKey.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0408.Alter_usp_UpdateChexarTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0404.Alter_tMessageStore_table.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0405.Alter_usp_GetErrorMessage.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0406.Alter_usp_GetErrorMessageByMessageKey.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0403.tr_Customers_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0528.Alter_usp_GetAllChexarPendingChecks.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0540.usp_UpdateReceiveMoneyWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0542.Alter_Usp_GetProvidersByChannelPartnerIdOrName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0667.usp_CreateTCFOnusAccount.sql" />
+    <Content Include="Scripts\2.0\Script100.0069.usp_CreateChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0077.usp_GetChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0169.usp_UpdateBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0246.tShoppingCartAlterScript.sql" />
+    <Content Include="Scripts\2.0\Script100.0073.usp_GetCheckTransactionById.sql" />
+    <Content Include="Scripts\2.0\Script100.0086.usp_UpdateChexarTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0087.usp_UpdateChexarTransactionStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0379_usp_GetShoppingCartForReceipts.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0372.usp_UpdateFundTransactionAmount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0380.Alter_usp_CreateChexarTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0381.usp_GetCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0382.usp_GetLocationStateCodeAndCardExpPeriod.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0382.Alter_Id_Column_As_Identity.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0134.tr_tWUnion_Trx_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0386.tr_tWUnion_Account_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0385.tr_tTxn_MoneyTransfer_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0384.tr_TCIS_Account_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0383.tr_tChannelPartner_Pricing_Audit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0378.Alter_Constraints_CommonModule.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0377.usp_GetShoppingCartCheckout.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0376.ufn_IsCashOverCounter.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0375.usp_GetActiveShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0374.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0373.Alter_usp_GetBillpayReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0371.Alter_usp_GetComplianceTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0370.vComplienceView.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0369.Alter_usp_GetCustomerTransactionLocations.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0368.ALter_usp_GetCustomerTransactionHistoryBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0367.Alter_usp_GetAgentTransactionHistoryBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0366.Alter_vTransactionHistory.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0365.Alter_usp_GetProvidersByChannelPartnerIdOrName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0364.Alter_usp_GetChannelPartnerByChannelPartnerIdOrName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0363.ProductMenu_MigrationScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0362.ProductMenu_AlterScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0361.Alter_usp_CreateCustomerSessionCounterId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0360.Alter_usp_UpdateLocationCounterIdStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0359.Alter_usp_CreateUpdateSSOAgent.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0358.usp_GetErrorMessageByMessageKey.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0357.usp_CreateCustomerSessionCounterId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0356.Alter_usp_UpdateLocationCounterIdStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0355.Alter_usp_GetGroupsByChannelPartner.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0354.Alter_usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0353.Alter_usp_GetCheckReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0352.Alter_usp_GetBillpayReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0351.usp_GetCashDrawerReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0350.usp_GetSummaryReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0349.usp_GetShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0349.usp_GetErrorMessage.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0349.Alter_usp_GetLocationCounterIdByLocation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0348.usp_UpdateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0348.usp_GetAgentsByLocationId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0347.Alter_usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0346.usp_GetCustomerByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0345.usp_GetMasterCountriesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0344.usp_GetIdTypesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0343.usp_GetIdStatesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0342.usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0341.usp_GetIdType.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0340.usp_GetNpsdiagnosticInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0339.Alter_AgentDetails.sql.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0338.Alter_usp_CreateAgentSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0337.usp_GetTerminalByTerminalId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0336.usp_GetTerminalByName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0335.usp_UpdateTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0334.usp_GetChannelPartnerTim.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0333.usp_CreateTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0332.usp_UpdateNpsTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0331.usp_GetNpsTerminalByName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0330.usp_GetNpsTerminalBylocationId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0329.usp_GetNpsTerminalById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0328.usp_CreateNpsTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0327.usp_UpdateAgentSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0326.Migration_Terminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0325.Migration_NpsTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0324.Alter_Script_Terminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0323.Alter_Script_NpsTerminal.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0322.usp_GetSSOAgentRole.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0321.usp_getAgentBySessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0320.usp_CreateAgentSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0319.usp_CreateUpdateSSOAgent.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0318.Migration_AgentDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0317.Alter_AgentDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0316.usp_GetProvidersByChannelPartnerIdOrName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0315.usp_GetChannelPartnerCertificateByPartnerIdAndIssuerName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0314.usp_GetTipsAndOffersByChannelPartnerAndViewName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0313.usp_GetChannelPartnerByChannelPartnerIdOrName.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0312.Migration_ChannelPartner.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0310.Alter_ChannelPartner.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0309.Alter_usp_GetAlloyContextByAgentSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0308.Alter_Create_trgLocationCounterIdInsertUpdate.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0307.usp_CreateLocation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0306.usp_ValidateLocation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0305.usp_UpdateLocationCounterId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0303.usp_GetLocationProcessorCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0302.usp_UpdateLocation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0301.usp_GetLocationById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0300.usp_GetLocationsByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0299.MigrationScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0298.usp_SaveLocationProcessorCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0297.Alter_tLocations_related_tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0296.usp_GetResubmitTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0295.usp_GetChexarAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0294.usp_GetAllParkedTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0293.tr_tShoppingCartTransactions_Audit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0292.tr_tShoppingCarts_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0290.usp_GetMoneyTransferReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0289.usp_GetMoneyOrderReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0288.usp_GetFundReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0287.usp_GetCouponReceiptData.sql" />
+    <Content Include="Scripts\2.0\Script100.0286.usp_GetCheckReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0285.usp_GetBillpayReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0283.usp_IsCartPresent.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0282.usp_CanCloseCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0281.ufn_IsCartPresent.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0280.usp_UpdateStateTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0279.usp_GetVisaCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0278.usp_PopulateBillerCatalog.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0277.usp_PopulateBillerDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0276.usp_PopulateDeliveryServiceTranslatios.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0275.usp_PopulateCountryTranslations.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0274.usp_PopulateWUErrorMessages.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0273.usp_PopulateWUCountriesCurrency.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0272.usp_PopulateWUMexxicoCities.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0271.usp_PopulateWUCountryStates.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0270.usp_PopulateWUCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0266.usp_GetPreflushPostflushDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0265.usp_GetCashTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0264.usp_CreateCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0263.usp_UnParkShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0262.usp_UpdateOrCancelCash.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0261.usp_CancelCashIn.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0260.usp_CashIn.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0259.usp_CashOutAndUpdateCartStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0257.usp_GetRefundRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0255.usp_CashOutAndUpdateReferral.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0254.usp_AddCash.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0252.usp_RemoveShoppingCartTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0251.usp_ParkShoppingCartTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0250.usp_AddShoppingCartTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0249.usp_AddShoppingCart.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0248.ufn_GetShoppingCartId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0247.tShoppingCartMigrationScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0245.usp_UpdateReceiveMoneyWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0244.usp_CreateReceiveMoneyWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0239.usp_UpdateReceiverDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0237.usp_IsSendMoneyModifyRefundAvailable.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0236.usp_UpdateStatesForTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0235.usp_AddSendMoneyModifyorRefundTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0234.usp_UpdateStateByTransctionid.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0233.usp_PopulateSendMoneyModifyRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0232.usp_UpdateSendMoneyRefundTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0231.usp_UpdateSendMoneyModifyTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0230.usp_GetCommitRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0229.usp_UpdateTransactionAmountByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0228.usp_UpdateClosureDateByCustomerID.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0227.usp_GetLocationStateCodeAndCardExpPeriod.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0226.Alter_usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0225.usp_GetWUCities.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0224.usp_UpdateWUCardPointEarned.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0223.usp_CardEnrollment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0222.usp_UpdateWUBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0222.usp_GetCustomerByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0221.usp_GetWUBillPayTransactionRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0220.usp_UpdateBillPayTransactionFee.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0220.usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0219.tr_tVisa_Account_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0218.tr_tTxn_Funds_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0217.usp_ValidateCard.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0216.usp_UpdateVisaTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0215.usp_UpdateVisaAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0214.usp_UpdateFundTransactionState.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0213.usp_UpdateFundTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0212.usp_UpdateCardByAccountID.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0211.usp_UpdateAliasIdByAccountID.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0210.usp_SearchCustomerByCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0209.usp_GetVisaTransactionByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0208.usp_GetVisaShippingFeeByShippingType.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0207.USP_GetVisaFeeByChannelPartnerIdandVisaFeeType.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0206.usp_GetVisaCredentialsByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0205.usp_GetVisaAccountBycustomerIdandStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0204.usp_GetTransactionByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0203.usp_GetShippingTypesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0202.usp_GetFundTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0201.usp_GetCustomerIdByCardNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0200.usp_GetCardClassbyStateCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0199.usp_GetAliasIdByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0198.usp_GetAccountByAlias.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0197.usp_CreateVisaAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0196.usp_CommitFundTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0195.usp_CheckAccountExists.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0194.usp_AddVisaTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0193.usp_AddFundsTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0192.Fund_MigrationScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0191.usp_Alter_SaveReceiver.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0191.Fund_AlterScript.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0190.usp_SendMoneyModifyorRefund.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0190.usp_GetBillers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0189.usp_DeleteFavoriteBillerByBillerID.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0189.ufn_IsOtherReceiverExists.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0188.usp_UpdateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0186.usp_UpdateWUTransactionFromValidateRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0185.usp_UpdateWUTransactionFromSendMoneyStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0184.usp_UpdateWUTransactionFromFeeRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0183.usp_UpdateWUTransactionFromFeeInquiryRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0182.usp_CreateOrUpdateWUImportBillers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0181.usp_GetWUBillPayAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0180.usp_CreateOrUpdateWUBillPayAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0179.usp_CreateWUBillPayAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0178.usp_GetValidateRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0177.usp_GetWUnionCountryCurrencies.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0176.usp_GetEnrollmentRequest.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0175.usp_GetWUnionCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0174.tr_PopulateWUBillPayAccount_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0173.tr_PopulateWUBillPayTransaction_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0172.tr_PopulateBillPayTransaction_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0171.usp_UpdateFavouriteBillerStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0170.usp_UpdateBillPayTransactionState.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0168.usp_GetWUBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0166.usp_GetFavouriteBillersByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0165.usp_GetBillPayTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0164.usp_GetWUBillPayRequestDetails.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0163.usp_GetBillerInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0162.usp_CreateOrUpdateWUBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0160.usp_CreateOrUpdateFavouriteBiller.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0158.usp_CreateBillPayTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0157.ufn_GetProductIdByBillerInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0156.ufn_GetCustomerIdByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0155.usp_GetWUstates.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0154.usp_SaveReceiver.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0153.usp_GetWUCardAccountInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0152.usp_GetWUCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0151.usp_GetLocationCounterIdByLocation.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0150.usp_UpdateRefundTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0149.usp_GetWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0148.usp_SaveWUAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0147.usp_CreateWUTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0146.usp_CreateMoneyTransferWUAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0145.usp_UpdateMoneyTransferTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0143.usp_GetReceiverById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0142.usp_GetMoneyTransferTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0141.usp_CreateMoneyTransferTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0140.usp_UpdateWUAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0139.usp_DeleteReceiver.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0138.usp_ImportReceivers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0137.usp_UpdateLocationCounterIdStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0136.usp_GetFrequentReceivers.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0135.Migration_MoneyTransfer_Tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0134.Alter_MoneyTransfer_Tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0133.MigrationScript_BillPay_Transactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0132.Alter_BillPay_Transactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0131.usp_GetAllActiveMessages.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0130.usp_DeleteAllActiveMessages.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0129.usp_CancelCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0126.usp_CreateMessageCenter.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0125.usp_GetCheckSubmitAndReturnTypeByChexarTypeId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0123.usp_GetTransactionLimit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0122.Migration_Compliance.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0121.Alter_Compliance.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0120.usp_PricingCluster.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0119.Migrate_PricingClustered.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0118.Alter_PricingClustered.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0117.usp_ValidatePromoCode.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0116.usp_UpdateTrxnFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0115.usp_UpdateCustomerFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0114.usp_GetMOTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0113.usp_GetFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0112.usp_GetCutomerFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0111.usp_GetCPTransactionCount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0110.usp_GetAuthorizedMOTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0109.usp_GetAuthorizedCPTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0108.usp_CreateTrxFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0107.usp_CreateCustomerFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0106.MigrationFeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0105.Alter_FeeAdjustments.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0104.usp_UpdateMoneyOrderTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0103.usp_UpdateMoneyOrderStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0102.usp_CreateOrUpdateMoneyOrderImage.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0101.usp_UpdateMoneyOrderFee.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0098.usp_GetMoneyOrderTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0095.usp_CreateMoneyOrderTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0093.tr_tTxn_MoneyOrder_Aud.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0092.MoneyOrderMigrationScripts.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0091.MoneyOrderAlterScripts.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0090.usp_UpdateTransactionFranked.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0089.usp_UpdateCustomerFeeAdjustment.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0085.usp_UpdateChexarSimWaitTime.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0084.usp_UpdateChexarSimInvoiceStatus.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0083.usp_UpdateChexarSimInvoice.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0082.usp_UpdateCheckTransactionById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0081.usp_GetMessagesByTransactionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0080.usp_GetMessagesByAgentId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0079.usp_GetChxrPartnerByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0078.usp_GetChexarTypeAndBadgeId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0076.usp_GetChexarSimInvoice.sql" />
+    <Content Include="Scripts\2.0\Script100.0075.usp_GetChexarPendingChecks.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0074.usp_GetCheckTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0072.usp_GetCheckProcessorInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0070.usp_CreateOrUpdateChexarSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0068.usp_CreateChexarSimInvoice.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0067.usp_CreateChexarSimAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0066.usp_CreateChexarAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0065.usp_CreateCheckTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0064.usp_CommitCheckTransaction.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0063.usp_UpdateCheckTransactionState.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0062.tr_tTxn_CheckAudit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0061.tr_Chxr_AccountAudit.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0060.Migrate_CPTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0059.Alter_CPTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0056.usp_SearchCustomerBySearchCriteria.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0055.usp_GetStates.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0054.usp_GetProviders.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0053.usp_GetPhoneTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0052.usp_GetOccupations.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0051.usp_GetNextSequenceNumber.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0050.usp_GetMasterCountryByAbbr2.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0049.usp_GetMasterCountriesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0048.usp_GetLegalCodes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0047.usp_GetIdTypesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0046.usp_GetIdStatesByChannelPartnerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0044.usp_GetGroupsByChannelPartner.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0043.usp_GetFISCredential.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0042.usp_GetCountries.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0041.usp_GetContactTypes.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0037.usp_TCF_GetTCISAccountByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0036.usp_TCF_GetTCISAccountById.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0035.usp_TCF_UpdatetTCISAccount.sql" />
+    <Content Include="Scripts\2.0\Script100.0033.usp_GetCarverCoreCustomers.sql" />
+    <Content Include="Scripts\2.0\Script100.0032.usp_GetCustomerSession.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0030.usp_GetAlloyContextByCustomerSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0029.usp_GetAlloyContextByAgentSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0028.usp_GetCustomerByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0027.usp_UpdateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0026.usp_CreateCustomer.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0022.usp_CreateErrorInfo.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0019.tr_Customers_Update.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0018.tr_Customers_Delete.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0017.tr_Customers_Insert.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0015.Migration_Customer_Tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0014.Alter_Customer_Tables.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0013.Create_tErrorLog.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0387.usp_GetAllChexarPendingChecks.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0388.usp_GetIdCountriesByChannelPartnerId.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0389.usp_ValidateSSNByChannelPartnerId.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0390.Alter_usp_GetAllActiveMessages.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0034.usp_TCF_AddTCISAccount.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0396.Alter_usp_GetAlloyContextByAgentSessionId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0395.Alter_usp_GetAllParkedTransactions.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.03949.Alter_usp_GetMoneyOrderReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0393.Alter_usp_GetFundReceiptData.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0392.Alter_usp_GetCouponReceiptData.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0410.Insert_tMessageStore.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0397.usp_UpdateCardClosureByCustomerId.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0398.usp_UpdateFraudStatusByCustomerId.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\2.0\Script100.0399.usp_GetLocationStateCodeAndCardExpPeriod.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0400.usp_AltertLocationProcessCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0401.usp_AlterSaveLocationProcessorCredentials.sql" />
+    <EmbeddedResource Include="Scripts\2.0\Script100.0402.usp_Alter_GetLocationProcessorCredentials.sql" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
