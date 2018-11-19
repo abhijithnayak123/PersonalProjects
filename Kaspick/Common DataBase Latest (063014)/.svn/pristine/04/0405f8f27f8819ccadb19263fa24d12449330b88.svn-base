@@ -1,0 +1,165 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineAllRulesData]    Script Date: 08/08/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineAllRulesData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineAllRulesData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineAllRulesData]    Script Date: 08/08/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineAllRulesData                      
+** Short Desc: To get all rules details
+**                      
+** Full Description:  To get all rules details by executing related sps          
+**        
+**                              
+** Input Arguments: 
+  @UserID INT,
+  @Type Bit =1--auto 
+  @IsPosted 1
+
+**         
+** Sample Call     
+  EXEC USP_PP_GetValidationEngineAllRulesData  1,1,0
+        
+
+        
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 8-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 6/3/2014	  Saravanan				Added Set No count off statement
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+       
+ CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineAllRulesData]    
+
+  @UserID INT,
+  @Type Bit =1,--auto 
+  @IsPosted Bit
+  
+        
+ AS
+BEGIN TRY
+       
+		 --  Initial Set statements  --      
+		 SET NOCOUNT ON;      
+		 SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+      
+
+		---Declare Variables
+		DECLARE @ProcName VARCHAR(100)
+		
+		
+		IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#RuleData]'))        
+		BEGIN        
+		DROP TABLE [DBO].[#RuleData]        
+		END  
+
+		IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#ActiveRules]'))        
+		BEGIN        
+		DROP TABLE [DBO].[#ActiveRules]        
+		END 
+
+		CREATE TABLE  #RuleData (
+		ID INT IDENTITY(1,1) PRIMARY KEY ,
+		paymentType VARCHAR(50),      
+		ScheduleID	VARCHAR(14),       
+		RuleID		INT,       
+		Attribute	VARCHAR(4000),      
+		ActualValue VARCHAR(4000))  
+		
+		CREATE TABLE  #ActiveRules (  
+		ID INT IDENTITY(1,1)  ,  
+		SPNAME VARCHAR(100)) 
+		
+ 
+		----Inserting SP Name into Temp table		
+		INSERT INTO #ActiveRules
+		SELECT SPNAME
+		FROM TBL_PP_ValidationRule
+		WHERE IsActive = 1
+			AND RuleCategory NOT IN (
+				CASE 
+					WHEN @Type = 1
+						THEN ''
+					ELSE 'Account'
+					END
+				)
+			AND InvokeMethod = 'KaspickDB'
+			AND ISNULL(SPNAME, '') <> ''
+			AND PaymentStatus = CASE 
+				WHEN @IsPosted = 1
+					THEN 'Posted'
+				WHEN @IsPosted = 0
+					THEN 'Scheduled'
+				END
+			ORDER BY RuleID
+
+			
+		DECLARE Proc_Cur CURSOR
+		FOR
+		SELECT SPNAME
+		FROM #ActiveRules
+
+		OPEN Proc_Cur
+
+		FETCH NEXT
+		FROM Proc_Cur
+		INTO @ProcName
+
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			INSERT INTO #RuleData
+			EXEC @ProcName @UserID
+
+			FETCH NEXT
+			FROM Proc_Cur
+			INTO @ProcName
+		END
+
+		CLOSE Proc_Cur
+
+		DEALLOCATE Proc_Cur
+
+
+		SELECT paymentType,ScheduleID,RuleID,Attribute,ActualValue 
+		FROM #RuleData
+		ORDER BY ID
+		
+		DROP TABLE [DBO].[#RuleData]
+
+
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH 
+SET NOCOUNT OFF;

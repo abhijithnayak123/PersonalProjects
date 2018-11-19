@@ -1,0 +1,209 @@
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData]    Script Date: 04/14/2014 17:56:49 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		DROP PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData]
+		PRINT 'Dropped USP_WFT_GetEmailRuleEngineEmailRuleData Procedure'
+	End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData]    Script Date: 04/14/2014 17:56:49 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:     USP_WFT_GetEmailRuleEngineEmailRuleData                  
+** Short Desc: To retrieve Email Data items for Email Rule validation process. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	USP_WFT_GetEmailRuleEngineEmailRuleData '<root><request><id>3067</id><type>N</type></request><request><id>3065</id><type>N</type></request><request><id>11</id><type>N</type></request></root>'
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Soorya
+** Company   : Kaspick & Company                  
+** Project   : EmailRuleEngine                  
+** Created DT: 04/19/2010                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 04/14/2014		Tanuj			Procedure modified based on KaspickDB table structure	
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData] (@RequestXML XML)
+AS
+--  Initial Set statements  --      
+--SET NOCOUNT ON;      
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+--  Variable Declarations  --      
+DECLARE @procname VARCHAR(60);
+DECLARE @RequestCount INT
+DECLARE @Cnt INT
+DECLARE @SPName VARCHAR(100);
+DECLARE @SPNameTemp VARCHAR(100);
+DECLARE @SQL NVARCHAR(MAX);
+DECLARE @DatabaseName VARCHAR(100);
+DECLARE @DatabaseNameTemp VARCHAR(100);
+--  Temp tables, Cursors, Table Variables  --      
+DECLARE @XmlRequestInfo TABLE (
+	ID INT IDENTITY(1, 1)
+	,request_id INT
+	,request_type CHAR(1)
+	,form_id INT
+	)
+
+CREATE TABLE #XMLInput (XMLInputdata XML);
+
+CREATE TABLE #RuleData (
+	RequestID INT
+	,EmailRuleID INT
+	,AttributeName VARCHAR(MAX)
+	,AttributeValue VARCHAR(MAX)
+	)
+
+DECLARE @ActiveRules TABLE (
+	ID INT IDENTITY(1, 1)
+	,EmailRuleID INT
+	,DatabaseName VARCHAR(100)
+	,SPName VARCHAR(100)
+	)
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_WFT_GetEmailRuleEngineEmailRuleData';
+
+-- Body of procedure  --      
+BEGIN TRY
+	INSERT INTO @XmlRequestInfo (
+		request_id
+		,request_type
+		,form_id
+		)
+	SELECT req.value('id[1]', 'int') AS request_id
+		,req.value('type[1]', 'char(1)') AS request_type
+		,r.FormID
+	FROM @RequestXML.nodes('//request') AS a(req)
+	INNER JOIN TBL_WFT_Request r ON r.request_id = req.value('id[1]', 'int')
+
+	INSERT INTO #XMLInput
+	VALUES (@RequestXML);
+
+	INSERT INTO @ActiveRules (
+		EmailRuleID
+		,DatabaseName
+		,SPName
+		)
+	SELECT ER.[email_rule_id]
+		,[database_name]
+		,[stored_procedure_name]
+	FROM TBL_WFT_EmailRule ER
+	INNER JOIN @XmlRequestInfo RI ON RI.form_id = ER.FormID
+		AND RI.request_type = ER.new_or_modified
+	WHERE ER.is_active = 1
+	ORDER BY ER.[database_name]
+		,ER.[stored_procedure_name]
+
+	SELECT @RequestCount = MAX(ID)
+	FROM @ActiveRules
+
+	SET @cnt = 1
+	SET @DatabaseNameTemp = ''
+	SET @SPNameTemp = ''
+
+	WHILE (@Cnt <= @RequestCount)
+	BEGIN
+		SELECT @DatabaseName = DatabaseName
+			,@SPName = SPName
+		FROM @ActiveRules
+		WHERE ID = @Cnt;
+
+		IF (
+				(@DatabaseNameTemp != @DatabaseName)
+				AND (@SPNameTemp != @SPName)
+				)
+		BEGIN
+			SET @SQL = NULL;
+			SET @SQL = 'DECLARE @xml xml
+				SELECT @xml = XMLInputdata FROM #XMLInput	 
+				USE [' + @DatabaseName + ']
+				SET ARITHABORT ON
+				INSERT INTO #RuleData
+				EXEC ' + @SPName + ' @xml';
+
+			EXEC sp_executesql @SQL
+		END
+
+		SET @DatabaseNameTemp = @DatabaseName
+		SET @SPNameTemp = @SPName
+		SET @Cnt = @Cnt + 1;
+	END
+
+	SELECT *
+	FROM #RuleData
+
+	DROP TABLE #XMLInput
+
+	DROP TABLE #RuleData
+END TRY
+
+BEGIN CATCH
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'Error with USP_WFT_GetEmailRuleEngineEmailRuleData Procedure'
+END CATCH
+	-- End of procedure  -- 
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineEmailRuleData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		PRINT 'Created USP_WFT_GetEmailRuleEngineEmailRuleData Procedure.'
+	End
+GO

@@ -1,0 +1,79 @@
+/****** Object:  StoredProcedure [dbo].[GetNextUniqueID]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[GetNextUniqueID]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[GetNextUniqueID]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetNextUniqueID]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     GetNextUniqueID                      
+** Short Desc: Increments and returns unique value counters in UniqueID  Table. Next value is returned in the @Result out parameter
+**                      
+** Full Description: Increments and returns unique value counters in UniqueID  Table. Next value is returned in the @Result out parameter
+**                              
+** Input Arguments:   @IDType - Type of Counter to increment.
+**    @Result - OUT parameter for returning next ID in sequence. 
+**    @VB     - Boolean flag to return VB recordset.                                 
+** Sample Call     
+**                           
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE GetNextUniqueID (
+	@IDType VARCHAR(255) = ' '
+	,@Result INT = 0 OUTPUT
+	,@VB BIT = 0
+	)
+AS
+DECLARE @ID INT
+
+/* Get Current value of counter */
+SELECT @ID = LastValue
+FROM UniqueID
+WHERE IDType = @IDType
+
+/* Increment counter */
+IF (@@ROWCOUNT = 1)
+BEGIN
+	UPDATE UniqueID
+	SET LastValue = LastValue + 1
+	WHERE IDType = @IDType
+		AND LastValue = @ID
+
+	/* Success? */
+	IF @@ROWCOUNT = 1
+		SELECT @Result = @ID + 1
+	ELSE
+		SELECT @Result = 0
+END
+ELSE
+	/* Invalid ID Type */
+	SELECT @Result = 0
+
+/* Return result to VB */
+IF @VB = 1
+	SELECT NextID = @Result

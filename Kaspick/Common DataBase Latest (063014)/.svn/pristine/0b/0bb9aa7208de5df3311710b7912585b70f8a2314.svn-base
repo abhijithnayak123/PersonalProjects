@@ -1,0 +1,333 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftTerminationShiftExcelsiorLiveDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftTerminationShiftExcelsiorLiveDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftTerminationShiftExcelsiorLiveDetail';
+END
+GO
+
+/******************************************************************************  
+** Name:     [USP_EX_GetWftTerminationShiftExcelsiorLiveDetail]  
+** Old Name:  [sp_wft_get_Termination_shift_ExcelsiorLive_detail]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate Address Change details  
+**894 352  
+894 639  
+894 640  
+** Sample Call  
+ [USP_EX_GetWftTerminationShiftExcelsiorLiveDetail] 'COSHA1  ',24238  
+ [USP_EX_GetWftTerminationShiftExcelsiorLiveDetail]'<root><Item ID="103923"></Item><Item ID=""></Item></root>',129992  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 29-May-2014	Geervani	       Made changes in the table names to refer new KASPICK DB  
+   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftTerminationShiftExcelsiorLiveDetail]  
+(  
+ @AccountID VARCHAR(14),  
+ @ParticipantID INT  
+)    
+AS   
+	BEGIN  
+
+		DECLARE @CLIENTTYPEID INT      
+		DECLARE @EXTERNALTYPEID INT      
+		DECLARE @BENE_TYPEID INT,        
+		@TRUSTPARTICIPANT_TYPEID INT  
+
+		DECLARE @DATATYPE VARCHAR(10)  
+		DECLARE @POLICYDIMENSIONID INT  
+		DECLARE @VALUE INT, @MATURITY_ID INT   
+
+		DECLARE @TEMP_ADDRESS TABLE (        
+		ENTITY_ID INT,        
+		LINKTYPE INT,        
+		ADDRESSID INT,        
+		ADDRESSTYPE VARCHAR(20),        
+		ADDRESS1 VARCHAR(50) NULL,        
+		ADDRESS2 VARCHAR(50) NULL,        
+		ADDRESS3 VARCHAR(50) NULL,        
+		MAILSTOP VARCHAR(20) NULL,        
+		CITY VARCHAR(30) NULL,        
+		STATE VARCHAR(2) NULL,        
+		COUNTRY VARCHAR(25) NULL,        
+		ZIPCODE VARCHAR(10) NULL ,        
+		FROMMONTH SMALLINT ,        
+		TOMONTH SMALLINT,  
+		FROM_DAY  INT,      
+		TO_DAY  INT,      
+		PARTY_ID INT)  
+
+		DECLARE @DESIGNATION TABLE (      
+		REMAINDERMANID INT ,       
+		TOTALPERCENTAGE FLOAT,      
+		TOTALAMOUNT MONEY);  
+
+		--SELECT @BENE_TYPEID = LINKTYPE FROM ADDRESSPHONELINKTYPE WHERE DESCRIPTION = 'Beneficiary'        
+		--SELECT @TRUSTPARTICIPANT_TYPEID = LINKTYPE FROM ADDRESSPHONELINKTYPE WHERE DESCRIPTION = 'TrustParticipant'   
+
+		SELECT @CLIENTTYPEID = ListItemID FROM VW_ListItem WHERE ListTypeName = 'REMAINDERMAN TYPE' AND ListItemName='CLIENT'      
+		SELECT @EXTERNALTYPEID = ListItemID FROM VW_ListItem WHERE ListTypeName = 'REMAINDERMAN TYPE' AND ListItemName='EXTERNAL'      
+
+
+
+		-- -- Maturity Dist Policy            
+		SET @VALUE=NULL            
+		SELECT @DATATYPE=DATATYPE,@POLICYDIMENSIONID=POLICYDIMENSIONID             
+		FROM TBL_POLICYDIMENSION             
+		WHERE FULLNAME ='Maturity Dist Policy'    
+		        
+		EXEC [USP_EX_GetPolicyDimensionValue] 
+		@AccountID,'Account','MaturityDistributionPolicy',@DATATYPE,@POLICYDIMENSIONID,@VALUE OUTPUT
+		       
+		SET @MATURITY_ID = CAST(@VALUE AS INT)  
+
+
+
+		-- Account detail  
+		SELECT  
+		LI.ListItemName AS Status,  
+		UdfAccMstr.UDFAMColumn030 AS MatureDate,  
+		Reason=DBO.FN_GetListItemName(UdfAccMstr.UDFAMColumn019,'Reason'),  
+		FinalPaymentRule=DBO.FN_GetListItemName(UdfAccMstr.UDFAMColumn017,'FinalPayment'),  
+		UdfAccMstr.UDFAMColumn050 as LastTaxyear,  
+		TerminationRule=DBO.FN_GetListItemName(UdfAccMstr.UDFAMColumn020,'TerminationRule'),  
+		UdfAccMstr.UDFAMColumn018 as TermYearsBeyondLife,  
+		dbo.FN_GetItemName(@MATURITY_ID) AS MaturityDistPolicy  
+		FROM SYN_IT_Accountmaster AccMstr 
+		INNER JOIN dbo.SYN_IT_UDF_AccountMaster UdfAccMstr ON UdfAccMstr.CustomerAccountNumber_Key = AccMstr.CustomerAccountNumber
+		--INNER JOIN dbo.SYN_IT_Accountmaster AM ON AM.CustomerAccountNumber = da.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_ListItem li on li.ListItemID = AccMstr.activeflag  
+		WHERE AccMstr.CustomerAccountNumber = @AccountID  
+
+		-- Remainderman Detail  
+		--INSERT INTO @DESIGNATION      
+		--SELECT R.REMAINDERMANID,      
+		--TOTALPERCENTAGE =ISNULL(SUM(ISNULL(RD.REMAINDERPERCENTAGE,0.0)),0.0) ,      
+		--TOTALAMOUNT = ISNULL(SUM(ISNULL(RD.REMAINDERAMOUNT,0.0)),0.0)      
+		--FROM       
+		--REMAINDERMAN R      
+		--INNER JOIN TBL_EIS_EX_REMAINDERMAN_SUPPLEMENT RS ON R.REMAINDERMANID = RS.REMAINDERMANID     
+		--INNER JOIN REMAINDERMANDESIGNATION RD  ON RD.REMAINDERMANID = R.REMAINDERMANID      
+		--INNER JOIN TBL_EIS_EX_REMAINDERMAN_DESIGNATION_SUPPLEMENT RDS ON RD.REMAINDERMANDESIGNATIONID = RDS.REMAINDERMANDESIGNATIONID     
+		--LEFT OUTER JOIN DESIGNATIONFUND DF ON DF.FUNDID = RD.PUBLICFUNDID AND ISNULL(DF.ISCLOSED,0) =0        
+		--LEFT OUTER JOIN TBL_EIS_EX_DESIGNATION_FUND_SUPPLEMENT DFS ON DFS.FUNDID = DF.FUNDID     
+		--WHERE R.ACCOUNTID = @ACCOUNTID      
+		--GROUP BY R.REMAINDERMANID      
+
+		--SELECT      
+		--R.REMAINDERMANID AS REMAINDERMAN_ID,      
+		--RemaindermanDetail = ISNULL(R.FULLNAME,'') + ', ' +        
+		--DBO.FnEIS_EX_GetListItemName(R.ISEXTERNAL,'Remainderman Type') + ', ' +      
+		--(CASE WHEN DBO.FnEIS_EX_GetListItemID(R.ISEXTERNAL,'Remainderman Type') = @CLIENTTYPEID THEN       
+		--Cast(ISNULL(TVAR.TOTALPERCENTAGE,0.0) as varchar(20))      
+		--WHEN DBO.FnEIS_EX_GetListItemID(R.ISEXTERNAL,'Remainderman Type') = @EXTERNALTYPEID THEN       
+		--Cast(ISNULL(R.REMAINDERPERCENTAGE,0.0) as varchar(20))      
+		--END)+ '%, $' +     
+		--(CASE WHEN DBO.FnEIS_EX_GetListItemID(R.ISEXTERNAL,'Remainderman Type') = @CLIENTTYPEID THEN       
+		--Cast(ISNULL(TVAR.TOTALAMOUNT,0.0) as  varchar(20))        
+		--WHEN DBO.FnEIS_EX_GetListItemID(R.ISEXTERNAL,'Remainderman Type') = @EXTERNALTYPEID THEN       
+		--Cast(ISNULL(R.REMAINDERAMOUNT,0.0) as  varchar(20))       
+		--END)     
+		--FROM       
+		--REMAINDERMAN R      
+		--INNER JOIN TBL_EIS_EX_REMAINDERMAN_SUPPLEMENT RS ON R.REMAINDERMANID = RS.REMAINDERMANID      
+		--INNER JOIN TBL_EIS_EX_PARTY_RELATION PR ON R.REMAINDERMANID = PR.REMAINDERMANID      
+		--INNER JOIN TBL_EIS_EX_PARTY P ON P.PARTY_ID = PR.PARTY_ID      
+		--LEFT OUTER JOIN @DESIGNATION TVAR ON TVAR.REMAINDERMANID =  R.REMAINDERMANID      
+		--WHERE      
+		--R.ACCOUNTID = @ACCOUNTID      
+		--ORDER BY R.FULLNAME      
+
+		-- Participant detail  
+		IF ((SELECT COUNT(ConstMstr.ContactID) FROM VW_EX_TrustParticipantType VwTrstPrtcpnt 
+		INNER JOIN SYN_IT_ContactMaster ConstMstr on  VwTrstPrtcpnt.BeneficiaryID = ConstMstr.ContactID   
+		INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = ConstMstr.ContactId
+		INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+		AND ConRolCds.ID IN (10,21,37)
+		WHERE VwTrstPrtcpnt.ParticipantID = @ParticipantID and VwTrstPrtcpnt.CustomerAccountNumber =@ACCOUNTID) = 1)  
+			BEGIN  
+				SELECT   
+				VwTrstPrtcpnt.ParticipantID,  
+				VwTrstPrtcpnt.PARTICIPANT_TYPE,  
+				ConstMstr.ContactID AS BeneficiaryID,  
+				VwTrstPrtcpnt.FirstName,       
+				VwTrstPrtcpnt.LastName,       
+				VwTrstPrtcpnt.MiddleInitials,       
+				'' AS FamiliarName,       
+				VwTrstPrtcpnt.TaxName,  
+				VwTrstPrtcpnt.DateOfDeath AS ExpireDate,       
+				CPM.PaymentType as PaymentMethod,  
+				CAR.UDFCAColumn013 AS LastK1Year,  
+				DistributionType = DBO.FN_GetListItemName(BD.FixedOrPercentageFlag,'Distribution Type'),  
+				case BD.FixedOrPercentageFlag when 0 then BD.BeneficiaryAmount else '0' end as PERCENTOFPAYMENTS,  
+				'' AS ExcludeFromLifeOfTrust  
+				FROM VW_EX_TrustParticipantType VwTrstPrtcpnt  
+				INNER JOIN SYN_IT_ContactMaster ConstMstr on  VwTrstPrtcpnt.BeneficiaryID = ConstMstr.ContactID  
+				INNER JOIN dbo.SYN_IT_ContactPaymentMethods CPM ON CPM.ContactID = ConstMstr.ContactID
+				INNER JOIN dbo.SYN_IT_UDF_ContactAccountRole CAR ON CAR.ContactID_Key = ConstMstr.ContactID
+				INNER JOIN dbo.SYN_IT_BeneficiaryDistributions BD ON BD.ContactID = ConstMstr.ContactID
+				WHERE VwTrstPrtcpnt.ParticipantID = @ParticipantID and VwTrstPrtcpnt.CustomerAccountNumber =@AccountID   
+			END  
+		ELSE  
+			BEGIN  
+				SELECT @ParticipantID AS ParticipantID,  
+				ConMstr.ContactID AS BeneficiaryID,  
+				ConMstr.PrimaryFirstName AS FirstName,    
+				'Multiple' AS PARTICIPANT_TYPE,       
+				ConMstr.PrimaryLastName AS LastName,       
+				ConMstr.PrimaryMiddleInitial AS MiddleInitials,       
+				'' AS FamiliarName,       
+				ConMstr.TaxNameLine1 AS TaxName,  
+				ConMstr.DateofDeath AS ExpireDate,       
+				'Multiple' AS PaymentMethod,  
+				'Multiple' AS LastK1Year,  
+				'Multiple' AS DistributionType,  
+				'0.00' AS PERCENTOFPAYMENTS,  
+				'Multiple' AS ExcludeFromLifeOfTrust  
+				FROM dbo.SYN_IT_ContactMaster ConMstr
+				INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = ConMstr.ContactId
+				INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+				AND ConRolCds.ID IN (10,24 ,37)
+				WHERE ConMstr.ContactID = @ParticipantID  
+			END  
+
+		-- Address Detail  
+		INSERT INTO @TEMP_ADDRESS (        
+		ENTITY_ID ,        
+		LINKTYPE ,        
+		ADDRESSID ,        
+		ADDRESSTYPE ,        
+		ADDRESS1 ,        
+		ADDRESS2 ,        
+		ADDRESS3 ,        
+		MAILSTOP ,        
+		CITY ,        
+		STATE,        
+		COUNTRY,        
+		ZIPCODE,        
+		FROMMONTH,        
+		TOMONTH,  
+		FROM_DAY,  
+		TO_DAY)        
+
+		SELECT         
+		ConstMstr.ContactID AS ENTITY_ID,        
+		'' AS LINKTYPE,
+		--ISNULL(AL.LINKTYPE,'') AS LINKTYPE,            
+		ISNULL(ConstAddr.ID,'') AS ADDRESSID,        
+		ADDRESSTYPE = 'ALTERNATE PAYMENT',        
+		ISNULL(ConstAddr.ADDRESS1,'') AS ADDRESS1,        
+		ISNULL(ConstAddr.ADDRESS2,'') AS ADDRESS2,        
+		ISNULL(ConstAddr.ADDRESS3,'') AS ADDRESS3,        
+		'' AS MAILSTOP,        
+		ISNULL(ConstAddr.CITY,'') AS CITY,        
+		ISNULL(ConstAddr.STATE,'') AS STATE,        
+		ISNULL(ConstAddr.COUNTRYCODE,'') AS COUNTRY,        
+		ISNULL(ConstAddr.ZIPCODE,'') AS ZIPCODE,        
+		MONTH(ConstAddr.FROMDATE) AS FROMMONTH,        
+		MONTH(ConstAddr.TODATE) AS TOMONTH,  
+		DAY(ConstAddr.FROMDATE),  
+		DAY(ConstAddr.TODATE) 
+		FROM         
+		SYN_IT_ContactAddresses ConstAddr             
+		INNER JOIN SYN_IT_ContactMaster ConstMstr ON ConstMstr.ContactID =  ConstAddr.ContactID AND  ConstMstr.ContactID= @ParticipantID
+		INNER JOIN SYN_IT_ContactAccountRoles ConAccRol ON ConAccRol.ContactId = ConstMstr.ContactId    
+		INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+		AND ConRolCds.ID IN (10,21,37)   
+		WHERE        
+		--AL.LINKTYPE = @BENE_TYPEID AND       
+		 ConstAddr.ADDRESSTYPE = 'PAYMENT'    
+		AND ConAccRol.CustomerAccountNumber = @AccountID  
+		--UNION         
+		--SELECT         
+		--@ParticipantID AS ENTITY_ID,        
+		--'' AS LINKTYPE,
+		--ISNULL(AL.LINKTYPE,'') AS LINKTYPE,            
+		--ISNULL(A.ADDRESSID,'') AS ADDRESSID,        
+		--ISNULL(A.ADDRESSTYPE,'') AS ADDRESSTYPE,        
+		--ISNULL(A.ADDRESS1,'') AS ADDRESS1,        
+		--ISNULL(A.ADDRESS2,'') AS ADDRESS2,        
+		--ISNULL(A.ADDRESS3,'') AS ADDRESS3,        
+		--ISNULL(A.MAILSTOP,'') AS MAILSTOP,        
+		--ISNULL(A.CITY,'') AS CITY,        
+		--ISNULL(A.STATE,'') AS STATE,        
+		--ISNULL(A.COUNTRY,'') AS COUNTRY,        
+		--ISNULL(A.ZIPCODE,'') AS ZIPCODE,        
+		--A.FROMDATE AS FROMMONTH,        
+		--A.TODATE AS TOMONTH,  
+		--'' AS FROM_DAY,  
+		--'' AS TO_DAY      
+		--FROM         
+		--ADDRESSLINKAGE AL        
+		--INNER JOIN SYN_IT_ContactAddresses A ON AL.ADDRESSID = A.ADDRESSID             
+		--INNER JOIN TBL_EIS_EX_TRUSTPARTICIPANT_TYPE TT ON TT.ParticipantID = AL.LINKID        
+		--WHERE        
+		--AL.LINKID = @ParticipantID         
+		--AND AL.LINKTYPE = @TRUSTPARTICIPANT_TYPEID    
+		--AND TT.ACCOUNTID = @AccountID  
+
+		UPDATE @TEMP_ADDRESS SET ZIPCODE = REPLACE(ZIPCODE,'-','') WHERE COUNTRY='USA'        
+		UPDATE @TEMP_ADDRESS SET ZIPCODE = REPLACE(ZIPCODE,' ','') WHERE COUNTRY='USA'        
+
+		SELECT   
+		Distinct ADDRESSID ,        
+		/* Don't include country field in address if country is USA*/        
+		/* Put hyphen after 5th character in zip code if country is USA*/        
+		/* Replace function is called twice for the case when Add2, Add3 and Add4 all are not given.        
+		In this case there will be 3 commas, so to replace 3 commas(or odd number of commas) with 1 comma,         
+		outer Replace function is called. Inner Replace funcion is called to replace 2 commas(or even number of commas) with 1 comma        
+		*/        
+		ADDRESS = REPLACE(REPLACE(ISNULL(        
+		ADDRESSTYPE+'; '+ ADDRESS1        
+		+ CASE WHEN (LTRIM(RTRIM(ADDRESS2))<> '') THEN '; ' + ADDRESS2 ELSE '' END        
+		+ CASE WHEN (LTRIM(RTRIM(ADDRESS3))<> '') THEN '; ' + ADDRESS3 ELSE '' END        
+		+ CASE WHEN (LTRIM(RTRIM(MAILSTOP))<> '') THEN '; ' + MAILSTOP ELSE '' END        
+		+ CASE WHEN (LTRIM(RTRIM(CITY))<> '') THEN '; ' + CITY ELSE '' END        
+		+ CASE WHEN (LTRIM(RTRIM(STATE))<> '') THEN ', ' + STATE +' 'ELSE '' END    
+		+ CASE WHEN (LTRIM(RTRIM(ISNULL(ZIPCODE,'')))='')  THEN ''    
+		WHEN (LTRIM(RTRIM(COUNTRY))<> '' and LTRIM(RTRIM(COUNTRY)) <>'USA') then  (CASE WHEN (LTRIM(RTRIM(ZIPCODE))<> '')  THEN (' ' + ZIPCODE) ELSE '' END)  
+		WHEN LEN(ZIPCODE) <= 5 THEN (' ' + ZIPCODE) ELSE (' ' + LEFT(ZIPCODE, 5) + '-' + RIGHT(ZIPCODE,LEN(ZIPCODE)- 5 ))END       
+		+ CASE WHEN (LTRIM(RTRIM(COUNTRY))<> '') THEN '; ' + COUNTRY ELSE '' END     
+		,''),', ,',','),', ,',',') --ENDS HERE      
+		FROM         
+		@TEMP_ADDRESS        
+		ORDER BY ADDRESSID        
+	END  
+GO
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftTerminationShiftExcelsiorLiveDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetWftTerminationShiftExcelsiorLiveDetail';
+END

@@ -1,0 +1,192 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveMidYearAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportSaveMidYearAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportSaveMidYearAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveMidYearAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportSaveMidYearAccount    
+** Short Desc:  Creates mid year accounts from initial accounts.   
+**    
+** Full Description : Creates mid year accounts from initial accounts.
+**            
+**    
+** Sample Call    
+ 
+    EXEC USP_IE_ImportSaveMidYearAccount  -- parameters
+	'<ImportStagingCollection>
+		<InsertList>
+			<ImportStaging StagingID="2" GroupID="1" CustomerAccountNumber="CPREN" RunDate="2/5/2007 12:00:00 AM" UserID="1" UserName="gnazim_test" />
+			<ImportStaging StagingID="3" GroupID="1" CustomerAccountNumber="CPVAN" RunDate="2/5/2007 12:00:00 AM" UserID="1" UserName="gnazim_test" />
+			<ImportStaging StagingID="4" GroupID="1" CustomerAccountNumber="MLAMA" RunDate="2/5/2007 12:00:00 AM" UserID="1" UserName="gnazim_test" />
+		</InsertList><UpdateList></UpdateList><DeleteList></DeleteList>
+	</ImportStagingCollection>'
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/11/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportSaveMidYearAccount] -- paremeters here
+	@XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --    
+	DECLARE @UserID INT;
+	DECLARE @UserName VARCHAR(50);
+	DECLARE @DiagnosticResult VARCHAR(1000);
+	DECLARE @NewStatusID INT;
+	DECLARE @CurrDate DATETIME = GETDATE ();
+
+	--  Temp tables, Cursors, Table Variables  --
+	CREATE TABLE #Tmp_AccountsToBeImported (
+		StagingID INT
+		,UserID INT
+		,UserName VARCHAR(50)
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO #Tmp_AccountsToBeImported
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@UserID[1]', 'int') AS UserID
+			,XmlInput.Item.value('@UserName[1]', 'varchar(50)') AS UserName
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+		SELECT @UserID = UserID
+			,@UserName = UserName
+		FROM (
+			SELECT UserID
+				,UserName
+				,Row_number() OVER (
+					ORDER BY StagingID
+					) RowNum
+			FROM #Tmp_AccountsToBeImported
+			) UserDet
+		WHERE RowNum = 1
+
+		SELECT @NewStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'New';
+
+		INSERT INTO [TBL_IE_STG_Estimate] (
+			[GroupID]
+			,[TaxYear]
+			,[CustomerAccountNumber]
+			,[ManagerCode]
+			,[AccountName]
+			,[AccountType]
+			,[CreationDate]
+			,[MatureDate]
+			,[StatusID]
+			,[UnitrustPercentage]
+			,[ObjectiveCode]
+			,[IsDeleted]
+			,[UserID]
+			,[UserName]
+			,[CreatedDate]
+			,[ModifiedDate]
+			,ParentStagingID
+			)
+		SELECT StgEst.[GroupID]
+			,StgEst.[TaxYear]
+			,StgEst.[CustomerAccountNumber]
+			,StgEst.[ManagerCode]
+			,StgEst.[AccountName]
+			,StgEst.[AccountType]
+			,StgEst.[CreationDate]
+			,StgEst.[MatureDate]
+			,@NewStatusID
+			,StgEst.[UnitrustPercentage]
+			,StgEst.[ObjectiveCode]
+			,0
+			,@UserID
+			,@UserName
+			,@CurrDate
+			,@CurrDate
+			,StgEst.[StagingID]
+		FROM [TBL_IE_STG_Estimate] StgEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON StgEst.StagingID = ImpAcc.StagingID
+
+		--Get the new mid year accounts just inserted
+		SELECT StgEst.[StagingID]
+			,StgEst.[GroupID]
+			,StgEst.[CustomerAccountNumber] AS AdventID
+			,StgEst.[AccountType]
+			,StgEst.[CreationDate]
+			,StgEst.[StatusID]
+			,IEStat.[STATUS]
+			,StgEst.[UnitrustPercentage]
+			,StgEst.[UserID]
+			,StgEst.[UserName]
+			,StgEst.[RunDate]
+		FROM [TBL_IE_STG_Estimate] StgEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON StgEst.ParentStagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_Status IEStat
+			ON StgEst.StatusID = IEStat.StatusID
+		WHERE StgEst.[ModifiedDate] = @CurrDate
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	--	End of procedure  -- 
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,121 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingPGCalcPaymentData]    Script Date: 05/07/2013 11:52:41 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsStagingPGCalcPaymentData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsStagingPGCalcPaymentData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingPGCalcPaymentData]    Script Date: 05/07/2013 11:52:41 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			: USP_PP_InsStagingPGCalcPaymentData                      
+** Short Desc	: To insert into the STG_PGCALCPAYMENTDATA  table     
+*                    Getting data from BaseTable           
+**                      
+** Full Description: To insert into the STG_PGCALCPAYMENTDATA  table for the payment that to be made    
+*                    Getting data from BaseTable           
+**                              
+** Input Arguments:   @CreatedBy  
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsStagingPGCalcPaymentData  1    
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 7-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsStagingPGCalcPaymentData] @CreatedBy INT
+AS
+SET NOCOUNT ON
+SET LOCK_TIMEOUT 30000
+
+BEGIN
+	TRUNCATE TABLE dbo.TBL_PP_STG_PGCalcPaymentData
+
+	INSERT INTO dbo.TBL_PP_STG_PGCalcPaymentData (
+		PGCalcPaymentID
+		,PaymentID
+		,PaymentBatch
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		--,beneficiaryDistributionID
+		,PersonCode
+		,PayeeName
+		,PaymentAmount
+		,PaymentDate
+		,SeparateCheck
+		,Account1
+		,Account2
+		,GiftDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithHolding
+		,PeriodEndDate
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT DISTINCT PGCalcPaymentID
+		,PGCalc.PaymentID
+		,PGCalc.PaymentBatch
+		,PGCalc.CustomerAccountNumber
+		,PGCalc.ContactID
+		,PGCalc.ContactRoleCode
+		,InstructionID
+		--,beneficiaryDistributionID
+		,PersonCode
+		,PayeeName
+		,PaymentAmount
+		,PGCalc.PaymentDate
+		,SeparateCheck
+		,Account1
+		,Account2
+		,GiftDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithholding
+		,PeriodEndDate
+		,0 AS DELETEFLAG
+		,@CreatedBy AS MODIFIEDBY
+		,GetDate() AS MODIFIEDDATE
+		,@CreatedBy AS CREATEDBY
+		,GetDate() AS CREATEDDATE
+	FROM dbo.TBL_PP_PGCalcPaymentData PGCalc
+	INNER JOIN dbo.TBL_PP_PendingPayment PendgPymt ON PGCalc.PaymentID = PendgPymt.PaymentID
+	WHERE AccountType = 'PIF'
+END

@@ -1,0 +1,24 @@
+
+REM Set Runtime Parameters
+REM ----------------------
+
+@echo off
+
+set DB_USER=IncEst_APP 
+set DB_PASSWORD=dev@incest
+set DB_NAME=MappingDB_Lookup
+set DB_SERVER=10.10.9.71
+set ExcelsiorDB=Excelsior_CBR_DB
+Set InnoTrustDB=innotrust_repl
+
+
+Rem ******** MappingDB Scripts *****************
+
+SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME% -v ExcelsiorDB = %ExcelsiorDB% InnoTrustDB=%InnoTrustDB% -i InsertAccountLookup.sql -o Log\InsertAccountLookup.log
+
+
+Rem ======================================================
+
+
+Pause
+

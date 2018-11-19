@@ -1,0 +1,319 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetCashVerificatione]    Script Date: 08/22/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetCashVerification]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetCashVerification]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************            
+** Name   :   USP_PP_ReportGetCashVerification        
+** Short Desc : Cash Verification Report         
+**            
+** Full Description : Get the required data for Cash Verification Report             
+**                    
+**            
+** Sample Call            
+		EXEC [USP_PP_ReportGetCashVerification] NULL
+		,'ACADW'
+		,'09/22/2014'
+		,'ShortfallCashOnly'
+		,'CustomerAccountNumber'
+		,NULL
+		EXEC [USP_PP_ReportGetCashVerification] 'ACL'
+		,NULL
+		,'09/22/2014'
+		,'ShortfallCashOnly'
+		,CustomerAccountNumber
+		,NULL
+		EXEC [USP_PP_ReportGetCashVerification] 'ACL'
+		,NULL
+		,'09/22/2014'
+		,'ShowAll'
+		,CustomerAccountNumber
+		,NULL
+		EXEC [USP_PP_ReportGetCashVerification] 'ALL'
+		,NULL
+		,'09/22/2014'
+		,'ShowAll'
+		,'Client Manager'
+		,'100169'         
+** Return values: NONE            
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By :  Chaithra       
+** Company  :  Kaspick & Company            
+** Project  :  Back Office Integration - TRex            
+** Created DT :  08/22/2014            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+** 
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetCashVerification] @ManagerCode VARCHAR(4) = NULL
+	,@CustomerAccountNumber VARCHAR(10) = NULL
+	,@ForecastUpto DATETIME
+	,@ReportOption VARCHAR(25)
+	,@OrderByType VARCHAR(25)
+	,@OrderByTypeID VARCHAR(25) = NULL
+AS
+BEGIN
+	DECLARE @ContactRoleCode INT
+	DECLARE @Tmp_ClientTeam TABLE (
+		RecordId INT identity
+		,UserID INT
+		,ManagerCode VARCHAR(4)
+		,UserName VARCHAR(50)
+		)
+
+	CREATE TABLE #TBL_TR_CashLiability (
+		CustomerAccountNumber VARCHAR(14)
+		,AName VARCHAR(250)
+		,AType VARCHAR(14)
+		,TType VARCHAR(14)
+		,CName VARCHAR(250)
+		,BPaymSch DECIMAL(20, 5)
+		,BPaymOut DECIMAL(20, 5)
+		,VPaymSch DECIMAL(20, 5)
+		,VPaymOut DECIMAL(20, 5)
+		,ATranSch DECIMAL(20, 5)
+		,ATranOut DECIMAL(20, 5)
+		,FeesOut DECIMAL(20, 5)
+		,TotLiab DECIMAL(20, 5)
+		,TotCash DECIMAL(20, 5)
+		,TLessLiab DECIMAL(20, 5)
+		,SLessLiab DECIMAL(20, 5)
+		)
+
+	DECLARE @LiablitySelectionCriteriaXML VARCHAR(max)
+	DECLARE @EventMode CHAR(1)
+	DECLARE @EventStatusCodes VARCHAR(80)
+	DECLARE @EventShortfallsOnlyFlag SMALLINT
+	DECLARE @EventIncludeOrdersFlag SMALLINT
+	DECLARE @EventOrderBy VARCHAR(50)
+	DECLARE @EventClientName CHAR(4)
+	DECLARE @EventClientUserID VARCHAR(20)
+	DECLARE @EventTRows INT
+	DECLARE @EventMsg VARCHAR(600)
+
+	SET @EventMode = 'R'
+	SET @EventStatusCodes = 'AUTH'
+	SET @EventShortfallsOnlyFlag = CASE 
+			WHEN @ReportOption = 'ShortfallCashOnly'
+				THEN - 1
+			ELSE 0
+			END
+	SET @EventIncludeOrdersFlag = 0
+	SET @EventOrderBy = 'ANum'
+	SET @EventClientName = 'KCO'
+	SET @EventClientUserID = ''
+	SET @ContactRoleCode = CASE 
+			WHEN @OrderByType = 'Client Manager'
+				THEN 2
+			WHEN @OrderByType = 'Trader'
+				THEN 515
+			WHEN @OrderByType = 'Trust Administrator'
+				THEN 510
+			END
+
+	INSERT INTO @Tmp_ClientTeam (
+		ManagerCode
+		,UserName
+		,UserID
+		)
+	SELECT AccMgrCod.ManagerCode
+		,LTRIM(RTRIM(ISNULL(Usr.FIRSTNAME + ' ', '') + ISNULL(Usr.LASTNAME, '')))
+		,UserID = Usr.UserID
+	FROM SYN_IT_AccountManagerCodes AccMgrCod
+	INNER JOIN SYN_IT_SubContactRoles SubCntRol ON AccMgrCod.ContactID = SubCntRol.ContactID
+		AND SubCntRol.ContactRoleCode = @ContactRoleCode
+	INNER JOIN TBL_KS_User Usr ON SubCntRol.SubContactID = Usr.InnotrustContactID
+
+	IF @ManagerCode IS NOT NULL
+	BEGIN
+		SELECT @LiablitySelectionCriteriaXML = (
+				SELECT 'CustomerAccountNumber' AS "@Type"
+					,CustomerAccountNumber AS "@Value"
+				FROM SYN_IT_ACCOUNTMASTER
+				WHERE (
+						(@ManagerCode = 'All')
+						OR (
+							@ManagerCode <> 'All'
+							AND ManagerCode = @ManagerCode
+							)
+						)
+				FOR XML PATH('Criteria')
+					,ROOT('AccountSelectionCriteria')
+				)
+	END
+	ELSE
+		IF @CustomerAccountNumber IS NOT NULL
+		BEGIN
+			SELECT @LiablitySelectionCriteriaXML = (
+					SELECT 'CustomerAccountNumber' AS "@Type"
+						,@CustomerAccountNumber AS "@Value"
+					FOR XML PATH('Criteria')
+						,ROOT('AccountSelectionCriteria')
+					)
+		END
+
+	INSERT INTO #TBL_TR_CashLiability (
+		CustomerAccountNumber
+		,AName
+		,AType
+		,TType
+		,CName
+		,BPaymSch
+		,BPaymOut
+		,VPaymSch
+		,VPaymOut
+		,ATranSch
+		,ATranOut
+		,FeesOut
+		,TotLiab
+		,TotCash
+		,TLessLiab
+		,SLessLiab
+		)
+	EXEC SYN_IT_spCashVerificationReport @Mode = @EventMode
+		,@AccountSelectionCriteriaXML = @LiablitySelectionCriteriaXML
+		,@CustomerAccountNumber = NULL
+		,@ForecastThroughDate = @ForecastUpto
+		,@StatusCodes = @EventStatusCodes
+		,@ShortfallsOnlyFlag = @EventShortfallsOnlyFlag
+		,@IncludeOrdersFlag = 0
+		,@OrderBy = @EventOrderBy
+		,@ClientName = @EventClientName
+		,@ClientUserID = @EventClientUserID
+		,@TotalRows = @EventTRows
+		,@Msg = @EventMsg
+
+	--Paragon Scheduled payment
+	UPDATE #TBL_TR_CashLiability
+	SET BPaymSch = ScheduledAmount
+	FROM #TBL_TR_CashLiability CashLiab
+	INNER JOIN (
+		SELECT CustomerAccountNumber
+			,sum(isnull(BenePaySchd.ScheduledAmount, 0)) ScheduledAmount
+		FROM TBL_PP_AccountPayoutSchedule AcntPaySchd
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenePaySchd ON AcntPaySchd.APScheduleID = BenePaySchd.APScheduleID
+			AND isnull(BenePaySchd.paymentid, 0) = 0
+			AND BenePaySchd.PaymentDate <= @ForecastUpto
+		GROUP BY CustomerAccountNumber
+		) BenePayoutSchd ON CashLiab.CustomerAccountNumber = BenePayoutSchd.CustomerAccountNumber
+
+	---update PGCALC payment data
+	UPDATE #TBL_TR_CashLiability
+	SET BPaymSch = PaymentAmount
+	FROM #TBL_TR_CashLiability CL
+	INNER JOIN (
+		SELECT pgcalcpay.CustomerAccountNumber
+			,SUM(isnull(pgcalcpay.PaymentAmount, 0)) AS PaymentAmount
+		FROM TBL_PP_pgcalcpaymentdataMerged pgcalcpay
+		INNER JOIN SYN_IT_BeneficiaryDistributions SBD ON SBD.BeneficiaryDistributionID = pgcalcpay.BeneficiaryDistributionID
+			AND pgcalcpay.PaymentDate <= @ForecastUpto
+			AND ISNULL(pgcalcpay.PaymentId, 0) = 0
+		INNER JOIN SYN_IT_ContactMaster SCM ON SCM.ContactID = SBD.PayeeID
+		GROUP BY pgcalcpay.CustomerAccountNumber
+		) PGP ON CL.CustomerAccountNumber = PGP.CustomerAccountNumber
+
+	IF (
+			@OrderByType = 'CustomerAccountNumber'
+			OR @OrderByType IS NULL
+			)
+	BEGIN
+		SELECT CustomerAccountNumber AS AdventID
+			,AName AS TraderName
+			,AType AS AccountType
+			,TType AS TrustType
+			,CName
+			,BPaymSch AS ScheduledPayments
+			,BPaymOut AS OutstandingPayments
+			,VPaymSch AS ScheduledVendorPayments
+			,VPaymOut AS OutstandingVendorPayments
+			,ATranSch AS ScheduledJournalPayments
+			,ATranOut AS OutstandingJournalPayments
+			,FeesOut AS KaspickFeesAuthorized
+			,TotLiab AS TotalLiabilities
+			,TotCash AS CustodianTotalCashPos
+			,TLessLiab AS TradeCash
+			,SLessLiab AS SettleCash
+			,'' AS OptionName
+		FROM #TBL_TR_CashLiability
+		ORDER BY CustomerAccountNumber ASC
+	END
+	ELSE
+		IF (
+				@OrderByType = 'Client Manager'
+				OR @OrderByType = 'Trader'
+				OR @OrderByType = 'Trust Administrator'
+				)
+		BEGIN
+			SELECT CashLiablty.CustomerAccountNumber AS AdventID
+				,AName AS TraderName
+				,AType AS AccountType
+				,TType AS TrustType
+				,CName
+				,BPaymSch AS ScheduledPayments
+				,BPaymOut AS OutstandingPayments
+				,VPaymSch AS ScheduledVendorPayments
+				,VPaymOut AS OutstandingVendorPayments
+				,ATranSch AS ScheduledJournalPayments
+				,ATranOut AS OutstandingJournalPayments
+				,FeesOut AS KaspickFeesAuthorized
+				,TotLiab AS TotalLiabilities
+				,TotCash AS CustodianTotalCashPos
+				,TLessLiab AS TradeCash
+				,SLessLiab AS SettleCash
+				,CASE 
+					WHEN @OrderByType = 'Client Manager'
+						THEN 'Client Manager: ' + ' ' + ISNULL(ClntTeam.UserName, '')
+					WHEN @OrderByType = 'Trader'
+						THEN 'Trader: ' + ' ' + ISNULL(ClntTeam.UserName, '')
+					WHEN @OrderByType = 'Trust Administrator'
+						THEN 'Trust Administrator: ' + ' ' + ISNULL(ClntTeam.UserName, '')
+					END AS OptionName
+			FROM #TBL_TR_CashLiability CashLiablty
+			INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.CustomerAccountNumber = CashLiablty.CustomerAccountNumber
+			INNER JOIN @Tmp_ClientTeam ClntTeam ON ClntTeam.ManagerCode = AcntMstr.ManagerCode
+				AND CASE 
+					WHEN @OrderByType = 'Client Manager'
+						AND @OrderByTypeId IS NOT NULL
+						THEN ClntTeam.UserID
+					WHEN @OrderByType = 'Trader'
+						AND @OrderByTypeId IS NOT NULL
+						THEN ClntTeam.UserID
+					WHEN @OrderByType = 'Trust Administrator'
+						AND @OrderByTypeId IS NOT NULL
+						THEN ClntTeam.UserID
+					END = CONVERT(VARCHAR(50), @OrderByTypeId)
+			ORDER BY CASE 
+					WHEN @OrderByType = 'Client Manager'
+						THEN ClntTeam.UserName
+					WHEN @OrderByType = 'Trader'
+						THEN ClntTeam.UserName
+					WHEN @OrderByType = 'Trust Administrator'
+						THEN ClntTeam.UserName
+					END ASC
+		END
+END

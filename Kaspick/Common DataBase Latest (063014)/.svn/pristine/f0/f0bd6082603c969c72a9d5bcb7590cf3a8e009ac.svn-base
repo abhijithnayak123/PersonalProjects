@@ -1,0 +1,173 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetSTGAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportGetSTGAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportGetSTGAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetSTGAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportGetSTGAccount    
+** Short Desc:  Gets all accounts created under given group   
+**    
+** Full Description : Gets all accounts created under given group
+**            
+**    
+** Sample Call  
+	DECLARE @XMLStatus  XML
+	SET  @XMLStatus = '<StatusCollection>
+						 <Status StatusID="1"/>
+						 <Status StatusID="2"/>
+						 <Status StatusID="3"/>
+						 <Status StatusID="8"/>
+					  </StatusCollection>'
+					  
+  EXEC USP_IE_ImportGetSTGAccount   4,'TMC','All',@XMLStatus,0,100023
+
+  EXEC USP_IE_ImportGetSTGAccount   1,'All','All',XMLStatus, 1,1  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/09/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportGetSTGAccount] -- paremeters here    
+	@GroupID INT
+	,@ClientBriefName VARCHAR(50)
+	,@AccountType VARCHAR(20)
+	,@XMLStatus XML
+	,@IsMidYear BIT
+	,@UserID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	DECLARE @StatusCount INT
+
+	--  Temp tables, Cursors, Table Variables  --  
+	SELECT @StatusCount = @XMLStatus.value('count(/StatusCollection/Status)', 'INT')
+
+	SELECT StagingID
+		,GroupID
+		,CustomerAccountNumber AS AdventID
+		,AccountType
+		,CreationDate
+		,UnitrustPercentage
+		,STGEst.StatusID
+		,IEStat.STATUS
+		,UserID
+		,UserName
+		,RunDate
+	FROM TBL_IE_STG_Estimate STGEst
+	INNER JOIN TBL_IE_Status IEStat
+		ON STGEst.StatusID = IEStat.StatusID
+	WHERE IsDeleted = 0
+		AND GroupID = @GroupID
+		AND (
+			(
+				ManagerCode = @ClientBriefName
+				AND (
+					@ClientBriefName <> 'ALL'
+					AND @ClientBriefName <> 'My Clients'
+					AND @ClientBriefName <> 'My Backups'
+					)
+				)
+			OR (
+				@ClientBriefName = 'My Clients'
+				AND ManagerCode IN (
+					SELECT ManagerCode
+					FROM VW_KS_SysAdminKCoStaffPaging
+					WHERE USerID = @UserID
+						AND RoleCode IN (
+							-- IsPrimary = 1
+							2 -- 'Administrator'
+							,14 -- Investment Officer <-- 'Relationship Manager'
+							,26 -- 'Plan Administrator'
+							,510 -- 'Trust Administrator'
+							,515 -- 'Portfolio Analyst'
+							,518 -- 'Custody Ops Administrator'
+							,519 -- 'Reporting Analyst'
+							)
+					)
+				)
+			OR (
+				@ClientBriefName = 'My Backups'
+				AND ManagerCode IN (
+					SELECT ManagerCode
+					FROM VW_KS_SysAdminKCoStaffPaging
+					WHERE USerID = @UserID
+						AND RoleCode IN (
+							-- IsPrimary = 0
+							3 -- 'Backup Administrator'
+							,512 -- 'Backup Relationship Manager'
+							,26 -- 'Plan Administrator'
+							,510 -- 'Trust Administrator'
+							,515 -- 'Portfolio Analyst'
+							,518 -- 'Custody Ops Administrator'
+							,519 -- 'Reporting Analyst'
+							)
+					)
+				)
+			OR (@ClientBriefName = 'ALL')
+			)
+		AND (
+			(
+				@AccountType <> 'All'
+				AND AccountType = @AccountType
+				)
+			OR (@AccountType = 'All')
+			)
+		AND (
+			(
+				@StatusCount <> 0
+				AND STGEst.StatusID IN (
+					SELECT XmlInput.Item.value('@StatusID[1]', 'INT') AS StatusID
+					FROM @XMLStatus.nodes('//StatusCollection/Status') AS XmlInput(Item)
+					)
+				)
+			OR (@StatusCount = 0)
+			)
+		AND (
+			(
+				@IsMidYear = 0
+				AND STGEst.ParentStagingID IS NULL
+				)
+			OR (
+				@IsMidYear = 1
+				AND STGEst.ParentStagingID IS NOT NULL
+				)
+			)
+	ORDER BY CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

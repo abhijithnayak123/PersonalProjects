@@ -1,0 +1,103 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ExecArchivalProcedure]    Script Date: Script Date: 06/03/2013 14:30:13 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ExecArchivalProcedure]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)	
+	DROP PROCEDURE [dbo].[USP_PP_ExecArchivalProcedure]
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_ExecArchivalProcedure                      
+** Short Desc: To retrieve and execute the archival procedures 
+**                      
+** Full Description: To retrieve and execute the archival procedures 
+**                              
+** Input Arguments:  
+**         
+** Sample Call     
+	EXEC USP_PP_ExecArchivalProcedure 'Standard'
+	EXEC USP_PP_ExecArchivalProcedure 'Exception'
+	EXEC USP_PP_ExecArchivalProcedure 'All'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 03-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ExecArchivalProcedure] @TemplateType AS VARCHAR(10)
+AS
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	SET NOCOUNT ON
+
+	-- Standard template related procedure block
+	IF @TemplateType = 'Standard'
+		OR @TemplateType = 'All'
+	BEGIN
+		EXEC USP_PP_InsArchBeneficiaryPayment
+
+		EXEC USP_PP_InsArchCGAPaymentDetail
+
+		EXEC USP_PP_InsArchPGCALPaymentData
+
+		EXEC USP_PP_InsArchYTDPaymentData
+	END
+
+	-- PaymentExport is applicable for all template types
+	EXEC USP_PP_InsArchPaymentExport @TemplateType -- Values can be standard or Exception or All
+
+	UPDATE TBL_PP_BeneficiaryPayment
+	SET AcomPrintDate = ProcessedDateMiddleWare
+	FROM TBL_PP_BeneficiaryPayment BenPymnt
+	INNER JOIN TBL_PP_STG_PaymentExport STGPymntExport ON BenPymnt.PaymentID = STGPymntExport.PaymentID
+	INNER JOIN TBL_PP_ARCH_PaymentExport ARCHPymntExport ON BenPymnt.PaymentID = ARCHPymntExport.PaymentID
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

@@ -1,0 +1,68 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplateDetailSection]    Script Date: 05/14/2013 12:10:45 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetTemplateDetailSection]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetTemplateDetailSection]
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplateDetailSection]    Script Date: 05/14/2013 12:10:45 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_GetTemplateDetailSection                      
+** Short Desc	:	TO GET THE TEMPLATE 3 DETAIL1 SECTION - ACCOUNT1,PAYMENTAMOUNT    
+*                  
+** Full Description: TO GET THE TEMPLATE 3 DETAIL1 SECTION - ACCOUNT1,PAYMENTAMOUNT  
+**                              
+** Input Arguments:    
+**         
+** Sample Call     
+        
+	 EXEC USP_PP_GetTemplateDetailSection 3
+	 EXEC USP_PP_GetTemplateDetailSection 7
+	 EXEC USP_PP_GetTemplateDetailSection 10
+**             
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 18-06-2013	Niveditha	Used ANSI joins for better performance
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetTemplateDetailSection] @TemplateCode INT
+AS
+SET NOCOUNT ON
+SET LOCK_TIMEOUT 30000
+
+BEGIN
+	SELECT CGAPymtDtl.PaymentID
+		,Account1
+		,CGAPymtDtl.PaymentAmount
+	FROM TBL_PP_STG_CGAPaymentDetail CGAPymtDtl
+	INNER JOIN TBL_PP_STG_PaymentExport PymtExp ON CGAPymtDtl.PaymentID = PymtExp.PaymentID
+		AND TemplateCode = @TemplateCode
+	ORDER BY PersonCode
+		,GiftDate DESC
+END
+

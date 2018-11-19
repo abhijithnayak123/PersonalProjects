@@ -1,0 +1,199 @@
+
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_InsProfileDonortax')
+    BEGIN
+        DROP PROCEDURE USP_EX_InsProfileDonortax;
+        PRINT 'DROPPED USP_EX_InsProfileDonortax';
+    END
+GO
+
+
+          
+/*********************************************************************************************************************                                                             
+* PROCEDURE NAME  : USP_EX_InsProfileDonortax  
+* OLD PROCEDURE NAME  : USP_EIS_EX_PROFILE_DONORTAX_INSPROC                     
+* DESCRIPTION     : TO INSERT RECORDS INTO TABLE, TBL_EIS_EX_PROFILE_TAX                    
+* INPUT           :                     
+* MODIFICATION LOG: QUERY INDENTATION                    
+*     FOR UPDATE ON ALERTS TABLE; MODIFIED BY AND MODIFIED DATE COLUMNS ARE UPDATED.                    
+*                                                
+* DATE         MODIFIED BY  DESCRIPTION                                                                
+*--------------------------------------------------------------------------------------------------------------------                                                             
+*22-JAN-2007 TANUJ                 
+*04-JUN-07   VSHIVHARE MODIFIED,COMMENTED OLD TAX FIELDS             
+*22-JUN-07   VSHIVHARE MODIFIED FOR UPDATING BENEFICIARY SUPPLEMENT TABLE        
+*29-JUN-07   VSHIVHARE MODIFIED FOR UPDATING TRUSTPARTICIPANT SUPPLEMENT TABLE        
+* 05-JUL-07  SARAVANAN PM && MODIFIED FOR HIGH PERIORITY FILED MAPPED TO PROFILE TAX TABLE IN BENEFICIARY LEVEL        
+*19-July-07  Tanuj  Added new parameter K1Priority      
+*24-July-07  Saravanan PM && Added Delete Cascading in Beneficiary Form ID      
+*19-Apr-08  Saravanan PM Added Fascimilesigner Flag Output variable  
+*15-Apr-14  Yugandhar   EXCREQ8.4 Modified  
+* 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+  
+--Sample Call   
+USP_EX_InsProfileDonortax 37,'34953','ARGAP','Contingent Beneficiary',2012,2013,34953,  
+ 'DonorBeneficiaryTax.aspx','High Priority Bene Tax Forms (K-1)',59560,18,76,3,100023,  
+ ''  
+*********************************************************************************************************************/                              
+CREATE PROCEDURE USP_EX_InsProfileDonortax                      
+(                      
+ @TYPEID INT,                  
+ @ENTITYID    VARCHAR(14),                      
+ @ACCOUNTID  VARCHAR(14),                    
+ @PARTICIPANT_TYPE    VARCHAR(100),                     
+ @YEAR_OF_FIRST INT,                    
+ @YEAR_OF_LAST INT,                    
+ @BENEFICARY_ID  INT,   
+  @PAGENAME    VARCHAR(100),                    
+ --@REQUIRED_LATER_DATE DATETIME,                    
+ @FIELDNAME    VARCHAR(100),     
+ @BENEFICIARY_FORM_ID INT,                    
+ --@HIGH_PRIORITY_DATE DATETIME,         
+ @K1PRIORITY INT,                  
+ @MAILONORBEFORE_MM_ID INT,      
+ @MAILONORBEFORE_DD_ID INT,    
+ @MODIFIED_USERID INT,                    
+ @XMLDOC   VARCHAR(4000) = NULL      
+)                    
+AS                      
+BEGIN           
+ BEGIN TRY             
+ ----------CHECKING FOR CONCURRENCY                  
+BEGIN TRAN                
+            
+ DECLARE @ENTITY_TYPE INT,                     
+   @TAX_ID INT,                    
+   @PARTICIPANT_ID INT                  
+    
+ DECLARE @K1VALUE VARCHAR(100)                 
+    
+ EXEC USP_EX_GetListItemID
+  @LIST_TYPE_NAME = 'ENTITY',                      
+  @LIST_ITEM_NAME = 'CONTACT',                      
+  @LIST_ITEM_ID = @ENTITY_TYPE OUTPUT           
+       
+ DECLARE @MAILONORBEFORE_VALUE VARCHAR(5)              
+      
+ SELECT @MAILONORBEFORE_VALUE=DISPLAYSEQUENCE FROM TBL_LISTITEM WHERE LISTITEMID = @MAILONORBEFORE_MM_ID              
+ SELECT @MAILONORBEFORE_VALUE = CAST(@MAILONORBEFORE_VALUE AS VARCHAR) + '/' + CAST(@MAILONORBEFORE_DD_ID AS VARCHAR)              
+               
+ SELECT @K1VALUE = IVANVALUE FROM  VW_EX_ListItem  WHERE LISTITEMID = @K1PRIORITY  AND LISTTYPENAME = 'LOGICAL VALUE'                 
+            
+ IF EXISTS(SELECT TAX_ID FROM TBL_BR_ProfileTax WHERE  BeneficiaryContactID = @BENEFICARY_ID)                
+ BEGIN                  
+  SELECT @TAX_ID=TAX_ID FROM TBL_BR_ProfileTax WHERE  BeneficiaryContactID = @BENEFICARY_ID             
+                
+  
+  IF(@BENEFICIARY_FORM_ID IS NULL OR @BENEFICIARY_FORM_ID = 0)        
+  BEGIN        
+   DECLARE @NEW_FASCIMILESIGNEREMPID INT,     
+    @NEW_FASCIMILESIGNERFLAG INT,       
+    @NEW_BENEFICIARYTAXFORMID INT,        
+    @NEW_TAXRETURNID INT,        
+    @NEW_TAX10989ID INT,        
+    @NEW_TAX1099RID INT        
+   EXEC USP_EX_GetProfileTaxCascade
+    @BENEFICARY_ID,          
+    'Contact',      
+    @NEW_FASCIMILESIGNEREMPID OUTPUT,     
+    @NEW_FASCIMILESIGNERFLAG OUTPUT,         
+    @NEW_BENEFICIARYTAXFORMID OUTPUT,        
+    @NEW_TAXRETURNID OUTPUT,        
+    @NEW_TAX10989ID  OUTPUT,                        
+    @NEW_TAX1099RID  OUTPUT        
+         
+   SET @BENEFICIARY_FORM_ID = @NEW_BENEFICIARYTAXFORMID        
+          
+  END        
+          
+  IF(@K1VALUE IS NULL)        
+  BEGIN        
+   SELECT @K1VALUE=LOGICALVALUE FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=197 AND POLICYLEVEL=300 AND OWNERID=@ACCOUNTID           
+  END        
+    
+  IF(@K1VALUE IS NOT NULL AND @K1VALUE = 1 AND @MAILONORBEFORE_VALUE IS NULL)        
+  BEGIN        
+   SELECT @MAILONORBEFORE_VALUE=TEXTVALUE FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=244 AND POLICYLEVEL=300 AND OWNERID=@ACCOUNTID        
+  END        
+             
+   UPDATE  TBL_BR_ProfileTax                     
+   SET   BENEFICIARY_TAX_FORM_ID  = @BENEFICIARY_FORM_ID,                      
+    HIGH_PRIORITY = @MAILONORBEFORE_VALUE,         
+    K_1_PRIORITY =  @K1VALUE,        
+    MODIFIED_DATE    = GETDATE(),                      
+    MODIFIED_USER_ID   = @MODIFIED_USERID                      
+   WHERE TAX_ID = @TAX_ID                   
+  END                
+ ELSE--NEW TAX INFO                
+ BEGIN                
+                   
+  INSERT INTO TBL_BR_ProfileTax (          
+   EntityDescription,          
+   BeneficiaryContactID,          
+   CustomerAccountNumber,          
+   BENEFICIARY_TAX_FORM_ID,          
+   HIGH_PRIORITY,         
+   K_1_PRIORITY,             
+   MODIFIED_DATE,          
+   MODIFIED_USER_ID,          
+   CREATED_DATE,          
+   CREATED_USER_ID )                    
+  VALUES(          
+   cast(@ENTITY_TYPE as varchar(14)),           
+   @BENEFICARY_ID,           
+   NULL,          
+   @BENEFICIARY_FORM_ID,          
+   @MAILONORBEFORE_VALUE,         
+   @K1VALUE,          
+   GETDATE(),                
+   @MODIFIED_USERID,          
+   GETDATE(),          
+   @MODIFIED_USERID )                    
+            
+  SET @TAX_ID = IDENT_CURRENT('TBL_BR_ProfileTax')                      
+ END                
+ --INS UPD TAX CONDITIONS                
+ EXEC USP_EX_SaveProfileTaxConditions
+  @XMLDOC = @XMLDOC,                      
+  @TAX_ID = @TAX_ID                
+       
+ COMMIT TRAN     
+ END TRY  
+ BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @ProcName VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @ProcName = 'USP_EX_InsProfileDonortax';  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE();  
+   
+   RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+  
+ END CATCH            
+             
+END               
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_InsProfileDonortax') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_InsProfileDonortax';
+	END   

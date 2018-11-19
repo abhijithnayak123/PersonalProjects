@@ -1,0 +1,178 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetManagerReportAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewGetManagerReportAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewGetManagerReportAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetManagerReportAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewGetManagerReportAccount    
+** Short Desc:   Gets all accounts created under given group for Data Review   
+**    
+** Full Description : Gets all accounts created under given group for Data Review 
+**            
+**    
+** Sample Call    
+	DECLARE @ReturnStatus INT
+  EXEC USP_IE_ReviewGetManagerReportAccount   'CM' , 'AccountType, CustomerAccountNumber',6, @ReturnStatus output;
+  SELECT @ReturnStatus
+
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewGetManagerReportAccount] -- paremeters here        
+	@ManagerCode VARCHAR(20)
+	,@SortKey VARCHAR(100)
+	,@GroupID INT
+	,@ReturnStatus VARCHAR(1)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --    
+	DECLARE @SQL VARCHAR(8000);
+	-- Body of procedure  --    
+	DECLARE @CntReadyToPayment INT;
+	DECLARE @CntGroupAccounts INT;
+	DECLARE @PDGRMStatusID INT
+	DECLARE @PDGCMStatusID INT
+	DECLARE @ReadyPmtStatusID INT
+	DECLARE @SchdldStatusID INT
+
+	SELECT @PDGRMStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'PDG RM'
+
+	SELECT @PDGCMStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'PDG CM'
+
+	SELECT @ReadyPmtStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'Ready For Pmt'
+
+	SELECT @SchdldStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'Scheduled'
+
+	SELECT @CntReadyToPayment = COUNT(*)
+	FROM TBL_IE_STG_Estimate
+	WHERE StatusID IN (
+			@PDGRMStatusID
+			,@PDGCMStatusID
+			,@ReadyPmtStatusID
+			,@SchdldStatusID
+			)
+		AND IsDeleted = 0
+		AND ParentStagingID IS NULL
+		AND ManagerCode = @ManagerCode
+		AND GroupID = @GroupID
+
+	SELECT @CntGroupAccounts = COUNT(*)
+	FROM TBL_IE_STG_Estimate
+	WHERE IsDeleted = 0
+		AND ParentStagingID IS NULL
+		AND ManagerCode = @ManagerCode
+		AND GroupID = @GroupID
+
+	SET @ReturnStatus = 0;
+
+	IF ISNULL(@CntReadyToPayment, 0) = ISNULL(@CntGroupAccounts, 0)
+	BEGIN
+		SET @SQL = 
+			'SELECT STGEst.StagingID,STGEst.GroupID,STGEst.AccountName
+			,STGEst.UserID,STGEst.TaxYear,STGEst.CustomerAccountNumber
+			,STGEst.ManagerCode,STGEst.AccountType,STGEst.CreationDate
+			,STGEst.MatureDate,STGEst.RunDate,STGEst.IsExcelsiorImported
+			,STGEst.StatusID,STGEst.UnitrustPercentage,STGEst.ObjectiveCode
+			,STGEst.IsDeleted,STGEst.UserName,STGEst.CreatedDate
+			,STGEst.ModifiedDate,STGEst.ImportDate,STGEst.DiagnosticError
+			,STGEst.IT_RequiresIncomeEstimate,STGEst.IT_IsIncomeAccrual,STGEst.IT_IsAmortization
+			,STGEst.IT_IsAccretion,STGEst.IT_IsRentalIncomeExpenses,STGEst.IT_IsMiscExpenses
+			,STGEst.IT_IsPropertyTaxIncome,STGEst.IT_IsPromNoteAmort,STGEst.IT_PayCapGainsAsIncome
+			,STGEst.EP_InvestPerPolicy,STGEst.EP_InvestmentType,STGEst.EP_FirstTradeDate
+			,STGEst.EP_TranchingStatus,STGEst.KDB_HoldsSubstitutes,STGEst.KDB_HoldsRestrictedAssets
+			,STGEst.IT_TerminationRule,STGEst.IT_FlipProvision,STGEst.IT_ExpectedFlipDate
+			,STGEst.Ca_TrustLifeExpectancy,STGEst.IT_PayActualNI,STGEst.IE_CurrentYearIncomeTarget
+			,STGEst.IE_PriorYearIncomeTarget,STGEst.EP_InvestmentComment,STGEst.IT_PaysSTGDAsIncome
+			,STGEst.IT_CalculationMethod,STGEst.IT_ClientLegalName,STGEst.PP_ValuationPriorYear1
+			,STGEst.PP_ValuationPriorYear2,STGEst.PP_ValuationPriorYear3,STGEst.PP_Valuation
+			,STGEst.Ex_ValuationImportDate,STGEst.PP_OverPayment,STGEst.PP_UnitrustAmount
+			,STGEst.PP_CumulativeDeficiency,STGEst.PP_ValuationStatus,STGEst.PP_InvestmentAllocationYield
+			,STGEst.IT_NewGiftsAndAdditions,STGEst.PP_Q1_Q4PaymentsPriorYear1,STGEst.PP_Q1_Q4PaymentsPriorYear2
+			,STGEst.PP_Q1_Q4PaymentsPriorYear3,STGEst.PP_Q5PaymentsPriorYear1,STGEst.PP_Q5PaymentsPriorYear2
+			,STGEst.PP_Q5PaymentsPriorYear3,STGEst.PP_TotalPaymentsPriorYear1,STGEst.PP_TotalPaymentsPriorYear2
+			,STGEst.PP_TotalPaymentsPriorYear3,STGEst.IE_DisplayOrder,STGEst.PP_TrustYieldPriorYear1
+			,STGEst.PP_TrustYieldPriorYear2,STGEst.PP_TrustYieldPriorYear3,STGEst.PP_PriorYearPayout
+			,STGEst.PP_PriorYearValuation,STGEst.PP_PriorYearYield,STGEst.EP_ClientIEComment
+			,STGEst.EP_MasterObjectiveName,STGEst.PP_ScheduledPaymentAmount,STGEst.Ex_FlipTriggerDate
+			,STGEst.Ax_EstimatedIncome,STGEst.Ax_YTDOtherEx,STGEst.Ax_PriorYearAccruedIncome
+			,STGEst.Ax_ReClassIncome,STGEst.Ax_ActualSGD,STGEst.Ax_ActIncStd,STGEst.Ax_ActIncNonStd
+			,STGEst.Ax_EarnedIncome,STGEst.Ax_FMVOnStartDate,STGEst.Ax_FMVOnRunDate,STGEst.Ax_GrossIncomeEstimate
+			,STGEst.Ax_AxysPortYield,STGEst.Ax_AxysPortGrossYieldVar,STGEst.Ax_GrossIncomeYieldOnStartDate
+			,STGEst.Ax_GrossIncomeYieldOnRunDate,STGEst.Ax_NetIncomeYieldOnStartDate,STGEst.IT_AnnIMFee_Income
+			,STGEst.IT_AnnTAFee_Income,STGEst.IT_AnnTrusteeFee_Income,STGEst.IT_YTDIMFee_Income,STGEst.IT_YTDTAFee_Income
+			,STGEst.IT_YTDTrusteeFee_Income,STGEst.IT_ProjectedIMFee_Income,STGEst.IT_ProjectedTAFee_Income
+			,STGEst.IT_ProjectedTrusteeFee_Income,STGEst.Projectedannualchg_income,STGEst.Ax_TMCAnnualChg_Income
+			,STGEst.Ax_EstimatedSGD,STGEst.Ca_InvAllocGrossYieldVar,STGEst.Ca_InvAllocNetYieldVar
+			,STGEst.Ca_NewNetIncomeEstimate,STGEst.Ca_NetIncomeEstimateUsedForPmt,STGEst.Ca_NetIncomeProjectionOriginal
+			,STGEst.Ca_PmtYield,STGEst.Ca_NetPriorYearQ1_Q4Var,STGEst.Ca_NetPriorYearTotalVar
+			,STGEst.Ca_NetMidYearVar,STGEst.EstimatedOtherExpenses,STGEst.CurrentYearAccruedIncome
+			,STGEst.ActualSTGLTG,STGEst.AssetAmortAccret,STGEst.IPMIncomeOverride,STGEst.RMIncomeOverride
+			,STGEst.CMIncomeOverride,STGEst.ParentStagingID,STGEst.IncomeOverrideStatus
+			,IEStat.STATUS
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN TBL_IE_Status IEStat
+			ON STGEst.StatusID = IEStat.StatusID
+		WHERE IsDeleted = 0
+			AND ParentStagingID IS NULL
+			AND AccountType <> ''PIF''
+			AND ManagerCode = ''' + @ManagerCode + '''  
+			AND GroupID = ''' + convert(VARCHAR(100), @GroupID) + '''    
+		ORDER BY ' + @SortKey
+
+		EXECUTE (@SQL)
+	END
+	ELSE
+	BEGIN
+		SET @ReturnStatus = 1;--Client Report cannot be generated. Criteria Failed    
+
+		PRINT 'Client Report cannot be generated since all accounts for selected client are not in either of status: PDG RM,PDG CM,Ready For Pmt,Scheduled';
+	END
+
+	SET NOCOUNT OFF;
+END

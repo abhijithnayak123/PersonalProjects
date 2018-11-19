@@ -1,0 +1,372 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_STG_ClientProfiles'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_STG_ClientProfiles;
+
+	PRINT 'DROPPED USP_BR_FASB_STG_ClientProfiles';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************              
+** Name       : USP_BR_FASB_STG_ClientProfiles
+** Old Name   : USP_EIS_RPT_FASB_STG_ClientProfiles
+** Short Desc : To insert common data into staging table based on FASB and 990.    
+**              
+** Full Description              
+**                  
+**              
+** Return values: NONE              
+**       
+** Sample Call    
+**        
+** EXEC USP_BR_FASB_STG_ClientProfiles 'ACL,SM','06-30-2012','FASB',1,2    
+**               
+** Created By : Niveditha         
+** Company    : Kaspick & Company              
+** Project    : FASB              
+** Created DT : 09/24/2012              
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+******************************************************************************              
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved              
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION              
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_BR_FASB_STG_ClientProfiles]
+(
+	@Sel_ClientID VARCHAR(1000)
+	,@MarketValueDate DATETIME
+	,@ReportPurpose VARCHAR(50)
+	,@MortalityTable INT
+	,@RateOfReturn DECIMAL(6, 2)
+)
+AS
+BEGIN
+	CREATE TABLE #Temp_STG_ClientProfiles (
+		ClientID VARCHAR(20)
+		,Client_FullName VARCHAR(100) NOT NULL
+		--,Client_BriefName VARCHAR(20) NOT NULL
+		,ProgramType VARCHAR(20) NOT NULL
+		,AccountID VARCHAR(20)
+		,AccountType VARCHAR(20) NOT NULL
+		,CreationDate DATETIME
+		,InitialMarketValue MONEY NOT NULL
+		,AnnuityAmount MONEY
+		,UnitrustPercentage FLOAT
+		--,BriefName VARCHAR(20) NOT NULL
+		--,AdventID VARCHAR(8) NOT NULL
+		,TaxID VARCHAR(12)
+		,TerminationType VARCHAR(1) NOT NULL
+		,TermYearsBeyondLife TINYINT NOT NULL
+		,ExpectedMatureDate DATETIME
+		,MatureDate DATETIME
+		,MarketValueMonth TINYINT
+		,FASB_InstanceID INT
+		,InstanceTypeID INT
+		,RateOf_ReturnType INT
+		,IsReporting_req BIT
+		,CalculationMethod VARCHAR(50) NOT NULL
+		,MortalityTable INT NOT NULL
+		,comment VARCHAR(4000) NOT NULL
+		,STATUS_ID INT
+		,LEAD_TRUST_TAXATION_ID INT
+		,RateOfReturn VARCHAR(30)
+		,GIFTPURPOSE VARCHAR(100)
+		,Account5 VARCHAR(20)
+		,LI_MortalityTable VARCHAR(100)
+		,LI_RateofReturnType VARCHAR(100)
+		)
+
+	--SELECT     
+	-- distinct    
+	-- C.ClientID    
+	-- ,C.FullName    
+	-- ,C.BriefName as ClientBriefname    
+	-- --,P.PROGRAMID      
+	-- ,ProgramType    
+	-- ,D.AccountID    
+	-- ,AccountType    
+	-- ,CreationDate    
+	-- ,InitialMarketValue    
+	-- ,AnnuityAmount    
+	-- ,UnitrustPercentage    
+	-- ,D.BriefName    
+	-- ,AdventID    
+	-- ,D.TaxID    
+	-- ,TerminationType    
+	-- ,TermYearsBeyondLife    
+	-- ,ExpectedMatureDate    
+	-- ,MatureDate    
+	-- ,case when @ReportPurpose = 'FASB' then  MarketValueMonth else null end as MarketValueMonth    
+	-- ,case when @ReportPurpose = 'FASB' then  prof.FASB_InstanceID else null end as FASB_InstanceID    
+	-- ,InstanceTypeID     
+	-- ,RateOf_ReturnType    
+	-- ,IsReporting_req    
+	-- ,case when @ReportPurpose = 'FASB' then  dbo.[FN_FASB_GetListItemName](CalculationMethod) else 'N/A' end as CalculationMethod  
+	-- ,case when @ReportPurpose = 'FASB' then  MortalityTable else @MortalityTable end as MortalityTable    
+	-- ,isnull((case when @ReportPurpose = 'FASB' then  Comment else null end), ' ') as Comment    
+	-- ,DS.STATUS_ID    
+	-- ,LEAD_TRUST_TAXATION_ID    
+	-- ,case      
+	--  when VLIR.LIST_ITEM_NAME  is null then ' '    
+	--  when VLIR.LIST_ITEM_NAME = 'One Rate' and @ReportPurpose ='FASB' then     
+	--    SUBSTRING(VLIR.LIST_ITEM_NAME + ',' + cast(RateOfReturn as varchar(10)),1,20)       
+	--  when @ReportPurpose ='FASB' then  SUBSTRING(VLIR.LIST_ITEM_NAME ,1,20)  
+	--  else cast(@RateOfReturn as varchar(10))       
+	-- end as RateOfReturn    
+	-- ,GIFTPURPOSE    
+	-- ,case when VLIINSTANCE.LIST_ITEM_NAME is null then ' '        
+	--  when VLIINSTANCE.LIST_ITEM_NAME is not null and @ReportPurpose = 'FASB' then    
+	--    SUBSTRING(VLIINSTANCE.LIST_ITEM_NAME + CONVERT(VARCHAR(10), @MarketValueDate, 101),1,20)     
+	--   when VLIINSTANCE.LIST_ITEM_NAME is not null and @ReportPurpose = '990' then    
+	--   SUBSTRING('990' + CONVERT(VARCHAR(10), @MarketValueDate, 101),1,20) end as Account5    
+	--FROM DEFERREDGIFTACCOUNT D    
+	--INNER JOIN TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DS ON DS.ACCOUNTID = D.ACCOUNTID    
+	--INNER JOIN PROGRAM P ON P.PROGRAMID = D.PROGRAMID    
+	--INNER JOIN TBL_EIS_EX_PROGRAM_SUPPLEMENT PS ON PS.PROGRAMID = P.PROGRAMID    
+	--INNER JOIN CLIENT C ON C.CLIENTID = P.CLIENTID    
+	--INNER JOIN tbl_eis_rpt_fasb_profileinfo prof ON prof.Clientid = C.ClientID    
+	-- AND CASE WHEN @ReportPurpose = '990' THEN 1 ELSE prof.MarketValueMonth  END =     
+	--  CASE WHEN @ReportPurpose = '990' THEN 1 ELSE MONTH(@MarketValueDate) END      
+	--INNER JOIN tbl_eis_rpt_fasb_input_param inparam ON prof.FASB_InstanceID = inparam.FASB_InstanceID    
+	-- AND charindex(D.AccountType, dbo.FN_FASB_GetTrustTypes(TrustTypeLabel)) > 0    
+	-- AND inparam.IsReporting_req = 1    
+	--inner join TBL_EIS_RPT_FASB_TrustTypeTranslation TTT on     
+	--    case when  @ReportPurpose= '990'  then  RepPurpose  else '1' end =     
+	--    case when  @ReportPurpose= '990'  then '990' else '1' end    
+	--   and case when  @ReportPurpose= '990'  then  D.AccountType else '1' end =     
+	--    case when  @ReportPurpose= '990'  then  TTT.EX_AccountType else '1' end    
+	--inner join  V_EIS_LIST_ITEMS VLIR on VLIR.LIST_TYPE_NAME ='Rate of Return Type' and RateOf_ReturnType= VLIR.LIST_ITEM_ID       
+	--inner join V_EIS_LIST_ITEMS VLIINSTANCE on VLIINSTANCE.LIST_TYPE_NAME ='FASB Instance Type' and prof.InstanceTypeID= VLIINSTANCE.LIST_ITEM_ID        
+	--WHERE c.clientid IN (    
+	--  SELECT *    
+	--  FROM dbo.[fn_SPLITSTRINGTOROWS](@Sel_ClientID, ',')    
+	--  )    
+	IF @ReportPurpose = 'FASB'
+	BEGIN
+		INSERT INTO #Temp_STG_ClientProfiles
+		(
+			ClientID, Client_FullName, ProgramType, AccountID, AccountType, CreationDate, InitialMarketValue, AnnuityAmount, UnitrustPercentage, TaxID
+			, TerminationType, TermYearsBeyondLife, ExpectedMatureDate, MatureDate, MarketValueMonth, FASB_InstanceID, InstanceTypeID, RateOf_ReturnType
+			, IsReporting_req, CalculationMethod, MortalityTable, comment, STATUS_ID, LEAD_TRUST_TAXATION_ID, RateOfReturn, GIFTPURPOSE, Account5
+			, LI_MortalityTable, LI_RateofReturnType
+		)
+		SELECT DISTINCT AMC.ManagerCode AS 'ClientID'
+			,AMC.ManagerName AS 'FullName'
+			--,AMC.ManagerCode AS ClientBriefname
+			--,P.PROGRAMID      
+			,'TBD' AS 'ProgramType' --TBD
+			,ACC.ACCOUNTID AS 'AccountID'
+			,ACC.ACCOUNTTYPE AS 'AccountType'
+			,AM.AccountFundedDate AS 'CreationDate'
+			,CTAD.InitialMV AS 'InitialMarketValue'
+			,CTAD.CYDistAmount AS 'AnnuityAmount'
+			,CTAD.PayoutPercentage AS 'UnitrustPercentage'
+			,AM.TaxIDNumber AS 'TaxID'
+			,UDFAM.UDFAMColumn020 AS 'TerminationType'
+			,UDFAM.UDFAMColumn018 AS 'TermYearsBeyondLife'
+			,AM.ProjectedAccountCloseDate AS 'ExpectedMatureDate'
+			,UDFAM.UDFAMColumn030 AS 'MatureDate'
+			,MarketValueMonth -- TBD
+			,prof.FASB_InstanceID
+			,InstanceTypeID
+			,RateOf_ReturnType
+			,IsReporting_req
+			,dbo.[FN_FASB_GetListItemName](CalculationMethod) CalculationMethod
+			,MortalityTable
+			,ISNULL(Comment, ' ') AS Comment
+			,58 AS 'STATUS_ID' -- select distinct ActiveFlag,ClosedFlag from SYN_IT_AccountMaster --TBD
+			,1780 --AM.AccountTypeCode --TBD
+			 AS 'LEAD_TRUST_TAXATION_ID'
+			,CASE 
+				WHEN VLIR.ListItemName IS NULL
+					THEN ' '
+				WHEN VLIR.ListItemName = 'One Rate'
+					THEN SUBSTRING(VLIR.ListItemName + ',' + cast(RateOfReturn AS VARCHAR(10)), 1, 20)
+				ELSE SUBSTRING(VLIR.ListItemName, 1, 20)
+				END AS RateOfReturn
+			,UDFAM.UDFAMColumn040 AS 'GIFTPURPOSE'
+			,CASE 
+				WHEN VLIINSTANCE.ListItemName IS NULL
+					THEN ' '
+				WHEN VLIINSTANCE.ListItemName IS NOT NULL
+					THEN SUBSTRING(VLIINSTANCE.ListItemName + CONVERT(VARCHAR(10), @MarketValueDate, 101), 1, 20)
+				END AS Account5
+			,VLIM.ListItemName LI_MortalityTable
+			,VLIR.ListItemName LI_RateofReturnType
+		FROM
+			SYN_IT_AccountMaster AM
+		INNER JOIN
+			VW_EX_Account ACC
+		ON
+			AM.CustomerAccountNumber = ACC.ACCOUNTID
+		INNER JOIN
+			SYN_IT_AllianceNumbers ALNM
+		ON
+			ALNM.AllianceNumber = ACC.AllianceNumber
+		INNER JOIN
+			SYN_IT_AccountManagerCodes AMC
+		ON
+			AMC.ManagerCode = ACC.CLIENTID
+		INNER JOIN
+			SYN_IT_CTAccountDetails CTAD
+		ON
+			CTAD.CustomerAccountNumber = AM.CustomerAccountNumber
+		LEFT OUTER JOIN
+			SYN_IT_UDF_AccountMaster UDFAM
+		ON
+			UDFAM.CustomerAccountNumber_Key = AM.CustomerAccountNumber
+		INNER JOIN
+			TBL_BR_FASBProfileInformation prof
+		ON
+			prof.ManagerCode = AMC.ManagerCode
+			AND prof.MarketValueMonth = MONTH(@MarketValueDate)
+		INNER JOIN
+			TBL_BR_FASBInputParam inparam
+		ON
+			prof.FASB_InstanceID = inparam.FASB_InstanceID
+			AND CHARINDEX(ACC.AccountType, dbo.FN_FASB_GetTrustTypes(TrustTypeLabel)) > 0
+			AND inparam.IsReporting_req = 1
+		INNER JOIN
+			TBL_BR_FASBTrustTypeTranslation TrType
+		ON
+			TrType.InnotrustAccountType = ACC.AccountType
+			AND @ReportPurpose = TrType.RepPurpose
+		INNER JOIN
+			VW_EX_ListItem VLIR
+		ON
+			VLIR.ListTypeName = 'Rate of Return Type'
+			AND RateOf_ReturnType = VLIR.ListItemID
+		INNER JOIN
+			VW_EX_ListItem VLIM
+		ON
+			VLIM.ListTypeName = 'Mortality Table'
+			AND MortalityTable = VLIM.ListItemID
+			AND dbo.[FN_FASB_GetListItemName](CalculationMethod) = TrType.TrustTypeCalcMethod
+		INNER JOIN
+			VW_ListItem VLIINSTANCE
+		ON
+			VLIINSTANCE.ListTypeName = 'FASB Instance Type'
+			AND prof.InstanceTypeID = VLIINSTANCE.ListItemID
+		WHERE
+			AMC.ManagerCode IN (
+				SELECT *
+				FROM dbo.[fn_SPLITSTRINGTOROWS](@Sel_ClientID, ',')
+				)
+			AND ACC.AccountType NOT IN (
+				'CGA'
+				,'PIF'
+				)
+	END
+
+	IF @ReportPurpose = '990'
+	BEGIN
+		INSERT INTO #Temp_STG_ClientProfiles
+		(
+			ClientID, Client_FullName, ProgramType, AccountID, AccountType, CreationDate, InitialMarketValue, AnnuityAmount, UnitrustPercentage, TaxID
+			, TerminationType, TermYearsBeyondLife, ExpectedMatureDate, MatureDate, MarketValueMonth, FASB_InstanceID, InstanceTypeID, RateOf_ReturnType
+			, IsReporting_req, CalculationMethod, MortalityTable, comment, STATUS_ID, LEAD_TRUST_TAXATION_ID, RateOfReturn, GIFTPURPOSE, Account5
+			, LI_MortalityTable, LI_RateofReturnType
+		)
+		SELECT DISTINCT AMC.ManagerCode AS 'ClientID'
+			,AMC.ManagerName AS 'FullName'
+			,'TBD' AS 'ProgramType' --TBD
+			,ACC.ACCOUNTID AS 'AccountID'
+			,ACC.ACCOUNTTYPE AS 'AccountType'
+			,AM.AccountFundedDate AS 'CreationDate'
+			,CTAD.InitialMV AS 'InitialMarketValue'
+			,CTAD.CYDistAmount AS 'AnnuityAmount'
+			,CTAD.PayoutPercentage AS 'UnitrustPercentage'
+			,AM.TaxIDNumber AS 'TaxID'
+			,UDFAM.UDFAMColumn020 AS 'TerminationType'
+			,UDFAM.UDFAMColumn018 AS 'TermYearsBeyondLife'
+			,AM.ProjectedAccountCloseDate AS 'ExpectedMatureDate'
+			,UDFAM.UDFAMColumn030 AS 'MatureDate'
+			,NULL AS MarketValueMonth
+			,NULL AS FASB_InstanceID
+			,NULL AS InstanceTypeID
+			,NULL AS RateOf_ReturnType
+			,NULL AS IsReporting_req
+			,'N/A' AS CalculationMethod
+			,@MortalityTable AS MortalityTable
+			,' ' AS Comment
+			,58 AS 'STATUS_ID'
+			,1780 --AM.AccountTypeCode --TBD
+			 AS 'LEAD_TRUST_TAXATION_ID'
+			,CAST(@RateOfReturn AS VARCHAR(10)) AS RateOfReturn
+			,UDFAM.UDFAMColumn040 AS 'GIFTPURPOSE'
+			,SUBSTRING('990' + CONVERT(VARCHAR(10), @MarketValueDate, 101), 1, 20) AS ACCOUNT5
+			,NULL LI_MortalityTable
+			,NULL LI_RateofReturnType
+		FROM
+			SYN_IT_AccountMaster AM
+		INNER JOIN
+			VW_EX_Account ACC
+		ON
+			AM.CustomerAccountNumber = ACC.ACCOUNTID
+		INNER JOIN
+			SYN_IT_AllianceNumbers ALNM
+		ON
+			ALNM.AllianceNumber = ACC.AllianceNumber
+		INNER JOIN
+			SYN_IT_AccountManagerCodes AMC
+		ON
+			AMC.ManagerCode = ACC.CLIENTID
+		INNER JOIN
+			SYN_IT_CTAccountDetails CTAD
+		ON
+			CTAD.CustomerAccountNumber = AM.CustomerAccountNumber
+		LEFT OUTER JOIN
+			SYN_IT_UDF_AccountMaster UDFAM
+		ON
+			UDFAM.CustomerAccountNumber_Key = AM.CustomerAccountNumber
+		INNER JOIN
+			TBL_BR_FASBTrustTypeTranslation TrType
+		ON
+			TrType.InnotrustAccountType = ACC.AccountType
+			AND TrType.RepPurpose = '990'
+		WHERE AMC.ManagerCode IN (
+				SELECT *
+				FROM dbo.[fn_SPLITSTRINGTOROWS](@Sel_ClientID, ',')
+				)
+	END
+
+	INSERT INTO TBL_BR_STG_FASBManagerProfile
+	(
+		ManagerCode, ManagerName, ProgramType, CustomerAccountNumber, AccountType, CreationDate, InitialMarketValue, AnnuityAmount, UnitrustPercentage
+		, TaxID, TerminationType, TermYearsBeyondLife, ExpectedMatureDate, MatureDate, MarketValueMonth, FASB_InstanceID, InstanceTypeID, RateOf_ReturnType
+		, IsReporting_req, CalculationMethod, MortalityTable, comment, STATUS_ID, LEAD_TRUST_TAXATION_ID, RateOfReturn, GIFTPURPOSE, Account5
+		, LI_MortalityTable, LI_RateofReturnType
+	)
+	SELECT
+			ClientID, Client_FullName, ProgramType, AccountID, AccountType, CreationDate, InitialMarketValue, AnnuityAmount, UnitrustPercentage
+			, TaxID, TerminationType, TermYearsBeyondLife, ExpectedMatureDate, MatureDate, MarketValueMonth, FASB_InstanceID, InstanceTypeID, RateOf_ReturnType
+			, IsReporting_req, CalculationMethod, MortalityTable, comment, STATUS_ID, LEAD_TRUST_TAXATION_ID, RateOfReturn, GIFTPURPOSE, Account5
+			, LI_MortalityTable, LI_RateofReturnType
+	FROM
+		#Temp_STG_ClientProfiles
+END
+GO
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_STG_FASB_ClientProfiles'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_STG_FASB_ClientProfiles';
+END
+GO
+--EXEC USP_BR_FASB_STG_ClientProfiles 'ACL,SM','06-30-2012','FASB',1,2
+--EXEC USP_BR_FASB_STG_ClientProfiles 'ACL,SM','06-30-2012','990',1,2

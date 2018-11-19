@@ -1,0 +1,127 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingDob'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsVALMissingDob;
+
+	PRINT 'DROPPED USP_BR_FASB_InsVALMissingDob';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************                
+** Name       :   USP_BR_FASB_InsVALMissingDob
+** OLD Name   :   USP_EIS_RPT_FASB_VAL_MissingDOB_InsProc                
+** Short Desc : Participant is missing DOB for a trust impacted by lives of beneficiaries.    
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_BR_FASB_InsVALMissingDob 88              
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Aug/25/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Aug/10/2012   Ganapati           Created        
+**  Nov/19/12 Saravanan  Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules    
+**  Mar/28/13 Niveditha  Modified - Included condition to filter the Beneficiaries for ExcludeFromLifeOfTrust is 0 -----  
+** 08/00/2014	Gaurav Nahar		Sp & Table Name Change for BOI
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsVALMissingDob]  
+@RuleId INT  
+ AS  
+BEGIN
+
+		DECLARE @ValidationMessage VARCHAR(max)  
+		DECLARE @ValidationType VARCHAR(25)  
+		  
+		--select @ValidationMessage = DisplayMessage, @ValidationType = ResultType from TBL_EIS_PP_Validation_Rules where RuleID = @RuleId        
+		SELECT 
+				 @ValidationMessage = DisplayMessage  
+				,@ValidationType = ResultType  
+		FROM 
+				TBL_DLV_ValidationRule  
+		WHERE 
+				ValidationRuleID = @RuleId  
+		  
+		--Rule 6. Participant is missing DOB for a trust impacted by lives of beneficiaries.    
+		INSERT INTO TBL_BR_FASBValidationResult (  
+		  ManagerCode  
+		 ,ManagerName  
+		 ,RecordIdentifier  
+		 ,ValidationMessage  
+		 ,ValidationType  
+		 )  
+		SELECT DISTINCT Gift.OrgId  
+				 ,C.ManagerName  
+				 ,'AdventID = ' + DGA.AdventID + ' Participant = ' + isnull(TT.FirstName, '') + ' ' + isnull(TT.LastName, '')  
+				 ,@ValidationMessage  
+				 ,@ValidationType  
+		FROM 
+				dbo.SYN_IT_AccountManagerCodes  C   
+		INNER JOIN 
+				TBL_BR_STG_FASBGift Gift 
+			ON 
+				C.ManagerCode = Gift.EX_ManagerCode_OrgID  
+		INNER JOIN 
+				VW_EX_Account DGA 
+			ON 
+				DGA.AccountID = Gift.CustomerAccountNumber  
+		INNER JOIN 
+				VW_RP_TrustParticipant AS TT 
+			ON 
+				DGA.AccountID = TT.CustomerAccountNumber_Key  
+		--INNER JOIN 
+		--		VW_RP_TrustParticipant TP 
+		--	ON 
+		--		TP.ParticipantID = TT.ParticipantID  
+		-- Mar/28/13:Niveditha  Modified - Included Beneficiary join condition to filter the Beneficiaries for ExcludeFromLifeOfTrust is 0   
+		INNER JOIN 
+				VW_Beneficiary BENE 
+			ON 
+				TT.ParticipantID = BENE.ContactID  
+		WHERE Gift.TermTypeID <> 3  
+		 AND TT.BirthDate IS NULL  
+		 AND (  
+		  (  
+		   DGA.UDFAMColumn030 IS NULL  
+		   OR DGA.UDFAMColumn030 >= Gift.MarketValueDate  
+		   )  
+		  AND (  
+		   TT.ExpireDate IS NULL  
+		   OR TT.ExpireDate >= Gift.MarketValueDate  
+		   )  
+		  )  
+		 -- Mar/28/13:Niveditha  Modified - Included condition to filter the Beneficiaries for ExcludeFromLifeOfTrust is 0  
+		 AND BENE.ExcludeFromLifeOfTrust = 0 
+END		 
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingDob'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_InsVALMissingDob';
+END 

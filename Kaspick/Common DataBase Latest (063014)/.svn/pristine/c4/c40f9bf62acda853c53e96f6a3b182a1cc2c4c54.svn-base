@@ -1,0 +1,316 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_GetEventByID]    Script Date: 03/10/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetEventByID]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetEventByID]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************         
+** Sample call
+   EXEC USP_TR_GetEventByID '<TSheet><Event EventID="59994"/></TSheet>'           
+** Return values: Event Record      
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By: Soorya            
+** Company   : Kaspick & Company            
+** Project   : TRex            
+** Created DT: 03/10/2014            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------   
+** 03/10/2014   Soorya     
+** 26-jun-14    Salih               Modified Rolecode implementation from Rolecode description to ID.
+*******************************************************************************            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetEventByID] (@EventXML XML)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds          
+		-- SET TRANSACTION ISOLATION LEVEL SNAPSHOT;          
+
+	DECLARE @AnalysisPrepStatusId AS INT
+	DECLARE @ProposedStatusId AS INT
+	DECLARE @ApprovedStatusId AS INT
+	DECLARE @SubmittedStatusId AS INT
+	DECLARE @ReconciledStatusId AS INT
+	DECLARE @Review1StatusId AS INT
+
+	SELECT @AnalysisPrepStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'AnalysisPrep'
+
+	SELECT @ProposedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Proposed'
+
+	SELECT @ApprovedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Approved'
+
+	SELECT @SubmittedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Submitted'
+
+	SELECT @ReconciledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Reconciled'
+
+	SELECT @Review1StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review1'
+
+	CREATE TABLE #TempAccountPayoutSchedule (
+		CustomerAccountNumber CHAR(14)
+		,TaxYear INT
+		,PaymentDate VARCHAR(20)
+		,ScheduledAmount VARCHAR(20)
+		)
+
+	INSERT INTO #TempAccountPayoutSchedule (
+		CustomerAccountNumber
+		,TaxYear
+		,PaymentDate
+		,ScheduledAmount
+		)
+	SELECT CustomerAccountNumber
+		,TaxYear
+		,MIN(PaymentDate)
+		,MAX(ScheduledAmount)
+	FROM TBL_PP_AccountPayoutSchedule
+	WHERE PaymentDate > CURRENT_TIMESTAMP
+	GROUP BY CustomerAccountNumber
+		,TaxYear
+
+	SELECT AcntMstr.ManagerCode
+		,Evnt.EVENTID
+		,Evnt.EventName
+		,Evnt.EventStatusID
+		,EvntSts.EventStatus
+		,Evnt.RecordVersion AS EventRecordVersion
+		,Evnt.LastModifiedUserID AS EventLastModifiedUser
+		,Evnt.LastModifiedDate AS EventLastModifiedDate
+		,Evnt.CombinedAccount
+		,Evnt.CreatedDate
+		,Evnt.EventSource
+		,Evnt.Comments
+		,Evnt.TradeComment AS UpdatedComments
+		,Evnt.CancelComment
+		,Evnt.AXYSPositionDate
+		,Evnt.LoadPaymentsDataUpTo
+		,Evnt.ImposeBenePayment
+		,Evnt.[Source]
+		,Evnt.SourceFille
+		,EvntAcnt.EventAccountID
+		,EvntAcnt.EventID
+		,EvntAcnt.CustomerAccountNumber
+		,EvntAcnt.AccountOrder
+		,EvntAcnt.AccountName
+		,EvntAcnt.AccountType
+		,EvntAcnt.PayoutRate
+		,EvntAcnt.AnnuityAmount
+		,EvntAcnt.SLMasterAccount
+		,EvntAcnt.Managed
+		,EvntAcnt.Custodian
+		,EvntAcnt.CustodianAccountNumber
+		,EvntAcnt.InvestmentTypeCode
+		,EvntAcnt.TaxStatus
+		,EvntAcnt.TradeDiscretion
+		,EvntAcnt.TradeStatusCode
+		,EvntAcnt.FSIOption
+		,EvntAcnt.InvestmentComment
+		,EvntAcnt.TrancheStatusCode
+		,EvntAcnt.ImposedBenePayment
+		,EvntAcnt.ObjectiveCode
+		,EvntAcnt.LotAccountingCode
+		,EvntAcnt.RecordVersion AS EventAccountRecordVersion
+		,EvntAcnt.LastModifiedUserID AS EventAccountLastModifiedUser
+		,EvntAcnt.LastModifiedDate AS EventAccountLastModifiedDate
+		,EvntTypMstr.EventTypeID
+		,EvntTypMstr.EventType
+		,EvntTypMstr.RiskLevel
+		,Usr1.LoginName AS EventCreatedUserName
+		,Usr2.LoginName AS EventAccountAssignedTraderName
+		,ISNULL(Evnt.BlockRevokeApproval, 0) AS HasSubmittedQuantityTillDate
+		,Reviewer.LoginName AS Reviewer
+		,CASE 
+			WHEN Evnt.EventStatusID IN (
+					@AnalysisPrepStatusId
+					,@ReconciledStatusId
+					)
+				THEN TempAcntPaySchd.PaymentDate
+			WHEN Evnt.EventStatusID IN (
+					@ProposedStatusId
+					,@ApprovedStatusId
+					,@SubmittedStatusId
+					)
+				THEN EvntAcnt.PaymentDate
+			WHEN Evnt.EventStatusID > @ReconciledStatusId
+				THEN RevAcnt.PaymentDate
+			END AS PaymentDate
+		,CASE 
+			WHEN Evnt.EventStatusID IN (
+					@AnalysisPrepStatusId
+					,@ReconciledStatusId
+					)
+				THEN TempAcntPaySchd.ScheduledAmount
+			WHEN Evnt.EventStatusID IN (
+					@ProposedStatusId
+					,@ApprovedStatusId
+					,@SubmittedStatusId
+					)
+				THEN EvntAcnt.ScheduledAmount
+			WHEN Evnt.EventStatusID > @ReconciledStatusId
+				THEN RevAcnt.ScheduledAmount
+			END AS ScheduledAmount
+		,CASE 
+			WHEN Evnt.EventStatusID IN (
+					@AnalysisPrepStatusId
+					,@ReconciledStatusId
+					)
+				THEN AuthIMLvl1.IMlevel1Count
+			WHEN Evnt.EventStatusID IN (
+					@ProposedStatusId
+					,@ApprovedStatusId
+					,@SubmittedStatusId
+					)
+				THEN EvntAcnt.IMlevel1Count
+			WHEN Evnt.EventStatusID > @ReconciledStatusId
+				THEN RevAcnt.IMlevel1Count
+			END AS IMlevel1Count
+		,CASE 
+			WHEN Evnt.EventStatusID IN (
+					@AnalysisPrepStatusId
+					,@ReconciledStatusId
+					)
+				THEN AuthIMLvl2.IMlevel2Count
+			WHEN Evnt.EventStatusID IN (
+					@ProposedStatusId
+					,@ApprovedStatusId
+					,@SubmittedStatusId
+					)
+				THEN EvntAcnt.IMlevel2Count
+			WHEN Evnt.EventStatusID > @ReconciledStatusId
+				THEN RevAcnt.IMlevel2Count
+			END AS IMlevel2Count
+		,CASE 
+			WHEN Evnt.EventStatusID IN (
+					@AnalysisPrepStatusId
+					,@ReconciledStatusId
+					)
+				THEN AnlAcntPayInfo.EstAnnualPayout
+			WHEN Evnt.EventStatusID IN (
+					@ProposedStatusId
+					,@ApprovedStatusId
+					,@SubmittedStatusId
+					)
+				THEN EvntAcnt.AnnualPayment
+			WHEN Evnt.EventStatusID > @ReconciledStatusId
+				THEN RevAcnt.AnnualPayment
+			END AS AnnualPayment
+	FROM TBL_TR_EVENT Evnt
+	INNER JOIN (
+		SELECT XMLDATA.item.value('@EventID[1]', 'int') AS EventID
+		FROM @EventXML.nodes('//TSheet/Event') AS XMLDATA(item)
+		) tempEvent
+		ON tempEvent.EventID = Evnt.EventID
+	INNER JOIN TBL_TR_EventAccount EvntAcnt
+		ON EvntAcnt.EVENTID = Evnt.EVENTID
+	INNER JOIN TBL_TR_Audit_Event AdtEvnt
+		ON Evnt.EVENTID = AdtEvnt.EVENTID
+			AND AdtEvnt.AuditFlag = 'I'
+	INNER JOIN TBL_TR_EventType EvntTyp
+		ON EvntTyp.EVENTID = Evnt.EVENTID
+	INNER JOIN TBL_TR_EventTypeMaster EvntTypMstr
+		ON EvntTyp.EventTypeID = EvntTypMstr.EventTypeID
+	INNER JOIN TBL_TR_EventStatus EvntSts
+		ON Evnt.EventStatusID = EvntSts.EventStatusID
+	INNER JOIN SYN_IT_AccountMaster AcntMstr
+		ON AcntMstr.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+	LEFT OUTER JOIN (
+		SELECT CustomerAccountNumber
+			,EstAnnualPayout
+			,PayoutYear
+		FROM TBL_PP_AnnualAccountPayoutInfo
+		WHERE PayoutYear = YEAR(GETDATE())
+		) AnlAcntPayInfo
+		ON AnlAcntPayInfo.CustomerAccountNumber = AcntMstr.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_KS_User Usr1
+		ON Evnt.CreatedUserID = Usr1.UserID
+	LEFT OUTER JOIN TBL_KS_User Usr2
+		ON Evnt.AssignedTraderID = Usr2.UserID
+	LEFT OUTER JOIN (
+		SELECT AcntMstrCod.ManagerCode
+			,ISNULL(UCntMstr.UDFCMColumn013, 0) AS IMlevel2Count
+		FROM SYN_IT_AccountManagerCodes AcntMstrCod
+		INNER JOIN SYN_IT_SubContactRoles SubCntcRol
+			ON AcntMstrCod.ContactID = SubCntcRol.ContactID
+				-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+				AND SubCntcRol.ContactRoleCode = 553 -- 'Authorized IM Level 2'
+		INNER JOIN SYN_IT_ContactMaster CntMstr
+			ON CntMstr.ContactID = SubCntcRol.SubContactID
+		INNER JOIN SYN_IT_UDF_ContactMaster UCntMstr
+			ON UCntMstr.ContactID_Key = CntMstr.ContactID
+		) AuthIMLvl2
+		ON AuthIMLvl2.ManagerCode = AcntMstr.ManagerCode
+	LEFT OUTER JOIN (
+		SELECT AcntMstrCod.ManagerCode
+			,ISNULL(UCntMstr.UDFCMColumn013, 0) AS IMlevel1Count
+		FROM SYN_IT_AccountManagerCodes AcntMstrCod
+		INNER JOIN SYN_IT_SubContactRoles SubCntcRol
+			ON AcntMstrCod.ContactID = SubCntcRol.ContactID
+				-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+				AND SubCntcRol.ContactRoleCode = 552 -- 'Authorized IM Level 1'
+		INNER JOIN SYN_IT_ContactMaster CntMstr
+			ON CntMstr.ContactID = SubCntcRol.SubContactID
+		INNER JOIN SYN_IT_UDF_ContactMaster UCntMstr
+			ON UCntMstr.ContactID_Key = CntMstr.ContactID
+		) AuthIMLvl1
+		ON AuthIMLvl1.ManagerCode = AcntMstr.ManagerCode
+	LEFT OUTER JOIN (
+		SELECT CustomerAccountNumber
+			,TaxYear
+			,PaymentDate
+			,ScheduledAmount
+		FROM #TempAccountPayoutSchedule
+		) AS TempAcntPaySchd
+		ON TempAcntPaySchd.CustomerAccountNumber = AcntMstr.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_TR_ReviewEventAccount RevAcnt
+		ON RevAcnt.EventAccountID = EvntAcnt.EventAccountID
+	LEFT OUTER JOIN (
+		SELECT EvntTrkr.EventID
+			,EvntTrkr.ModifiedUserID
+			,EvntTrkr.ModifiedDate
+			,ROW_NUMBER() OVER (
+				PARTITION BY EvntTrkr.EventID ORDER BY EvntTrkr.ModifiedDate DESC
+				) AS RowNum
+		FROM TBL_TR_EventTracker EvntTrkr
+		WHERE EventStatusID = @Review1StatusId
+		) ReviewTracker
+		ON ReviewTracker.EventID = Evnt.EventID
+			AND RowNum = 1
+	LEFT OUTER JOIN TBL_KS_USER Reviewer
+		ON ReviewTracker.ModifiedUserID = Reviewer.UserID
+
+	DROP TABLE #TempAccountPayoutSchedule
+END

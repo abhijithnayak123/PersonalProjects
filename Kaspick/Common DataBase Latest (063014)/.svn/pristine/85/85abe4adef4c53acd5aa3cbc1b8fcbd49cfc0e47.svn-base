@@ -1,0 +1,119 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryStatus                      
+** Short Desc:  To get Beneficiary Status
+**                      
+** Full Description:   To get Beneficiary Status. This sp uses Innotrust response data from table 
+					   TBL_PP_STG_InnoTrustValidationEngineInput for validation.            
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryStatus  100110,0     
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 04-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**  01/29/2014 Salih				Changed table variables with temp tables
+**  07/30/2014 Anand				Updated as part of CR
+**  08/18/2014 Anand				Added Filter condition on Active Flag (ET#16797)
+
+
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]
+	-- paremeters here                                
+	@UserID INT
+	,@Type BIT = 1 --auto
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	---Declare Variable
+	DECLARE @RuleID INT
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Beneficiary inactive'
+		AND RuleCategory = 'Beneficiary payment'
+
+	SELECT PaymentType
+		,StgData.ScheduleID
+		,@RuleID AS RuleID
+		,'BeneStatus' AS Attribute
+		,(
+			CASE 
+				WHEN (synBene.ContactID = synBene.PayeeID)
+					THEN synBene.ActiveFlag
+				ELSE (
+						CASE 
+							WHEN (
+									(synBene.ActiveFlag = - 1)
+									AND (
+										SELECT TOP 1 ActiveFlag
+										FROM SYN_IT_BeneficiaryDistributions
+										WHERE InstructionID = synBene.instructionID
+											AND PayeeID = synBene.ContactID
+										) = - 1
+									)
+								THEN - 1
+							ELSE 0
+							END
+						)
+				END
+			) AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN SYN_IT_BeneficiaryDistributions synBene ON StgData.DistributionID = synBene.BeneficiaryDistributionID
+	WHERE PaymentType IN (
+			'Beneficiarypayment'
+			,'PGCalcImport'
+			)
+		AND UserID = @UserID
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

@@ -1,0 +1,62 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetAuthUser]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetAuthUser]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetAuthUser]
+GO
+
+/******************************************************************************  
+** Name:     USP_KS_GetAuthUser  
+** Short Desc: Get UserID based on the LoginName
+**  
+** Full Description  
+**        Get UserID based on the LoginName
+**  
+** Sample Call  
+        EXEC USP_KS_GetAuthUser 'rspivey'  -- parameters  
+        EXEC USP_KS_GetAuthUser 'abc'  -- parameters  
+        EXEC USP_KS_GetAuthUser 'asfd'  -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Niveditha 
+** Company   : Kaspick & Company  
+** Project   : Kasper
+** Created DT: 09-Jul-2013
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** <mm/dd/yyyy>  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetAuthUser] (@LoginName AS VARCHAR(50))
+AS
+BEGIN
+	
+	Declare @UserID INT
+	Declare @UserName VARCHAR(50)
+	
+	SELECT @UserID=UserID
+			,@UserName=ISNULL(LoginName, ' ') 
+		FROM TBL_KS_User
+		WHERE LoginName = @LoginName
+	
+	
+		SELECT isnull(@UserID,0) AS UserID
+			,ISNULL(@UserName, ' ') AS LoginName
+END

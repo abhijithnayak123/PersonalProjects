@@ -1,0 +1,182 @@
+  
+    
+    
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_SaveDTRepublishWebPublishedItems')
+    BEGIN
+        DROP PROCEDURE USP_RP_SaveDTRepublishWebPublishedItems;
+        PRINT 'DROPPED USP_RP_SaveDTRepublishWebPublishedItems';
+    END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************                          
+** Name:     USP_EIS_DT_RepublishWebPublishedItems     
+  
+** New SP Name : USP_RP_SaveDTRepublishWebPublishedItems  
+                       
+** Short Desc: Populate the staging table for Upload Utility          
+**                          
+** Full Description: Populate the staging table - DLV_STG_WebPublished_Items - with      
+**                   Deliverable Items which are in 'Published' status, and can be moved to 'Web Published' status.              
+**                                  
+** Input Arguments: None        
+**             
+** Sample Call         
+            
+ EXEC USP_RP_SaveDTRepublishWebPublishedItems    
+     '<ActivityConsoleTrackerCollection>    
+  <SelectList>    
+   <ActivityConsoleTracker DeliverableItemID="50117" />    
+   <ActivityConsoleTracker DeliverableItemID="50118" />    
+  </SelectList>    
+ </ActivityConsoleTrackerCollection>', 1  
+**                 
+**                          
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Ashvin Mandowara    
+** Company   : Kaspick & Company                          
+** Project   : Deliverable Tool                          
+** Created DT: 07-JUNE-2012                     
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:      Author:  Bug #     Description:                               
+** --------  --------  ------    --------------------------------------     
+** 12-06-2012 Ashvin    Adding FileName, UploadStatus and change FolderName As SourceFolder, FILENAME As SourceFileName    
+** 18-06-2012 Ashvin    Updating for Status change while republishing the item.    
+** 22/05/2014 RAJ   Modified SP Name with Table Then Column in ExcelsiorDB into KaspickDB
+** 09/06/2014 RAJ	SP Name Renamed and Formatted  
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/        
+CREATE PROCEDURE USP_RP_SaveDTRepublishWebPublishedItems  
+(    
+ @XMLDATA XML = NULL,    
+ @UserID Int = 1    
+)    
+AS    
+--  Variable Declarations  --              
+	DECLARE @procname   VARCHAR(60);              
+	DECLARE @ErrorState    INT            
+	DECLARE @ErrorNumber     INT; 
+	DECLARE @ErrorDesc VARCHAR(5000); 
+    
+BEGIN 
+
+	BEGIN TRY
+		BEGIN TRANSACTION   
+ --  Initial Set statements  --                  
+ SET NOCOUNT ON;                  
+ SET LOCK_TIMEOUT                30000;   -- 30 seconds                  
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;                 
+ SET ARITHABORT ON    
+     
+ DECLARE @QueueStatusID INT;    
+ SELECT @QueueStatusID = QueueStatusID FROM TBL_DLV_QueueStatus WHERE StatusName = 'Open'     
+      
+ Update TBL_DLV_STG_WebPublishedItem    
+ Set UploadStatus = 'Initial',     
+  EmailRecipientsIDs = (SELECT SUBSTRING((SELECT ',' + CONVERT(VARCHAR(50),DCD.EmployeeID)     
+       From TBL_DLV_ManagerCodeDeliverable DC     
+        Inner Join TBL_DLV_ManagerCodeDeliverableEmployee DCD On DCD.ManagerCodeDeliverableID = DC.ManagerCodeDeliverableID    
+       Where DC.DeliverableID = DQ.DeliverableID And DC.ManagerCode = DI.ManagerCode FOR XML PATH('')),2,200000))    
+  FROM @XMLData.nodes('//ActivityConsoleTrackerCollection/SelectList/ActivityConsoleTracker') AS XMLDoc(item)      
+   Inner Join TBL_DLV_STG_WebPublishedItem SWPI On SWPI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+   Inner Join TBL_DLV_DeliverableItem DI On DI.DeliverableItemID = SWPI.DeliverableItemID    
+   Inner Join TBL_DLV_DeliverableQueue DQ On DQ.DeliverableQueueID = DI.DeliverableQueueID    
+   And DQ.QueueStatusID = @QueueStatusID     
+     
+ UPDATE TBL_DLV_ItemMethodStatus    
+ SET DeliverableItemStatusID = SF.Start_DeliverableStatusID    
+  FROM @XMLData.nodes('//ActivityConsoleTrackerCollection/SelectList/ActivityConsoleTracker') AS XMLDoc(item)    
+  INNER JOIN TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+  INNER JOIN TBL_DLV_ItemMethodStatus IMS ON IMS.DeliverableItemID = DI.DeliverableItemID    
+  INNER JOIN TBL_DLV_DeliverableQueue DQ ON DQ.DeliverableQueueID = DI.DeliverableQueueID    
+  INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID    
+  INNER JOIN TBL_DLV_DeliverableProcess DP ON D.DeliverableProcessID = DP.DeliverableProcessID    
+  INNER JOIN TBL_DLV_StatusFlow SF ON SF.StatusFlowID = DP.PublishToWebStatusFlowID    
+  WHERE IMS.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+     
+ -- insert into TBL_EIS_DT_Methods_StatusChangeLog for generated status if doesnot already have an entry for generated    
+ INSERT INTO TBL_DLV_MethodStatusChangeLog     
+  SELECT SF.Start_DeliverableStatusID AS New_StatusID,     
+    SF.End_DeliverableStatusID As Old_StatusID,     
+    'Republishing the item from Reportoire' As Comment,     
+    1 As StatusChangeUserID,     
+    GETDATE() As StatusChangeDT,     
+    IMS.ItemMethodStatusID    
+  FROM @XMLData.nodes('//ActivityConsoleTrackerCollection/SelectList/ActivityConsoleTracker') AS XMLDoc(item)    
+  INNER JOIN TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+  INNER JOIN TBL_DLV_ItemMethodStatus IMS ON IMS.DeliverableItemID = DI.DeliverableItemID    
+  INNER JOIN TBL_DLV_DeliverableQueue DQ ON DQ.DeliverableQueueID = DI.DeliverableQueueID    
+  INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID    
+  INNER JOIN TBL_DLV_DeliverableProcess DP ON D.DeliverableProcessID = DP.DeliverableProcessID    
+  INNER JOIN TBL_DLV_StatusFlow SF ON SF.StatusFlowID = DP.PublishToWebStatusFlowID    
+  WHERE IMS.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+        
+ SELECT [D].DeliverableID,     
+  DI.DeliverableItemID,     
+  DI.DeliverableQueueID,     
+  DI.FolderName As SourceFolder,     
+  DI.[FILENAME] As SourceFileName,    
+  DP.PublishToWebStatusFlowID,    
+  DP.MissingFileErrorStatusID,    
+  DPS.StatusName AS StartStatus,     
+  DPS.DeliverableItemStatusID AS StartStatusID,     
+  DPS1.StatusName AS EndStatus,     
+  DPS1.DeliverableItemStatusID AS EndStatusID,    
+  WPI.FileName,    
+  WPI.UploadStatus    
+ FROM @XMLData.nodes('//ActivityConsoleTrackerCollection/SelectList/ActivityConsoleTracker') AS XMLDoc(item)      
+  Inner Join TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')    
+  Inner Join TBL_DLV_ItemMethodStatus DIS On DIS.DeliverableItemID = DI.DeliverableItemID    
+  Inner Join TBL_DLV_DeliverableQueue DQ ON DQ.DeliverableQueueID = DI.DeliverableQueueID    
+  Inner Join TBL_DLV_Deliverable [D] ON [D].DeliverableID = DQ.DeliverableID    
+  Inner Join TBL_DLV_DeliverableProcess DP ON DP.DeliverableProcessID = [D].DeliverableProcessID    
+  Inner Join TBL_DLV_StatusFlow SF ON SF.StatusFlowID = DP.PublishToWebStatusFlowID    
+  Inner Join TBL_DLV_DeliverableProcessStatus DPS ON DPS.DeliverableItemStatusID = SF.Start_DeliverableStatusID    
+  Left Join TBL_DLV_DeliverableProcessStatus DPS1 ON DPS1.DeliverableItemStatusID = SF.End_DeliverableStatusID    
+  Left Join TBL_DLV_STG_WebPublishedItem WPI ON WPI.DeliverableItemID = DI.DeliverableItemID      
+ WHERE DQ.QueueStatusID = @QueueStatusID AND WPI.UploadStatus = 'Initial' AND DPS.DeliverableProcessID > 5 AND DP.PublishToWebStatusFlowID IS NOT NULL    
+  And SF.Start_DeliverableStatusID = DIS.DeliverableItemStatusID    
+  
+  COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+  
+  ROLLBACK TRANSACTION
+  	SET @ErrorDesc = ERROR_MESSAGE(); 
+				SET @ErrorNumber = ERROR_NUMBER();  
+				SET @ErrorState = ERROR_STATE(); 
+				print  @ErrorDesc
+				--SET @ReturnStatus = -1;   
+				RAISERROR (
+				@ErrorDesc
+				,-- Message text.
+				@ErrorNumber
+				,-- Severity.
+				@ErrorState -- State.
+				);
+  END CATCH
+END  
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_SaveDTRepublishWebPublishedItems') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_SaveDTRepublishWebPublishedItems';
+	END

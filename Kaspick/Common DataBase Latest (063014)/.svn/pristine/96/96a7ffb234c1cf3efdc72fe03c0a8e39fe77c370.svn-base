@@ -1,0 +1,232 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuation                      
+** Short Desc: Fetch valuation details details based on the valuation filters 
+**                      
+** Full Description: Fetch valuation details details based on the valuation filters for specified accounts and dates
+**      
+**                              
+** Input Arguments:   @ValuationDateFrom DATETIME
+**	,@ValuationDateTo DATETIME
+**	,@AllAccounts BIT
+**	,@XMLCustomerAccountNumber XML
+**	,@ValuationStatusID INT
+**	,@AccountType VARCHAR(20)
+**	,@ValuationType VARCHAR(20)
+**	,@AccountRoutine VARCHAR(100)             
+** Sample Call     
+
+DECLARE @XMLCustomerAccountNumber XML
+SET @XMLCustomerAccountNumber = '<CustomerAccountCollection><InsertList><CustomerAccount CustomerAccountNumber="ACGAP"/></InsertList> </CustomerAccountCollection>'
+EXEC USP_PV_GetValuation  '01/30/2010' ,'06/30/2010',1,@XMLCustomerAccountNumber,0,'CGA','ALL','ALL'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuation] (
+	@ValuationDateFrom DATETIME
+	,@ValuationDateTo DATETIME
+	,@AllAccounts BIT
+	,@CustomerAccountNumber VARCHAR(20)
+	,@ValuationStatusID INT
+	,@AccountType VARCHAR(20)
+	,@ValuationType VARCHAR(20)
+	,@AccountRoutine VARCHAR(100)
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+		
+	IF (@AccountRoutine = 'ALL')
+	BEGIN
+		-- Fetch valuation details for Accounting Routine
+		SELECT PVal.ValuationID
+			,PVal.ValuationDate
+			,PVal.Reconfromdate
+			,PVal.Recontodate
+			,PVal.CustomerAccountNumber
+			,PVal.ManagerCode
+			,PVal.ManageCodeName
+			,PVal.CurrentStatusID
+			,PValStat.STATUS AS CurrentStatus
+			,PVal.InitialFMV
+			,PVal.PendingSeverence
+			,PVal.PendingGiftAddition
+			,PVal.EarlyTradedPayments
+			,PVal.GiftwrapPaymentsAsOfDate
+			,PVal.InnoTrustPaymentsAsOfDate
+			,PVal.OtherAdjustment
+			,PVal.FinalFMV
+			,PVal.GiftwrapEquityUnit
+			,PVal.NAV
+			,PVal.ReconcilliationType
+			,PVal.Comment
+			,PVal.RecordVersion
+			,PVal.ReconWithDW
+			,PVal.GiftWrapCashtracInput
+			,PVal.GiftWrapMVDARptGenerated
+			,PVal.CreatedDate
+			,PVal.CreatedBy
+			,PVal.ModifiedDate
+			,PVal.ModifiedBy
+			,Usr.LoginName AS 'LoginName'
+			,PVal.AccountType
+			,PVal.HasGiftExclusion
+			,PVal.GiftExclusionComment
+			,PVal.ValuationType
+			,MgrCodeParam.AccountingRoutine
+		FROM TBL_PV_Valuation PVal
+		INNER JOIN TBL_PV_ValuationStatus PValStat
+			ON PValStat.StatusID = PVal.CurrentStatusID
+		INNER JOIN TBL_KS_User Usr
+			ON Usr.UserID = PVal.ModifiedBy
+		LEFT OUTER JOIN TBL_PV_ManagerCodeParameter MgrCodeParam
+			ON MgrCodeParam.CustomerAccountNumber = PVal.CustomerAccountNumber
+			AND MgrCodeParam.AccountingRoutine = @AccountRoutine
+		WHERE (
+				PVal.ValuationDate BETWEEN @ValuationDateFrom
+					AND @ValuationDateTo
+				)
+			AND PVal.CurrentStatusID = (
+				CASE 
+					WHEN @ValuationStatusID = 0
+						THEN PVal.CurrentStatusID
+					ELSE @ValuationStatusID
+					END
+				)
+			AND (
+				(
+					@AllAccounts <> 1
+					AND PVal.CustomerAccountNumber = @CustomerAccountNumber 
+				)
+				OR @AllAccounts = 1
+				)
+			AND PVal.AccountType = @AccountType
+			AND PVal.ValuationType = (
+				CASE 
+					WHEN @ValuationType = 'All'
+						THEN PVal.ValuationType
+					ELSE @ValuationType
+					END
+				)
+		ORDER BY PVal.CustomerAccountNumber
+	END
+	ELSE
+	BEGIN
+		-- Fetch valuation details for Sub Accounting
+		SELECT PVal.ValuationID
+			,PVal.ValuationDate
+			,PVal.Reconfromdate
+			,PVal.Recontodate
+			,PVal.CustomerAccountNumber
+			,PVal.ManagerCode
+			,PVal.ManageCodeName
+			,PVal.CurrentStatusID
+			,PValStat.STATUS AS CurrentStatus
+			,PVal.InitialFMV
+			,PVal.PendingSeverence
+			,PVal.PendingGiftAddition
+			,PVal.EarlyTradedPayments
+			,PVal.GiftwrapPaymentsAsOfDate
+			,PVal.InnoTrustPaymentsAsOfDate
+			,PVal.OtherAdjustment
+			,PVal.FinalFMV
+			,PVal.GiftwrapEquityUnit
+			,PVal.NAV
+			,PVal.ReconcilliationType
+			,PVal.Comment
+			,PVal.RecordVersion
+			,PVal.ReconWithDW
+			,PVal.GiftWrapCashtracInput
+			,PVal.GiftWrapMVDARptGenerated
+			,PVal.CreatedDate
+			,PVal.CreatedBy
+			,PVal.ModifiedDate
+			,PVal.ModifiedBy
+			,Usr.LoginName AS 'LoginName'
+			,PVal.AccountType
+			,PVal.HasGiftExclusion
+			,PVal.GiftExclusionComment
+			,PVal.ValuationType
+			,AccountingRoutine
+		FROM TBL_PV_Valuation PVal
+		INNER JOIN TBL_PV_ValuationStatus PValStat
+			ON PValStat.StatusID = PVal.CurrentStatusID
+		INNER JOIN TBL_KS_User Usr
+			ON Usr.UserID = PVal.ModifiedBy
+		LEFT OUTER JOIN TBL_PV_ManagerCodeParameter MgrCodeParam
+			ON MgrCodeParam.CustomerAccountNumber = PVal.CustomerAccountNumber
+			AND MgrCodeParam.AccountingRoutine = @AccountRoutine
+		WHERE (
+				PVal.ValuationDate BETWEEN @ValuationDateFrom
+					AND @ValuationDateTo
+				)
+			AND PVal.CurrentStatusID = (
+				CASE 
+					WHEN @ValuationStatusID = 0
+						THEN PVal.CurrentStatusID
+					ELSE @ValuationStatusID
+					END
+				)
+			AND (
+				(
+					@AllAccounts <> 1
+					AND PVal.CustomerAccountNumber = @CustomerAccountNumber
+				)
+				OR @AllAccounts = 1
+				)
+			AND PVal.AccountType = @AccountType
+			AND PVal.ValuationType = (
+				CASE 
+					WHEN @ValuationType = 'All'
+						THEN PVal.ValuationType
+					ELSE @ValuationType
+					END
+				)
+			AND PVal.CustomerAccountNumber IN (
+				SELECT UDF.CustomerAccountNumber_Key
+				FROM SYN_IT_UDF_AccountMaster UDF
+				WHERE UDFAMColumn043 IS NOT NULL
+				)
+		ORDER BY PVal.CustomerAccountNumber
+	END
+END

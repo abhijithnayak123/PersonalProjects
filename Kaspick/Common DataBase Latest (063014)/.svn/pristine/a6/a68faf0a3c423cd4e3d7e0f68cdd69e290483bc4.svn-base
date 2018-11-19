@@ -1,0 +1,92 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_InsDataImport]    Script Date: 05/30/2014 16:43:06 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_InsDataImport]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_InsDataImport]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_InsDataImport]    Script Date: 05/30/2014 16:43:06 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_InsDataImport      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call 
+EXEC USP_OP_InsDataImport  -- parameters      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana
+** Created DT :		05-30-2014     
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05-30-2014		Tanuj	               Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION			
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_InsDataImport]
+(
+	@RunUser int,
+	@ReturnStatus Int =-1 output, -- assume SP fails and 
+	@ErrorDesc Varchar(8000) output
+)
+AS
+BEGIN
+	BEGIN TRANSACTION    
+BEGIN TRY    
+		
+		IF EXISTS(Select 1 from TBL_OP_TransactionDataImport where isnull(RunEndDateTime,'')='')
+		BEGIN
+			Set @ReturnStatus=-1;
+			Set @ErrorDesc='Data Import in progress';
+		END
+		Else
+		BEGIN
+			INSERT INTO TBL_OP_TransactionDataImport
+           ([RunStartDateTime]
+           ,[RunEndDateTime]
+           ,[NumberOfTransactions]
+           ,[RunUserID])
+     VALUES
+           (GetDate()
+           ,NULL
+           ,0
+           ,@RunUser)
+           
+           Select 
+				IDENT_CURRENT('TBL_OP_TransactionDataImport') as RUNID
+				,GetDate() as RunStartDateTime
+				,Null as RunEndDateTime
+				,0 as NumberOfTransactions
+				,@RunUser as RunUser
+		END
+COMMIT TRANSACTION						
+ END TRY  
+ BEGIN CATCH  
+ SET @ErrorDesc = ERROR_MESSAGE();  
+ ROLLBACK TRANSACTION 
+ SET @ReturnStatus = -1;    
+ END CATCH  
+END  
+  
+		 
+GO
+
+

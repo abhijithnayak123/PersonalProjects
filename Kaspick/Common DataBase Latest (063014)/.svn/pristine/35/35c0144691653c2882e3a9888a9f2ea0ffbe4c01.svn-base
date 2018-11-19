@@ -1,0 +1,62 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllBroker]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllBroker]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetAllBroker      
+** Short Desc : Gets all Broker Details    
+**      
+** Full Description : Gets all Broker Details  
+**              
+**      
+** Sample Call 
+		EXEC USP_TR_GetAllBroker
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb-26-2014    
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**                                Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllBroker]
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT BrokerID
+		,BrokerName
+	FROM TBL_TR_Broker
+END
+GO
+
+

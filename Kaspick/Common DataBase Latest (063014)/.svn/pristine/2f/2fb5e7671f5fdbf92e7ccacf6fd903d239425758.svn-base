@@ -1,0 +1,87 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetContactRule]    Script Date: Script Date: 05/29/2013 16:51:39 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetContactRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetContactRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetContactRule]    Script Date: 05/29/2013 16:51:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_ReportGetContactRule                      
+** Short Desc: To Get All the contact rules
+**                      
+** Full Description: To Get All the contact rules       
+**                              
+** Input Arguments:   RuleType
+**         
+** Sample Call     
+        
+ EXEC USP_PP_ReportGetContactRule  'Exception'    
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetContactRule] @RuleType AS VARCHAR(10)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT DISTINCT ContactID
+		,CustomerAccountNumber
+	FROM TBL_PP_ContactRule
+	WHERE IsExclusion = CASE 
+			WHEN @RuleType = 'Exclusion'
+				THEN 1
+			ELSE IsExclusion
+			END
+		AND IsException = CASE 
+			WHEN @RuleType = 'Exception'
+				THEN 1
+			ELSE IsException
+			END
+		AND CASE 
+			WHEN @RuleType = 'Payment'
+				THEN DaysValue
+			ELSE - 9999
+			END = CASE 
+			WHEN @RuleType = 'Payment'
+				AND DaysValue <> 0
+				THEN daysvalue
+			ELSE - 9999
+			END
+	ORDER BY CustomerAccountNumber
+		,ContactID
+END
+GO
+
+

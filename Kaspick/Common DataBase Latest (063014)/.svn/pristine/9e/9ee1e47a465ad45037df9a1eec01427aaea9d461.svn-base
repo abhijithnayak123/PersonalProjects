@@ -1,0 +1,91 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetManagerAccount]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetManagerAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetManagerAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetManagerAccount]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetManagerAccount                      
+** Short Desc: Get All Manager and Specific Accounts associated to the Client. 
+**                      
+** Full Description: Get All Manager and Specific Accounts associated to the Client.
+**      
+**                              
+** Input Arguments:  
+	@AccountType		: @AccountType value tobe searched.          
+    
+**         
+** Sample Call          
+ EXEC USP_PV_GetManagerAccount 'GAP'  
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 04-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetManagerAccount] (@AccountType VARCHAR(20))
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF @AccountType IN (
+			'GAP'
+			,'GAPR'
+			,'GAPP'
+			,'DAF'
+			,'END'
+			,'ENDQ'
+			,'ENDT'
+			,'DDF'
+			)
+	BEGIN
+		SELECT ParameterID
+			,CustomerAccountNumber
+			,AccountType
+			,ManagerCode
+			,ManagerCodeName
+			,GiftWrapAccount
+			,GroupID
+			,HasGiftExclusion
+			,GiftExclusionComment
+			,ExcludeAccruedInterest
+			,ExcludeIncomeCash
+			,AccountingRoutine
+			,IsSubAccountingSystemFIMS
+		FROM TBL_PV_ManagerCodeParameter MCParam
+		WHERE MCParam.AccountType = @AccountType
+		ORDER BY CustomerAccountNumber
+	END
+END

@@ -1,0 +1,246 @@
+IF EXISTS (SELECT *
+   FROM   sysobjects 
+   WHERE  type = 'TR'
+		  AND name = 'TRG_EX_AudProfileTaxCondtions')
+BEGIN
+	DROP TRIGGER TRG_EX_AudProfileTaxCondtions;
+	PRINT 'DROPPED TRIGGER TRG_EX_AudProfileTaxCondtions';
+END
+GO  
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER OFF
+GO      
+    
+/******************************************************************************    
+** Trigger Name:  TRG_EX_AudProfileTaxCondtions    
+** Table Name:  TBL_BR_ProfileTaxCondition    
+** Action   Insert, Update, Delete    
+**    
+** Description:  Writes data changes to the audit table    
+**    
+**        
+** Created By: by TriggerGenerator Program (Rajesh)    
+** Company   : Kaspick & Company    
+** Project   : Excelsior    
+** Created DT: 5/30/2007    
+**    
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date/Version  Author:  Bug #  Description:    
+** --------   -------- -------------------------------------------    
+** 5/30/2007    TriggerGenerator Program (Rajesh) Created for PROFILE_TAX_CONDITIONS table    
+** 6/26/2014    TriggerGenerator Program (Rajesh) Created for TBL_BR_ProfileTaxCondition table    
+*******************************************************************************    
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/    
+    
+CREATE TRIGGER [TRG_EX_AudProfileTaxCondtions]    
+   ON [dbo].[TBL_BR_ProfileTaxCondition]    
+   AFTER INSERT,UPDATE,DELETE    
+AS     
+    
+--  Variable Declarations  --    
+Declare @trgname     varchar(60);    
+Declare @Errormessage      varchar(1000);    
+Declare @Errornumber      int;    
+Declare @TAX_ID    int;    
+    
+    
+-- Variables used for error handling - uncomment if needed    
+Declare @val1      varchar(30);    
+--Declare @val2      varchar(30);    
+    
+--  Temp tables, Cursors, Table Variables  --    
+    
+--  Variable Data Assignment  --    
+    
+Set @trgname = 'TRG_EX_AudProfileTaxCondtions';    
+    
+-- Body of trigger  --    
+    
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into    
+-- the audit table.  If the rowcount from Deleted > 0, then get the data from the    
+-- Deleted table for recording the old values in the audit table.    
+    
+BEGIN TRY    
+BEGIN TRANSACTION    
+    
+ DECLARE @UNKNOWN_ID INT    
+ SELECT @UNKNOWN_ID = USERID FROM TBL_KS_USER WHERE upper(LOGINNAME) = 'UNKNOWN'    
+    
+ If (Select count(*) from Deleted) > 0 and (select count(*) from Inserted) > 0     
+ BEGIN    
+    
+  insert into TBL_BR_AUDIT_ProfileTaxCondition    
+    (AUDIT_USER_ID ,    
+      AUDIT_DATETIME,    
+     AUDIT_FLAG,    
+     AUDIT_TABLE,    
+        AUDIT_DETAILS,    
+     TAX_ID,    
+CONDITION_ID,    
+STATUS_ID,    
+START_YEAR,    
+END_YEAR,    
+--COMBINED_ACCOUNT_ADVENT_ID,    
+Tax_Condition_ID,    
+COMMENTS,    
+MODIFIED_DATE,    
+MODIFIED_USER_ID,    
+CREATED_DATE,    
+CREATED_USER_ID,    
+DELETED_USER_ID)    
+    
+  SELECT    
+    I.modified_user_id,     
+    GETDATE(),     
+    'U',    
+    'TBL_BR_ProfileTaxCondition',        
+    'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,    
+    D.TAX_ID,    
+D.CONDITION_ID,    
+D.STATUS_ID,    
+D.START_YEAR,    
+D.END_YEAR,    
+--D.COMBINED_ACCOUNT_ADVENT_ID,    
+D.Tax_Condition_ID,    
+D.COMMENTS,    
+D.MODIFIED_DATE,    
+D.MODIFIED_USER_ID,    
+D.CREATED_DATE,    
+D.CREATED_USER_ID,    
+D.DELETED_USER_ID    
+    
+  From Deleted D, inserted I     
+       
+    
+     
+ END    
+ ELSE    
+ IF (select count(*) from Inserted) > 0     
+ BEGIN    
+    
+  insert into TBL_BR_AUDIT_ProfileTaxCondition    
+    (AUDIT_USER_ID ,    
+      AUDIT_DATETIME,    
+     AUDIT_FLAG,    
+     AUDIT_TABLE,    
+        AUDIT_DETAILS,    
+     TAX_ID,    
+CONDITION_ID,    
+STATUS_ID,    
+START_YEAR,    
+END_YEAR,    
+--COMBINED_ACCOUNT_ADVENT_ID,    
+Tax_Condition_ID,    
+COMMENTS,    
+MODIFIED_DATE,    
+MODIFIED_USER_ID,    
+CREATED_DATE,    
+CREATED_USER_ID,    
+DELETED_USER_ID)    
+    
+  SELECT    
+     ISNULL(I.modified_user_id, @UNKNOWN_ID),    
+     GETDATE(),     
+    'I',    
+    'TBL_BR_ProfileTaxCondition',        
+    'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,    
+    I.TAX_ID,    
+I.CONDITION_ID,    
+I.STATUS_ID,    
+I.START_YEAR,    
+I.END_YEAR,    
+--I.COMBINED_ACCOUNT_ADVENT_ID,    
+I.Tax_Condition_ID,    
+I.COMMENTS,    
+I.MODIFIED_DATE,    
+I.MODIFIED_USER_ID,    
+I.CREATED_DATE,    
+I.CREATED_USER_ID,    
+I.DELETED_USER_ID    
+  From Inserted I     
+    
+ END    
+ ELSE    
+ If (Select count(*) from Deleted) > 0     
+ BEGIN    
+    
+    
+  insert into TBL_BR_AUDIT_ProfileTaxCondition    
+    (AUDIT_USER_ID ,    
+      AUDIT_DATETIME,    
+     AUDIT_FLAG,    
+     AUDIT_TABLE,    
+        AUDIT_DETAILS,    
+     TAX_ID,    
+CONDITION_ID,    
+STATUS_ID,    
+START_YEAR,    
+END_YEAR,    
+--COMBINED_ACCOUNT_ADVENT_ID,    
+Tax_Condition_ID,    
+COMMENTS,    
+MODIFIED_DATE,    
+MODIFIED_USER_ID,    
+CREATED_DATE,    
+CREATED_USER_ID,    
+DELETED_USER_ID)    
+    
+  SELECT    
+    ISNULL(DELETED_USER_ID,@UNKNOWN_ID),     
+    GETDATE(),     
+    'D',    
+    'TBL_BR_AUDIT_ProfileTaxCondition',        
+    'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,    
+       D.TAX_ID,    
+D.CONDITION_ID,    
+D.STATUS_ID,    
+D.START_YEAR,    
+D.END_YEAR,    
+--D.COMBINED_ACCOUNT_ADVENT_ID,    
+D.Tax_Condition_ID,    
+D.COMMENTS,    
+D.MODIFIED_DATE,    
+D.MODIFIED_USER_ID,    
+D.CREATED_DATE,    
+D.CREATED_USER_ID,    
+D.DELETED_USER_ID        
+    
+  From Deleted D     
+    
+     
+ END    
+    
+  END TRY    
+  BEGIN CATCH    
+    
+  Set @Errormessage = ERROR_MESSAGE();    
+  Set @Errornumber = ERROR_NUMBER();    
+    
+  ROLLBACK TRANSACTION;    
+    
+  Select @TAX_ID = TAX_ID    
+  From Inserted;    
+    
+  Set @val1 = Cast(@TAX_ID as varchar(30));    
+    
+  exec USP_EX_SYSErrorHandler @codename = @trgname,    
+  @Errormessage = @Errormessage,     
+  @ErrorNumber = @ErrorNumber,    
+  @val1 = @val1,     
+  @val1str = 'TAX_ID'     
+  END CATCH    
+      
+  COMMIT TRANSACTION;    
+   GO
+
+IF EXISTS (	SELECT * FROM sysobjects
+		    WHERE type = 'TR' AND name = 'TRG_EX_AudProfileTaxCondtions')
+BEGIN
+	PRINT 'CREATED TRIGGER TRG_EX_AudProfileTaxCondtions';
+END     

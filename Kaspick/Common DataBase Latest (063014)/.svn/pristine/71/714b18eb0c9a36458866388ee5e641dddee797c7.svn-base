@@ -1,0 +1,106 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentByGOPaymentGrandTotal]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentByGOPaymentGrandTotal]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_PaymentByGOPaymentGrandTotal  
+** Short Desc: Generate report for the sum of payment in terms of startdate, enddate and tax year  
+**    
+** Full Description    
+**       Generate report for the sum of payment information in terms of startdate, enddate and tax year 
+**    
+** Sample Call    
+EXEC USP_KCo_PaymentByGOPaymentGrandTotal '1995-10-10 00:00:00.000'
+	,'2014-04-04 00:00:00.000', '2010', 'Yes', 'No'
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries    
+** Created DT: 21-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentByGOPaymentGrandTotal] @BeginDate AS DATETIME
+	,@EndDate AS DATETIME
+	,@TaxYear INT
+	,@excludePIF CHAR(3)
+	,@excludeGAP CHAR(3)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF OBJECT_ID('tempdb..#tmpPaymntInfo') IS NOT NULL
+		DROP TABLE #tmpPaymntInfo
+
+	SELECT DISTINCT AccMas.ManagerCode
+		,PaymentAmount
+		,CASE 
+			WHEN @excludePIF = 'Yes'
+				AND AccMas.AccountTypeCode = 'PIF'
+				THEN 0
+			ELSE - 1
+			END AS 'noPIF'
+		,CASE 
+			WHEN @excludeGAP = 'Yes'
+				AND AccMas.AccountTypeCode = 'CGA'
+				THEN 0
+			ELSE - 1
+			END AS 'noGAP'
+	INTO #tmpPaymntInfo
+	FROM TBL_PP_Beneficiarypayment BenPymnt
+	INNER JOIN SYN_IT_AccountMaster AccMas ON AccMas.CustomerAccountNumber = BenPymnt.CustomerAccountNumber
+	WHERE (
+			PaymentDate >= @BeginDate
+			AND PaymentDate <= @EndDate
+			)
+		AND (
+			VoidDate IS NULL
+			OR ISNULL(VoidDate, '') = 0
+			)
+		AND TaxYear = @TaxYear
+
+	SELECT ManagerCode
+		,SUM(PaymentAmount) AS SumOfPaymentAmount
+		,noPIF
+		,noGAP
+	FROM #tmpPaymntInfo
+	GROUP BY ManagerCode
+		,PaymentAmount
+		,noPIF
+		,noGAP
+	HAVING noPIF = - 1
+		AND noGAP = - 1
+
+	SET NOCOUNT OFF;
+END

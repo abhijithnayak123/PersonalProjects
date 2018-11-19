@@ -1,0 +1,478 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineResult]    Script Date: 09/27/2013 15:07:10 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineResult]    Script Date: 09/27/2013 15:07:10 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name:     USP_PP_GetValidationEngineResult                                           
+** Short Desc: This procedure gets the Validation Engine Results.                                            
+**                                            
+** Full Description                                            
+**        More detailed description if necessary                                         
+**                                            
+** Sample Call    
+ DECLARE  @XMLManagerCode  XML;  
+ DECLARE @XMLScheduleIDInsert XML;  
+ set @XMLManagerCode =   
+  '<RuleDetailCollection>  
+            <RuleDetail ManagerCode="ALL" />  
+      </RuleDetailCollection>'   
+     
+ set @XMLScheduleIDInsert =   
+  '<ValidationResultsCollection><SelectList>   
+  <ValidationResults ScheduleID="621985" SchedulePaymentType = "BeneficiaryPayment"/>  
+  <ValidationResults ScheduleID="621988" SchedulePaymentType = "BeneficiaryPayment"/>  
+  <ValidationResults ScheduleID="621987" SchedulePaymentType = "BeneficiaryPayment"/>  
+     </SelectList> </ValidationResultsCollection>'  
+     
+--EXEC USP_PP_GetValidationEngineResult                    
+--@XMLManagerCode,'All','All','All','Hide Acknowledged Messages','All','All'  
+--,'2/10/2007','12/24/2008',1,null   
+
+EXEC USP_PP_GetValidationEngineResult                    
+@XMLManagerCode,'PSDAV','All','All','HIDE Acknowledged Messages','All','Payment Date'  
+,'2007-09-16 23:20:35.283','2014-09-24 23:23:04.267',100100,Null
+
+
+**                                            
+** Return values: NONE                                            
+**                                         
+** Standard declarations                                            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                                  
+**                                             
+** Created By: Bandish Gupta    
+** Company   : Kaspick & Company    
+** Project   : BackOffice Integration    
+** Created DT: 17-Sep-2013                                           
+**                                                        
+*******************************************************************************          
+**       Change History                                            
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd           
+** --------     -------- ------    -------------------------------------- --------       
+**5/20/2014		Saravanan			Adding condition @Acknowledge = 'Show All Messages' in filter section
+			   
+*******************************************************************************          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineResult] @XMLManagerCode XML
+	,@CustomerAccountNumber VARCHAR(14)
+	,@ValidationMessage VARCHAR(500)
+	,@ValidationResult VARCHAR(20)
+	,@Acknowledge VARCHAR(30)
+	,@PaymentType VARCHAR(50)
+	,@DateType VARCHAR(30)
+	,@DateFrom DATETIME
+	,@Dateto DATETIME
+	,@UserID INT
+	,@XMLScheduleIDInsert XML
+AS
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --
+DECLARE @COUNT INT;
+
+CREATE TABLE #TmpManagerCode (
+	ID INT IDENTITY(1, 1)
+	,ManagerCode VARCHAR(14)
+	)
+
+CREATE TABLE #TmpScheduleData (
+	ScheduleID VARCHAR(14)
+	,SchedulePaymentType VARCHAR(20)
+	)
+
+CREATE TABLE #TmpValidationFinal (
+	ValidationResultID INT
+	,ManagerCode VARCHAR(14)
+	,CustomerAccountNumber VARCHAR(14)
+	,RuleID INT
+	,RuleCategory VARCHAR(50)
+	,RuleName VARCHAR(100)
+	,DisplayMessage VARCHAR(500)
+	,PaymentName VARCHAR(100)
+	,BeneficiaryName VARCHAR(100)
+	,PaymentDate DATETIME
+	,EPD DATETIME
+	,ScheduledAmount MONEY
+	,PaymentAmount MONEY
+	,Comment VARCHAR(1000)
+	,IsAcknowledged BIT
+	,ResultType VARCHAR(20)
+	,Recurrent INT
+	,ScheduleID VARCHAR(14)
+	,PaymentType VARCHAR(50)
+	,TaxYear INT
+	,ContactID INT
+	,BeneficiaryDistributionID INT
+	);
+
+DECLARE @AccPymtMissingRuleID INT
+DECLARE @MissingPymtFreqRuleID INT
+DECLARE @BenPymtMissingRuleID INT
+
+--  Variable Data Assignment  --    
+SELECT @AccPymtMissingRuleID = ruleid
+FROM TBL_PP_ValidationRule
+WHERE RuleName = 'Account payment missing for designated period'
+
+SELECT @MissingPymtFreqRuleID = ruleid
+FROM TBL_PP_ValidationRule
+WHERE RuleName = 'Missing Payment Frequency'
+
+SELECT @BenPymtMissingRuleID = ruleid
+FROM TBL_PP_ValidationRule
+WHERE RuleName = 'Beneficiary Payment Missing for Designated Period'
+
+INSERT INTO #TmpScheduleData
+SELECT xmldata.schedule.value('@ScheduleID[1]', 'Varchar(14)') AS ScheduleID
+	,xmldata.schedule.value('@SchedulePaymentType[1]', 'varchar(20)') AS SchedulePaymentType
+FROM @XMLScheduleIDInsert.nodes('//ValidationResultsCollection/SelectList/ValidationResults') AS xmldata(schedule)
+
+SELECT @COUNT = COUNT(*)
+FROM #TmpScheduleData
+
+INSERT INTO #TmpManagerCode
+SELECT xmldata.item.value('@ManagerCode[1]', 'Varchar(14)') AS ManagerCode
+FROM @XMLManagerCode.nodes('//ManagerCodeDetailCollection/SelectList/ManagerItem') AS xmldata(item)
+
+-- Body of procedure  --   
+INSERT INTO #TmpValidationFinal
+SELECT ValRslt.ValidationResultID
+	,AccPaySch.ManagerCode
+	,AccPaySch.CustomerAccountNumber
+	,ValRule.RuleID
+	,ValRule.RuleCategory
+	,ValRule.RuleName
+	,Replace(ValRule.DisplayMessage, '''', '`') AS DisplayMessage
+	,'CSharp Aggregration' AS PaymentName
+	,'CSharp Aggregration' AS BeneficiaryName
+	,BenPaySch.PaymentDate
+	,BenPaySch.EPD
+	,BenPaySch.ScheduledAmount AS ScheduledAmount
+	,BenPaySch.ScheduledAmount AS PaymentAmount
+	,ISNULL(BenPaySch.Comments, '') AS Comment
+	,ValRslt.IsAcknowledged
+	,ValRule.ResultType
+	,0 AS Recurrent
+	,BenPaySch.BPScheduleID AS ScheduleID
+	,ValRslt.PaymentType
+	,BenPaySch.TaxYear
+	,BenPaySch.ContactID
+	,BenPaySch.BeneficiaryDistributionID
+FROM TBL_PP_ValidationResult ValRslt
+INNER JOIN TBL_PP_ValidationRule ValRule
+	ON ValRslt.RuleID = ValRule.RuleID
+INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPaySch
+	ON Convert(VARCHAR(14), BenPaySch.BPScheduleID) = ValRslt.PaymentScheduleID
+INNER JOIN TBL_PP_AccountPayoutSchedule AccPaySch
+	ON AccPaySch.APScheduleID = BenPaySch.APScheduleID
+INNER JOIN #TmpManagerCode TmpMgrCd
+	ON TmpMgrCd.ManagerCode = (
+			CASE 
+				WHEN TmpMgrCd.ManagerCode <> 'All'
+					THEN AccPaySch.ManagerCode
+				ELSE TmpMgrCd.ManagerCode
+				END
+			)
+LEFT OUTER JOIN #TmpScheduleData TmpSched
+	ON Convert(VARCHAR(14), BenPaySch.BPScheduleID) = TmpSched.ScheduleID
+		AND TmpSched.SchedulePaymentType = 'BeneficiaryPayment'
+WHERE ValRslt.PaymentType = 'BeneficiaryPayment'
+	AND ValRslt.STATUS = 'A'
+	AND (
+		(
+			@CustomerAccountNumber <> 'All'
+			AND AccPaySch.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		OR (@CustomerAccountNumber = 'All')
+		)
+	AND (
+		(
+			@ValidationResult <> 'All'
+			AND ValRule.ResultType = @ValidationResult
+			)
+		OR (@ValidationResult = 'All')
+		)
+	AND ValRslt.IsAcknowledged = (
+		CASE 
+			WHEN @Acknowledge = 'Hide Acknowledged Messages'
+				THEN 0
+			WHEN @Acknowledge = 'Show Acknowledged Messages'
+				THEN 1
+			WHEN @Acknowledge = 'Show All Messages'
+				THEN ValRslt.IsAcknowledged	
+			END
+		)
+	AND (
+	@DateType is null 
+	OR
+	((
+		CASE 
+			WHEN @DateType = 'Payment Date'
+				THEN BenPaySch.PaymentDate
+			WHEN @DateType = 'Expected Posting Date'
+				THEN BenPaySch.EPD
+			END
+		) BETWEEN @DateFrom
+		AND @Dateto))
+ORDER BY AccPaySch.ManagerCode
+	,AccPaySch.CustomerAccountNumber
+	,ValRule.DisplayMessage
+
+--PIF/GAP Accounts  
+INSERT INTO #TmpValidationFinal
+SELECT ValRslt.ValidationResultID
+	,PGPayDataMrgd.ManagerCode
+	,PGPayDataMrgd.CustomerAccountNumber
+	,ValRule.RuleID
+	,ValRule.RuleCategory
+	,ValRule.RuleName
+	,Replace(ValRule.DisplayMessage, '''', '`') AS DisplayMessage
+	,'CSharp Aggregration' AS PaymentName
+	,'CSharp Aggregration' AS BeneficiaryName
+	,PGPayDataMrgd.PaymentDate
+	,PGPayDataMrgd.EPD
+	,PGPayDataMrgd.PaymentAmount AS ScheduledAmount
+	,PGPayDataMrgd.PaymentAmount AS PaymentAmount
+	,ISNULL(PGPayDataMrgd.Comment, '') AS Comment
+	,ValRslt.IsAcknowledged
+	,ValRule.ResultType
+	,0 AS Recurrent
+	,PGPayDataMrgd.MergedPGCalcPaymentID AS ScheduleID
+	,ValRslt.PaymentType
+	,PGPayDataMrgd.TaxYear
+	,PGPayDataMrgd.ContactID
+	,PGPayDataMrgd.BeneficiaryDistributionID
+FROM TBL_PP_ValidationResult ValRslt
+INNER JOIN TBL_PP_ValidationRule ValRule
+	ON ValRslt.RuleID = ValRule.RuleID
+INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGPayDataMrgd
+	ON Convert(VARCHAR(14), PGPayDataMrgd.MergedPGCalcPaymentID) = ValRslt.PaymentScheduleID
+INNER JOIN #TmpManagerCode TmpMgrCd
+	ON TmpMgrCd.ManagerCode = (
+			CASE 
+				WHEN TmpMgrCd.ManagerCode <> 'All'
+					THEN PGPayDataMrgd.ManagerCode
+				ELSE TmpMgrCd.ManagerCode
+				END
+			)
+LEFT OUTER JOIN #TmpScheduleData TmpSched
+	ON Convert(VARCHAR(14), PGPayDataMrgd.MergedPGCalcPaymentID) = TmpSched.ScheduleID
+		AND TmpSched.SchedulePaymentType = 'PGCalcImport'
+WHERE ValRslt.PaymentType = 'PGCalcImport'
+	AND ValRslt.STATUS = 'A'
+	AND (
+		(
+			@CustomerAccountNumber <> 'All'
+			AND PGPayDataMrgd.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		OR (@CustomerAccountNumber = 'All')
+		)
+	AND (
+		(
+			@ValidationResult <> 'All'
+			AND ValRule.ResultType = @ValidationResult
+			)
+		OR (@ValidationResult = 'All')
+		)
+	AND ValRslt.IsAcknowledged = (
+		CASE 
+			WHEN @Acknowledge = 'Hide Acknowledged Messages'
+				THEN 0
+			WHEN @Acknowledge = 'Show Acknowledged Messages'
+				THEN 1
+			WHEN @Acknowledge = 'Show All Messages'
+				THEN ValRslt.IsAcknowledged	
+			END
+		)
+	AND (
+	@DateType is null 
+	OR((
+		CASE 
+			WHEN @DateType = 'Payment Date'
+				THEN PGPayDataMrgd.PaymentDate
+			WHEN @DateType = 'Expected Posting Date'
+				THEN PGPayDataMrgd.EPD
+			END
+		) BETWEEN @DateFrom
+		AND @Dateto))
+ORDER BY PGPayDataMrgd.ManagerCode
+	,PGPayDataMrgd.CustomerAccountNumber
+	,ValRule.DisplayMessage
+
+----The Auto validation results for rules 'Account payment missing for designated period','Missing Payment Frequency'
+---- and 'Beneficiary Payment Missing for Designated Period' should not appear in Manual Validation Result set  
+IF @COUNT = 0
+BEGIN
+	INSERT INTO #TmpValidationFinal
+	SELECT DISTINCT ValRslt.ValidationResultID
+		,AccPaySch.ManagerCode
+		,AccPaySch.CustomerAccountNumber
+		,ValRule.RuleID
+		,ValRule.RuleCategory
+		,ValRule.RuleName
+		,ValRule.DisplayMessage
+		--,Null
+		,CASE 
+			WHEN ValRule.RuleID IN (
+					@AccPymtMissingRuleID
+					,@MissingPymtFreqRuleID
+					)
+				THEN NULL
+			WHEN ValRule.RuleID = @BenPymtMissingRuleID
+				THEN 'CSharp Aggregration'
+			END AS PaymentName
+		,CASE 
+			WHEN ValRule.RuleID IN (
+					@AccPymtMissingRuleID
+					,@MissingPymtFreqRuleID
+					)
+				THEN NULL
+			WHEN ValRule.RuleID = @BenPymtMissingRuleID
+				THEN 'CSharp Aggregration'
+			END AS BeneficiaryName
+		--,Null
+		,NULL AS PaymentDate
+		,NULL AS EPD
+		,NULL AS ScheduledAmount
+		,NULL AS PaymentAmount
+		,NULL AS Comment
+		,ValRslt.IsAcknowledged
+		,ValRule.ResultType
+		,0 AS Recurrent
+		,NULL AS ScheduleID
+		,ValRslt.PaymentType
+		,NULL AS TaxYear
+		,NULL AS ContactID
+		,NULL AS BeneficiaryDistributionID
+	FROM TBL_PP_ValidationResult ValRslt
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRslt.RuleID = ValRule.RuleID
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccPaySch
+		ON AccPaySch.CustomerAccountNumber = ValRslt.PaymentScheduleID
+	INNER JOIN #TmpManagerCode TmpMgrCd
+		ON TmpMgrCd.ManagerCode = (
+				CASE 
+					WHEN TmpMgrCd.ManagerCode <> 'All'
+						THEN AccPaySch.ManagerCode
+					ELSE TmpMgrCd.ManagerCode
+					END
+				)
+	WHERE ValRslt.PaymentType = 'Account'
+		AND ValRslt.STATUS = 'A'
+		AND ValRule.RuleID IN (
+			@AccPymtMissingRuleID
+			,@MissingPymtFreqRuleID
+			,@BenPymtMissingRuleID
+			)
+		AND (
+			(
+				@CustomerAccountNumber <> 'All'
+				AND AccPaySch.CustomerAccountNumber = @CustomerAccountNumber
+				)
+			OR (@CustomerAccountNumber = 'All')
+			)
+		AND (
+			(
+				@ValidationMessage <> 'All'
+				AND ValRule.DisplayMessage = @ValidationMessage
+				)
+			OR (@ValidationMessage = 'All')
+			)
+		AND (
+			(
+				@ValidationResult <> 'All'
+				AND ValRule.ResultType = @ValidationResult
+				)
+			OR (@ValidationResult = 'All')
+			)
+		AND ValRslt.IsAcknowledged = (
+			CASE 
+				WHEN @Acknowledge = 'Hide Acknowledged Messages'
+					THEN 0
+				WHEN @Acknowledge = 'Show Acknowledged Messages'
+					THEN 1
+				WHEN @Acknowledge = 'Show All Messages'
+				THEN ValRslt.IsAcknowledged	
+			END
+			)
+	ORDER BY AccPaySch.ManagerCode
+		,AccPaySch.CustomerAccountNumber
+		,ValRule.DisplayMessage
+END
+
+IF EXISTS (
+		SELECT 1
+		FROM #TmpScheduleData
+		)
+BEGIN
+	DELETE
+	FROM #TmpValidationFinal
+	WHERE ScheduleID NOT IN (
+			SELECT ScheduleID
+			FROM #TmpScheduleData
+			)
+END
+
+DELETE
+FROM #TmpValidationFinal
+WHERE DisplayMessage <> (
+		CASE 
+			WHEN @ValidationMessage = 'All'
+				THEN DisplayMessage
+			ELSE @ValidationMessage
+			END
+		)
+
+SELECT Distinct TmpValFnl.ValidationResultID
+	,TmpValFnl.ManagerCode
+	,TmpValFnl.CustomerAccountNumber
+	,TmpValFnl.RuleID
+	,TmpValFnl.RuleCategory
+	,TmpValFnl.RuleName
+	,TmpValFnl.DisplayMessage
+	,TmpValFnl.PaymentName
+	,TmpValFnl.BeneficiaryName
+	,TmpValFnl.PaymentDate
+	,TmpValFnl.EPD
+	,TmpValFnl.ScheduledAmount
+	,TmpValFnl.PaymentAmount
+	,TmpValFnl.Comment
+	,TmpValFnl.IsAcknowledged
+	,TmpValFnl.ResultType
+	,TmpValFnl.Recurrent
+	,TmpValFnl.ScheduleID
+	,TmpValFnl.PaymentType
+	,TmpValFnl.TaxYear
+	,TmpValFnl.ContactID
+	,TmpValFnl.BeneficiaryDistributionID
+	,CAST(ValRslt.RecordVersion AS VARBINARY(8)) AS RecordVersion
+	,'CSharp Aggregration' TrustType
+FROM #TmpValidationFinal TmpValFnl
+INNER JOIN TBL_PP_ValidationResult ValRslt
+	ON TmpValFnl.ValidationResultID = ValRslt.ValidationResultID
+
+SET NOCOUNT OFF;
+	-- End of procedure  --      
+GO
+
+

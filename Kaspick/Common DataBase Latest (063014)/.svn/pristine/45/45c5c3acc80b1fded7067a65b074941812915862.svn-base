@@ -1,0 +1,134 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc';
+END
+GO
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc                  
+** Short Desc: To retrieve Participant Type for Donor. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="204"  BeneficiaryID="585"  ClientEmployeeID="0"  ClientID="1"  DeliverableItemID="16444"  DeliverableQueueID="2"  DonorID="0"  TrustparticipantID="1250"  DeliverableFrequency="S"  /><DeliverableItemsDataToValidate AccountID="640"  BeneficiaryID="1676"  ClientEmployeeID="0"  ClientID="1"  
+DeliverableItemID="7"  DeliverableQueueID="1"  DonorID="117464"  TrustparticipantID="47"  
+DeliverableFrequency="A"  /></SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc
+    @XMLDeliverableItems
+	
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 11/09/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 11/25/2009 Venugopal         ET#10717: Updated to handle the scenario where change of participant status
+								in excelsior changes donorid or beneficiary ID
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted  
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+	--  Variable Declarations  --      
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		,ParticipantID INT
+		,DonorID INT
+		,BeneficiaryID INT
+		);
+
+	--  Variable Data Assignment  --      
+	SET @procname = 'USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc';
+
+	-- Body of procedure  --      
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,XMLdoc.DeliverableItemData.value('@TrustparticipantID[1]', 'int') AS ParticipantID
+			,XMLdoc.DeliverableItemData.value('@DonorID[1]', 'int') AS DonorID
+			,XMLdoc.DeliverableItemData.value('@BeneficiaryID[1]', 'int') AS BeneficiaryID
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		INNER JOIN TBL_EIS_DT_Deliverable_Items DIDS ON XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') = DIDS.DeliverableItemID
+		WHERE DIDS.ReportType = 'D'
+
+		SELECT DID.DeliverableItemID
+			,109 AS RuleID
+			,'DonorReport' AS Attribute
+			,ISNULL(VTT.PARTICIPANT_TYPE, 'Beneficiary or Donor changed') AS ActualValue
+			,'' AS DisplayMessage
+		FROM @DeliverableItemData DID
+		LEFT JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON DID.AccountID = VTT.AccountID --ET#10717
+			AND DID.ParticipantID = VTT.ParticipantID
+			AND DID.BeneficiaryID = ISNULL(VTT.BeneficiaryID, 0)
+			AND DID.DonorID = ISNULL(VTT.DonorID, 0)
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  -- 
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_UR_DonorReport_SelProc';
+END

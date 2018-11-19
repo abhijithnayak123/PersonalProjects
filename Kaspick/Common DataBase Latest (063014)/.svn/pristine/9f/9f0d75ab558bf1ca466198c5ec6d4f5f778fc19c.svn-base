@@ -1,0 +1,192 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition]    Script Date: 08/22/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition]    Script Date: 08/22/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition                      
+** Short Desc: Gets data for Manager payment condition
+**                      
+** Full Description:  Gets data for Manager payment condition if status is active. If the shedule account  
+   type is found in the condition account type returns true else false.            
+**        
+**                              
+** Input Arguments: 
+ @UserID INT,
+ @Type Bit =1--auto    
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition  1      
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 22-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**  01/29/2014 Salih		Changed table variables with temp tables
+*** 02/06/2014 Niveditha	Modified joins and temp table to optimize the code
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryManagerPaymentCondition] @UserID INT
+	,@Type BIT = 1 --auto    
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+	---Declare Variable
+	DECLARE @RuleID INT
+	DECLARE @EntityTypeID INT
+	DECLARE @ConditionStatusActive INT
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+		DROP TABLE [#TmpData]
+
+	-- Body of procedure  --        
+	CREATE TABLE #TmpData (
+		ID INT identity(1, 1)
+		,ManagerCode VARCHAR(4)
+		,AccountType XML
+		,ScheduleID VARCHAR(14)
+		)
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Client with Account Type Payment Condition'
+		AND RuleCategory = 'Beneficiary payment'
+
+	SELECT @EntityTypeID = ListItemID
+	FROM TBL_ListItem ListItem
+	INNER JOIN TBL_ListType ListType
+		ON ListType.ListTypeID = ListItem.ListTypeID
+	WHERE ListTypeName = 'Entity'
+		AND ListItemName = 'Manager'
+
+	SELECT @ConditionStatusActive = ListItemID
+	FROM TBL_ListItem ListItem
+	INNER JOIN TBL_ListType ListType
+		ON ListType.ListTypeID = ListItem.ListTypeID
+	WHERE ListTypeName = 'Payment condition'
+		AND ListItemName = 'Active'
+
+	---Inserting input data into Temp table       
+	INSERT INTO #TmpData (
+		ManagerCode
+		,AccountType
+		,ScheduleID
+		)
+	SELECT DISTINCT AccntPay.ManagerCode
+		,'<AccountType>' + REPLACE(AccountType, ',', '</AccountType><AccountType>') + '</AccountType>'
+		,BenPay.BPScheduleID
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON StgData.Scheduleid = BenPay.BPScheduleID
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay
+		ON BenPay.APScheduleID = AccntPay.APScheduleID
+	INNER JOIN TBL_PP_PaymentCondition PmntCndn
+		ON PmntCndn.ManagerCode = AccntPay.ManagerCode
+	WHERE StgData.PaymentType = 'Beneficiarypayment'
+		AND UserID = @UserID
+		AND PmntCndn.StatusID = @ConditionStatusActive
+		AND PmntCndn.EntityTypeId = @EntityTypeID
+	
+	UNION ALL
+	
+	SELECT DISTINCT Pgcalc.ManagerCode
+		,'<AccountType>' + REPLACE(AccountType, ',', '</AccountType><AccountType>') + '</AccountType>'
+		,MergedPGCalcPaymentID
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged pgcalc
+		ON StgData.ScheduleID = pgcalc.MergedPGCalcPaymentID
+	INNER JOIN TBL_PP_PaymentCondition PmntCndn
+		ON PmntCndn.ManagerCode = pgcalc.ManagerCode
+	WHERE StgData.PaymentType = 'PGCalcImport'
+		AND UserID = @UserID
+		AND PmntCndn.StatusID = @ConditionStatusActive
+		AND PmntCndn.EntityTypeId = @EntityTypeID
+
+	----Return Data
+	SELECT PaymentType
+		,StgData.ScheduleID
+		,@RuleID AS RuleID
+		,'ClientHasPaymentCondition' AS Attribute
+		,(
+			CASE 
+				WHEN ISNULL(TmpData.ID, 0) = 0
+					THEN 'False'
+				ELSE 'True'
+				END
+			) AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	LEFT JOIN #TmpData TmpData
+		ON TmpData.ScheduleID = StgData.ScheduleID
+			AND StgData.AccountTypeCode IN (
+				SELECT x.i.value('.', 'varchar(20)') AS Item
+				FROM accounttype.nodes('//AccountType') x(i)
+				)
+	WHERE StgData.PaymentType = 'Beneficiarypayment'
+		AND UserID = @UserID
+	
+	UNION ALL
+	
+	SELECT PaymentType
+		,StgData.ScheduleID
+		,@RuleID AS RuleID
+		,'ClientHasPaymentCondition' AS Attribute
+		,(
+			CASE 
+				WHEN ISNULL(TmpData.ID, 0) = 0
+					THEN 'False'
+				ELSE 'True'
+				END
+			) AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	LEFT JOIN #TmpData TmpData
+		ON TmpData.ScheduleID = StgData.ScheduleID
+			AND StgData.AccountTypeCode IN (
+				SELECT x.i.value('.', 'varchar(20)') AS Item
+				FROM accounttype.nodes('//AccountType') x(i)
+				)
+	WHERE StgData.PaymentType = 'PGCalcImport'
+		AND UserID = @UserID
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+		DROP TABLE [#TmpData]
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+SET NOCOUNT OFF;

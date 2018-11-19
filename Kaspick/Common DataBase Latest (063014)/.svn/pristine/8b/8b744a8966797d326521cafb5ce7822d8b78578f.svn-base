@@ -1,0 +1,231 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetExcelsiorInfoOnCustodialTransactions]    Script Date: 05/29/2014 18:29:20 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetExcelsiorInfoOnCustodialTransactions]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetExcelsiorInfoOnCustodialTransactions]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetExcelsiorInfoOnCustodialTransactions]    Script Date: 05/29/2014 18:29:20 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetExcelsiorInfoOnCustodialTransactions      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call 
+EXEC USP_OP_GetExcelsiorInfoOnCustodialTransactions
+	'<Transactions>
+	<Transaction PortfolioCode="" TradeDate="" Comment="" Tran.Code="lo" TradeAmount="21789.90"/> 
+	</Transactions>','2013-10-29' 
+   -- parameters      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana     
+** Created DT :		05/29/2014    
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05/29/2014		Tanuj	                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_GetExcelsiorInfoOnCustodialTransactions]
+(
+	@XMLDATA XML,
+	@ImportDate DateTime
+)
+AS
+BEGIN
+
+IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_CustodialTransactions]'))        
+ DROP TABLE [DBO].[#TEMP_CustodialTransactions]
+    CREATE TABLE [#TEMP_CustodialTransactions](
+    CustodianID int,
+	TransactionID int,
+	CustomerAccountNumber varchar(50) ,
+	TransactionDate DateTime,
+	CheckNumber int,
+	TranCode varchar(6) ,
+	Amount money,
+	PaymentID int,
+	ExpenseCode varchar(15),
+	ChargeType char(1),
+	PaymentDate DateTime, 
+	PayeeName varchar(100),
+	TaxYear int,
+	TaxYearAware bit,
+	ToReview bit)
+
+
+insert into  [#TEMP_CustodialTransactions](
+	TransactionID ,
+	CustomerAccountNumber ,
+	CustodianID,
+	TransactionDate ,
+	CheckNumber,
+	TranCode ,
+	Amount )
+SELECT 		
+		XMLDATA.item.value('@ID[1]','int') AS TransactionID,
+		XMLDATA.item.value('@PortfolioCode[1]', 'varchar(8)') AS CustomerAccountNumber,
+		cust.CustodianID,
+		XMLDATA.item.value('@TradeDate[1]', 'DateTime') AS TransactionDate,
+		XMLDATA.item.value('@CheckNumber[1]', 'int') AS CheckNumber,
+		XMLDATA.item.value('@Tran.Code[1]', 'varchar(6)') AS TranCode,
+		XMLDATA.item.value('@TradeAmount[1]', 'money') AS Amount
+	FROM @XMLDATA.nodes('//Transactions/Transaction') AS XMLDATA(item)
+	Inner join TBL_OP_Custodian cust on XMLDATA.item.value('@CustodianCode[1]', 'varchar(2)')=cust.CustodianCode
+	
+	
+	
+update [#TEMP_CustodialTransactions]
+set 
+	PaymentID=P.PaymentID,
+	ExpenseCode=ec.AXYS_ExpenseCode,
+	ChargeType=P.ChargeType,
+	PaymentDate=P.PaymentDate,
+	PayeeName=P.PayeeName,
+	TaxYear=P.TaxYear,
+	TaxYearAware=isnull(ec.TaxYearAware,0), 
+	ToReview=isnull(ec.ToReview,0) 
+from [#TEMP_CustodialTransactions] custodianTran
+Inner Join dbo.TBL_PP_BeneficiaryPayment P on P.CustomerAccountNumber=custodianTran.CustomerAccountNumber and custodianTran.CheckNumber=P.DocumentNumber 
+AND  P.PaymentAmount=custodianTran.Amount
+left outer join dbo.TBL_OP_ExpenseCode ec on P.TaxCode =ec.InnoTrust_TaxCode
+where isnull(custodianTran.CheckNumber,0)<>0 and isnull(P.VoidDate,'')='' and isnull(P.ClearDate,'')=''
+	
+
+
+DECLARE @TranID int
+DECLARE @CheckNum int
+DECLARE @TranCod varchar(6)
+DECLARE @CustomerAccountNumber varchar(50) 
+DECLARE @TranDate DateTime
+DECLARE @Amount money
+	
+DECLARE @PaymentID int
+DECLARE @ExpenseCode varchar(15)
+DECLARE @ChargeType char(1)
+DECLARE @PaymentDate DateTime
+DECLARE @PayeeName varchar(100)
+DECLARE @TaxYear int
+DECLARE @TaxYearAware bit
+DECLARE @ToReview bit
+	
+	
+DECLARE @getACHTrans CURSOR
+SET @getACHTrans = CURSOR FOR
+		SELECT 		
+			TransactionID ,
+			CustomerAccountNumber,
+			Amount 
+		FROM [#TEMP_CustodialTransactions]
+	where isnull(CheckNumber,0)=0
+	and CustodianID not in (select CustodianID from TBL_OP_CustodialDataImport  cdi
+	inner join TBL_OP_DataImport di on cdi.runid=di.runid 
+	where datediff(Day, di.RunDate, @ImportDate)=0)
+	
+		
+	
+OPEN @getACHTrans
+FETCH NEXT
+FROM @getACHTrans INTO @TranID, @CustomerAccountNumber, @Amount
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	
+	
+	
+	select Top 1 @PaymentID=Pay.PaymentID,
+				 @ExpenseCode =ec.AXYS_ExpenseCode,
+				 @ChargeType =Pay.ChargeType ,
+				 @PaymentDate =Pay.PaymentDate ,
+				 @PayeeName =Pay.PayeeName,
+				 @TaxYear =Pay.TaxYear ,
+				 @TaxYearAware =ec.TaxYearAware,
+				 @ToReview =ec.ToReview
+				 from TBL_PP_BeneficiaryPayment Pay 
+			left outer join dbo.TBL_OP_ExpenseCode ec on Pay.TaxCode=ec.InnoTrust_TaxCode
+			where Pay.CustomerAccountNumber=@CustomerAccountNumber and pay.PaymentMethod='ACH' 
+					and Pay.ClearDate is null AND Pay.VoidDate is null
+					and Pay.PaymentAmount=@Amount
+			Order by Pay.PaymentID
+
+
+update [#TEMP_CustodialTransactions]
+set 
+	PaymentID=@PaymentID,
+	ExpenseCode=@ExpenseCode,
+	ChargeType=@ChargeType,
+	PaymentDate=@PaymentDate,
+	PayeeName=@PayeeName,
+	TaxYear=@TaxYear,
+	TaxYearAware=@TaxYearAware, 
+	ToReview=@ToReview
+where 
+TransactionID=@TranID
+	
+	
+				
+
+
+FETCH NEXT
+FROM @getACHTrans INTO @TranID, @CustomerAccountNumber, @Amount
+END
+CLOSE @getACHTrans
+DEALLOCATE @getACHTrans
+
+
+--update Payment 
+--		set cleardate=TransactionDate,
+--		ClearMethod='A'
+--from Payment P
+--Inner Join [#TEMP_CustodialTransactions] trans on p.PaymentID=trans.PaymentID
+
+
+
+select Distinct custodialTran.CustomerAccountNumber,
+P.PaymentID,
+P.PayeeName,
+P.PaymentDate,
+P.DocumentNumber,
+P.PaymentAmount,
+ec.AXYS_ExpenseCode,
+P.ChargeType,
+P.TaxYear,
+ec.TaxYearAware, 
+ec.ToReview
+	from TBL_PP_BeneficiaryPayment P 
+left outer join TBL_OP_ExpenseCode ec on p.TaxCode=ec.AXYS_ExpenseCode
+Inner Join [#TEMP_CustodialTransactions] custodialTran On custodialTran.CustomerAccountNumber=P.CustomerAccountNumber
+where   isnull(custodialTran.paymentid,0) =0  AND ABS(p.PaymentAmount-custodialTran.Amount)<=1
+and p.VoidDate is null and p.ClearDate is null
+Order BY 
+custodialTran.CustomerAccountNumber,
+P.PaymentDate,
+P.PaymentAmount
+
+select * from [#TEMP_CustodialTransactions]
+where isnull(paymentid,0)<>0
+Order BY CustomerAccountNumber,TransactionDate,Amount
+END      
+
+
+GO
+
+

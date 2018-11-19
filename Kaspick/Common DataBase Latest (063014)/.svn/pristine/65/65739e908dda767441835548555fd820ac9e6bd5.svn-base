@@ -1,0 +1,161 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftClientByView'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftClientByView;
+
+	PRINT 'DROPPED USP_EX_GetWftClientByView';
+END
+GO
+
+/******************************************************************************            
+** Name:     USP_EX_GetWftClientByView  
+** Old Name : SP_WFT_ClientByViewSelProc            
+** Short Desc: Display Client details based on the selected list item  
+**            
+** Full Description: Procedure to display Client details based on the selected list item  
+**                    
+**            
+** Sample Call            
+        EXEC USP_EX_GetWftClientByView 100115,2684 --'My primary Clients'  
+        EXEC USP_EX_GetWftClientByView null,2792 -- 'My back up Clients'  
+        EXEC USP_EX_GetWftClientByView null,2901    --- 'All  Clients'  
+       
+        
+
+**            
+** Return values: NONE            
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By: Niveditha            
+** Company   : Kaspick & Company            
+** Project   : CIM - ALERT           
+** Created DT: 03/04/2013            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** -------     -------- ------    -------------------------------------- --------   
+   5/15/2014   Sanath              Client dropdown in Webform request
+** 23-MAY-2014 Mallikarjun         SP Name Renamed and Formatted
+*******************************************************************************            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftClientByView] 
+	(
+	@USER_ID INT
+	,@list_item_id INT
+	)
+AS
+BEGIN
+	--DECLARE @Status_ID INT  
+	DECLARE @list_item_name VARCHAR(100)
+
+	SELECT @list_item_name = LISTITEMNAME
+	FROM VW_EX_ListItem
+	WHERE LISTITEMID = @list_item_id
+		AND listtypename = 'Web Request Manager Code View'
+
+	--SELECT @Status_ID = list_item_id  
+	--FROM v_eis_list_items  
+	--WHERE list_type_name = 'Status'  
+	-- AND list_item_name = CASE @list_item_name  
+	--  WHEN 'All Active Clients'  
+	--   THEN 'Active'  
+	--  WHEN 'All Inactive Clients'  
+	--   THEN 'Inactive'  
+	--  WHEN 'My Inactive Clients'  
+	--   THEN 'Inactive'  
+	--  ELSE 'xyz'  
+	--  END  
+	SET @USER_ID = ISNULL(@USER_ID, 99999999)
+
+	SELECT DISTINCT AccMgrCds.ManagerCode AS CLIENTID
+		,AccMgrCds.ManagerCode AS BRIEFNAME
+		,AccMgrCds.ActiveFlag
+	INTO #temp_ClientDate
+	FROM SYN_IT_ContactMaster ConMstr
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID = AccMgrCds.ContactID
+	INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID = ConMstr.ContactID
+	--INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id = subConRol.ContactRoleCode
+	INNER JOIN SYN_IT_ContactMaster KCoStfConMstr ON KCoStfConMstr.contactID = subConRol.subcontactID
+	INNER JOIN TBL_KS_User KsUsr ON KsUsr.InnotrustContactID = KCoStfConMstr.contactID
+	WHERE
+		
+		@USER_ID = CASE 
+			WHEN @USER_ID = 99999999
+				THEN @USER_ID
+			ELSE KsUsr.UserID
+			END
+			AND 
+			subConRol.ContactRoleCode IN (2,3)
+		
+	--KsUsr.USERID = @User_Id
+	--FROM SYN_IT_AccountManagerCodes AccMgrCds  
+	--INNER JOIN TBL_EIS_EX_CLIENT_SUPPLEMENT D ON C.CLIENTID = D.CLIENTID  
+	--LEFT OUTER JOIN TBL_EIS_EX_PARTY_RELATION P ON P.CLIENTID = C.ClientID  
+	--LEFT OUTER JOIN STAFFROLE B ON C.CLIENTID = B.CLIENTID 
+	--LEFT OUTER JOIN TBL_KS_User A ON A.USERID = B.USERID  
+	--WHERE @USER_ID = CASE   
+	--  WHEN @USER_ID = 99999999  
+	--   THEN @USER_ID  
+	--  ELSE A.USER_ID  
+	--  END  
+	--AND D.STATUS_ID = CASE   
+	-- WHEN @Status_ID IS NOT NULL  
+	--  THEN @Status_ID  
+	-- ELSE D.STATUS_ID  
+	-- END  
+	-- AND isnull(IsPrimary, '') = CASE   
+	-- WHEN @list_item_name = 'My Backup Manager Codes'  
+	-- THEN 0  
+	--WHEN @list_item_name = 'My Primary Manager Codes'  
+	-- THEN 1  
+	----ELSE isnull(IsPrimary, '')  
+	--END  
+	ORDER BY CLIENTID
+
+	IF @list_item_name = 'My Primary Clients'
+		SELECT DISTINCT CLIENTID 'DDVALUE'
+			,BRIEFNAME 'DDTEXT'
+		FROM #temp_ClientDate TEMP
+		INNER JOIN VW_EX_ListItem VwLstItm ON VwLstItm.ListTypeName = 'Status'
+			AND (
+				VwLstItm.LISTITEMNAME = 'Active'
+				OR VwLstItm.LISTITEMNAME = 'Transition'
+				)
+			--ORDER BY ManagerCode   
+			--ELSE  
+			-- IF @list_item_name = 'All Inactive Clients'  
+			--  OR @list_item_name = 'My Inactive Clients'  
+			--  SELECT DISTINCT ManagerCode 'DDVALUE'  
+			--   ,ManagerCode 'DDTEXT'  
+			--  FROM #temp_ClientDate TEMP  
+			--  INNER JOIN VW_EX_ListItem LITEM ON LITEM.ListTypeName = 'Status'  
+			--   AND VwLstItm.LISTITEMNAME = 'InActive'  
+			--   ORDER BY ManagerCode   
+	ELSE
+		SELECT DISTINCT CLIENTID 'DDVALUE'
+			,BRIEFNAME 'DDTEXT'
+		FROM #temp_ClientDate
+		ORDER BY CLIENTID
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftClientByView'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetWftClientByView';
+END

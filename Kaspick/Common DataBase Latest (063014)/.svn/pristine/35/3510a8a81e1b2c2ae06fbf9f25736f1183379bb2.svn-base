@@ -1,0 +1,115 @@
+  IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_UpdBRDTDeliverableInstance')
+BEGIN
+    DROP PROCEDURE USP_RP_UpdBRDTDeliverableInstance;
+    PRINT 'DROPPED USP_RP_UpdBRDTDeliverableInstance';
+END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                    
+** Old Name:     USP_EIS_BR_DT_DeliverableInstance_UpdProc                    
+**
+** Name:     USP_RP_UpdBRDTDeliverableInstance
+**             
+** Short Desc: Update the Instance Status.  
+**                    
+** Full Description: Update the Instance Status         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+ DECLARE @ReturnStatus INT    
+ DECLARE @ErrorDesc VARCHAR(8000)  
+ EXEC USP_RP_UpdBRDTDeliverableInstance  
+ 'Open', 1,@ReturnStatus,@ErrorDesc  
+**           
+** Return values: Return Status  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By:   
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 22-Dec-09               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------     
+** 19-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/ 
+CREATE PROCEDURE [dbo].[USP_RP_UpdBRDTDeliverableInstance]  
+(  
+ @NewStatus  VARCHAR(50),   
+ @InstanceID  BIGINT,  
+ @ReturnStatus INT = -1 OUTPUT, -- assume SP fails   
+ @ErrorDesc  VARCHAR(8000) OUTPUT  
+)  
+AS  
+BEGIN  
+--  Initial Set statements  --              
+SET NOCOUNT ON;              
+SET LOCK_TIMEOUT                30000;   -- 30 seconds              
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;             
+SET ARITHABORT ON             
+
+--  Variable Declarations  --              
+DECLARE @procname    VARCHAR(60);                
+DECLARE @ErrorNumber     INT;              
+DECLARE @ErrorState     INT;  
+DECLARE @QueueStatusID   BIGINT;  
+
+--  Variable Data Assignment  --              
+--SET @procname = 'USP_EIS_BR_DT_DeliverableInstance_InsProc';              
+SET @ReturnStatus = 0;        
+
+	BEGIN TRY           
+		BEGIN  TRANSACTION
+		-- Body of procedure  --   
+		BEGIN  
+			SELECT @QueueStatusID = QueueStatusID FROM TBL_DLV_QueueStatus WHERE StatusName = @NewStatus  
+
+			UPDATE TBL_DLV_DeliverableQueue SET QueueStatusID = @QueueStatusID WHERE DeliverableQueueID = @InstanceID  
+		END  
+
+		SET @ReturnStatus = 0;
+		COMMIT TRANSACTION
+	END TRY  
+	BEGIN CATCH 		
+		ROLLBACK TRANSACTION
+		SET @ReturnStatus = - 1;
+		SELECT @ErrorDesc = ERROR_MESSAGE()	,@ErrorNumber = ERROR_NUMBER(),@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+		@ErrorDesc
+		,-- Message text.
+		@ErrorNumber
+		,-- Severity.
+		@ErrorState -- State.
+		);     
+	END CATCH   
+END  
+
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_UpdBRDTDeliverableInstance')
+    BEGIN
+        PRINT 'CREATED USP_RP_UpdBRDTDeliverableInstance';
+    END

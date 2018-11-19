@@ -1,0 +1,130 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetPendingSeverence]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetPendingSeverence]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetPendingSeverence                      
+** Short Desc: Get pending giftwrap severances for given valuation ids. This excludes    
+** the reconcilled and discarded transaction
+**                      
+** Full Description: Get pending giftwrap severances for given valuation ids. This excludes    
+** the reconcilled and discarded transaction
+**      
+**                              
+** Input Arguments:   	@XMLValuation XML
+**	           
+** Sample Call     
+
+ EXEC USP_PV_GetPendingSeverence   @XMLValuation = '<ValuationCollection>  
+      <InsertList>  
+      <Valuation ValuationID="8" />   
+      </InsertList>  
+      </ValuationCollection>'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetPendingSeverence] (@XMLValuation XML)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT max(transactionid) AS TransactionID
+		,VGTrans.ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,Association
+		,PersonID
+		,PersonName
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+		,SUM(Distributions) AS SeveredAmount
+		,MAX(AccountClosedDate) AS AccountClosedDate
+	FROM TBL_PV_ValuationGiftwrapTransaction VGTrans
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @XMLValuation.nodes('//ValuationCollection/InsertList/Valuation') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.ValuationID = VGTrans.ValuationID
+	WHERE GiftStatus <> 'Current'
+		AND LTRIM(RTRIM(MatchStatus)) = ''
+	GROUP BY VGTrans.ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,Association
+		,PersonID
+		,personname
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+	ORDER BY personname
+
+	SELECT PersonID
+		,PersonGiftMapID
+		,OrgID
+		,OrgAccount1
+		,GiftDate
+		,GiftType
+		,GiftAmount
+		,MarketValue
+		,MarketValueDate
+		,GiftStatus
+		,GiftKey
+		,AccountClosedDate
+		,Distributions
+	FROM TBL_PV_ValuationGiftwrapTransaction VGTrans
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @XMLValuation.nodes('//ValuationCollection/InsertList/Valuation') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.ValuationID = VGTrans.ValuationID
+	WHERE GiftStatus <> 'Current'
+		AND LTRIM(RTRIM(MatchStatus)) = ''
+
+	SET NOCOUNT OFF;
+END

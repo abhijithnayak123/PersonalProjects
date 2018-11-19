@@ -1,0 +1,101 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProgramPaging')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProgramPaging;
+        PRINT 'DROPPED USP_EX_GetProgramPaging';
+    END
+GO
+
+
+  
+/******************************************************************************  
+** Name : USP_EX_GetProgramPaging  
+** Old Name:     USP_EIS_EX_PROGRAM_PAGING_SelProc  
+** Short Desc: Put in Short Description  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+   EXEC USP_EIS_EX_PROGRAM_PAGING_SelProc  
+ @USER_ID =1,  
+ @VIEW_CONDITION ='ALL PROGRAMS',  
+ @ModuleId  =0,  
+ @ClientId  =0,  
+ @startrow  =0,  
+ @endrow    =19,  
+ @SearchColumnName ='',  
+ @SearchCriteria   =0,  
+ @strSearch ='',  
+ @Filtercolumnname ='',   
+ @strFilter ='',    
+  @sortcolumnname ='',   
+ @SortOrder =''  
+  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: <Authorname>  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: <mm/dd/yyyy>  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 22-Mar-2014  Sanath   EXCREQ 6.1 Modified  
+** 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_EX_GetProgramPaging]--100260,'All Manager Codes',1,18,'',0,'','','','','ASC'       
+   -- paremeters here      
+ @USER_ID   INT,      
+ @VIEW_CONDITION VARCHAR(50),      
+ @startrow  INT,     -- start row for the page      
+ @endrow    INT,     -- end row for the page      
+      
+ @SearchColumnName VARCHAR(100), -- this will be used when user wants to search a string within a column.(Usually we send Adventid from this variable)      
+ @SearchCriteria   TINYINT,  -- 0-Begins with, 1-Contains, 2-on date, 3-on or after, 4-on or before      
+ @strSearch varchar(255),  -- search string that will be located in column provided above.      
+      
+ @Filtercolumnname varchar(100), -- Column on which the default filtering will be done      
+ @strFilter varchar(255),  -- for filtering the char/varchar, which will work on filter control      
+  @sortcolumnname varchar(100),   -- column on which the sorting should work      
+ @SortOrder varchar(5)   -- ASC or DESC       
+AS       
+      
+-- Body of procedure  --      
+      
+IF (@VIEW_CONDITION = '')      
+ EXEC USP_EX_GetProgramPagingAllClients
+  @startrow,      
+  @endrow,      
+  @SearchColumnName,      
+  @SearchCriteria,      
+  @strSearch,      
+  @Filtercolumnname,       
+  @strFilter,        
+   @sortcolumnname,       
+  @SortOrder       
+  
+  
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProgramPaging') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProgramPaging';
+	END

@@ -1,0 +1,224 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_DelRule]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_DelRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_DelRule]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_DelRule                      
+** Short Desc	:	Procedure to delete the rules       
+*                  
+**                      
+** Full Description: Procedure to delete the rules     
+**                              
+** Input Arguments:   XML,Type 
+**			
+** Sample Call     
+
+
+Declare @ReturnStatus int
+ EXEC USP_PP_DelRule
+	  '<RuleDetailCollection>
+		<RuleDetail ManagerCode="ACL" ManagerDescription="ABC" CustomerAccountNumber="ACGAP" AccountName="a" ContactId="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="1" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CED"  />
+		<RuleDetail ManagerCode="NC" ManagerDescription="ABC" CustomerAccountNumber="NCPLU" AccountName="b" ContactId="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,5" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CEE"  />
+		<RuleDetail ManagerCode="TMC" ManagerDescription="ABC" CustomerAccountNumber="7777319" AccountName="c" ContactId="" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CEF"  />
+		<RuleDetail ManagerCode="zzz" ManagerDescription="ABC" CustomerAccountNumber="zzz" AccountName="c" ContactId="000" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CF0"  />
+	</RuleDetailCollection>'  
+  ,'Manager'
+ ,@ReturnStatus OUTPUT
+ select @ReturnStatus
+  
+
+  Declare @ReturnStatus int
+  EXEC USP_PP_DelRule
+	  '<RuleDetailCollection>
+		<RuleDetail ManagerCode="ACL" ManagerDescription="ABC" CustomerAccountNumber="ACGAP" AccountName="a" ContactId="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="1" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CEA"  />
+		<RuleDetail ManagerCode="NC" ManagerDescription="ABC" CustomerAccountNumber="NCPLU" AccountName="b" ContactId="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,5" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CEB"  />
+		<RuleDetail ManagerCode="TMC" ManagerDescription="ABC" CustomerAccountNumber="7777319" AccountName="c" ContactId="" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CE9"  />
+		<RuleDetail ManagerCode="zzz" ManagerDescription="ABC" CustomerAccountNumber="zzz" AccountName="c" ContactId="000" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CEC"  />
+	</RuleDetailCollection>'  
+  ,'Account'
+ ,@ReturnStatus OUTPUT
+ select @ReturnStatus
+  
+ 
+  Declare @ReturnStatus int     
+  EXEC USP_PP_DelRule
+	  '<RuleDetailCollection>
+		<RuleDetail ManagerCode="ACL" ManagerDescription="ABC" CustomerAccountNumber="ACGAP" AccountName="a" ContactId="1111" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="1" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CE6"  />
+		<RuleDetail ManagerCode="NC" ManagerDescription="ABC" CustomerAccountNumber="NCPLU" AccountName="b" ContactId="0" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,5" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CE7"  />
+		<RuleDetail ManagerCode="TMC" ManagerDescription="ABC" CustomerAccountNumber="7777319" AccountName="c" ContactId="280" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CE5"  />
+		<RuleDetail ManagerCode="zzz" ManagerDescription="ABC" CustomerAccountNumber="zzz" AccountName="c" ContactId="0" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000140CE8"  />
+	</RuleDetailCollection>'  
+  ,'Contact'
+ ,@ReturnStatus OUTPUT
+ select @ReturnStatus
+	     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_DelRule] (
+	@XMLDATA XML
+	,@Type VARCHAR(10)
+	,@ReturnStatus INT OUTPUT -- 0 for Normal Return, -1 for error, -2 for DirtyRead
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	BEGIN TRANSACTION
+
+	DECLARE @TBL_Rule TABLE (
+		ManagerCode VARCHAR(4)
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,RecordVersion VARCHAR(20)
+		,TableRecordVersion VARBINARY(8)
+		)
+
+	INSERT INTO @TBL_Rule (
+		ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,RecordVersion
+		)
+	SELECT x.item.value('@ManagerCode[1]', 'VARCHAR(14)') AS ManagerCode
+		,x.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,x.item.value('@ContactId[1]', 'INT') AS ContactID
+		,x.item.value('@RecordVersion[1]', 'varchar(20)') AS RecordVersion
+	FROM @XMLDATA.nodes('/RuleDetailCollection/RuleDetail') AS x(item)
+
+	IF @Type = 'Manager'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_ManagerRule MgrRule
+				INNER JOIN @TBL_Rule TmpRule ON TmpRule.ManagerCode = MgrRule.ManagerCode
+				WHERE CONVERT(varchar(20),CAST(MgrRule.RecordVersion AS varbinary(8)),1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+		BEGIN
+			DELETE
+			FROM TBL_PP_TemplateTypeRule
+			WHERE ManagerCode IN (
+					SELECT ManagerCode
+					FROM @TBL_Rule
+					)
+
+			DELETE
+			FROM TBL_PP_ManagerRule
+			WHERE ManagerCode IN (
+					SELECT ManagerCode
+					FROM @TBL_Rule
+					)
+		END
+	END
+
+	IF @Type = 'Account'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_AccountRule AcctRule
+				INNER JOIN @TBL_Rule TmpRule ON TmpRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+				WHERE CONVERT(varchar(20),CAST(AcctRule.RecordVersion AS varbinary(8)),1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+			DELETE
+			FROM TBL_PP_AccountRule
+			WHERE CustomerAccountNumber IN (
+					SELECT CustomerAccountNumber
+					FROM @TBL_Rule
+					)
+	END
+
+	IF @Type = 'Contact'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_ContactRule ContRule
+				INNER JOIN @TBL_Rule TmpRule ON TmpRule.CustomerAccountNumber = ContRule.CustomerAccountNumber
+					AND TmpRule.ContactID = ContRule.ContactID
+				WHERE CONVERT(varchar(20),CAST(ContRule.RecordVersion AS varbinary(8)),1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+			DELETE
+			FROM TBL_PP_ContactRule
+			FROM TBL_PP_ContactRule ContRule
+			INNER JOIN @TBL_Rule XMLInput ON XMLInput.ContactID = ContRule.ContactID
+				AND ContRule.CustomerAccountNumber = XMLInput.CustomerAccountNumber
+	END
+
+	SET @ReturnStatus = ISNULL(@ReturnStatus, 0)
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

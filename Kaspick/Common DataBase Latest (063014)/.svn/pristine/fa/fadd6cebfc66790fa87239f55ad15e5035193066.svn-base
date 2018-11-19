@@ -1,0 +1,107 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_Account]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_Account]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_Account
+* File Name		  : USP_Lookup_Account.SQL      
+* Description     : This SP loads the newly added Accounts into the Accounts Lookup Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+CREATE PROCEDURE USP_Lookup_Account(@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(50) ='TBL_Lookup_Account'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+	
+		--Inserts the Account columns and the appropriate lookup Columns
+		--  which are not existing in account lookup table
+		INSERT INTO TBL_Lookup_Account(ManagerCode,ClientID,AllianceNumber,ProgramID,CustomerAccountNumber)
+		
+		SELECT DISTINCT
+					 A.ManagerCode
+					,C.ClientID		
+					,A.AllianceNumber
+					,P.ProgramID	
+					,A.CustomerAccountNumber
+						
+		FROM		dbo.SYN_IT_AccountMaster A	
+		
+		INNER JOIN	dbo.TBL_Lookup_Program P
+		ON			A.AllianceNumber = p.AllianceNumber
+		
+		INNER JOIN	dbo.TBL_Lookup_Client C
+		ON			A.ManagerCode	= C.ManagerCode
+		
+		LEFT JOIN	dbo.TBL_Lookup_Account LP
+		ON			A.CustomerAccountNumber = LP.CustomerAccountNumber 
+
+		WHERE		LP.CustomerAccountNumber IS NULL
+			
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+		
+		--TBL_Lookup_Account_DeletedRecord
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_Account_DeletedRecord'
+		
+		DELETE		 LP
+		OUTPUT		 Deleted.ManagerCode
+					,Deleted.ClientID
+					,Deleted.AllianceNumber
+					,Deleted.ProgramID
+					,Deleted.CustomerAccountNumber
+					,Deleted.AccountID
+					,GETDATE() 
+		INTO        TBL_Lookup_Account_DeletedRecord(ManagerCode ,ClientID ,AllianceNumber ,ProgramID ,CustomerAccountNumber ,AccountID,DeletedDate)
+		FROM		dbo.TBL_Lookup_Account	LP
+		LEFT JOIN	dbo.SYN_IT_AccountMaster	T 
+					ON LP.CustomerAccountNumber = T.CustomerAccountNumber
+		WHERE		T.CustomerAccountNumber IS NULL
+				
+		--LOGGING
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - Physical Delete - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+		
+		RETURN 0
+		
+
+
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message() 
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error' ,@RunID          
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

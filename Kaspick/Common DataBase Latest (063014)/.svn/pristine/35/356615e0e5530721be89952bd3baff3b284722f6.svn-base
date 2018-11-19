@@ -1,0 +1,66 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbProfileInfo')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbProfileInfo;
+        PRINT 'DROPPED USP_EX_GetRptFasbProfileInfo';
+    END
+GO
+ 
+/******************************************************************************            
+** New Name   :   USP_EX_GetRptFasbProfileInfo
+** Old Name   :   USP_EIS_RPT_FASB_ProfileInfo_SelProc            
+** Short Desc : Gets the Excelsior Profile values.  
+**            
+** Full Description            
+**                
+**            
+** Return values: NONE            
+**     
+** Sample Call  
+**      
+** EXEC USP_EX_GetRptFasbProfileInfo 100002      
+**             
+** Created By : Basavaraj Elalli       
+** Company  :  Kaspick & Company            
+** Project  :  FASB            
+** Created DT : Sep/21/2012            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+**  Sep/21/2012    Basu Elalli           Created    
+**  Apr/10/2014	 Mallikarjun		- Modified Req EXCREQ 5.4  
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/       
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetRptFasbProfileInfo] --'ACL' 
+@ManagerCode VARChar(15)  
+AS  
+  declare @LastModifiedDate datetime  
+  declare @LastModifiedUser varchar(100)  
+  select top(1) @LastModifiedDate = FasbPrflInf.ModifiedDate,
+  @LastModifiedUser =  (ISNULL(KsUsr.FirstName,'') + ' ' + ISNULL(KsUsr.MiddleName,'') + ' ' + ISNULL(KsUsr.LastName,''))   
+  from TBL_BR_FASBProfileInformation FasbPrflInf  
+  INNER JOIN TBL_KS_USER KsUsr ON KsUsr.USERID = FasbPrflInf.ModifiedUserID  
+  where FasbPrflInf.ManagerCode=@ManagerCode order by FasbPrflInf.modifieddate desc  
+      
+  SELECT FASB_InstanceID,ManagerCode,InstanceTypeID,ReportingMonth,MarketValueMonth,InstanceLabel,DeliveryDays,DeliveryTiming,FixedDate,
+  ExcludedGiftKeys,CustomRequirements,ReportingDate,@LastModifiedDate, @LastModifiedUser     
+  FROM TBL_BR_FASBProfileInformation WHERE ManagerCode=@ManagerCode         
+  
+SET QUOTED_IDENTIFIER OFF  
+GO
+
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbProfileInfo') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbProfileInfo';
+	END  

@@ -1,0 +1,254 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetAccountInvestment'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetAccountInvestment;
+
+	PRINT 'DROPPED USP_EX_GetAccountInvestment';
+END
+GO
+
+/******************************************************************************                          
+** New Name:     USP_EX_GetAccountInvestment                          
+** Old Name:     USP_EIS_EX_ACCOUNT_INVESTMENT_DTLSelProc                          
+
+** Short Desc: Put in Short Description                          
+**                          
+** Full Description                          
+**        More detailed description if necessary                          
+**                          
+** Sample Call                          
+       USP_EX_GetAccountInvestment 'Account','ACPIF1','FSI Option','IObjective',
+	'IType','AcoountStatus','ITax','Management','Lot','TranchingStatus','PorfolioCode',
+	'AccountInvestment.aspx'                  
+**                          
+** Return values: NONE                          
+**                          
+**                          
+** Standard declarations                          
+**       SET NOCOUNT             ON                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: RAHUL SHARMA                          
+** Company   : Kaspick & Company                          
+** Project   : Excelsior -- IM PROFILE                          
+** Created DT: 03/13/2007                          
+**                                      
+*******************************************************************************                          
+**       Change History                          
+*******************************************************************************                          
+** Date:        Author:  Bug #     Description:                           Rvwd                          
+** --------     -------- ------    -------------------------------------- --------                          
+** 18-Mar-08     Amar                 ET 6274                         
+** 22-Jun-09   Madhuri  Added ChangeInInvestmentObjective for Bene Reporting       
+** 23-Oct-2009 Soorya Added DecisionCommentsHistory - Enfuego4     
+** 01-Mar-2010 Soorya Added Is_PortfolioCode_Inherited - Enfuego4 - Strategic Allocations        
+** 7-Apr-2014  Abhijith  EXCREQ7.4
+** 22-May-2014  Sanath Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].USP_EX_GetAccountInvestment
+	(
+	@ENTITYTYPE VARCHAR(20)
+	,@ENTITYID VARCHAR(20)
+	,@PAGENAME VARCHAR(50)
+	,@FSI_OPTION_FLD_NAME VARCHAR(50)
+	,@INVESTMENT_OBJECTIVE_FLD_NAME VARCHAR(50)
+	,@INVESTMENT_TYPE_FLD_NAME VARCHAR(50)
+	,@ACCOUNT_STATUS_FLD_NAME VARCHAR(50)
+	,@INVESTMENT_TAX_FLD_NAME VARCHAR(50)
+	,@MANAGEMENT_FLD_NAME VARCHAR(50)
+	,@LOT_ACCOUNTING_FLD_NAME VARCHAR(50)
+	,@TRANCHING_STATUS_FLD_NAME VARCHAR(50)
+	,@PORTFOLIO_CODE_FLD_NAME VARCHAR(50)
+	)
+AS
+BEGIN
+	--  Variable Declarations  --                          
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @ENTITY_TYPE_ID INT
+	DECLARE @fsitypecode_id VARCHAR(30)
+		,@investmenttypecode_id VARCHAR(30)
+		,@accountstatuscode_id VARCHAR(30)
+		,@investmenttaxstatuscode_id VARCHAR(30)
+		,@tradestatuscode_id VARCHAR(30);
+	-- Variables used for error handling - uncomment if needed                          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	DECLARE @val3 VARCHAR(30);
+
+	--  Temp tables, Cursors, Table Variables  --                          
+	--  Variable Data Assignment  --                          
+	SET @ProcName = 'USP_EX_GetAccountInvestment';
+
+	BEGIN TRY
+		EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'ENTITY'
+			,@LIST_ITEM_NAME = @ENTITYTYPE
+			,@LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT
+
+		-- Added by Soorya for 'Enfuego4' - on 23-OCT-2009 - start      
+		DECLARE @DecisionComments VARCHAR(MAX)
+			,@DecisionDate DATETIME
+			,@CommentUser INT
+			,@Count INT
+			,@TypeID INT
+		DECLARE @CommentHistory TABLE (
+			CommentLevel VARCHAR(50)
+			,Comments VARCHAR(8000)
+			,DecisionDate DATETIME
+			,UserName VARCHAR(50)
+			)
+
+		--Get Decision Comments for the selected Objective Code      
+		SELECT @TypeID = TypeID
+		FROM TBL_INV_DecisionCommentType
+		WHERE TypeName = 'Objective'
+
+		INSERT INTO @CommentHistory
+		SELECT (
+				CASE 
+					WHEN EXISTS (
+							SELECT DecisionCommentID
+							FROM TBL_INV_DecisionCommentTypeLink
+							WHERE DecisionCommentID = DecCmntTypLnk.DecisionCommentID
+								AND TypeID = @TypeID
+							)
+						THEN 'Allocation Comment:'
+					ELSE 'Account Comment:'
+					END
+				) AS CommentLevel
+			,DecCmnt.Comment
+			,DecCmnt.DecisionDate
+			,KsUsr.LoginName AS Login_Name
+		FROM TBL_INV_DecisionComment DecCmnt
+		INNER JOIN TBL_INV_DecisionCommentTypeLink DecCmntTypLnk ON DecCmnt.DecisionCommentID = DecCmntTypLnk.DecisionCommentID
+		INNER JOIN TBL_INV_DecisionCommentType DecCmntTyp ON DecCmntTyp.TypeID = DecCmntTypLnk.TypeID
+		INNER JOIN TBL_KS_User KsUsr ON KsUsr.UserID = DecCmnt.CommentUser
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = @ENTITYID
+		WHERE DecCmntTypLnk.DecisionTypeValue = AccMstr.CustomerAccountNumber
+			AND DecCmntTyp.TypeName = 'Account'
+		ORDER BY DecCmnt.DecisionCommentID DESC
+
+		SET @DecisionComments = ''
+
+		SELECT @Count = COUNT(*)
+		FROM @CommentHistory
+
+		IF (@Count > 0)
+		BEGIN
+			SELECT @DecisionComments = @DecisionComments + '(' + CommentLevel + ' ' + left(DATENAME(dw, DecisionDate), 3) + ' ' + left(DATENAME(mm, DecisionDate), 3) + ' ' + CAST(DATEPART(dd, DecisionDate) AS VARCHAR(2)) + ' ' + CAST(DATEPART(hh, DecisionDate) AS VARCHAR(2)) + ':' + CAST(DATEPART(mi, DecisionDate) AS VARCHAR(2)) + ' ' + CAST(DATEPART(year, DecisionDate) AS VARCHAR(4)) + ', ' + UserName + ') ' + Comments + CHAR(13) + CHAR(10)
+			FROM @CommentHistory
+		END
+
+		-- Added by Soorya for 'Enfuego4' - Strategic Allocations - Cascading functionality - start    
+		DECLARE @ObjectiveCode VARCHAR(50)
+		DECLARE @PortfolioCodeAccount VARCHAR(50)
+		DECLARE @PortfolioCodeTActical VARCHAR(50)
+		DECLARE @Is_PortfolioCode_Inherited BIT
+
+		SET @Is_PortfolioCode_Inherited = 0
+
+		SELECT @ObjectiveCode = AccPrfl.ObjectiveCode
+			,@PortfolioCodeAccount = ISNULL(BneRptCmnt.PortfolioCode, '')
+		FROM TBL_INV_AccountProfile AccPrfl
+		LEFT JOIN TBL_BR_CommentLinkage CmntLnkg ON AccPrfl.CustomerAccountNumber = CmntLnkg.CustomerAccountNumber
+		LEFT JOIN TBL_INV_BeneReportComment BneRptCmnt ON CmntLnkg.COMMENTID = BneRptCmnt.BRCommentID
+		WHERE AccPrfl.CustomerAccountNumber = @ENTITYID
+
+		SELECT @PortfolioCodeTActical = ISNULL(BneRptCmnt.PortfolioCode, '')
+		FROM TBL_INV_InvestmentObjective InvstObjct
+		INNER JOIN TBL_INV_BeneReportComment BneRptCmnt ON BneRptCmnt.BRCommentID = InvstObjct.BRCommentID
+		WHERE ObjectiveCode = @ObjectiveCode
+
+		IF (@PortfolioCodeAccount = @PortfolioCodeTActical)
+		BEGIN
+			SET @Is_PortfolioCode_Inherited = 1
+		END
+
+		-- Added by Soorya for 'Enfuego4' - Strategic Allocations - Cascading functionality - end    
+		SELECT AccPrfl.CustomerAccountNumber AS AccountID
+			,AccPrfl.SchwabMasterID
+			,AccMstr.ExternalCustomerID AS CustodialAccount
+			,AccMstr.AccountTypeCode AS AccountType
+			,dbo.FN_GetNAListID(AccPrfl.FSITypeCodeNA, AccPrfl.FSITypeCode, 'FSI option') AS FSITYPECODE_ID
+			,--  DGS.FSITYPECODE_ID,                     
+			AccPrfl.ObjectiveCode
+			,dbo.FN_GetNAListID(AccPrfl.InvestmentTypeCodeNA, AccPrfl.InvestmentTypeCode, 'Investment Type') AS InvestmentTypeCode_ID
+			,--DGS.InvestmentTypeCode_ID,                                     
+			--0 AS AccountStatusCode_ID
+			 dbo.FN_GetNAListID(AccPrfl.AccountStatusCodeNA,AccPrfl.AccountInvestmentStatusCode,'Account Status') as AccountStatusCode_ID
+			 ,--DGS.AccountStatusCode_ID,                                  
+			--DGS.AccountStatusCode_ID,                                    
+			dbo.FN_GetNAListID(AccPrfl.InvestmentTaxStatusCodeNA, AccPrfl.InvestmentTaxStatusCode, 'Investment Tax Status') AS InvestmentTaxStatusCode_ID
+			,--DGS.InvestmentTaxStatusCode_ID,                                     
+			dbo.FN_GetNAListID(AccPrfl.TradeStatusCodeNA, AccPrfl.TradeStatusCode, 'Management') AS TradeStatusCode_ID
+			,--DGS.TradeStatusCode_ID,                                     
+			dbo.FN_GetListItemID(AccPrfl.ByPolicy,'Logical Value') as ByPolicy_ID
+			,--DGS.ByPolicy_ID,                                       
+			dbo.FN_GetListItemID(AccPrfl.AssetsUnderMgmt, 'Logical Value') AS AssetsUnderMgmt_ID
+			,--DGS.AssetsUnderMgmt_ID,                                     
+			dbo.FN_GetListItemID(AccPrfl.ExceptionDoc,'Logical Value') as ExceptionDoc_ID
+			,--DGS.ExceptionDoc_ID,                                       
+			dbo.FN_GetListItemID(AccPrfl.LotAccountingCode, 'Lot Accounting') AS LotAccountingCode_ID
+			,--DGS.LotAccountingCode_ID,                          
+			AccPrfl.FirstTradeDate
+			,dbo.FN_GetListItemID(AccPrfl.DiscretionaryTrade, 'Discretionary Trade') AS DiscretionaryTrade_ID
+			,--DGS.DiscretionaryTrade_ID,                          
+			AccPrfl.InvestmentComment
+			,dbo.FN_GetListItemID(AccPrfl.TrancheStatusCode, 'Tranching Status') AS TrancheStatusCode_ID
+			,--DGS.TrancheStatusCode_ID,                          
+			AccPrfl.HoldsSubstitutes
+			,AccPrfl.SubstituteAssetComment
+			,AccPrfl.RestrictedAssets
+			,AccPrfl.RestrictedAssetComment
+			,ISNULL(BneRptCmnt.PortfolioCode, '') AS PortfolioCode
+			,ISNULL(BneRptCmnt.PortfolioDescription, '') AS PortfolioCode
+			,AccPrfl.ChangeInInvestmentObjective AS ChangeInInvestmentObjective
+			,-- added by Madhuri on 06/22/2009 for Benereports             
+			@DecisionComments AS DecisionCommentsHistory
+			,-- Added by Soorya for 'Enfuego4' - on 23-OCT-2009     
+			@Is_PortfolioCode_Inherited AS Is_PortfolioCode_Inherited -- Added by Soorya for 'Enfuego4' - on 01-MAR-2010    
+		FROM 
+			SYN_IT_AccountMaster AccMstr 
+			LEFT JOIN TBL_INV_AccountProfile AccPrfl ON AccMstr.CustomerAccountNumber = AccPrfl.CustomerAccountNumber
+			LEFT JOIN TBL_BR_CommentLinkage CmntLnkg ON AccPrfl.CustomerAccountNumber = CmntLnkg.CustomerAccountNumber
+			LEFT JOIN TBL_INV_BeneReportComment BneRptCmnt ON CmntLnkg.COMMENTID = BneRptCmnt.BRCommentID
+		WHERE AccMstr.CustomerAccountNumber = @ENTITYID
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = Cast(@ENTITYTYPE AS VARCHAR(20));
+		SET @val2 = Cast(@ENTITYID AS INT);
+		SET @val3 = Cast(@PAGENAME AS VARCHAR(50));
+
+		EXEC dbo.USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorNumber = @ErrorNumber
+			,@ErrorMessage = @ErrorMessage
+			,@val1 = @val1
+			,@val1str = 'ENTITYTYPE'
+			,@val2 = @val2
+			,@val2str = 'ENTITYID'
+			,@val3 = @val3
+			,@val3str = 'PAGENAME';
+	END CATCH;
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetAccountInvestment'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetAccountInvestment';
+END

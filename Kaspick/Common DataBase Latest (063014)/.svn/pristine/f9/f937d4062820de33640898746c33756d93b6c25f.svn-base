@@ -1,0 +1,119 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineAccountPayoutSchedule]    Script Date: 11/28/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineAccountPayoutSchedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineAccountPayoutSchedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineAccountPayoutSchedule]    Script Date: 11/28/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetCalcEngineAccountPayoutSchedule                      
+** Short Desc: To Get Account Payoyt Schedule
+**                      
+** Full Description:  To Get Account Payoyt Schedule against Customer Account Number 
+**            
+**        
+**                              
+** Input Arguments: 
+	 	@XMLDATA xml,
+	 	@TaxYear INT
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetCalcEngineAccountPayoutSchedule 'PSDAV',2012
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 28-Nov-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 1/10/2014	Saravanan		Added Transaction Number
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+
+CREATE PROCEDURE dbo.[USP_PP_GetCalcEngineAccountPayoutSchedule]  
+	@CustomerAccountNumber Varchar(14),  
+	@TaxYear INT  
+AS   
+  
+	BEGIN TRY  
+	  
+		--  Initial Set statements  --      
+		SET NOCOUNT ON;      
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds 
+  
+
+  
+		-- Body of procedure  --  
+		--Return data		
+		SELECT 
+			 AccntPay.APScheduleID
+			,BenPay.BeneficiaryDistributionID
+			,AccntPay.InstructionID
+			,AccntPay.ManagerCode
+			,AccntPay.CustomerAccountNumber
+			,AccntPay.TaxYear
+			,AccntPay.PaymentDate
+			,BenPmnt.VoidDate        
+			,BenPmnt.ReissueAs
+			,BenPay.ContactID
+			,BenPay.ContactRoleCode
+			,BenPay.ScheduledAmount              
+			--,AccntPay.PaymentBatch 
+			,AccntPay.ScheduledAmount AS TotalScheduledAmount    
+			,BenPay.BPScheduleID            
+			,BenPay.ContactID            
+			,BenPay.PaymentID
+			,BenPmnt.TransactionNumber
+  			--,(CASE WHEN b.UseAlternatePaymentName=1 and len(b.AlternatePaymentName)>0 THEN b.AlternatePaymentName ELSE t.PaymentName END) AS PayeeName,          
+			,BenPay.EPD          
+			--,b.PercentOfPayments as PercentInterest          
+			--,b.FixedPayment as FixedPayment  
+			,BenPay.IsBackBuilt 
+			,BenPay.Memo 
+			,BenPay.Comments          
+			,BenPay.Status as PostingStatus  
+			,AccntPay.RecordVersion as APSRecordVersion            
+			,BenPay.RecordVersion as BPSRecordVersion  
+ 		FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+		INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay ON BenPay.APScheduleID = AccntPay.APScheduleID
+		LEFT OUTER JOIN dbo.TBL_PP_BeneficiaryPayment BenPmnt on  BenPmnt.paymentid = BenPay.paymentid  
+		WHERE AccntPay.CustomerAccountNumber = @CustomerAccountNumber
+		AND AccntPay.TaxYear = @TaxYear
+		ORDER BY AccntPay.APScheduleID
+ 
+  
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH    
+ 
+SET NOCOUNT OFF

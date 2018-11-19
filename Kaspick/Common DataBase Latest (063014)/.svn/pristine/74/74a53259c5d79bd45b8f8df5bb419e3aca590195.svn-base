@@ -1,0 +1,67 @@
+/****** Object:  UserDefinedFunction [dbo].[FN_GetHoliday]    Script Date: 04/18/2013 17:16:26 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetHoliday'
+		)
+BEGIN
+	DROP FUNCTION FN_GetHoliday;
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[FN_GetHoliday]    Script Date: 04/18/2013 17:16:26 ******/
+CREATE FUNCTION [dbo].[FN_GetHoliday] (
+	@startDate DATETIME
+	,@endDate DATETIME
+	)
+RETURNS INT
+AS
+BEGIN
+	/*
+DECLARE @STARTDATE DATETIME
+DECLARE @ENDDATE DATETIME
+SET @STARTDATE = '12/28/2005'  -- Paymentdate - days_value
+SET @ENDDATE = '12/31/2005'    -- paymentdate
+*/
+	DECLARE @totalholidays INT
+	DECLARE @holidays INT
+	DECLARE @flag BIT
+
+	SET @flag = 1
+	SET @holidays = 0
+	SET @totalholidays = 0
+
+	WHILE @flag = 1
+	BEGIN
+		SELECT @HOLIDAYS = count(*)
+		FROM TBL_PP_Holiday
+		WHERE HOLIDAYDATE BETWEEN @STARTDATE
+				AND @ENDDATE
+			AND IsHoliday = 1
+
+		IF @HOLIDAYS <> 0
+		BEGIN
+			SET @EndDate = @StartDate
+			SET @StartDate = dateadd(day, - abs(@holidays), @StartDate)
+			SET @EndDate = dateadd(day, - 1, @EndDate)
+			SET @totalholidays = @totalholidays + @holidays
+
+			CONTINUE
+		END
+
+		IF @holidays = 0
+			SET @FLAG = 0
+	END
+
+	RETURN @TOTALHOLIDAYS
+END
+GO
+
+

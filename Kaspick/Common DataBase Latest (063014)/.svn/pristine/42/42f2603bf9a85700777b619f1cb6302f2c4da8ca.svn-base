@@ -1,0 +1,91 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchCGAPaymentDetail]    Script Date: 05/21/2013 14:37:50 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsArchCGAPaymentDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsArchCGAPaymentDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchCGAPaymentDetail]    Script Date: 05/21/2013 14:37:50 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsArchCGAPaymentDetail                      
+** Short Desc: Insert all values into Arch_CGAPAYMENTDETAILS from Stg_CGAPAYMENTDETAILS
+**                      
+** Full Description: Insert all values into Arch_CGAPAYMENTDETAILS from Stg_CGAPAYMENTDETAILS          
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsArchCGAPaymentDetail     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsArchCGAPaymentDetail]
+AS
+SET NOCOUNT ON
+
+INSERT INTO dbo.TBL_PP_ARCH_CGAPaymentDetail (
+	PaymentID
+	,Account1
+	,PaymentAmount
+	,PaymentStatus
+	,ProcessedByMiddleWare
+	,ProcessedDateMiddleWare
+	,IsPrintedOnCheck
+	,PrintedDates
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+	)
+SELECT PaymentID
+	,Account1
+	,PaymentAmount
+	,'P' AS PaymentStatus
+	,1 AS ProcessedByMiddleWare
+	,CreatedDate AS ProcessedDateMiddleWare
+	,1 AS IsPrintedOnCheck
+	,CreatedDate AS PrintedDates
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+FROM TBL_PP_STG_CGAPaymentDetail
+ORDER BY PersonCode
+	,GiftDate DESC
+GO
+
+

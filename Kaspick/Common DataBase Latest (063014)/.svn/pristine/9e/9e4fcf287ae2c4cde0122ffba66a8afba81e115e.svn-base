@@ -1,0 +1,27 @@
+SET NOCOUNT ON 
+
+-- Script to update the AccountingRoutine 
+UPDATE TBL_PV_ManagerCodeParameter
+SET AccountingRoutine = CASE 
+		WHEN UDFAMColumn044 = 'GW'
+			THEN 'Giftwrap'
+		WHEN UDFAMColumn044 = 'SA'
+			THEN 'Sub-Accounting'
+		ELSE UDFAMColumn044
+		END
+FROM TBL_PV_ManagerCodeParameter MgrCodeParam
+INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMast
+	ON MgrCodeParam.CustomerAccountNumber = UDFAccMast.CustomerAccountNumber_Key
+
+-- Script to update the ManagerCodeName
+UPDATE TBL_PV_ManagerCodeParameter
+SET ManagerCodeName = ContMast.ContactName
+FROM TBL_PV_ManagerCodeParameter MgrCodeParam
+INNER JOIN SYN_IT_AccountManagerCodes UDFAccMgr
+	ON MgrCodeParam.ManagerCode = UDFAccMgr.ManagerCode
+INNER JOIN SYN_IT_ContactMaster ContMast
+	ON ContMast.ContactID = UDFAccMgr.ContactID
+
+
+SET NOCOUNT OFF
+ 

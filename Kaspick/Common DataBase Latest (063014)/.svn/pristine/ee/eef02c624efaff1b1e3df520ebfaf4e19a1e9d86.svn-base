@@ -1,0 +1,130 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDLVContextMenu'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetDLVContextMenu;
+
+	PRINT 'DROPPED USP_RP_GetDLVContextMenu';
+END
+GO
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_DLV_ContextMenu_SelProc]    Script Date: 06/13/2014 17:57:47 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                      
+** Name:     USP_RP_GetDLVContextMenu                      
+** Short Desc: Get context menu options for the selected Deliverable      
+**                      
+** Full Description: Get Context Menu options for the selected Deliverable and the screen 
+**                   (Module Name like Activity Console, Diagnostic Console, Deliverable Management etc)          
+**                              
+** Input Arguments: @DeliverableID and @ModuleName    
+**         
+** Sample Call     
+        
+	EXEC USP_RP_GetDLVContextMenu       
+		@DeliverableID = 5,
+		@ModuleName = 'Activity Console'         
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Sooryanarayana Padekal    
+** Company   : Kaspick & Company                      
+** Project   : Deliverable Tool                      
+** Created DT: 17-APRIL-2012                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 7/17/2012 Soorya					Added WaitingForNextActionRole functionality
+** 7/19/2012 Anand					Added RequireFileDetection functionality
+** 13-Jun-2014	Geervani		Made changes in the table names to refer new KASPICK DB 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_RP_GetDLVContextMenu]    
+(    
+	@DeliverableID BIGINT,
+	@ModuleName VARCHAR(100)
+)    
+AS    
+BEGIN
+	--  Initial Set statements  --              
+	SET NOCOUNT ON;              
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds              
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;             
+	SET ARITHABORT ON
+
+	IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_STATUSFLOW]'))    
+	DROP TABLE [DBO].[#TEMP_STATUSFLOW]
+	CREATE TABLE #TEMP_STATUSFLOW
+	(
+		StatusFlowID BIGINT NULL,      
+		DeliverableProcessID BIGINT NULL,      
+		Start_StatusName CHAR(50) NULL,
+		Start_DeliverableStatusID BIGINT NULL,
+		End_StatusName CHAR(50) NULL,
+		End_DeliverableStatusID BIGINT NULL,
+		WaitingForNextActionRole CHAR(10) NULL,
+		RequireFileDetection BIT NULL
+	)
+
+	INSERT INTO #TEMP_STATUSFLOW
+	SELECT SF.StatusFlowID, SF.DeliverableProcessID, DPS1.StatusName AS Start_StatusName, SF.Start_DeliverableStatusID, 
+			DPS2.StatusName AS End_StatusName, SF.End_DeliverableStatusID, SF.DeliverableDefinedRole, SF.RequireFileDetection
+	FROM TBL_DLV_StatusFlow SF
+		LEFT JOIN TBL_DLV_DeliverableProcessStatus DPS1 ON DPS1.DeliverableItemStatusID = SF.Start_DeliverableStatusID 
+		LEFT JOIN TBL_DLV_DeliverableProcessStatus DPS2 ON DPS2.DeliverableItemStatusID = SF.End_DeliverableStatusID
+	WHERE SF.DeliverableDefinedRole IS NOT NULL
+		AND DPS1.StatusName NOT IN ('Error','Cancelled','Web Published')
+		AND DPS2.StatusName NOT IN ('Error','Cancelled') --'Not Approved','Not Approved 2'
+	
+	SELECT DISTINCT MSF.MenuID, 
+		M.Name AS MenuName, 
+		SF.Start_DeliverableStatusID AS StartStatusID,	
+		DPS.StatusName AS StartStatus, 
+		SF.End_DeliverableStatusID AS EndStatusID,
+		DPSD.StatusName AS EndStatus,
+		SF.DeliverableProcessID,
+		SF.DeliverableDefinedRole,
+		TMP.WaitingForNextActionRole,
+		SF.RequireFileDetection
+	FROM TBL_DLV_MenuStatusFlow MSF
+		INNER JOIN TBL_DLV_StatusFlow SF ON SF.StatusFlowID = MSF.StatusFlowID
+		INNER JOIN TBL_DLV_Menu M ON M.MenuID = MSF.MenuID
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DPS ON DPS.DeliverableItemStatusID = SF.Start_DeliverableStatusID
+		LEFT OUTER JOIN TBL_DLV_DeliverableProcessStatus DPSD ON DPSD.DeliverableItemStatusID = SF.End_DeliverableStatusID
+		INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableProcessID = M.DeliverableProcessID AND D.DeliverableProcessID = SF.DeliverableProcessID
+		LEFT JOIN #TEMP_STATUSFLOW TMP ON TMP.Start_DeliverableStatusID = SF.End_DeliverableStatusID
+	WHERE D.DeliverableID = @DeliverableID AND M.ModuleName = @ModuleName 
+	ORDER BY SF.DeliverableProcessID ASC, SF.Start_DeliverableStatusID ASC
+
+END     
+
+GO	
+	
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDLVContextMenu'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetDLVContextMenu';
+END   
+

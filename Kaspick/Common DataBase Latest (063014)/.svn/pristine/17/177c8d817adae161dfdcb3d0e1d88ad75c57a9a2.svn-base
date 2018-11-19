@@ -1,0 +1,224 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsDataHubIdentifierToGiftAssociation]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_InsDataHubIdentifierToGiftAssociation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_InsDataHubIdentifierToGiftAssociation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsDataHubIdentifierToGiftAssociation]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_InsDataHubIdentifierToGiftAssociation    
+** Short Desc:  Insert status change log.    
+**    
+** Full Description : Insert status change log. 
+**            
+**    
+** Sample Call      
+        EXEC USP_SIT_InsDataHubIdentifierToGiftAssociation    @XMLDATA = '<InsertDHIdentifierParametersCollection><InsertList>
+        <DHIdentifierParameters><DataHubIdentifier>1300100007</DataHubIdentifier>
+        <PRIOR_REFERENCE_NUMBER>1722646</PRIOR_REFERENCE_NUMBER></DHIdentifierParameters>
+        <DHIdentifierParameters></DHIdentifierParameters></InsertList><UpdateList></UpdateList><DeleteList></DeleteList>
+        </InsertDHIdentifierParametersCollection>',   
+   @UserID = 1,  
+   @PriorReferenceNumLength = 0  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_InsDataHubIdentifierToGiftAssociation] @XMLDATA XML
+	,@UserID INT
+	,@PriorReferenceNumLength INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	IF OBJECT_ID('tempdb..[#Tmp_DataHubData]') IS NOT NULL
+		DROP TABLE [#Tmp_DataHubData]
+
+	CREATE TABLE #Tmp_DataHubData (
+		PriorReferenceNumber VARCHAR(255)
+		,DataHubIdentifier VARCHAR(50)
+		,IsSuccess INT
+		,Comment VARCHAR(50)
+		,IsUpdated BIT DEFAULT 0
+		,PriorReferenceNumber2 VARCHAR(255)
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO #Tmp_DataHubData
+		SELECT XmlInput.Item.value('PriorReferenceNumber[1]', 'varchar(255)') AS PriorReferenceNumber
+			,XmlInput.Item.value('DataHubIdentifier[1]', 'varchar(50)') AS DataHubIdentifier
+			,0
+			,''
+			,0
+			,''
+		FROM @XMLDATA.nodes('//InsertDHIdentifierParametersCollection/InsertList/DHIdentifierParameters') AS XmlInput(Item)
+
+		UPDATE #Tmp_DataHubData
+		SET PriorReferenceNumber2 = SUBSTRING(PriorReferenceNumber, @PriorReferenceNumLength + 1, LEN(PriorReferenceNumber))
+
+		UPDATE TBL_SIT_GiftAssociation
+		SET DataHubIdentifier = DataHub.DataHubIdentifier
+		FROM TBL_SIT_GiftAssociation GftAssc
+		INNER JOIN #Tmp_DataHubData DataHub
+			ON (
+					CASE 
+						WHEN (
+								(GftAssc.PriorReferenceNumber IS NULL)
+								OR (ltrim(rtrim(GftAssc.PriorReferenceNumber)) = '')
+								)
+							THEN '0'
+						ELSE SUBSTRING(GftAssc.PriorReferenceNumber, @PriorReferenceNumLength + 1, LEN(GftAssc.PriorReferenceNumber))
+						END
+					) = DataHub.PriorReferenceNumber
+		WHERE (
+				(GftAssc.DataHubIdentifier IS NULL)
+				OR (ltrim(rtrim(GftAssc.DataHubIdentifier)) = '')
+				)
+
+		----if records are NOT having DHID existing    
+		UPDATE #Tmp_DataHubData
+		SET IsUpdated = 1
+		WHERE PriorReferenceNumber2 IN (
+				SELECT GiftKey
+				FROM TBL_SIT_GiftDataHubIdentifier
+				)
+
+		UPDATE TBL_SIT_GiftDataHubIdentifier
+		SET DataHubIdentifier = DataHub.DataHubIdentifier
+		FROM TBL_SIT_GiftDataHubIdentifier GftDatHub
+		INNER JOIN #Tmp_DataHubData DataHub
+			ON GftDatHub.GiftKey = DataHub.PriorReferenceNumber2
+		WHERE (
+				(GftDatHub.DataHubIdentifier IS NULL)
+				OR (ltrim(rtrim(GftDatHub.DataHubIdentifier)) = '')
+				)
+			AND DataHub.IsUpdated = 1
+
+		UPDATE #Tmp_DataHubData
+		SET IsSuccess = 1
+			,Comment = 'Datahub Identifier Mapping updated'
+		FROM TBL_SIT_GiftDataHubIdentifier GftDatHub
+		INNER JOIN #Tmp_DataHubData DataHub
+			ON GftDatHub.GiftKey = DataHub.PriorReferenceNumber2
+				AND GftDatHub.DataHubIdentifier = DataHub.DataHubIdentifier
+		WHERE (
+				(GftDatHub.DataHubIdentifier IS NOT NULL)
+				AND (ltrim(rtrim(GftDatHub.DataHubIdentifier)) <> '')
+				)
+			--AND IsSuccess <> - 1
+			AND DataHub.IsUpdated = 1
+
+		INSERT INTO TBL_SIT_GiftDataHubIdentifier (
+			GiftKey
+			,DataHubIdentifier
+			)
+		SELECT PriorReferenceNumber2
+			,DataHubIdentifier
+		FROM #Tmp_DataHubData
+		WHERE IsSuccess <> 1
+			AND IsUpdated = 0
+
+		UPDATE #Tmp_DataHubData
+		SET IsSuccess = 1
+			,Comment = 'Import Succeded'
+		FROM TBL_SIT_GiftDataHubIdentifier GftDatHub
+		INNER JOIN #Tmp_DataHubData DataHub
+			ON GftDatHub.GiftKey = DataHub.PriorReferenceNumber2
+				AND GftDatHub.DataHubIdentifier = DataHub.DataHubIdentifier
+		WHERE IsSuccess <>  1       -- NOT IN (1, - 1)
+			AND DataHub.IsUpdated = 0
+
+		INSERT INTO TBL_SIT_AuditLog (
+			[UserID]
+			,[PriorReferenceNumber]
+			,[ImportDateTime]
+			,[IsSuccess]
+			,[ErrorDetail]
+			) (
+			SELECT @UserID
+			,PriorReferenceNumber
+			,GetDate()
+			,IsSuccess
+			,Comment FROM #Tmp_DataHubData WHERE IsSuccess = 1
+		
+		UNION
+			
+			SELECT @UserID
+			,PriorReferenceNumber
+			,GetDate()
+			,IsSuccess
+			,Comment FROM #Tmp_DataHubData WHERE IsSuccess = 0
+		
+		--UNION
+			
+		--	SELECT @UserID
+		--	,PriorReferenceNumber
+		--	,GetDate()
+		--	,IsSuccess
+		--	,Comment FROM #Tmp_DataHubData WHERE IsSuccess = - 1
+			)
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END
+

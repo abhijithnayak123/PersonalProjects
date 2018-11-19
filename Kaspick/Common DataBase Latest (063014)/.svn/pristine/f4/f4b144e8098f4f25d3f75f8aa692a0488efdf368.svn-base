@@ -1,0 +1,48 @@
+SET NOCOUNT ON 
+
+UPDATE TBL_PP_BeneficiaryPayoutSchedule
+SET BeneficiaryDistributionID = BeneDist.BeneficiaryDistributionID
+FROM TBL_PP_BeneficiaryPayoutSchedule BenPsCH
+INNER JOIN TBL_PP_AccountPayoutSchedule AccPSch
+	ON AccPSch.APScheduleID = BenPsCH.APScheduleID
+INNER JOIN SYN_IT_RemittanceInstructions Remit
+	ON AccPSch.CustomerAccountNumber = Remit.CustomerAccountNumber
+INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+	ON Remit.InstructionID = BeneDist.InstructionID
+		AND Remit.InstructionID = BeneDist.InstructionID
+		AND BenPsCH.ContactID = BeneDist.PayeeID
+
+UPDATE TBL_PP_PGCalcPaymentData
+SET BeneficiaryDistributionID = BeneDist.BeneficiaryDistributionID
+	,InstructionID = BeneDist.InstructionID
+FROM TBL_PP_PGCalcPaymentData PGCalc
+INNER JOIN SYN_IT_RemittanceInstructions Remit
+	ON PGCalc.CustomerAccountNumber = Remit.CustomerAccountNumber
+INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+	ON Remit.InstructionID = BeneDist.InstructionID
+		AND Remit.InstructionID = BeneDist.InstructionID
+		AND PGCalc.ContactID = BeneDist.PayeeID
+
+UPDATE TBL_PP_PGCalcPaymentDataMerged
+SET BeneficiaryDistributionID = BeneDist.BeneficiaryDistributionID
+	,InstructionID = BeneDist.InstructionID
+FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+INNER JOIN SYN_IT_RemittanceInstructions Remit
+	ON PGCalc.CustomerAccountNumber = Remit.CustomerAccountNumber
+INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+	ON Remit.InstructionID = BeneDist.InstructionID
+		AND Remit.InstructionID = BeneDist.InstructionID
+		AND PGCalc.ContactID = BeneDist.PayeeID
+
+UPDATE TBL_PP_BeneficiaryPayment
+SET BeneficiaryDistributionID = BeneDist.BeneficiaryDistributionID
+	,InstructionID = BeneDist.InstructionID
+FROM TBL_PP_BeneficiaryPayment BenPymnt
+INNER JOIN SYN_IT_RemittanceInstructions Remit
+	ON BenPymnt.CustomerAccountNumber = Remit.CustomerAccountNumber
+INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+	ON Remit.InstructionID = BeneDist.InstructionID
+		AND Remit.InstructionID = BeneDist.InstructionID
+		AND BenPymnt.ContactID = BeneDist.PayeeID
+
+SET NOCOUNT OFF

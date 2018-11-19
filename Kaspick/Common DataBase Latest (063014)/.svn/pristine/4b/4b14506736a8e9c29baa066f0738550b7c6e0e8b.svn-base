@@ -1,0 +1,120 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetLastValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetLastValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetLastValuation                      
+** Short Desc: Reading last valuation data from Valuation table.
+** Full Description: Reading last valuation data from Valuation table for the specified list of Customer Account Number.      
+** Input Arguments:   	@XMLCustomerAccountNumber XML
+** Sample Call     
+        
+DECLARE @XMLCustomerAccountNumber XML     
+ SET  @XMLCustomerAccountNumber = 
+		'<CustomerAccountCollection>    
+		  <InsertList>    
+			<CustomerAccount CustomerAccountNumber="RUGAP" />    
+		  </InsertList>    
+		</CustomerAccountCollection>'        
+ EXEC USP_PV_GetLastValuation @XMLCustomerAccountNumber
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_PV_GetLastValuation @XMLCustomerAccountNumber XML
+AS
+SET NOCOUNT ON
+
+SELECT val.ValuationID
+	,val.ValuationDate
+	,val.ReconFromDate
+	,val.ReconToDate
+	,val.CustomerAccountNumber
+	,val.ManagerCode
+	,val.ManageCodeName
+	,val.CurrentStatusID
+	,valstat.STATUS AS CurrentStatus
+	,val.InitialFMV
+	,val.PendingSeverence
+	,val.PendingGiftAddition
+	,val.EarlyTradedPayments
+	,val.GiftwrapPaymentsAsOfDate
+	,val.InnoTrustPaymentsAsOfDate
+	,val.OtherAdjustment
+	,val.FinalFMV
+	,val.GiftwrapEquityUnit
+	,val.NAV
+	,val.ReconcilliationType
+	,val.Comment
+	,val.RecordVersion
+	,val.ReconWithDW
+	,val.GiftWrapCashtracInput
+	,val.GiftWrapMVDARptGenerated
+	,usr.CreatedDate
+	,usr.CreatedUserID
+	,usr.ModifiedDate
+	,usr.ModifiedUserID
+	,usr.LoginName
+	,val.AccountType
+	,val.HasGiftExclusion
+	,val.GiftExclusionComment
+	,val.ValuationType
+FROM TBL_PV_Valuation val
+INNER JOIN TBL_PV_ValuationStatus valstat ON valstat.StatusID = val.CurrentStatusID
+INNER JOIN TBL_KS_USER usr ON usr.UserID = val.ModifiedBy
+INNER JOIN (
+	SELECT MAX(ValuationDate) AS ValuationDate
+		,CustomerAccountNumber
+	FROM TBL_PV_Valuation
+	WHERE CurrentStatusID IN (
+			SELECT StatusId
+			FROM TBL_PV_ValuationStatus
+			WHERE STATUS IN (
+					'Approved'
+					,'Completed'
+					)
+			)
+	GROUP BY CustomerAccountNumber
+	) lastval ON val.ValuationDate = lastval.ValuationDate
+	AND val.CustomerAccountNumber = lastval.CustomerAccountNumber
+WHERE val.CustomerAccountNumber IN (
+		SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustAccNumber
+		FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLDATA(item)
+		)
+
+SET NOCOUNT OFF;

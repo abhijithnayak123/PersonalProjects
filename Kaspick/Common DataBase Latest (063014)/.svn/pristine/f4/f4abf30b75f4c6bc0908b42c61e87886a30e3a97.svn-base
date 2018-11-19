@@ -1,0 +1,1359 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingPaymentExportProgram]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsStagingPaymentExportProgram]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsStagingPaymentExportProgram]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingPaymentExportProgram]    Script Date: 05/10/2013 14:33:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+
+** Name			:   USP_PP_InsStagingPaymentExportProgram                      
+** Short Desc	:	To insert into the TBL_PP_STG_PaymentExport program   
+*                  
+**                      
+** Full Description: To insert into the TBL_PP_STG_PaymentExport program  
+**                              
+** Input Arguments:   UserID
+**         
+** Sample Call     
+        
+
+     select count(*) from tbl_pp_stg_paymentexport
+	 EXEC USP_PP_InsStagingPaymentExportProgram 1,0
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 9/27/2013 Saravanan				Adding addtional parameter "ProcessID" to track the Payment Publish process log
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsStagingPaymentExportProgram] (
+	@CreatedBy INT
+	,@ProcessID INT
+	)
+AS
+BEGIN
+	SET NOCOUNT ON
+	SET LOCK_TIMEOUT 30000
+
+	DECLARE @SplitDelim CHAR(1)
+
+	SET @SplitDelim = CHAR(10)
+
+	IF OBJECT_ID('tempdb..[#Tmp_ExportBaseData]') IS NOT NULL
+		DROP TABLE [#Tmp_ExportBaseData]
+
+	IF OBJECT_ID('tempdb..[#Tmp_TotalPages]') IS NOT NULL
+		DROP TABLE [#Tmp_TotalPages]
+
+	IF OBJECT_ID('tempdb..[#Tmp_ExportDataPages]') IS NOT NULL
+		DROP TABLE [#Tmp_ExportDataPages]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitClientAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitClientAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitPaymentAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitPaymentAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitMailingAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitMailingAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_AddressTable]') IS NOT NULL
+		DROP TABLE [#Tmp_AddressTable]
+
+	CREATE TABLE #Tmp_ExportBaseData (
+		SLNO INT
+		,PaymentID INT
+		,ContactID INT
+		,ContactRoleCode INT
+		,ManagerCode CHAR(4)
+		,AllianceNumber VARCHAR(15)
+		,InstructionID INT
+		--,DocumentNumber INT
+		,[DocumentNumber] [varchar](15) NULL
+		,TransactionNumber CHAR(11)
+		,[LastName] [varchar](50) NULL
+		,[ClientName1] [varchar](80) NULL
+		,[ClientName2] [varchar](80) NULL
+		,[AccountName1] [varchar](80) NULL
+		,[AccountName2] [varchar](80) NULL
+		,[PayorAddress] [varchar](255) NULL
+		,[SourceBankName] [varchar](80) NULL
+		,[SourceBankAddress] [varchar](80) NULL
+		,[BankID] [varchar](20) NULL
+		,[PayeeName] [varchar](80) NULL
+		,[AcctForDisplay] [varchar](80) NULL
+		,[PaymentDate] [datetime] NULL
+		,[PaymentAmount] [money] NULL
+		,[PayeeAddress] [varchar](255) NULL
+		,[MemoLine1] [varchar](80) NULL
+		,[MemoLine2] [varchar](80) NULL
+		,[SourceBankABA] [varchar](80) NULL
+		,[SourceAccount] [varchar](80) NULL
+		,[BenPaymentAmount] [money] NULL
+		,[PaymentFrequency] [int] NULL
+		,[PayeeName1] [varchar](80) NULL
+		,[PayeeName2] [varchar](80) NULL
+		,[MailingAddress] [varchar](255) NULL
+		,[PaymentAddress1] [varchar](80) NULL
+		,[PeriodEndDate] [datetime] NULL
+		,[PIFUnits] [float] NULL
+		,[PIFValue] [money] NULL
+		,[PIFIncome] [money] NULL
+		,[TaxWithHolding] [money] NULL
+		,[BenPaymentAddress1] [varchar](255) NULL
+		,[DestAccount] [varchar](80) NULL
+		,[Memo] [varchar](80) NULL
+		,[Reminder] [varchar](255) NULL
+		,[BriefName] [varchar](80) NULL
+		,CustomerAccountNumber CHAR(14)
+		,[PaymentMethod] [varchar](20) NOT NULL
+		,[AccountType] [varchar](20) NOT NULL
+		,[ExceptionCode] [int] NULL
+		,[ExceptionDescription] [varchar](1000) NULL
+		,[RefBacktoIVAN] [varchar](80) NULL
+		,[TemplateCode] [int] NULL
+		,[CurrentPageNo] [int] NULL
+		,[TotalNoOfPages] [int] NULL
+		,[Custom1] [varchar](80) NULL
+		,[Custom2] [varchar](80) NULL
+		,[Custom3] [varchar](80) NULL
+		,[Custom4] [varchar](80) NULL
+		,[Custom5] [varchar](80) NULL
+		,[Custom6] [varchar](80) NULL
+		,[Custom7] [varchar](80) NULL
+		,[Custom8] [varchar](80) NULL
+		,[Custom9] [varchar](80) NULL
+		,[Custom10] [varchar](80) NULL
+		,[MarketingMessage] [varchar](2000) NULL
+		,[IsDeleted] [bit] NULL
+		,[ModifiedBy] [int] NULL
+		,[ModifiedDate] [datetime] NULL
+		,[CreatedBy] [int] NULL
+		,[CreatedDate] [datetime] NULL
+		)
+
+	CREATE TABLE #Tmp_TotalPages (
+		AllianceNumber VARCHAR(15)
+		,LastName VARCHAR(50)
+		,ContactID INT
+		,TotalNoOfPages INT
+		)
+
+	CREATE TABLE #Tmp_ExportDataPages (
+		SLNO INT
+		,PaymentID INT
+		,ContactID INT
+		,ContactRoleCode INT
+		,ManagerCode CHAR(4)
+		,AllianceNumber VARCHAR(15)
+		,InstructionID INT
+		--,DocumentNumber INT
+		,[DocumentNumber] [varchar](15) NULL
+		,TransactionNumber CHAR(11)
+		,[LastName] [varchar](50) NULL
+		,[ClientName1] [varchar](80) NULL
+		,[ClientName2] [varchar](80) NULL
+		,[AccountName1] [varchar](80) NULL
+		,[AccountName2] [varchar](80) NULL
+		,[PayorAddress] [varchar](255) NULL
+		,[SourceBankName] [varchar](80) NULL
+		,[SourceBankAddress] [varchar](80) NULL
+		,[BankID] [varchar](20) NULL
+		,[PayeeName] [varchar](80) NULL
+		,[AcctForDisplay] [varchar](80) NULL
+		,[PaymentDate] [datetime] NULL
+		,[PaymentAmount] [money] NULL
+		,[PayeeAddress] [varchar](255) NULL
+		,[MemoLine1] [varchar](80) NULL
+		,[MemoLine2] [varchar](80) NULL
+		,[SourceBankABA] [varchar](80) NULL
+		,[SourceAccount] [varchar](80) NULL
+		,[BenPaymentAmount] [money] NULL
+		,[PaymentFrequency] [int] NULL
+		,[PayeeName1] [varchar](80) NULL
+		,[PayeeName2] [varchar](80) NULL
+		,[MailingAddress] [varchar](255) NULL
+		,[PaymentAddress1] [varchar](80) NULL
+		,[PeriodEndDate] [datetime] NULL
+		,[PIFUnits] [float] NULL
+		,[PIFValue] [money] NULL
+		,[PIFIncome] [money] NULL
+		,[TaxWithHolding] [money] NULL
+		,[BenPaymentAddress1] [varchar](255) NULL
+		,[DestAccount] [varchar](80) NULL
+		,[Memo] [varchar](80) NULL
+		,[Reminder] [varchar](255) NULL
+		,[BriefName] [varchar](80) NULL
+		,CustomerAccountNumber CHAR(14)
+		,[PaymentMethod] [varchar](20) NOT NULL
+		,[AccountType] [varchar](20) NOT NULL
+		,[ExceptionCode] [int] NULL
+		,[ExceptionDescription] [varchar](1000) NULL
+		,[RefBacktoIVAN] [varchar](80) NULL
+		,[TemplateCode] [int] NULL
+		,[CurrentPageNo] [int] NULL
+		,[Custom1] [varchar](80) NULL
+		,[Custom2] [varchar](80) NULL
+		,[Custom3] [varchar](80) NULL
+		,[Custom4] [varchar](80) NULL
+		,[Custom5] [varchar](80) NULL
+		,[Custom6] [varchar](80) NULL
+		,[Custom7] [varchar](80) NULL
+		,[Custom8] [varchar](80) NULL
+		,[Custom9] [varchar](80) NULL
+		,[Custom10] [varchar](80) NULL
+		,[MarketingMessage] [varchar](2000) NULL
+		,[IsDeleted] [bit] NULL
+		,[ModifiedBy] [int] NULL
+		,[ModifiedDate] [datetime] NULL
+		,[CreatedBy] [int] NULL
+		,[CreatedDate] [datetime] NULL
+		,[TotalNoOfPages] [int] NULL
+		)
+
+	CREATE TABLE #Tmp_SplitAddress (
+		PaymentID INT
+		,Address VARCHAR(255)
+		,CommaCnt INT
+		,AddrLen INT
+		)
+
+	CREATE TABLE #Tmp_SplitClientAddress (
+		PaymentID INT
+		,ClientAddress1 VARCHAR(100)
+		,ClientAddress2 VARCHAR(80)
+		,ClientAddress3 VARCHAR(80)
+		,ClientAddress4 VARCHAR(80)
+		,ClientAddress5 VARCHAR(80)
+		,ClientAddress6 VARCHAR(80)
+		)
+
+	CREATE TABLE #Tmp_SplitPaymentAddress (
+		PaymentID INT
+		,PaymentAddress1 VARCHAR(80)
+		,PaymentAddress2 VARCHAR(80)
+		,PaymentAddress3 VARCHAR(80)
+		,PaymentAddress4 VARCHAR(80)
+		,PaymentAddress5 VARCHAR(80)
+		)
+
+	CREATE TABLE #Tmp_SplitMailingAddress (
+		PaymentID INT
+		,MailingAddress1 VARCHAR(80)
+		,MailingAddress2 VARCHAR(80)
+		,MailingAddress3 VARCHAR(80)
+		,MailingAddress4 VARCHAR(80)
+		,MailingAddress5 VARCHAR(80)
+		,MailingAddress6 VARCHAR(80)
+		)
+
+	CREATE TABLE #Tmp_AddressTable (
+		PaymentID INT
+		,ClientAddress1 VARCHAR(100)
+		,ClientAddress2 VARCHAR(80)
+		,ClientAddress3 VARCHAR(80)
+		,ClientAddress4 VARCHAR(80)
+		,ClientAddress5 VARCHAR(80)
+		,ClientAddress6 VARCHAR(80)
+		,PaymentAddress1 VARCHAR(80)
+		,PaymentAddress2 VARCHAR(80)
+		,PaymentAddress3 VARCHAR(80)
+		,PaymentAddress4 VARCHAR(80)
+		,PaymentAddress5 VARCHAR(80)
+		,MailingAddress1 VARCHAR(80)
+		,MailingAddress2 VARCHAR(80)
+		,MailingAddress3 VARCHAR(80)
+		,MailingAddress4 VARCHAR(80)
+		,MailingAddress5 VARCHAR(80)
+		,MailingAddress6 VARCHAR(80)
+		)
+
+	DECLARE @PolicyDimensionID INT
+	DECLARE @PolicyLevel INT
+	DECLARE @PolicyDropDownID INT
+
+	SELECT @PolicyDimensionID = PolicyDimensionID
+	FROM TBL_PolicyDimension
+	WHERE fullname = 'Payment Logo/Marketing Message'
+
+	SELECT @PolicyLevel = PolicyLevel
+	FROM TBL_PolicyLevel
+	WHERE levelname = 'Alliance'
+
+	SELECT @PolicyDropDownID = PolicyDropDownID
+	FROM TBL_PolicyDropDown
+	WHERE PolicyDimensionID = @PolicyDimensionID
+		AND DropDownText = 'Alliance Level'
+
+	INSERT INTO #Tmp_ExportBaseData
+	SELECT 0 AS SLNO
+		,PendgPymnt.PaymentId
+		,PendgPymnt.ContactID
+		,PendgPymnt.ContactRoleCode
+		,PendgPymnt.ManagerCode
+		,PendgPymnt.AllianceNumber
+		,BenPymt.InstructionID
+		,BenPymt.DocumentNumber
+		,BenPymt.TransactionNumber
+		,BenPymt.LastName
+		,Substring(BenPymt.PayorName, 1, 80) AS ClientName1
+		,Substring(BenPymt.PayorName, 81, 20) AS ClientName2
+		,Substring(BenPymt.PayorAddress, 1, 80) AS AccountName1
+		,Substring(BenPymt.PayorAddress, 81, 20) AS AccountName2
+		,BenPymt.PayorAddress
+		,SubString(BenPymt.SourceBankName, 1, 80) AS SourceBankName
+		,Substring(BenPymt.SourceBankAddress, 1, 80) AS SourceBankAddress
+		,BenPymt.FractionalRoutingCode AS BankID
+		,Substring(BenPymt.PayeeName, 1, 80) AS PayeeName
+		,BenPymt.DestAccount AS AcctForDisplay
+		,BenPymt.PaymentDate
+		,BenPymt.PaymentAmount
+		,BenPymt.PayeeAddress
+		,Substring(BenPymt.Memo, 1, 80) AS MemoLine1
+		,Substring(BenPymt.Memo, 81, 20) AS MemoLine2
+		,BenPymt.SourceBankABA AS SourceBankABA
+		,BenPymt.SourceAccount
+		,PGCalc.PaymentAmount AS BenPaymentAmount
+		,BenPymt.PaymentFreq AS PaymentFrequency
+		,Substring(BenPymt.PayeeName, 1, 80) AS PayeeName1
+		,Substring(BenPymt.PayeeName, 81, 20) AS PayeeName2
+		,BenPymt.MailingAddress
+		,Substring(BenPymt.PayeeName, 1, 80) AS PaymentAddress1
+		,PGCalc.PeriodEndDate
+		,PGCalc.PIFUNITS
+		,PGCalc.PIFVALUE
+		,PGCalc.PIFINCOME
+		,PGCalc.Taxwithholding
+		,CASE 
+			WHEN Templatecode = 5
+				OR Templatecode = 6
+				OR Templatecode = 7
+				THEN Substring(PayeeAddress, 1, 80)
+			ELSE BenPymt.DestBankName
+			END AS BenPaymentAddress1
+		,BenPymt.DestAccount
+		,Substring(Memo, 1, 80) AS Memo
+		,MsgMgmt.ReminderText
+		,NULL AS briefname --added as placeholder
+		,BenPymt.CustomerAccountNumber
+		,PendgPymnt.PaymentMethod
+		,PendgPymnt.AccountType
+		,0 AS ExceptionCode
+		,' ' AS ExceptionDescription
+		,BenPymt.PaymentID AS RefBackToIVAN -- refbacktoivan is changed to include only paymentid
+		,PendgPymnt.TemplateCode
+		,0 AS CurrentPageNo
+		,0 AS TotalNoofPages
+		,CASE 
+			WHEN YTD.Withholding > 0
+				THEN 'Withholding:'
+			ELSE ''
+			END AS Custom1
+		,NULL AS Custom2
+		,CASE 
+			WHEN TEMPLATECODE > 7
+				THEN ''
+			ELSE SUBSTRING(DBO.Fn_SplitStrSBAddr(SOURCEBANKADDRESS, 2), 1, 80)
+			END AS CUSTOM3
+		,NULL AS Custom4
+		,YTD.Withholding AS Custom5
+		,CASE 
+			WHEN YTD.YTDWithholding > 0
+				THEN 'YTD Withholding:'
+			ELSE ''
+			END AS Custom6
+		,YTD.YTDWithholding AS Custom7
+		,YTD.GrossAmount AS Custom8
+		,YTD.YTDGross AS Custom9
+		,YTD.YTDAmount AS Custom10
+		,MsgMgmt.MarketingText AS MarketingMessage
+		,0 AS Deleteflag
+		,@CreatedBy AS ModifiedBy
+		,CONVERT(SMALLDATETIME, GETDATE(), 101) AS ModifiedDate
+		,@CreatedBy AS CreatedBy
+		,CONVERT(SMALLDATETIME, GETDATE(), 101) AS CreatedDate
+	FROM TBL_PP_MessageMgmt MsgMgmt
+	RIGHT OUTER JOIN TBL_PP_PendingPayment PendgPymnt
+		ON MsgMgmt.MessageMgmtCode = PendgPymnt.AllianceNumber
+			AND MsgMgmt.MessageMgmtType = 'Alliance'
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPymt
+		ON PendgPymnt.PaymentID = BenPymt.PaymentID
+			AND PendgPymnt.ContactID = BenPymt.ContactID
+			AND PendgPymnt.ContactRoleCode = BenPymt.ContactRoleCode
+			AND PendgPymnt.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+			AND PendgPymnt.PaymentID = BenPymt.PaymentID
+	INNER JOIN TBL_PolicyItem PymtLogoMktMsg
+		ON policylevel = @PolicyLevel
+			AND PolicyDimensionID = @PolicyDimensionID
+			AND PymtLogoMktMsg.OwnerID = PendgPymnt.ManagerCode
+	LEFT JOIN TBL_PP_STG_PGCalcPaymentData PGCalc
+		ON PGCalc.PaymentId = PendgPymnt.PaymentId
+	LEFT JOIN TBL_PP_STG_YTDPaymentData YTD
+		ON YTD.PaymentID = BenPymt.PaymentID
+	WHERE PolicyDropDownID = @PolicyDropDownID
+
+	-- Update ExceptionCode for Manager/Account/Participant
+	UPDATE #Tmp_ExportBaseData
+	SET ExceptionCode = MgrRule.ExceptionCode
+		,ExceptionDescription = MgrRule.ExceptionDescription
+	FROM #Tmp_ExportBaseData BaseData
+	INNER JOIN TBL_PP_ManagerRule MgrRule
+		ON BaseData.ManagerCode = MgrRule.ManagerCode
+	INNER JOIN TBL_PP_ExceptionMaster ExceptMstr
+		ON ExceptMstr.ExceptionCode = MgrRule.ExceptionCode
+	WHERE IsException = 1
+
+	UPDATE #Tmp_ExportBaseData
+	SET ExceptionCode = AcctRule.ExceptionCode
+		,ExceptionDescription = AcctRule.ExceptionDescription
+	FROM #Tmp_ExportBaseData BaseData
+	INNER JOIN TBL_PP_AccountRule AcctRule
+		ON BaseData.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+	INNER JOIN TBL_PP_ExceptionMaster ExceptMstr
+		ON ExceptMstr.ExceptionCode = AcctRule.ExceptionCode
+	WHERE IsException = 1
+
+	UPDATE #Tmp_ExportBaseData
+	SET ExceptionCode = ContRule.ExceptionCode
+		,ExceptionDescription = ContRule.ExceptionDescription
+	FROM #Tmp_ExportBaseData BaseData
+	INNER JOIN TBL_PP_ContactRule ContRule
+		ON BaseData.CustomerAccountNumber = ContRule.CustomerAccountNumber
+			AND BaseData.ContactID = ContRule.ContactID
+	INNER JOIN TBL_PP_ExceptionMaster ExceptMstr
+		ON ExceptMstr.ExceptionCode = ContRule.ExceptionCode
+	WHERE IsException = 1
+
+	UPDATE #Tmp_ExportBaseData
+	SET ExceptionCode = 0
+	WHERE ExceptionCode IS NULL
+
+	INSERT INTO #Tmp_SplitAddress (
+		PaymentID
+		,Address
+		,CommaCnt
+		,AddrLen
+		)
+	SELECT PaymentID
+		,PayorAddress
+		,isnull(CHARINDEX(@SplitDelim, payoraddress), 0) AS CommaCnt
+		,LEN(payoraddress)
+	FROM #Tmp_ExportBaseData
+	WHERE payoraddress IS NOT NULL
+		AND payoraddress <> ''
+	ORDER BY PaymentID
+
+	INSERT INTO #Tmp_SplitClientAddress (
+		PaymentID
+		,ClientAddress1
+		)
+	SELECT paymentid
+		,Substring(Address, 1, 100)
+	FROM #Tmp_SplitAddress
+	WHERE CommaCnt = 0
+		AND addrlen > 0
+
+	INSERT INTO #Tmp_SplitClientAddress
+	SELECT PaymentID
+		,Line1
+		,Line2
+		,Line3
+		,Line4
+		,Line5 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+		,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+	FROM (
+		SELECT PaymentID
+			,Line1
+			,Line2
+			,Line3
+			,Line4 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+			,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+		FROM (
+			SELECT PaymentID
+				,Line1
+				,Line2
+				,Line3 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+				,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+			FROM (
+				SELECT PaymentID
+					,Line1
+					,Line2 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+					,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+				FROM (
+					SELECT PaymentID
+						,Address
+						,Line1 = SUBSTRING(Address, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Address) - 1, 0), LEN(Address)))
+						,Rest = SUBSTRING(Address, NULLIF(CHARINDEX(@SplitDelim, Address) + 1, 1), LEN(Address))
+					FROM #Tmp_SplitAddress
+					WHERE commacnt <> 0
+					) AS a
+				) AS b
+			) AS c
+		) AS d
+	ORDER BY PaymentID;
+
+	DELETE
+	FROM #Tmp_SplitAddress
+
+	INSERT INTO #Tmp_SplitAddress (
+		PaymentID
+		,Address
+		,CommaCnt
+		,AddrLen
+		)
+	SELECT PaymentID
+		,PayeeAddress
+		,ISNULL(CHARINDEX(@SplitDelim, PayeeAddress), 0) AS CommaCnt
+		,LEN(PayeeAddress)
+	FROM #Tmp_ExportBaseData
+	WHERE PayeeAddress IS NOT NULL
+		AND PayeeAddress <> ''
+	ORDER BY PaymentID
+
+	INSERT INTO #Tmp_SplitPaymentAddress (
+		PaymentID
+		,PaymentAddress1
+		)
+	SELECT paymentid
+		,Substring(Address, 1, 80)
+	FROM #Tmp_SplitAddress
+	WHERE CommaCnt = 0
+		AND addrlen > 0
+
+	INSERT INTO #Tmp_SplitPaymentAddress
+	SELECT PaymentID
+		,Line1
+		,Line2
+		,Line3
+		,Line4 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+		,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+	FROM (
+		SELECT PaymentID
+			,Line1
+			,Line2
+			,Line3 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+			,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+		FROM (
+			SELECT PaymentID
+				,Line1
+				,Line2 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+				,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+			FROM (
+				SELECT PaymentID
+					,Line1 = SUBSTRING(Address, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Address) - 1, 0), LEN(Address)))
+					,Rest = SUBSTRING(Address, NULLIF(CHARINDEX(@SplitDelim, Address) + 1, 1), LEN(Address))
+				FROM #Tmp_SplitAddress
+				WHERE commacnt <> 0
+				) AS a
+			) AS b
+		) AS c
+	ORDER BY PaymentID;
+
+	DELETE
+	FROM #Tmp_SplitAddress
+
+	INSERT INTO #Tmp_SplitAddress (
+		PaymentID
+		,Address
+		,CommaCnt
+		,AddrLen
+		)
+	SELECT PaymentID
+		,MailingAddress
+		,ISNULL(CHARINDEX(@SplitDelim, MailingAddress), 0) AS CommaCnt
+		,LEN(MailingAddress)
+	FROM #Tmp_ExportBaseData
+	WHERE MailingAddress IS NOT NULL
+		AND MailingAddress <> ''
+	ORDER BY PaymentID
+
+	INSERT INTO #Tmp_SplitMailingAddress (
+		PaymentID
+		,MailingAddress1
+		)
+	SELECT paymentid
+		,Substring(Address, 1, 80)
+	FROM #Tmp_SplitAddress
+	WHERE CommaCnt = 0
+		AND addrlen > 0
+
+	INSERT INTO #Tmp_SplitMailingAddress
+	SELECT PaymentID
+		,Line1
+		,Line2
+		,Line3
+		,Line4
+		,Line5 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+		,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+	FROM (
+		SELECT PaymentID
+			,Line1
+			,Line2
+			,Line3
+			,Line4 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+			,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+		FROM (
+			SELECT PaymentID
+				,Line1
+				,Line2
+				,Line3 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+				,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+			FROM (
+				SELECT PaymentID
+					,Line1
+					,Line2 = SUBSTRING(Rest, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Rest), 0), LEN(Rest)))
+					,Rest = SUBSTRING(Rest, NULLIF(CHARINDEX(@SplitDelim, Rest) + 1, 1), LEN(Rest))
+				FROM (
+					SELECT PaymentID
+						,Line1 = SUBSTRING(Address, 1, COALESCE(NULLIF(CHARINDEX(@SplitDelim, Address) - 1, 0), LEN(Address)))
+						,Rest = SUBSTRING(Address, NULLIF(CHARINDEX(@SplitDelim, Address) + 1, 1), LEN(Address))
+					FROM #Tmp_SplitAddress
+					WHERE commacnt <> 0
+					) AS a
+				) AS b
+			) AS c
+		) AS d
+	ORDER BY PaymentID;
+
+	INSERT INTO #Tmp_AddressTable
+	SELECT #SplitTable2.PaymentID
+		,ClientAddress1
+		,ClientAddress2
+		,ClientAddress3
+		,ClientAddress4
+		,ClientAddress5
+		,ClientAddress6
+		,PaymentAddress1
+		,PaymentAddress2
+		,PaymentAddress3
+		,PaymentAddress4
+		,PaymentAddress5
+		,MailingAddress1
+		,MailingAddress2
+		,MailingAddress3
+		,MailingAddress4
+		,MailingAddress5
+		,MailingAddress6
+	FROM #Tmp_SplitMailingAddress #SplitTable2
+	RIGHT OUTER JOIN (
+		SELECT #SplitTable1.PaymentID
+			,ClientAddress1
+			,ClientAddress2
+			,ClientAddress3
+			,ClientAddress4
+			,ClientAddress5
+			,ClientAddress6
+			,PaymentAddress1
+			,PaymentAddress2
+			,PaymentAddress3
+			,PaymentAddress4
+			,PaymentAddress5
+		FROM #Tmp_SplitPaymentAddress #SplitTable1
+		LEFT OUTER JOIN (
+			SELECT PaymentID
+				,ClientAddress1
+				,ClientAddress2
+				,ClientAddress3
+				,ClientAddress4
+				,ClientAddress5
+				,ClientAddress6
+			FROM #Tmp_SplitClientAddress #SplitTable
+			) #TmpTable
+			ON #TmpTable.PaymentID = #SplitTable1.PaymentID
+		) #TmpTable1
+		ON #TmpTable1.PaymentID = #SplitTable2.PaymentID
+
+	-- GETTING TOTAL NO OF PAGES FOR RECORDS WITH EXCEPTION PAYMENTS 
+	INSERT INTO #Tmp_TotalPages
+	SELECT AllianceNumber
+		,LastName
+		,ContactID
+		,COUNT(*) AS TotalNoofPages
+	FROM #Tmp_ExportBaseData
+	WHERE TemplateCode <> 4
+		AND ExceptionCode <> 0
+	GROUP BY AllianceNumber
+		,LastName
+		,ContactID
+
+	-- Joining the Export Base Data and Total Pages   
+	INSERT INTO #Tmp_ExportDataPages
+	SELECT SLNO
+		,PaymentId
+		,TmpExpBaseDate.ContactID
+		,TmpExpBaseDate.ContactRoleCode
+		,TmpExpBaseDate.ManagerCode
+		,TmpExpBaseDate.AllianceNumber
+		,TmpExpBaseDate.InstructionID
+		,TmpExpBaseDate.DocumentNumber
+		,TmpExpBaseDate.TransactionNumber
+		,TmpExpBaseDate.LastName
+		,ClientName1
+		,ClientName2
+		,AccountName1
+		,AccountName2
+		,PayorAddress
+		,SourceBankName
+		,SourceBankAddress
+		,TmpExpBaseDate.BankID
+		,PayeeName
+		,AcctForDisplay
+		,PaymentDate
+		,PaymentAmount
+		,PayeeAddress
+		,MemoLine1
+		,MemoLine2
+		,SourceBankABA
+		,SourceAccount
+		,BenPaymentAmount
+		,PaymentFrequency
+		,PayeeName1
+		,PayeeName2
+		,MailingAddress
+		,PaymentAddress1
+		,PeriodEndDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithHolding
+		,BenPaymentAddress1
+		,DestAccount
+		,Memo
+		,Reminder
+		,BriefName
+		,TmpExpBaseDate.CustomerAccountNumber
+		,PaymentMethod
+		,AccountType
+		,ExceptionCode
+		,ExceptionDescription
+		,RefBacktoIVAN
+		,TemplateCode
+		,CurrentPageNo
+		,Custom1
+		,Custom2
+		,Custom3
+		,Custom4
+		,Custom5
+		,Custom6
+		,Custom7
+		,Custom8
+		,Custom9
+		,Custom10
+		,MarketingMessage
+		,TmpExpBaseDate.IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		,TmpTotalPage.TotalNoofPages
+	FROM #Tmp_ExportBaseData TmpExpBaseDate
+	LEFT OUTER JOIN #Tmp_TotalPages TmpTotalPage
+		ON TmpExpBaseDate.AllianceNumber = TmpTotalPage.AllianceNumber
+			AND TmpExpBaseDate.LastName = TmpTotalPage.LastName
+			AND TmpExpBaseDate.ContactID = TmpTotalPage.ContactID
+	WHERE TmpExpBaseDate.ExceptionCode <> 0
+	ORDER BY TmpExpBaseDate.AllianceNumber
+		,TmpExpBaseDate.LastName
+		,TmpExpBaseDate.ContactID
+		,TmpExpBaseDate.TemplateCode
+		,TmpExpBaseDate.PaymentID;
+
+	WITH CtePageCount
+	AS (
+		SELECT AllianceNumber
+			,LastName
+			,ContactID
+			,PaymentID
+			,ROW_NUMBER() OVER (
+				PARTITION BY AllianceNumber
+				,LastName
+				,ContactID ORDER BY AllianceNumber
+					,LastName
+					,ContactID
+				) AS RowNum
+		FROM #Tmp_ExportDataPages
+		WHERE TemplateCode <> 4
+			AND ExceptionCode <> 0
+		)
+	UPDATE #Tmp_ExportDataPages
+	SET CurrentPageNo = PageCnt.RowNum
+		,Custom2 = CASE 
+			WHEN PageCnt.RowNum = 5
+				THEN 1
+			ELSE PageCnt.RowNum
+			END
+	FROM #Tmp_ExportDataPages ExpDataPage
+	INNER JOIN CtePageCount PageCnt
+		ON ExpDataPage.AllianceNumber = PageCnt.AllianceNumber
+			AND ExpDataPage.LastName = PageCnt.LastName
+			AND ExpDataPage.ContactID = PageCnt.ContactID
+			AND ExpDataPage.PaymentID = PageCnt.PaymentID
+	WHERE TemplateCode <> 4
+
+	UPDATE #Tmp_ExportDataPages
+	SET CurrentPageNo = 1
+		,TotalNoOfPages = 1
+		,TemplateCode = 11
+		,Custom2 = 1
+	WHERE TemplateCode = 4
+
+	INSERT INTO TBL_PP_STG_PAYMENTEXPORT (
+		ProcessID
+		,PaymentID
+		,ContactID
+		,CustomerAccountNumber
+		,ContactRoleCode
+		,InstructionID
+		,DocumentNumber
+		,TransactionNumber
+		,ManagerCode
+		,AllianceNumber
+		,LastName
+		,ClientName1
+		,ClientName2
+		,AccountName1
+		,AccountName2
+		,ClientAddress1
+		,ClientAddress2
+		,ClientAddress3
+		,ClientAddress4
+		,ClientAddress5
+		,SourceBankName
+		,SourceBankAddress
+		,BankID
+		,PayeeName
+		,AcctForDisplay
+		,PaymentDate
+		,PaymentAmount
+		,PaymentAddress1
+		,PaymentAddress2
+		,PaymentAddress3
+		,PaymentAddress4
+		,PaymentAddress5
+		,PaymentAddress6
+		,MemoLine1
+		,MemoLine2
+		,SourceBankABA
+		,SourceAccount
+		,BenPaymentAmount
+		,PaymentFrequency
+		,PayeeName1
+		,PayeeName2
+		,MailingAddress1
+		,MailingAddress2
+		,MailingAddress3
+		,MailingAddress4
+		,MailingAddress5
+		,MailingAddress6
+		,PeriodEndDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithHolding
+		,BenPaymentAddress1
+		,DestAccount
+		,Memo
+		,Reminder
+		,BriefName
+		,PaymentMethod
+		,AccountType
+		,ExceptionCode
+		,ExceptionDescription
+		,RefBacktoIVAN
+		,TemplateCode
+		,CurrentPageNo
+		,TotalNoOfPages
+		,ClientCode
+		,Custom1
+		,Custom2
+		,Custom3
+		,Custom4
+		,Custom5
+		,Custom6
+		,Custom7
+		,Custom8
+		,Custom9
+		,Custom10
+		,MarketingMessage
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT DISTINCT @ProcessID
+		,ExpData.PaymentID
+		,ExpData.ContactID
+		,ExpData.CustomerAccountNumber
+		,ExpData.ContactRoleCode
+		,ExpData.InstructionID
+		,ExpData.DocumentNumber
+		,ExpData.TransactionNumber
+		,ExpData.ManagerCode
+		,ExpData.AllianceNumber
+		,ExpData.LastName
+		,REPLACE(ExpData.ClientName1, '"', '''') AS ClientName1
+		,REPLACE(ExpData.ClientName2, '"', '''') AS ClientName2
+		,REPLACE(SUBSTRING(ClientAddress1, 1, 80), '"', '''') AS AccountName1
+		,REPLACE(SUBSTRING(ClientAddress2, 81, 100), '"', '''') AS AccountName2
+		,REPLACE(Addr.ClientAddress2, '"', '''') AS ClientAddress1
+		,REPLACE(Addr.ClientAddress3, '"', '''') AS ClientAddress2
+		,REPLACE(Addr.ClientAddress4, '"', '''') AS ClientAddress3
+		,REPLACE(Addr.ClientAddress5, '"', '''') AS ClientAddress4
+		,REPLACE(Addr.ClientAddress6, '"', '''') AS ClientAddress5
+		,ExpData.SourceBankName
+		,ExpData.SourceBankAddress
+		,ExpData.BankID
+		,REPLACE(ExpData.PayeeName, '"', '''') AS PayeeName
+		,ExpData.AcctForDisplay
+		,ExpData.PaymentDate
+		,ExpData.PaymentAmount
+		,REPLACE(ExpData.PaymentAddress1, '"', '''')
+		,REPLACE(Addr.PaymentAddress1, '"', '''')
+		,REPLACE(Addr.PaymentAddress2, '"', '''')
+		,REPLACE(Addr.PaymentAddress3, '"', '''')
+		,REPLACE(Addr.PaymentAddress4, '"', '''')
+		,REPLACE(Addr.PaymentAddress5, '"', '''')
+		,REPLACE(ExpData.MemoLine1, '"', '''') AS MEMOLINE1
+		,REPLACE(ExpData.MemoLine2, '"', '''') AS MEMOLINE2
+		,ExpData.SourceBankABA
+		,ExpData.SourceAccount
+		,ExpData.BenPaymentAmount
+		,ExpData.PaymentFrequency
+		,ExpData.PayeeName1
+		,ExpData.PayeeName2
+		,REPLACE(Addr.MAILINGADDRESS1, '"', '''') AS MAILINGADDRESS1
+		,REPLACE(Addr.MAILINGADDRESS2, '"', '''') AS MAILINGADDRESS2
+		,REPLACE(Addr.MAILINGADDRESS3, '"', '''') AS MAILINGADDRESS3
+		,REPLACE(Addr.MAILINGADDRESS4, '"', '''') AS MAILINGADDRESS4
+		,REPLACE(Addr.MAILINGADDRESS5, '"', '''') AS MAILINGADDRESS5
+		,REPLACE(Addr.MAILINGADDRESS6, '"', '''') AS MAILINGADDRESS6
+		,ExpData.PeriodEndDate
+		,ExpData.PIFUnits
+		,ExpData.PIFValue
+		,ExpData.PIFIncome
+		,ExpData.TaxWithHolding
+		,REPLACE(ExpData.BenPaymentAddress1, '"', '''') AS BENPAYMENTADDRESS1
+		,ExpData.DestAccount
+		,REPLACE(ExpData.MEMO, '"', '''') AS MEMO
+		,REPLACE(ExpData.REMINDER, '"', '''') AS REMINDER
+		,ExpData.BriefName
+		,ExpData.PaymentMethod
+		,ExpData.AccountType
+		,ExpData.ExceptionCode
+		,ExpData.ExceptionDescription
+		,ExpData.RefBacktoIVAN
+		,ExpData.TemplateCode
+		,ExpData.CurrentPageNo
+		,ExpData.TotalNoOfPages
+		,ExpData.AllianceNumber AS clientcode
+		,ExpData.Custom1
+		,CASE 
+			WHEN ((ExpData.TotalNoOfPages + ExpData.Custom2) - ExpData.CurrentPageNo) < 5
+				THEN CONVERT(VARCHAR(10), Custom2) + 'of' + CONVERT(VARCHAR(10), ((TotalNoOfPages + Custom2) - CurrentPageNo))
+			ELSE CONVERT(VARCHAR(10), Custom2) + 'of5'
+			END AS Custom2
+		,REPLACE(ExpData.Custom3, '"', '''') AS CUSTOM3
+		,ExpData.ExceptionCode AS Custom4
+		,ExpData.Custom5
+		,ExpData.Custom6
+		,ExpData.Custom7
+		,ExpData.Custom8
+		,ExpData.Custom9
+		,ExpData.Custom10
+		,REPLACE(ExpData.MarketingMessage, '"', '''') AS MARKETINGMESSAGE
+		,ExpData.IsDeleted
+		,ExpData.ModifiedBy
+		,ExpData.ModifiedDate
+		,ExpData.CreatedBy
+		,ExpData.CreatedDate
+	FROM #Tmp_ExportDataPages ExpData
+	LEFT OUTER JOIN #Tmp_AddressTable Addr
+		ON ExpData.PaymentID = Addr.PaymentID
+
+	DELETE
+	FROM #Tmp_TotalPages
+
+	DELETE
+	FROM #Tmp_ExportDataPages
+
+	INSERT INTO #Tmp_TotalPages
+	SELECT AllianceNumber
+		,LastName
+		,ContactID
+		,COUNT(*) AS TotalNoofPages
+	FROM #Tmp_ExportBaseData
+	WHERE TemplateCode <> 4
+		AND ExceptionCode = 0
+	GROUP BY AllianceNumber
+		,LastName
+		,ContactID
+
+	-- Joining the Export Base Data and Total Pages   
+	INSERT INTO #Tmp_ExportDataPages
+	SELECT SLNO
+		,PaymentId
+		,TmpExpBaseDate.ContactID
+		,TmpExpBaseDate.ContactRoleCode
+		,TmpExpBaseDate.ManagerCode
+		,TmpExpBaseDate.AllianceNumber
+		,TmpExpBaseDate.InstructionID
+		,TmpExpBaseDate.DocumentNumber
+		,TmpExpBaseDate.TransactionNumber
+		,TmpExpBaseDate.LastName
+		,ClientName1
+		,ClientName2
+		,AccountName1
+		,AccountName2
+		,PayorAddress
+		,SourceBankName
+		,SourceBankAddress
+		,TmpExpBaseDate.BankID
+		,PayeeName
+		,AcctForDisplay
+		,PaymentDate
+		,PaymentAmount
+		,PayeeAddress
+		,MemoLine1
+		,MemoLine2
+		,SourceBankABA
+		,SourceAccount
+		,BenPaymentAmount
+		,PaymentFrequency
+		,PayeeName1
+		,PayeeName2
+		,MailingAddress
+		,PaymentAddress1
+		,PeriodEndDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithHolding
+		,BenPaymentAddress1
+		,DestAccount
+		,Memo
+		,Reminder
+		,BriefName
+		,TmpExpBaseDate.CustomerAccountNumber
+		,PaymentMethod
+		,AccountType
+		,ExceptionCode
+		,ExceptionDescription
+		,RefBacktoIVAN
+		,TemplateCode
+		,CurrentPageNo
+		,Custom1
+		,Custom2
+		,Custom3
+		,Custom4
+		,Custom5
+		,Custom6
+		,Custom7
+		,Custom8
+		,Custom9
+		,Custom10
+		,MarketingMessage
+		,TmpExpBaseDate.IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		,TmpTotalPage.TotalNoofPages
+	FROM #Tmp_ExportBaseData TmpExpBaseDate
+	LEFT OUTER JOIN #Tmp_TotalPages TmpTotalPage
+		ON TmpExpBaseDate.AllianceNumber = TmpTotalPage.AllianceNumber
+			AND TmpExpBaseDate.LastName = TmpTotalPage.LastName
+			AND TmpExpBaseDate.ContactID = TmpTotalPage.ContactID
+	WHERE TmpExpBaseDate.ExceptionCode = 0
+	ORDER BY TmpExpBaseDate.ManagerCode
+		,TmpExpBaseDate.LastName
+		,TmpExpBaseDate.ContactID
+		,TmpExpBaseDate.TemplateCode
+		,TmpExpBaseDate.PaymentID;
+
+	WITH CtePageCount
+	AS (
+		SELECT AllianceNumber
+			,LastName
+			,ContactID
+			,PaymentID
+			,ROW_NUMBER() OVER (
+				PARTITION BY AllianceNumber
+				,LastName
+				,ContactID ORDER BY AllianceNumber
+					,LastName
+					,ContactID
+				) AS RowNum
+		FROM #Tmp_ExportDataPages
+		WHERE TemplateCode <> 4
+			AND ExceptionCode = 0
+		)
+	UPDATE #Tmp_ExportDataPages
+	SET CurrentPageNo = PageCnt.RowNum
+		,Custom2 = CASE 
+			WHEN PageCnt.RowNum % 4 = 0
+				THEN 4
+			ELSE PageCnt.RowNum % 4
+			END
+	FROM #Tmp_ExportDataPages ExpDataPage
+	INNER JOIN CtePageCount PageCnt
+		ON ExpDataPage.AllianceNumber = PageCnt.AllianceNumber
+			AND ExpDataPage.LastName = PageCnt.LastName
+			AND ExpDataPage.ContactID = PageCnt.ContactID
+			AND ExpDataPage.PaymentID = PageCnt.PaymentID
+	WHERE TemplateCode <> 4
+
+	UPDATE #Tmp_ExportDataPages
+	SET CurrentPageNo = 1
+		,TotalNoOfPages = 1
+		,TemplateCode = 11
+		,Custom2 = 1
+	WHERE TemplateCode = 4
+
+	INSERT INTO TBL_PP_STG_PAYMENTEXPORT (
+		ProcessID
+		,PaymentID
+		,ContactID
+		,CustomerAccountNumber
+		,ContactRoleCode
+		,InstructionID
+		,DocumentNumber
+		,TransactionNumber
+		,ManagerCode
+		,AllianceNumber
+		,LastName
+		,ClientName1
+		,ClientName2
+		,AccountName1
+		,AccountName2
+		,ClientAddress1
+		,ClientAddress2
+		,ClientAddress3
+		,ClientAddress4
+		,ClientAddress5
+		,SourceBankName
+		,SourceBankAddress
+		,BankID
+		,PayeeName
+		,AcctForDisplay
+		,PaymentDate
+		,PaymentAmount
+		,PaymentAddress1
+		,PaymentAddress2
+		,PaymentAddress3
+		,PaymentAddress4
+		,PaymentAddress5
+		,PaymentAddress6
+		,MemoLine1
+		,MemoLine2
+		,SourceBankABA
+		,SourceAccount
+		,BenPaymentAmount
+		,PaymentFrequency
+		,PayeeName1
+		,PayeeName2
+		,MailingAddress1
+		,MailingAddress2
+		,MailingAddress3
+		,MailingAddress4
+		,MailingAddress5
+		,MailingAddress6
+		,PeriodEndDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithHolding
+		,BenPaymentAddress1
+		,DestAccount
+		,Memo
+		,Reminder
+		,BriefName
+		,PaymentMethod
+		,AccountType
+		,ExceptionCode
+		,ExceptionDescription
+		,RefBacktoIVAN
+		,TemplateCode
+		,CurrentPageNo
+		,TotalNoOfPages
+		,ClientCode
+		,Custom1
+		,Custom2
+		,Custom3
+		,Custom4
+		,Custom5
+		,Custom6
+		,Custom7
+		,Custom8
+		,Custom9
+		,Custom10
+		,MarketingMessage
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT DISTINCT @ProcessID
+		,ExpData.PaymentID
+		,ExpData.ContactID
+		,ExpData.CustomerAccountNumber
+		,ExpData.ContactRoleCode
+		,ExpData.InstructionID
+		,ExpData.DocumentNumber
+		,ExpData.TransactionNumber
+		,ExpData.ManagerCode
+		,ExpData.AllianceNumber
+		,ExpData.LastName
+		,REPLACE(ExpData.ClientName1, '"', '''') AS ClientName1
+		,REPLACE(ExpData.ClientName2, '"', '''') AS ClientName2
+		,REPLACE(SUBSTRING(ClientAddress1, 1, 80), '"', '''') AS AccountName1
+		,REPLACE(SUBSTRING(ClientAddress2, 81, 100), '"', '''') AS AccountName2
+		,REPLACE(Addr.ClientAddress2, '"', '''') AS ClientAddress1
+		,REPLACE(Addr.ClientAddress3, '"', '''') AS ClientAddress2
+		,REPLACE(Addr.ClientAddress4, '"', '''') AS ClientAddress3
+		,REPLACE(Addr.ClientAddress5, '"', '''') AS ClientAddress4
+		,REPLACE(Addr.ClientAddress6, '"', '''') AS ClientAddress5
+		,ExpData.SourceBankName
+		,ExpData.SourceBankAddress
+		,ExpData.BankID
+		,REPLACE(ExpData.PayeeName, '"', '''') AS PayeeName
+		,ExpData.AcctForDisplay
+		,ExpData.PaymentDate
+		,ExpData.PaymentAmount
+		,REPLACE(ExpData.PaymentAddress1, '"', '''')
+		,REPLACE(Addr.PaymentAddress1, '"', '''')
+		,REPLACE(Addr.PaymentAddress2, '"', '''')
+		,REPLACE(Addr.PaymentAddress3, '"', '''')
+		,REPLACE(Addr.PaymentAddress4, '"', '''')
+		,REPLACE(Addr.PaymentAddress5, '"', '''')
+		,REPLACE(ExpData.MemoLine1, '"', '''') AS MEMOLINE1
+		,REPLACE(ExpData.MemoLine2, '"', '''') AS MEMOLINE2
+		,ExpData.SourceBankABA
+		,ExpData.SourceAccount
+		,ExpData.BenPaymentAmount
+		,ExpData.PaymentFrequency
+		,ExpData.PayeeName1
+		,ExpData.PayeeName2
+		,REPLACE(Addr.MAILINGADDRESS1, '"', '''') AS MAILINGADDRESS1
+		,REPLACE(Addr.MAILINGADDRESS2, '"', '''') AS MAILINGADDRESS2
+		,REPLACE(Addr.MAILINGADDRESS3, '"', '''') AS MAILINGADDRESS3
+		,REPLACE(Addr.MAILINGADDRESS4, '"', '''') AS MAILINGADDRESS4
+		,REPLACE(Addr.MAILINGADDRESS5, '"', '''') AS MAILINGADDRESS5
+		,REPLACE(Addr.MAILINGADDRESS6, '"', '''') AS MAILINGADDRESS6
+		,ExpData.PeriodEndDate
+		,ExpData.PIFUnits
+		,ExpData.PIFValue
+		,ExpData.PIFIncome
+		,ExpData.TaxWithHolding
+		,REPLACE(ExpData.BenPaymentAddress1, '"', '''') AS BENPAYMENTADDRESS1
+		,ExpData.DestAccount
+		,REPLACE(ExpData.MEMO, '"', '''') AS MEMO
+		,REPLACE(ExpData.REMINDER, '"', '''') AS REMINDER
+		,ExpData.BriefName
+		,ExpData.PaymentMethod
+		,ExpData.AccountType
+		,ExpData.ExceptionCode
+		,ExpData.ExceptionDescription
+		,ExpData.RefBacktoIVAN
+		,ExpData.TemplateCode
+		,ExpData.CurrentPageNo
+		,ExpData.TotalNoOfPages
+		,ExpData.AllianceNumber AS clientcode
+		,ExpData.Custom1
+		,CASE 
+			WHEN ((ExpData.TotalNoOfPages + ExpData.Custom2) - ExpData.CurrentPageNo) < 5
+				THEN CONVERT(VARCHAR(10), Custom2) + 'of' + CONVERT(VARCHAR(10), ((TotalNoOfPages + Custom2) - CurrentPageNo))
+			ELSE CONVERT(VARCHAR(10), Custom2) + 'of5'
+			END AS Custom2
+		,REPLACE(ExpData.Custom3, '"', '''') AS CUSTOM3
+		,ExpData.ExceptionCode AS Custom4
+		,ExpData.Custom5
+		,ExpData.Custom6
+		,ExpData.Custom7
+		,ExpData.Custom8
+		,ExpData.Custom9
+		,ExpData.Custom10
+		,REPLACE(ExpData.MarketingMessage, '"', '''') AS MARKETINGMESSAGE
+		,ExpData.IsDeleted
+		,ExpData.ModifiedBy
+		,ExpData.ModifiedDate
+		,ExpData.CreatedBy
+		,ExpData.CreatedDate
+	FROM #Tmp_ExportDataPages ExpData
+	LEFT OUTER JOIN #Tmp_AddressTable Addr
+		ON ExpData.PaymentID = Addr.PaymentID
+	ORDER BY ExpData.ManagerCode
+		,ExpData.LastName
+		,ExpData.ContactID
+		,ExpData.TemplateCode
+		,ExpData.PaymentID
+
+	UPDATE TBL_PP_STG_PAYMENTEXPORT
+	SET TEMPLATECODE = 4
+	WHERE TEMPLATECODE = 11
+
+	-- Populate Briefname using Innotrust AccountMaster Data 
+	UPDATE TBL_PP_STG_PAYMENTEXPORT
+	SET BriefName = AccMstr.TrustAccountNumber
+	FROM TBL_PP_STG_PaymentExport PymtExp
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = PymtExp.CustomerAccountNumber
+
+	-- Droppping Tables 
+	IF OBJECT_ID('tempdb..[#Tmp_ExportBaseData]') IS NOT NULL
+		DROP TABLE [#Tmp_ExportBaseData]
+
+	IF OBJECT_ID('tempdb..[#Tmp_TotalPages]') IS NOT NULL
+		DROP TABLE [#Tmp_TotalPages]
+
+	IF OBJECT_ID('tempdb..[#Tmp_ExportDataPages]') IS NOT NULL
+		DROP TABLE [#Tmp_ExportDataPages]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitClientAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitClientAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitPaymentAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitPaymentAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_SplitMailingAddress]') IS NOT NULL
+		DROP TABLE [#Tmp_SplitMailingAddress]
+
+	IF OBJECT_ID('tempdb..[#Tmp_AddressTable]') IS NOT NULL
+		DROP TABLE [#Tmp_AddressTable]
+END

@@ -1,0 +1,131 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProgramPagingAllClients')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProgramPagingAllClients;
+        PRINT 'DROPPED USP_EX_GetProgramPagingAllClients';
+    END
+GO
+  
+/******************************************************************************  
+** Name : USP_EX_GetProgramPagingAllClients  
+** Old Name:   USP_EIS_EX_PROGRAM_PAGING_AllPrograms_SelProc  
+** Short Desc:   
+**  
+** Full Description :Used in program list page  
+**         
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By:   
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT:   
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 06-Mar-2014   Sanath EXCREQ6.4 Modified  
+** 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+     
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetProgramPagingAllClients]-- 1,18,'',0,'B','','','','ASC'       
+   -- paremeters here      
+ @startrow  INT,     -- start row for the page      
+ @endrow    INT,     -- end row for the page      
+      
+ @SearchColumnName VARCHAR(100), -- this will be used when user wants to search a string within a column.      
+         -- 'Program Brief Name'/'Program Name'      
+ @SearchCriteria   TINYINT,  -- 0-Begins with, 1-Contains      
+ @strSearch varchar(255),  -- search string that will be located in column provided above.      
+      
+ @Filtercolumnname varchar(100), -- Column on which the default filtering will be done      
+ @strFilter varchar(255),  -- for filtering the char/varchar, which will work on filter control      
+  @sortcolumnname varchar(100),   -- column on which the sorting should work      
+ @SortOrder varchar(5)   -- ASC or DESC       
+AS       
+    
+--  Variable Declarations  --      
+Declare @totalpagecount INT;      
+      
+      
+--  Temp tables, Cursors, Table Variables  --      
+IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#PROGRAM]'))      
+ DROP TABLE [DBO].[#];      
+      
+CREATE TABLE #PROGRAM (    
+AllianceNumber char(15),  
+ContactName varchar(80),  
+ManagerCode char(4),  
+Status varchar(10)  
+  )    
+    
+ INSERT INTO #PROGRAM    
+  SELECT AccMstr.AllianceNumber,ConMstr.ContactName,AccMstr.ManagerCode,  
+  CASE AccMstr.ActiveFlag WHEN -1 THEN 'Active'   
+ WHEN 0 THEN 'Inactive'   
+    END AS Status    
+    
+  FROM dbo.SYN_IT_AllianceNumbers  AlnsNmbr    
+ INNER JOIN dbo.SYN_IT_AccountMaster AccMstr  ON AlnsNmbr.AllianceNumber = AccMstr.AllianceNumber   
+  inner join dbo.SYN_IT_ContactMaster as ConMstr ON AlnsNmbr.ContactID=ConMstr.ContactID  
+  Where CASE     
+        When @SearchColumnName='PROGRAM BRIEF NAME' Then AccMstr.AllianceNumber   
+        When @SearchColumnName='' Then AccMstr.AllianceNumber     
+        When @SearchColumnName='PROGRAM NAME' Then ConMstr.ContactName    
+        End    
+ LIKE     
+   CASE     
+    WHEN @SearchCriteria = 0 THEN  @strSearch + '%'      
+    WHEN @SearchCriteria = 1 THEN   '%' + @strSearch + '%'     
+   END    
+ AND AccMstr.AllianceNumber LIKE   
+  (   
+   Case   
+    When @strFilter <> '' AND @strFilter <> '123' Then @strFilter + '%'   
+    When @strFilter = '123' Then '[0-9]%'   
+    Else AccMstr.AllianceNumber   
+   End  
+        )    
+ GROUP BY AccMstr.ManagerCode,AccMstr.ActiveFlag,AccMstr.AllianceNumber,ConMstr.ContactName   
+    
+Select @totalpagecount  = count(*) from #PROGRAM    
+  
+select * from           
+  (          
+  select AllianceNumber as AllianceNumber,ContactName as  ContactName, ManagerCode As ManagerCode,Status,      
+  Row_number() over       
+   (order by 
+		CASE WHEN @sortcolumnname = 'PROGRAM BRIEF NAME' AND @SortOrder = 'ASC' THEN AllianceNumber END ASC,
+		CASE WHEN @sortcolumnname = 'PROGRAM BRIEF NAME' AND @SortOrder = 'DESC' THEN AllianceNumber END DESC,
+		CASE WHEN @sortcolumnname = 'PROGRAM NAME' AND @SortOrder = 'ASC' THEN ContactName END ASC,
+		CASE WHEN @sortcolumnname = 'PROGRAM NAME' AND @SortOrder = 'DESC' THEN ContactName END DESC,
+		CASE WHEN @sortcolumnname = 'CLIENT BRIEF NAME' AND @SortOrder = 'ASC' THEN ManagerCode END ASC,
+		CASE WHEN @sortcolumnname = 'CLIENT BRIEF NAME' AND @SortOrder = 'DESC' THEN ManagerCode END DESC,
+		CASE WHEN @sortcolumnname = 'STATUS' AND @SortOrder = 'ASC' THEN STATUS END ASC,
+		CASE WHEN @sortcolumnname = 'STATUS' AND @SortOrder = 'DESC' THEN STATUS END DESC
+   )       
+  as RowNumber,isnull(@totalpagecount,0) as [TotalCount]          
+  from #PROGRAM           
+  ) As Program          
+  where RowNumber >= @startrow and RowNumber <= @endrow           
+GO
+
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProgramPagingAllClients') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProgramPagingAllClients';
+	END

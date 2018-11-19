@@ -1,0 +1,146 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllTradeErrorFromTradeImport]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllTradeErrorFromTradeImport]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetAllTradeErrorFromTradeImport      
+** Short Desc : Get Trade Error from table TBL_TR_TradeImport      
+**      
+** Full Description : Get Trade Error from table TBL_TR_TradeImport based on the Search Criteria
+**              
+**      
+** Sample Call 
+	EXEC USP_TR_GetAllTradeErrorFromTradeImport 'All','All','All','All','All','01/19/2014','05/19/2014' 
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**                              Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllTradeErrorFromTradeImport] (
+	@CustomerAccountNumber VARCHAR(14)
+	,@EventStatus VARCHAR(50)
+	,@SLMasterAccount VARCHAR(12)
+	,@TradeStatus VARCHAR(50)
+	,@SecuritySymbol VARCHAR(50)
+	,@TradefromDate DATETIME
+	,@TradeToDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @STATUSID INT
+
+	SET @STATUSID = (
+			SELECT EventStatusID
+			FROM TBL_TR_EventStatus
+			WHERE EventStatus = 'Proposed'
+			)
+
+	SELECT TrdImpt.TRADEID
+		,isnull(TrdImpt.TradeIDTRex, 0) AS TradeIDTRex
+		,TrdImpt.CustomerAccountNumber
+		,TrdImpt.SCHWABMASTERID AS SLMASTERACCOUNT
+		,TrdImpt.CUSTODIALACCOUNT AS CUSTODIANACCOUNTNUMBER
+		,AcntPrfl.DiscretionaryTrade
+		,TrdImpt.SECURITYSYMBOL
+		,TrdImpt.TRADETYPE
+		,TrdImpt.TRADEQUANTITY
+		,TrdImpt.DOLLARTRADEAMT
+		,TrdImpt.TRADESTATUS
+		,TrdImpt.TRADEDATE
+		,USR.LOGINNAME AS SUBMITTEDTRADER
+		,ProposedUser.LOGINNAME AS PROPOSEDTRADER
+		,TAprvdTrd.RecordVersion AS RecordVersion
+	FROM TBL_TR_TradeImport TrdImpt
+	INNER JOIN TBL_INV_AccountProfile AcntPrfl ON AcntPrfl.CustomerAccountNumber = TrdImpt.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_TR_TradeSubmission TrdSubmsn ON TrdImpt.SUBMISSIONID = TrdSubmsn.SUBMISSIONID
+	INNER JOIN TBL_KS_User USR ON TrdImpt.UserID = USR.USERID
+	LEFT OUTER JOIN TBL_TR_TSheetApprovedTrade TAprvdTrd ON TrdImpt.TradeIDTRex = TAprvdTrd.TRADEID
+	LEFT OUTER JOIN TBL_TR_Event Evnt ON TAprvdTrd.EVENTID = Evnt.EVENTID
+	LEFT OUTER JOIN (
+		SELECT EvntTrkr.EventID
+			,EvntTrkr.ModifiedUserID
+			,EvntTrkr.ModifiedDate
+			,ROW_NUMBER() OVER (
+				PARTITION BY EvntTrkr.EventID ORDER BY EvntTrkr.ModifiedDate DESC
+				) AS RowNum
+		FROM TBL_TR_EventTracker EvntTrkr
+		WHERE EventStatusID = @STATUSID
+		) Proposer ON Proposer.EventID = Evnt.EventID
+		AND RowNum = 1
+	LEFT OUTER JOIN TBL_KS_User ProposedUser ON Proposer.ModifiedUserID = ProposedUser.UserID
+	WHERE convert(DATETIME, convert(VARCHAR(25), TrdImpt.TradeDate, 101)) BETWEEN cast(@TradefromDate AS VARCHAR)
+			AND cast(@TradeToDate AS VARCHAR)
+		AND (
+			(
+				(
+					@CustomerAccountNumber <> 'All'
+					AND AcntPrfl.CustomerAccountNumber = @CustomerAccountNumber
+					)
+				OR @CustomerAccountNumber = 'All'
+				)
+			AND (
+				(@EventStatus <> 'All')
+				OR @EventStatus = 'All'
+				)
+			AND (
+				(
+					@SLMasterAccount <> 'All'
+					AND TrdImpt.SCHWABMASTERID = @SLMasterAccount
+					)
+				OR @SLMasterAccount = 'All'
+				)
+			AND (
+				(
+					@TradeStatus <> 'All'
+					AND TrdImpt.TRADESTATUS = @TradeStatus
+					)
+				OR @TradeStatus = 'All'
+				)
+			AND (
+				(
+					@SecuritySymbol <> 'All'
+					AND TrdImpt.SecuritySymbol = @SecuritySymbol
+					)
+				OR @SecuritySymbol = 'All'
+				)
+			)
+	ORDER BY AcntPrfl.CustomerAccountNumber
+END
+GO
+
+

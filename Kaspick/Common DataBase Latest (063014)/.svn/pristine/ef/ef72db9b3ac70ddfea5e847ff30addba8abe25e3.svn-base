@@ -1,0 +1,108 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_ValidateCreateNewValuation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_ValidateCreateNewValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_ValidateCreateNewValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_ValidateCreateNewValuation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_ValidateCreateNewValuation                      
+** Short Desc: Reading last valuation data from Valuation table.
+** Full Description: Reading last valuation data from Valuation table for the specified list of Customer Account Number.      
+** Input Arguments:   	@XMLCustomerAccountNumber XML
+** Sample Call     
+
+DECLARE @XMLCustomerAccountNumber XML     
+ SET  @XMLCustomerAccountNumber = 
+		'<ManagerCodeParametersCollection>    
+		  <InsertList>    
+			<ManagerCodeParameter CustomerAccountNumber="RUGAP" />    
+		  </InsertList>    
+		</ManagerCodeParametersCollection>'        
+ EXEC USP_PV_ValidateCreateNewValuation @XMLCustomerAccountNumber
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_PV_ValidateCreateNewValuation @XMLCustomerAccountNumber XML
+AS
+SET NOCOUNT ON
+
+SELECT val.ValuationID
+	,ValuationDate
+	,Reconfromdate
+	,Recontodate
+	,CustomerAccountNumber
+	,ManagerCode
+	,ManageCodeName
+	,CurrentStatusID
+	,valstat.STATUS AS CurrentStatus
+	,InitialFMV
+	,PendingSeverence
+	,PendingGiftAddition
+	,EarlyTradedPayments
+	,GiftwrapPaymentsAsOfDate
+	,InnoTrustPaymentsAsOfDate
+	,OtherAdjustment
+	,FinalFMV
+	,GiftwrapEquityUnit
+	,NAV
+	,ReconcilliationType
+	,Comment
+	,RecordVersion
+	,ReconWithDW
+	,GiftWrapCashtracInput
+	,GiftWrapMVDARptGenerated
+	,val.CreatedDate
+	,val.CreatedBy
+	,val.ModifiedDate
+	,val.ModifiedBy
+	,usr.LoginName
+	,AccountType
+	,HasGiftExclusion
+	,GiftExclusionComment
+	,ValuationType
+FROM TBL_PV_Valuation val
+INNER JOIN TBL_PV_ValuationStatus valstat ON valstat.StatusID = val.CurrentStatusID
+INNER JOIN TBL_KS_USER usr ON usr.USERID = val.MODIFIEDBy
+INNER JOIN (
+	SELECT MAX(valuationid) AS valuationid
+	FROM TBL_PV_Valuation l
+	WHERE CustomerAccountNumber IN (
+			SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			FROM @XMLCustomerAccountNumber.nodes('//ManagerCodeParametersCollection/InsertList/ManagerCodeParameters') AS XMLDATA(item)
+			)
+	GROUP BY CustomerAccountNumber
+	) LastValuation ON val.ValuationID = LastValuation.valuationid

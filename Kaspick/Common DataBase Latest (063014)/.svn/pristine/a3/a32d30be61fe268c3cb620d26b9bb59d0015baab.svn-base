@@ -1,0 +1,162 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetClientDeliverableValue'
+		)
+BEGIN
+	DROP FUNCTION FN_GetClientDeliverableValue;
+
+	PRINT 'DROPPED FUNCTION FN_GetClientDeliverableValue';
+END
+GO
+
+/******************************************************************************    
+** Name:    [FN_GetClientDeliverableValue]  
+** Short Desc: To get Item Name  
+**    
+** Full Description: To get Item Name based on the ItemName and Type Name  
+**          
+**    
+** Sample Call  [FN_GetClientDeliverableValue]  
+**    
+** Return values:  
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mallikarjun  
+** Company   : Opteamix    
+** Project   : ExcelsiorPrime   
+** Created DT: 03-Mar-2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**    
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE FUNCTION FN_GetClientDeliverableValue --'Calendar','Year Type',77,'ACL'
+	(
+	@LIST_ITEM_NAME VARCHAR(100)
+	,@LIST_TYPE_NAME VARCHAR(100)
+	,@DeliverableID INT
+	,@ManagerCode CHAR(4)
+	)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @LIST_ITEM_ID INT
+
+	SET @LIST_ITEM_ID = 0
+
+	DECLARE @DeliverableYearTypeID INT
+		,@DeliverableFrequencyID INT
+		,@ClientDeliverableTypeID INT
+		,@ClientDeliverableFrequencyID INT
+
+	SET @DeliverableYearTypeID = 0
+	SET @DeliverableFrequencyID = 0
+	SET @ClientDeliverableTypeID = 0
+	SET @ClientDeliverableFrequencyID = 0
+
+	IF (@LIST_TYPE_NAME = 'Year Type')
+	BEGIN
+		SELECT @DeliverableYearTypeID = DeliverableYearTypeID
+		FROM TBL_DLV_DeliverableYearType
+		WHERE DeliverableID = @DeliverableID
+			AND YearTypeID IN (
+				SELECT LstItm.ListItemID
+				FROM TBL_ListType LstTyp
+				INNER JOIN TBL_ListItem LstItm ON LstItm.ListTypeID = LstTyp.ListTypeID
+				WHERE LstTyp.ListTypeName = @LIST_TYPE_NAME
+					AND LstItm.ListItemName = @LIST_ITEM_NAME
+				)
+
+		IF isnull(@DeliverableYearTypeID, '') <> ''
+			RETURN @DeliverableYearTypeID
+		ELSE
+			RETURN 0
+	END
+
+	IF (@LIST_TYPE_NAME = 'Annual Frequency')
+	BEGIN
+		SELECT @DeliverableFrequencyID = DeliverableFrequencyID
+		FROM TBL_DLV_DeliverableFrequency
+		WHERE DeliverableID = @DeliverableID
+			AND FrequencyID IN (
+				SELECT LstItm.LISTITEMID
+				FROM TBL_ListType LstTyp
+				INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+				WHERE LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+					AND LstItm.LISTITEMNAME = @LIST_ITEM_NAME
+				)
+
+		IF isnull(@DeliverableFrequencyID, '') <> ''
+			RETURN @DeliverableFrequencyID
+		ELSE
+			RETURN 0
+	END
+
+	IF (@LIST_TYPE_NAME = 'ClientDeliverableYearType')
+	BEGIN
+		SET @LIST_TYPE_NAME = 'Year Type'
+
+		SELECT @ClientDeliverableTypeID = MgrcDYT.DeliverableYearTypeID
+		FROM TBL_DLV_ManagerCodeDeliverableYearType MgrcDYT
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrcDlv ON MgrcDlv.ManagerCodeDeliverableID = MgrcDYT.ManagerCodeDeliverableID
+			AND MgrcDlv.ManagerCode = @ManagerCode
+		INNER JOIN TBL_DLV_DeliverableYearType DeliYrTyp ON DeliYrTyp.DeliverableID = MgrcDlv.DeliverableID
+			AND MgrcDYT.DeliverableYearTypeID = DeliYrTyp.DeliverableYearTypeID
+		WHERE MgrcDlv.DeliverableID = @DeliverableID
+			AND DeliYrTyp.YearTypeID IN (
+				SELECT LstItm.LISTITEMID
+				FROM TBL_ListType LstTyp
+				INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+				WHERE LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+					AND LstItm.LISTITEMNAME = @LIST_ITEM_NAME
+				)
+
+		IF isnull(@ClientDeliverableTypeID, '') <> ''
+			RETURN @ClientDeliverableTypeID
+		ELSE
+			RETURN 0
+	END
+
+	IF (@LIST_TYPE_NAME = 'ClientDeliverableFrequency')
+	BEGIN
+		SET @LIST_TYPE_NAME = 'Annual Frequency'
+
+		SELECT @ClientDeliverableFrequencyID = MgrcDlvFrc.DeliverableFrequencyID
+		FROM TBL_DLV_ManagerCodeDeliverableFrequency MgrcDlvFrc
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrcDlv ON MgrcDlv.ManagerCodeDeliverableID = MgrcDlvFrc.ManagerCodeDeliverableID
+			AND MgrcDlv.ManagerCode = @ManagerCode
+		INNER JOIN TBL_DLV_DeliverableFrequency DlvFre ON DlvFre.DeliverableID = MgrcDlv.DeliverableID
+			AND MgrcDlvFrc.DeliverableFrequencyID = DlvFre.DeliverableFrequencyID
+		WHERE MgrcDlv.DeliverableID = @DeliverableID
+			AND DlvFre.FrequencyID IN (
+				SELECT LstItm.LISTITEMID
+				FROM TBL_ListType LstTyp
+				INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+				WHERE LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+					AND LstItm.LISTITEMNAME = @LIST_ITEM_NAME
+				)
+
+		IF isnull(@ClientDeliverableFrequencyID, '') <> ''
+			RETURN @ClientDeliverableFrequencyID
+		ELSE
+			RETURN 0
+	END
+
+	RETURN 0;
+END
+GO
+
+SET NOCOUNT OFF;
+

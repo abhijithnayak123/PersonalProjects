@@ -1,0 +1,288 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTDiagnosticConsole')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTDiagnosticConsole;
+    PRINT 'DROPPED USP_RP_GetBRDTDiagnosticConsole';
+END
+GO
+/******************************************************************************                      
+** Old Name:     USP_EIS_BR_DT_DiagnosticConsole_SelProc         
+**
+** Name : USP_RP_GetBRDTDiagnosticConsole
+**             
+** Short Desc: To fetch data for Diagnostic Console      
+**                      
+** Full Description: To fetch data for Diagnostic Console           
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+       
+ USP_RP_GetBRDTDiagnosticConsole     
+  @DeliverableQueueID  = 238,    
+  @ClientID    = '',    
+  @AccountType   =  '',    
+  @AdventID    = '',    
+  @ClientManager   = -1,    
+  @ReportAnalyst   = -1,    
+  @RuleResult    = '',    
+  @RuleMessage   = '',    
+  @Acknowledge   = -1,    
+  @RuleCategory   = -1,    
+  @StatusID    = '',    
+  @GiftKey    = -1,    
+  @XMLDATA             = '',    
+  @ModuleName          = '',    
+  @UserID     = 100359    
+**             
+** Return values: Null    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu    
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 07-Sep-09                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:    Bug #  Description:                           Rvwd                
+** --------  --------   ------  -------------------------------------- --------                
+** <MM/DD/YYYY>    
+** 11/20/2009 Saravanan P Muthu #10972  User should be able to acknowledge warning message for the report in Error and Generated status    
+** 12/02/2009   Venugopal.B         #10447      INNER JOIN added withe the tables VW_EX_Account,    
+            VW_EX_TrustParticipant,    
+            SYN_IT_UDF_AccountMaster    
+            deleted INNER JOIN with VW_EX_TrustParticipant_type     
+** 01/12/2010 Soorya    #11237  INNER JOIN with TBL_EIS_DT_Delivery_Type_Methods    
+** 01/12/2010 Soorya    #11238   INNER JOIN with TBL_EIS_DT_Delivery_Type_Methods    
+** 01/13/2010   Venu    #11287  LEFT OUTER JOIN WITH TBL_DLV_DeliverableTypeAttribute    
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.    
+** Mar-14-2012 Ashvin   ERD changes implemetation.    
+** 20-May-2014	Geervani		Made changes in the table names to refer new KASPICK DB   
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTDiagnosticConsole]    
+(    
+	@DeliverableQueueID  INT = 0,    
+	@ClientID    VARCHAR(4) = '0',    
+	@AccountType   VARCHAR(20) = '',    
+	@AdventID    VARCHAR(8) = '',    
+	@ClientManager   INT = 0,    
+	@ReportAnalyst   INT = 0,    
+	@RuleResult    VARCHAR(100) = '',    
+	@RuleMessage   VARCHAR(100) = '',    
+	@Acknowledge   INT = 0,    
+	@RuleCategory   INT = 0,    
+	@StatusID    VARCHAR(100) = '',    
+	@GiftKey    INT = 0,    
+	@XMLDATA    XML = '',    
+	@ModuleName    VARCHAR(50) = '',    
+	@UserID     INT    
+)    
+AS    
+BEGIN    
+
+	IF(ISNULL(@ModuleName,'') = '')    
+		BEGIN    
+			DECLARE @DeliverableID BIGINT    
+			DECLARE @NotesAttributeID BIGINT    
+			SELECT @DeliverableID = DeliverableID FROM TBL_DLV_DeliverableQueue WHERE DeliverableQueueID = @DeliverableQueueID      
+			SELECT @NotesAttributeID = DTA.DeliverableTypeAttributeID FROM TBL_DLV_DeliverableTypeAttribute DTA    
+			WHERE DTA.AttributePromptName = 'Notes' AND DTA.DeliverableID = @DeliverableID    
+
+			DECLARE @TEMP_DELIVERABLEITEM_statuses TABLE (DeliverableItemStatusID BIGINT, StatusName VARCHAR(50))  
+			  
+			IF(@StatusID = 'Error')    
+				INSERT INTO @TEMP_DELIVERABLEITEM_statuses (DeliverableItemStatusID, StatusName)    
+				SELECT DPS.DeliverableItemStatusID, DPS.StatusName     
+				FROM TBL_DLV_DeliverableProcessStatus DPS    
+				INNER JOIN TBL_DLV_Deliverable DD On DD.DeliverableProcessID = DPS.DeliverableProcessID    
+				WHERE DPS.StatusName IN ('Error','Generated') AND DD.DeliverableID = @DeliverableID   --#10972: Added 'Generated' Status    
+			ELSE IF (@StatusID = 'Not In Error')    
+				INSERT INTO @TEMP_DELIVERABLEITEM_statuses (DeliverableItemStatusID, StatusName)    
+				SELECT DPS.DeliverableItemStatusID, DPS.StatusName     
+				FROM TBL_DLV_DeliverableProcessStatus DPS    
+				INNER JOIN TBL_DLV_Deliverable DD On DD.DeliverableProcessID = DPS.DeliverableProcessID    
+				WHERE DPS.StatusName NOT IN ('Error','Generated') AND DD.DeliverableID = @DeliverableID   --#10972: Added 'Generated' Status    
+			ELSE    
+				INSERT INTO @TEMP_DELIVERABLEITEM_statuses (DeliverableItemStatusID, StatusName)    
+				SELECT DPS.DeliverableItemStatusID, DPS.StatusName     
+				FROM TBL_DLV_DeliverableProcessStatus DPS    
+				INNER JOIN TBL_DLV_Deliverable DD On DD.DeliverableProcessID = DPS.DeliverableProcessID    
+				WHERE DD.DeliverableID = @DeliverableID       
+				
+				SELECT DISTINCT
+				VRS.ValidationResultID,     
+				VAC.CLIENT_BRIEFNAME as ClientName,     
+				VAC.AdventID,     
+				VAC.AccountType,    
+				RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(VP.LastName)),'') = '') THEN '' ELSE (VP.LastName) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(VP.FirstName)),'') = '') THEN '' ELSE (', ' + VP.FirstName ) END) + ' '+ ISNULL(VP.MiddleInitials,'')) AS ParticipantName,    
+				[DorB]= DI.ReportType,    
+				AccMstr.UDFAMColumn039 AS SpigotAccount,    
+				ReportAnalystUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from tbl_KS_User where userid = SRReportAnalyst.userid),  
+				IMS.Comments,    
+				DIA.AttributeValue AS Notes,    
+				VRL.ValidationRuleID ,    
+				VLI.listItemName AS RuleCategory,     
+				VRL.RuleName,     
+				VRL.DisplayMessage AS [Rule Message],      
+				DI.GiftKey,    
+				DIS.StatusName AS [Report Status],    
+				ClientManagerUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from TBL_KS_User where userid = SRClientManager.userid),  
+				VRS.IsAcknowledged,    
+				VRS.ErrorDetails,                                             
+				VRL.ResultType,      
+				VAC.ClientID AS ClientID,    
+				VAC.ACCOUNTID AS ACCOUNTID,    
+				DI.DeliverableItemID,    
+				IMS.ItemMethodStatusID,    
+				DQ.DeliverableID    
+				FROM TBL_DLV_ValidationResult VRS                                               
+				INNER JOIN TBL_DLV_ValidationRule VRL ON VRS.ValidationRuleID=VRL.ValidationRuleID        
+				INNER JOIN TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID=VRS.DeliverableItemID    
+				INNER JOIN TBL_DLV_DeliverableQueue DQ  ON DI.DeliverableQueueID=DQ.DeliverableQueueID    
+				INNER JOIN TBL_DLV_QueueStatus QS  ON DQ.QueueStatusID=QS.QueueStatusID       
+				--begin #10447    
+				INNER JOIN VW_EX_Account VAC ON DI.CustomerAccountNumber = VAC.AccountID     
+				INNER JOIN VW_RP_TRUSTPARTICIPANT VP ON DI.CustomerAccountNumber = VP.CustomerAccountNumber_Key   
+				INNER JOIN SYN_IT_UDF_AccountMaster AccMstr ON DI.CustomerAccountNumber =  AccMstr.CustomerAccountNumber_Key     
+				--end #10447    
+				INNER JOIN VW_EX_ListItem VLI ON VLI.ListItemID = VRL.RuleCategoryID AND VLI.ListTypeName IN ('BeneReports Validation Engine Rule Category','BeneReports Report Generation Error Category')     
+				INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID    
+				--begin #11237, #11238    
+				INNER JOIN TBL_DLV_DeliverableMethod DTM ON IMS.DeliveryMethodID = DTM.DeliveryMethodID AND DQ.DeliverableID = DTM.DeliverableID AND DTM.IsPrimary = 1    
+				--end #11237, #11238    
+				INNER JOIN @TEMP_DELIVERABLEITEM_statuses DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID    
+				LEFT OUTER JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIA ON DI.DeliverableItemID=DIA.DeliverableItemID     
+				AND DIA.DeliverableTypeAttributeID = @NotesAttributeID    
+				LEFT OUTER JOIN 
+				(
+				SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+				FROM
+				SYN_IT_ContactMaster ConMstr
+				INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+				INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+				INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+				INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=2
+				INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+				INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRClientManager ON SRClientManager.ManagerCode = DI.ManagerCode 
+				LEFT OUTER JOIN 
+				(
+				SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+				FROM
+				SYN_IT_ContactMaster ConMstr
+				INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+				INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+				INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+				INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=519
+				INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+				INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRReportAnalyst ON SRReportAnalyst.ManagerCode = DI.ManagerCode
+				
+				WHERE DQ.DeliverableQueueID = @DeliverableQueueID    
+				AND VAC.ClientID = (CASE WHEN @ClientID <> '-1' THEN @ClientID ELSE VAC.ClientID END)    
+				AND VAC.AccountType = (CASE WHEN @AccountType <> '' THEN @AccountType ELSE VAC.AccountType END)    
+				AND VAC.AdventID = (CASE WHEN @AdventID <> '' THEN @AdventID ELSE VAC.AdventID END)    
+				AND SRClientManager.UserID = (CASE WHEN @ClientManager <> -1 THEN @ClientManager ELSE SRClientManager.UserID END)    
+				AND SRReportAnalyst.UserID = (CASE WHEN @ReportAnalyst <> -1 THEN @ReportAnalyst ELSE SRReportAnalyst.UserID END)    
+				AND VRL.ResultType = (CASE WHEN @RuleResult <> '' THEN @RuleResult ELSE VRL.ResultType END)    
+				AND VRL.RuleCategoryID= (CASE WHEN @RuleCategory <> -1 THEN @RuleCategory ELSE VRL.RuleCategoryID END)    
+				AND VRL.ResultType= (CASE WHEN @RuleResult <> '' THEN @RuleResult ELSE VRL.ResultType END)    
+				AND VRL.RuleName= (CASE WHEN @RuleMessage <> '' THEN @RuleMessage ELSE VRL.RuleName END)    
+				AND VRS.IsAcknowledged = (CASE  WHEN @Acknowledge <> -1 THEN @Acknowledge ELSE VRS.IsAcknowledged END)    
+				AND ISNULL(DI.GiftKey,0) = (CASE WHEN @GiftKey <> -1 THEN @GiftKey ELSE ISNULL(DI.GiftKey,0) END)    
+				ORDER BY VAC.CLIENT_BRIEFNAME,VAC.AdventID,PARTICIPANTNAME,VRL.DisplayMessage ASC    
+
+		END    
+	ELSE    
+		BEGIN    
+			SELECT DISTINCT      
+			VRS.ValidationResultID,     
+			VAC.CLIENT_BRIEFNAME AS ClientName,     
+			VAC.AdventID,     
+			VAC.AccountType,    
+			RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(VP.LastName)),'') = '') THEN '' ELSE (VP.LastName) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(VP.FirstName)),'') = '') THEN '' ELSE (', ' + VP.FirstName ) END) + ' '+ ISNULL(VP.MiddleInitials,'')) AS PARTICIPANTNAME,    
+			[DorB]= DI.ReportType,    
+			AccMstr.UDFAMColumn039 AS SpigotAccount,    
+			ReportAnalystUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from tbl_KS_User where userid = SRReportAnalyst.userid),  
+			IMS.Comments,    
+			DIA.AttributeValue AS Notes,    
+			VRL.ValidationRuleID ,    
+			VLI.ListItemName AS RuleCategory,     
+			VRL.RuleName,     
+			VRL.DisplayMessage AS [Rule Message],      
+			DI.GiftKey,    
+			DIS.StatusName AS [Report Status],    
+			ClientManagerUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from TBL_KS_User where userid = SRClientManager.userid),  
+			VRS.IsAcknowledged,    
+			VRS.ErrorDetails,                                             
+			VRL.ResultType,      
+			VAC.ClientID AS ClientID,    
+			VAC.ACCOUNTID AS ACCOUNTID,    
+			DI.DeliverableItemID,    
+			IMS.ItemMethodStatusID,    
+			DQ.DeliverableID       FROM TBL_DLV_ValidationResult VRS                                               
+			INNER JOIN TBL_DLV_ValidationRule VRL ON VRS.ValidationRuleID = VRL.ValidationRuleID        
+			INNER JOIN TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID = VRS.DeliverableItemID    
+			INNER JOIN TBL_DLV_DeliverableQueue DQ  ON DI.DeliverableQueueID = DQ.DeliverableQueueID    
+			INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID     
+			--begin #10447      
+			INNER JOIN VW_EX_Account VAC ON DI.CustomerAccountNumber = VAC.AccountID     
+			INNER JOIN VW_EX_TrustParticipant VP ON DI.CustomerAccountNumber = VP.CustomerAccountNumber_Key    
+			INNER JOIN SYN_IT_UDF_AccountMaster AccMstr ON DI.CustomerAccountNumber = AccMstr.CustomerAccountNumber_Key     
+			--begin #10447    
+			INNER JOIN VW_EX_ListItem VLI ON VLI.ListItemID = VRL.RuleCategoryID AND VLI.ListTypeName IN ('BeneReports Validation Engine Rule Category','BeneReports Report Generation Error Category')     
+			INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID    
+			--begin #11237, #11238    
+			INNER JOIN TBL_DLV_DeliverableMethod DTM ON IMS.DeliveryMethodID = DTM.DeliveryMethodID AND DQ.DeliverableID = DTM.DeliverableID AND DTM.IsPrimary = 1    
+			--end #11237, #11238    
+			INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID     
+			LEFT OUTER JOIN TBL_DLV_DeliverableTypeAttribute DTA ON DQ.DeliverableID = DTA.DeliverableID AND DTA.AttributePromptName = 'Notes'        --ET #11287    
+			LEFT OUTER JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIA ON DI.DeliverableItemID = DIA.DeliverableItemID     
+			AND DIA.DeliverableTypeAttributeID = DTA.DeliverableTypeAttributeID                                                                     --ET #11287    
+			LEFT OUTER JOIN 
+			(
+			SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+			FROM
+			SYN_IT_ContactMaster ConMstr
+			INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+			INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+			INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+			INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=2
+			INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+			INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRClientManager ON SRClientManager.ManagerCode = DI.ManagerCode 
+			LEFT OUTER JOIN 
+			(
+			SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+			FROM
+			SYN_IT_ContactMaster ConMstr
+			INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+			INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+			INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+			INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=519
+			INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+			INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRReportAnalyst ON SRReportAnalyst.ManagerCode = DI.ManagerCode
+			WHERE DI.DeliverableItemID IN (    
+			SELECT     
+			x.Staging.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID          
+			FROM @XMLDATA.nodes('//DiagnosticsConsoleTrackerCollection/InsertList/DiagnosticsConsoleTracker')      
+			AS x(Staging))    
+			ORDER BY VAC.CLIENT_BRIEFNAME,VAC.AdventID,PARTICIPANTNAME,VRL.DisplayMessage ASC    
+		END
+END 
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTDiagnosticConsole')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTDiagnosticConsole';
+    END

@@ -1,0 +1,78 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ValidateOfficialGroup]    Script Date: 07/01/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ValidateOfficialGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ValidateOfficialGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ValidateOfficialGroup]    Script Date: 07/01/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_ValidateOfficialGroup  
+** Short Desc:   
+**  
+** Full Description  
+  Checkes whether official group is already created for the given TAX year.  
+**  
+** Sample Call
+		DECLARE @Result BIT  
+        EXEC USP_IE_ValidateOfficialGroup 2014, @Result OUTPUT
+        PRINT @Result  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 07/01/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ValidateOfficialGroup]
+	-- paremeters here  
+	@TaxYear SMALLINT
+	,@Result BIT
+OUTPUT AS
+
+--  Initial Set statements  --  
+--SET NOCOUNT ON;  
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+	--  Temp tables, Cursors, Table Variables  --  
+	--  Variable Data Assignment  --  
+SET @Result = 0;
+
+-- Body of procedure  --  
+IF EXISTS (
+		SELECT GroupID
+		FROM TBL_IE_Group
+		WHERE TaxYear = @TaxYear
+			AND IsOfficial = 1
+			AND IsDeleted = 0
+		)
+	SET @Result = 1;
+ELSE
+	SET @Result = 0;
+		-- End of procedure  --

@@ -1,0 +1,82 @@
+/****** Object:  StoredProcedure [dbo].[USP_IT_GetCalcEngineSecurityTypeCode]    Script Date: 2/26/2014 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IT_GetCalcEngineSecurityTypeCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IT_GetCalcEngineSecurityTypeCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IT_GetCalcEngineSecurityTypeCode]    Script Date: 2/26/2014 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_IT_GetCalcEngineSecurityTypeCode                      
+** Short Desc: To Get Account Payout Schedule
+**                      
+** Full Description:  To Get Security Type Code against Cusip
+**            
+**        
+**                              
+** Input Arguments: 
+	 	@XmlInput xml
+
+**         
+** Sample Call     
+
+EXEC USP_IT_GetCalcEngineSecurityTypeCode '<GiftDetailCollection><GiftDetail CustomerAccountNumber ="AMECK1" CUSIP="256219106" /></GiftDetailCollection>'
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 26-Feb-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE dbo.[USP_IT_GetCalcEngineSecurityTypeCode] @XmlInput XML
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT DISTINCT SecTran.CustomerAccountNumber
+		,MstIdx.Cusip
+		,MstIdx.SecurityTypeCode
+	FROM SYN_IT_SecurityTransaction SecTran
+	INNER JOIN SYN_IT_MasterSecIndex MstIdx
+		ON SecTran.ISIN = MstIdx.ISIN
+	--INNER JOIN SYN_IT_SecurityCharacteristicsCodes secCodes
+	--	ON MstIdx.SecurityTypeCode = secCodes.SecurityTypeCode
+	INNER JOIN (
+		SELECT x.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,x.Item.value('@CUSIP[1]', 'varchar(14)') AS Cusip
+		FROM @XmlInput.nodes('//GiftDetailCollection/GiftDetail') AS x(Item)
+		) TmpXml
+		ON SecTran.CustomerAccountNumber = TmpXml.CustomerAccountNumber
+			AND MstIdx.Cusip = TmpXml.Cusip
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

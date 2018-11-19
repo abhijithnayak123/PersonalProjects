@@ -1,0 +1,84 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FnEIS_PP_CalcNextDate'
+		)
+BEGIN
+	DROP FUNCTION FnEIS_PP_CalcNextDate;
+
+	PRINT 'DROPPED FnEIS_PP_CalcNextDate';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/*-- =============================================  
+-- Author:  Ganapati  
+-- Create date: 2-Mar-2008  
+-- Description: <Description, ,>  
+-- =============================================  
+Sample Call
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------     -------- ------    -------------------------------------- --------                    
+  08-June-2012 Praveen            Modified to return null if Frequency <0 or >12
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/                    
+CREATE FUNCTION [dbo].[FnEIS_PP_CalcNextDate]  
+(  
+ @CrDt datetime,   
+ @FDay Int,   
+ @FMonth Int,   
+ @FOccur varchar(25), -- L,F,O  
+ @Freq As Int  
+)  
+RETURNS datetime  
+AS  
+BEGIN  
+ declare @NxtDt datetime  
+ declare @Incr int  
+ declare @ReturnDate datetime  
+  
+ If @Freq < 1 Or @Freq > 12  
+ BEGIN
+  set @ReturnDate = null  
+  return @ReturnDate
+ END
+ If @FOccur = 'L'  
+  begin  
+   set @NxtDt = convert(Datetime,'1' + '/' + cast(@FMonth as varchar) + '/' + cast((Year(@CrDt) - 1) as varchar),103)  
+   set @NxtDt = DateAdd(month, 1, @NxtDt) - 1  
+  end  
+    Else If @FOccur = 'F'  
+        set @NxtDt = convert(Datetime,'1' + '/' + cast(@FMonth as varchar) + '/' + cast((Year(@CrDt) - 1) as varchar),103)  
+    Else If @FOccur = 'O'  
+        set @NxtDt = convert(Datetime,cast(@FDay as varchar) + '/' + cast(@FMonth as varchar) + '/' + cast((Year(@CrDt) - 1) as varchar),103)  
+    Else  
+        set @ReturnDate = null  
+  
+    set @Incr = 12 / @Freq  
+  
+    While (@NxtDt <= @CrDt)  
+  begin  
+   set @NxtDt = DateAdd(month, @Incr, @NxtDt)  
+   If @FOccur = 'L'  
+    begin  
+     set @NxtDt = convert(Datetime,'1' + '/' + cast(Month(@NxtDt) as varchar) + '/' + cast((Year(@NxtDt)) as varchar),103)  
+     set @NxtDt = DateAdd(month, 1, @NxtDt) - 1  
+    end  
+  end  
+  
+    set @ReturnDate = @NxtDt  
+ return @ReturnDate  
+end  
+
+
+

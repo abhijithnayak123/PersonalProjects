@@ -1,0 +1,563 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveAccountInvestment'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveAccountInvestment;
+
+	PRINT 'DROPPED USP_EX_SaveAccountInvestment';
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                                        
+** New Name:     USP_EX_SaveAccountInvestment
+** Old Name:     USP_EIS_EX_ACCOUNT_INVESTMENT_InsUpdProc                                        
+** Short Desc: Put in Short Description                                        
+**                                        
+** Full Description                                        
+**        More detailed description if necessary                                        
+**                                        
+** Sample Call                                        
+    USP_EIS_EX_ACCOUNT_INVESTMENT_InsUpdProc @ENTITYTYPE='Account', @ENTITYID ='102278',@PAGENAME = N'AccountInvestment.aspx',                                        
+  @USERID = N'1',@FSI_OPTION_ID = NULL,@INVESTMENT_OBJECTIVE = N'CTInc',@INVESTMENT_TYPE_ID = 905,@ACCOUNT_STATUS_ID = 911,                                        
+  @INVESTMENT_TAX_ID = 919,@MANAGEMENT_ID = 922,@LOT_ACCOUNTING_ID = 926, @TRANCHING_STATUS_ID = 932, @PORTFOLIO_CODE = N'CCRAF',                                        
+  @BYPOLICY_ID = 18,@ASSETUNDERMGMT_ID = 18,@EXCEPTIONDOC_ID = 19,@FIRSTTRADEDATE = N'1/1/1900',@DISCRETIONARYTRADE_ID = 929,                                        
+  @INVESTMENT_COMMENT = N'kk',@HOLDSUBSTITUTE = false,@RESTRICTEDASSET = false,@HOLDSUBSTITUTECOMMENT = N'kk',@RESTRICTEDASSETCOMMENT = N'kk',                                        
+  @BELL_FSI_DATE = N'1/1/1900',@BELL_IOBJ_DATE = N'1/1/1900',@BELL_ITYP_DATE = N'1/1/1900',@BELL_ACT_DATE = N'1/1/1900',                                        
+  @BELL_ITAX_DATE = N'1/1/1900',@BELL_MGM_DATE = N'1/1/1900',@BELL_LOT_DATE = N'1/1/1900',@BELL_TRN_DATE = N'1/1/1900',                                        
+  @BELL_PFL_DATE = N'1/1/1900'  ,@bell_ftd_date=N'1/1/1900' ,  @ChangeInInvestmentObjective = 1, @DecisionComment = N'Test Comment'                                      
+**                                        
+** Return values: NONE                                        
+**                                        
+**                                        
+** Standard declarations                                        
+**       SET NOCOUNT             ON                                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                                        
+**                                         
+** Created By: RAHUL SHARMA                                        
+** Company   : Kaspick & Company                                        
+** Project   : Excelsior -- IM PROFILE                                        
+** Created DT: 03/21/2007                                        
+**                                                    
+*******************************************************************************                                        
+**       Change History                                        
+*******************************************************************************                   
+** Date:        Author:  Bug #     Description:                           Rvwd                                        
+** --------     -------- ------    -------------------------------------- --------                                        
+** 06/20/2007   Rahul              To Delete and then insert record in Comment                         
+** 08/24/2007 Madhuri     Updated the code to capture audit information                 
+**       when benereportcomment-portfolicode is not                 
+**       inserted at the time of creation of                 
+**       commentlinkage record                 
+           Linkage and update Benereport_supplement                        
+   06/22/2007   Rahul      Made the order of Insert - Main tbl first                      
+   12-jul-07    Sandesh    Concurrency Check                   
+** 19-Mar-08    Amar        ET6274              
+** 22-Jun-09   Madhuri  Added ChangeInInvestmentObjective for Bene Reporting     
+** 23-Oct-2009 Soorya Added DecisionComment for Enfuego4      
+** 05-06-2013 Tanuj  Replaced require later procedure from ins proc to update proc for firstTradedate field.  
+** 08-Apr-2014 Yugandhar  EXCREQ 7.4
+** 23-May-2014  Sanath   Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+
+EXEC USP_EX_SaveAccountInvestment 'Account','Test Account', 'AccountInvestment.aspx','100260', 901,'Agg',904,907,917,922,926,931,'CBDC7030',19,19,19,'1/1/1900',928,null,false,false,null,null,'1/1/1900','1/1/1900','1/1/1900','1/1/1900','1/1/1900','1/1/1900','1/1/1900','1/1/1900','1/1/1900' ,'1/1/1900' ,false, 'asd' 
+                                
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_SaveAccountInvestment (
+	@entitytype VARCHAR(20)
+	,@entityid VARCHAR(14)
+	,@pagename VARCHAR(50)
+	,@userid VARCHAR(50)
+	,@fsi_option_id INT
+	,@investment_objective VARCHAR(50)
+	,@investment_type_id INT
+	,@account_status_id INT
+	,@investment_tax_id INT
+	,@management_id INT
+	,@lot_accounting_id INT
+	,@tranching_status_id INT
+	,@portfolio_code VARCHAR(39)
+	,@bypolicy_id INT
+	,@assetundermgmt_id INT
+	,@exceptiondoc_id INT
+	,@firsttradedate DATETIME
+	,@discretionarytrade_id INT
+	,@investment_comment VARCHAR(250)
+	,@holdsubstitute BIT
+	,@restrictedasset BIT
+	,@holdsubstitutecomment VARCHAR(20)
+	,@restrictedassetcomment VARCHAR(20)
+	,@bell_fsi_date DATETIME
+	,@bell_iobj_date DATETIME
+	,@bell_ityp_date DATETIME
+	,@bell_act_date DATETIME
+	,@bell_itax_date DATETIME
+	,@bell_mgm_date DATETIME
+	,@bell_lot_date DATETIME
+	,@bell_trn_date DATETIME
+	,@bell_pfl_date DATETIME
+	,@bell_ftd_date DATETIME
+	,@ChangeInInvestmentObjective BIT
+	,@DecisionComment VARCHAR(8000)
+	)
+AS
+BEGIN
+	--  Variable Declarations  --                                        
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @entity_type_id INT
+		,@display_name VARCHAR(50)
+		,@list_item_id VARCHAR(50)
+		,@fsi_option VARCHAR(20)
+		,@inv_typ VARCHAR(25)
+		,@acc_status VARCHAR(20)
+		,@inv_tax VARCHAR(12)
+		,@management VARCHAR(23)
+		,@lot_acc VARCHAR(4)
+		,@trn_status VARCHAR(25)
+		,@pfl_commentid INT
+		,@pfl_commentlinkid INT
+		,@by_policy VARCHAR(50)
+		,@by_policy_bit BIT
+		,@assetunder_mgmt VARCHAR(50)
+		,@assetunder_mgmt_bit BIT
+		,@exception_doc VARCHAR(50)
+		,@exception_doc_bit BIT
+		,@discretionary_trade VARCHAR(50)
+		,@discretionary_trade_bit BIT
+		,@fsi_option_na BIT
+		,@investment_type_na BIT
+		,@account_status_na BIT
+		,@investment_tax_na BIT
+		,@management_na BIT;
+	-- Variables used for error handling - uncomment if needed                                        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	DECLARE @val3 VARCHAR(30);
+
+	--  Variable Data Assignment  --                                        
+	SET @ProcName = 'USP_EX_SaveAccountInvestment';
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		SET @DISPLAY_NAME = 'Account - Investment'
+
+		EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'ENTITY'
+			,@LIST_ITEM_NAME = @ENTITYTYPE
+			,@LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT
+
+		--FSI Option                                        
+		SET @fsi_option = dbo.FN_GetItemName(@fsi_option_id)
+		SET @fsi_option_na = dbo.FN_GetNAStatus(@fsi_option_id)
+		--INVESTMENT TYPE                       
+		SET @inv_typ = dbo.FN_GetItemName(@investment_type_id)
+		SET @investment_type_na = dbo.FN_GetNAStatus(@investment_type_id)
+		--ACCOUNT STATUS                                        
+		SET @acc_status = dbo.FN_GetItemName(@account_status_id)
+		SET @account_status_na = dbo.FN_GetNAStatus(@account_status_id)
+		--INVESTMENT TAX                                        
+		SET @inv_tax = dbo.FN_GetItemName(@investment_tax_id)
+		SET @investment_tax_na = dbo.FN_GetNAStatus(@investment_tax_id)
+		--MANAGEMENT                                        
+		SET @management = dbo.FN_GetItemName(@management_id)
+		SET @management_na = dbo.FN_GetNAStatus(@management_id)
+		--LOT ACC                                        
+		SET @lot_acc = dbo.FN_GetItemName(@lot_accounting_id)
+		--TRANCHING STATUS                                        
+		SET @trn_status = dbo.FN_GetItemName(@tranching_status_id)
+		--BY POLICY                                        
+		SET @by_policy_bit = dbo.FN_GetItemName(@bypolicy_id)
+		--ASSET UNDER MANAGEMENT                                        
+		SET @assetunder_mgmt_bit = dbo.FN_GetItemName(@assetundermgmt_id)
+		--EXCEPTION DOC                                        
+		SET @exception_doc_bit = dbo.FN_GetItemName(@exceptiondoc_id)
+		--DISCRETIONARY TRADE                                        
+		SET @discretionary_trade_bit = dbo.FN_GetItemName(@discretionarytrade_id)
+
+		--PORTFOLIOCODE                 
+		IF EXISTS (
+				SELECT *
+				FROM SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMP_PORTFOLIO_CODE_DTL')
+				)
+		BEGIN
+			DROP TABLE TEMP_PORTFOLIO_CODE_DTL
+		END
+
+		CREATE TABLE TEMP_PORTFOLIO_CODE_DTL (
+			USERID INT
+			,MODIFIED_DATE DATETIME
+			)
+
+		INSERT INTO TEMP_PORTFOLIO_CODE_DTL
+		VALUES (
+			@userid
+			,getdate()
+			)
+
+		SELECT @pfl_commentid = brcommentid
+		FROM TBL_INV_BeneReportComment
+		WHERE portfoliocode = @portfolio_code
+
+		SELECT @pfl_commentlinkid = comlinktypeid
+		FROM TBL_BR_CommentLinkType
+		WHERE comdescription = 'BeneComment'
+
+		IF EXISTS
+		( 
+			SELECT 1
+			FROM TBL_INV_AccountProfile
+			WHERE CustomerAccountNumber = @entityid
+		)
+		-- Commented line  - ISNULL(@entityid, '0') <> '0' because it was yielding wrong results when new account created from Innotrust. 
+		BEGIN
+			IF (lower(@entitytype) = lower('ACCOUNT'))
+			BEGIN
+			-------------------------------Begin Update Audit Log TBL_INV_AUDIT_AccountProfile ----------------------------------  
+			INSERT INTO TBL_INV_AUDIT_AccountProfile(
+			AuditUserID,AuditDatetime,AuditFlag,
+			AuditTable,AuditDetail,
+			CustomerAccountNumber,AccountInvestmentStatusCode,
+			AllowNewGift,AssetsUnderMgmt,AssetsUnderTA,Authority,AxysFMV,ByPolicy,
+			CashBalanceCode,DiscretionaryTrade,ExceptionDoc,FirstTradeDate,FSITypeCode,
+			HoldsSubstitutes,HorizonAsOfDate,HorizonComment,HorizonOmit,HorizonYears,
+			HorizonYoungestAge,IncomeSensitiveYN,InvestmentComment,InvestmentTaxStatusCode,InvestmentTypeCode,
+			LotAccountingCode,ObjectiveCode,PortfolioTypeCode,RestrictedAssetComment,RestrictedAssets,
+			RestrictedAssetWeight,SchwabMasterID,SubstituteAssetComment,SubstituteAssetWeight,
+			TradeStatusCode,TrancheID,TranchesRemaining,TrancheStatusCode,TranchesTotal,KCOTranserTo,
+			AccountStatusCodeNA,FSITypeCodeNA,InvestmentTaxStatusCodeNA,InvestmentTypeCodeNA,TradeStatusCodeNA,
+			ChangeInInvestmentObjective
+			)
+			SELECT 
+			@userid,GETDATE(),'U',
+			'TBL_INV_AccountProfile',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+			NULL,AccountInvestmentStatusCode,
+			NULL,AssetsUnderMgmt,NULL,NULL,NULL,NULL,
+			NULL,DiscretionaryTrade,NULL,FirstTradeDate,NULL,
+			NULL,NULL,NULL,NULL,NULL,
+			NULL,NULL,NULL,NULL,InvestmentTypeCode,
+			NULL,ObjectiveCode,PortfolioTypeCode,NULL,NULL,
+			NULL,NULL,NULL,NULL,
+			TradeStatusCode,NULL,NULL,TrancheStatusCode,NULL,NULL,
+			NULL,NULL,NULL,NULL,NULL,
+			ChangeInInvestmentObjective
+			FROM TBL_INV_AccountProfile WHERE CustomerAccountNumber=@entityid
+			-------------------------------End Update Audit Log TBL_INV_AUDIT_AccountProfile ----------------------------------  
+
+			
+				UPDATE TBL_INV_AccountProfile
+				SET fsitypecode = @fsi_option
+					,objectivecode = @investment_objective
+					,investmenttypecode = @inv_typ
+					,AccountInvestmentStatusCode=@acc_status                                        
+					,investmenttaxstatuscode = @inv_tax
+					,tradestatuscode = @management
+					,lotaccountingcode = @lot_acc
+					,tranchestatuscode = @trn_status
+					,bypolicy=@by_policy_bit
+					,assetsundermgmt = @assetunder_mgmt_bit
+					,exceptiondoc=@exception_doc_bit,                                        
+					discretionarytrade = @discretionary_trade_bit
+					,
+					--investmentcomment=@investment_comment,                                        
+					holdssubstitutes = @holdsubstitute
+					,substituteassetcomment = @holdsubstitutecomment
+					,restrictedassets = @restrictedasset
+					,restrictedassetcomment = @restrictedassetcomment
+					,firsttradedate = @firsttradedate
+					,fsitypecodena = @fsi_option_na
+					,investmenttypecodena = @investment_type_na
+					,accountstatuscodena = @account_status_na
+					,investmenttaxstatuscodena = @investment_tax_na
+					,tradestatuscodena = @management_na
+					,ChangeInInvestmentObjective = @ChangeInInvestmentObjective
+				WHERE CustomerAccountNumber = @entityid
+			END
+
+			IF EXISTS (
+					SELECT commentid
+					FROM TBL_BR_CommentLinkage
+					WHERE CustomerAccountNumber = @entityid
+					)
+			BEGIN
+				DELETE
+				FROM TBL_BR_CommentLinkage
+				WHERE CustomerAccountNumber = @entityid
+					AND ComLinkTypeID = @pfl_commentlinkid
+
+				--INSERTS THE VALUE IN COMMENT LINKAGE TABLE FOR THE RESPECTIVE COMMENTID                        
+				INSERT INTO TBL_BR_CommentLinkage (
+					CustomerAccountNumber
+					,ComLinkTypeID
+					,CommentID
+					)
+				VALUES (
+					@entityid
+					,@pfl_commentlinkid
+					,@pfl_commentid
+					)
+			END
+			ELSE IF (@pfl_commentid IS NOT NULL)
+			BEGIN
+				-- Inserting record in CommentLinkage table                                        
+				INSERT INTO TBL_BR_CommentLinkage (
+					CustomerAccountNumber
+					,ComLinkTypeID
+					,CommentID
+					)
+				VALUES (
+					@entityid
+					,@pfl_commentlinkid
+					,@pfl_commentid
+					)
+			END
+
+			--2.                                            
+			IF (
+					@investment_objective IS NOT NULL
+					AND @investment_objective <> '-select-'
+					)
+			BEGIN
+				-- Added by Soorya - for 'Enfuego4' - on 23-OCT-2009 - start        
+				IF (@DecisionComment <> '')
+				BEGIN
+					DECLARE @DecisionCommentsID BIGINT
+						,@TypeID BIGINT
+						,@AdventID VARCHAR(8)
+
+					SELECT @TypeID = TypeID
+					FROM TBL_INV_DecisionCommentType
+					WHERE TypeName = 'Account'
+
+					INSERT INTO TBL_INV_DecisionComment (
+						Comment
+						,OriginType
+						,DecisionDate
+						,CommentUser
+						)
+					VALUES (
+						@DecisionComment
+						,@TypeID
+						,GETDATE()
+						,@userid
+						)
+
+					SELECT @DecisionCommentsID = IDENT_CURRENT('TBL_INV_DecisionComment')
+
+					SELECT @AdventID = CustomerAccountNumber
+					FROM TBL_INV_AccountProfile
+					WHERE CustomerAccountNumber = @entityid
+
+					INSERT INTO TBL_INV_DecisionCommentTypeLink (
+						DecisionCommentID
+						,DecisionTypeValue
+						,TypeID
+						)
+					VALUES (
+						@DecisionCommentsID
+						,@AdventID
+						,@TypeID
+						)
+				END
+			END
+		END
+		ELSE
+		BEGIN
+			--select @entityid
+			INSERT INTO TBL_INV_AccountProfile (
+				CustomerAccountNumber
+				,AllowNewGift
+				,AssetsUnderTA
+				,fsitypecode
+				,objectivecode
+				,investmenttypecode
+				,AccountInvestmentStatusCode
+             	,investmenttaxstatuscode
+				,tradestatuscode
+				,lotaccountingcode
+				,tranchestatuscode
+				,bypolicy
+				,assetsundermgmt
+				,exceptiondoc
+				,discretionarytrade
+				--investmentcomment,                                        
+				,holdssubstitutes
+				,substituteassetcomment
+				,restrictedassets
+				,restrictedassetcomment
+				,firsttradedate
+				,fsitypecodena
+				,investmenttypecodena
+				,accountstatuscodena
+				,investmenttaxstatuscodena
+				,tradestatuscodena
+				,ChangeInInvestmentObjective
+				,IncomeSensitiveYN
+				)
+			VALUES (
+				@entityid
+				,0
+				,0
+				,@fsi_option
+				,@investment_objective
+				,@inv_typ
+				,@acc_status,                                           
+				@inv_tax
+				,@management
+				,@lot_acc
+				,@trn_status
+				,@by_policy_bit,                                          
+				@assetunder_mgmt_bit
+				,@exception_doc_bit,                                        
+				@discretionary_trade_bit
+				--@investment_comment,                                        
+				,@holdsubstitute
+				,@holdsubstitutecomment
+				,@restrictedasset
+				,@restrictedassetcomment
+				,@firsttradedate
+				,@fsi_option_na
+				,@investment_type_na
+				,@account_status_na
+				,@investment_tax_na
+				,@management_na
+				,@ChangeInInvestmentObjective
+				,0
+				)
+
+			-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_AccountProfile ----------------------------------  
+			INSERT INTO TBL_INV_AUDIT_AccountProfile(
+			AuditUserID,AuditDatetime,AuditFlag,
+			AuditTable,AuditDetail,
+			CustomerAccountNumber,AccountInvestmentStatusCode,
+			AllowNewGift,AssetsUnderMgmt,AssetsUnderTA,Authority,AxysFMV,ByPolicy,
+			CashBalanceCode,DiscretionaryTrade,ExceptionDoc,FirstTradeDate,FSITypeCode,
+			HoldsSubstitutes,HorizonAsOfDate,HorizonComment,HorizonOmit,HorizonYears,
+			HorizonYoungestAge,IncomeSensitiveYN,InvestmentComment,InvestmentTaxStatusCode,InvestmentTypeCode,
+			LotAccountingCode,ObjectiveCode,PortfolioTypeCode,RestrictedAssetComment,RestrictedAssets,
+			RestrictedAssetWeight,SchwabMasterID,SubstituteAssetComment,SubstituteAssetWeight,
+			TradeStatusCode,TrancheID,TranchesRemaining,TrancheStatusCode,TranchesTotal,KCOTranserTo,
+			AccountStatusCodeNA,FSITypeCodeNA,InvestmentTaxStatusCodeNA,InvestmentTypeCodeNA,TradeStatusCodeNA,
+			ChangeInInvestmentObjective
+			)
+			SELECT 
+			@userid,GETDATE(),'I',
+			'TBL_INV_AccountProfile',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+			NULL,AccountInvestmentStatusCode,
+			NULL,AssetsUnderMgmt,NULL,NULL,NULL,NULL,
+			NULL,DiscretionaryTrade,NULL,FirstTradeDate,NULL,
+			NULL,NULL,NULL,NULL,NULL,
+			NULL,NULL,NULL,NULL,InvestmentTypeCode,
+			NULL,ObjectiveCode,PortfolioTypeCode,NULL,NULL,
+			NULL,NULL,NULL,NULL,
+			TradeStatusCode,NULL,NULL,TrancheStatusCode,NULL,NULL,
+			NULL,NULL,NULL,NULL,NULL,
+			ChangeInInvestmentObjective
+			FROM TBL_INV_AccountProfile WHERE CustomerAccountNumber = @entityid
+			-------------------------------End Insert Audit Log TBL_INV_AUDIT_AccountProfile ----------------------------------  
+
+			IF EXISTS (
+					SELECT CommentID
+					FROM TBL_BR_CommentLinkage
+					WHERE CustomerAccountNumber = @entityid
+					)
+			BEGIN
+				--DELETES THE VALUE FROM THE COMMENT LINKAGE TABLE FOR THE RESPECTIVE COMMENTID                        
+				DELETE
+				FROM TBL_BR_CommentLinkage
+				WHERE CustomerAccountNumber = @entityid
+					AND ComLinkTypeID = @pfl_commentlinkid
+
+				--INSERTS THE VALUE IN COMMENT LINKAGE TABLE FOR THE RESPECTIVE COMMENTID                        
+				INSERT INTO TBL_BR_CommentLinkage (
+					CustomerAccountNumber
+					,ComLinkTypeID
+					,CommentID
+					)
+				VALUES (
+					@entityid
+					,@pfl_commentlinkid
+					,@pfl_commentid
+					)
+			END
+			ELSE
+			BEGIN
+				-- Inserting record in CommentLinkage table                                        
+				INSERT INTO TBL_BR_CommentLinkage (
+					CustomerAccountNumber
+					,ComLinkTypeID
+					,CommentID
+					)
+				VALUES (
+					@ENTITYID
+					,@PFL_COMMENTLINKID
+					,@PFL_COMMENTID
+					)
+			END
+		END
+
+		-- Updating the account status - CR #4442                                        
+		EXEC USP_EX_UpdEntityStatus 'ACCOUNT'
+			,@entityid
+			,@userid
+
+		IF EXISTS (
+				SELECT *
+				FROM SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMP_PORTFOLIO_CODE_DTL')
+				)
+		BEGIN
+			DROP TABLE TEMP_PORTFOLIO_CODE_DTL
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = Cast(@entitytype AS VARCHAR(20));
+		SET @val2 = Cast(@entityid AS CHAR(14));
+		SET @val3 = Cast(@pagename AS VARCHAR(50));
+
+		EXEC USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'ENTITYTYPE'
+			,@val2 = @val2
+			,@val2str = 'ENTITYID'
+			,@val3 = @val3
+			,@val3str = 'PAGENAME';
+	END CATCH
+END
+
+SET ANSI_NULLS OFF
+GO
+
+
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveAccountInvestment'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveAccountInvestment';
+END

@@ -1,0 +1,166 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_SaveApproveTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_SaveApproveTSheet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_SaveApproveTSheet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_TR_SaveApproveTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_TR_SaveApproveTSheet                      
+** Short Desc: Approves the TSheet for the specified EventID
+**                      
+** Full Description: Updates the EventstatusID to Approved state and Post the trade proposal records for the specified EventID
+**      
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+
+ DECLARE @XMLTSheet XML
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(MAX)       
+
+ SET @XMLTSheet= '<TSheet>
+				  <Event EventID="1" RecordVersion="0x00000000016E06DA" Comments="rbandak 11/18/2009 09:19: investing proceeds 11/18" UpdatedComments="rbandak 11/18/2010 09:19: investing proceeds 11/18" />
+				  <TSheetTradeProposalCollection>
+				    <TSheetTradeProposal EventID="1" EventAccountID="1" SecurityTypeCode="lcus" SecuritySymbol="GE" TradeProposedQuantity="-1000" TradeProposedDollarAmount="-15660.00" TradeType="SA" SubmissionType="Phone" />
+				  </TSheetTradeProposalCollection>
+				 </TSheet>'
+ EXEC dbo.USP_TR_SaveApproveTSheet @XMLTSheet,1,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+  Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_SaveApproveTSheet] (
+	@XMLTSheet XML
+	,@ApproveUserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	DECLARE @ProcName VARCHAR(50)
+	DECLARE @EventStatusID INT
+
+	SET @ProcName = 'USP_TR_SaveApproveTSheet'
+
+	-- Body of procedure  --            
+	BEGIN TRY
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_TR_Event Evnt
+				INNER JOIN (
+					SELECT XMLInput.Item.value('@EventID[1]', 'int') AS EventID
+						,XMLInput.Item.value('@RecordVersion[1]', 'varchar(1000)') AS EventRecordVersion
+					FROM @XMLTSheet.nodes('//TSheet/Event') AS XMLInput(Item)
+					) XmlInput ON XmlInput.EventID = Evnt.EventID
+					AND sys.fn_varbintohexsubstring(1, Evnt.RecordVersion, 1, 0) = XmlInput.EventRecordVersion
+				)
+		BEGIN
+			BEGIN TRANSACTION @ProcName
+
+			SELECT @EventStatusID = EventStatusID
+			FROM TBL_TR_EventStatus
+			WHERE EventStatus = 'Approved'
+
+			UPDATE TBL_TR_Event
+			SET EventStatusID = @EventStatusID
+				,LastModifiedUserID = @ApproveUserID
+				,LastModifiedDate = GetDate()
+				,Comments = XmlInput.Comments
+				,TradeComment = XmlInput.TradeComment
+			FROM TBL_TR_Event Evnt
+			INNER JOIN (
+				SELECT XMLInput.Item.value('@EventID[1]', 'int') AS EventID
+					,XMLInput.Item.value('@Comments[1]', 'varchar(1000)') AS Comments
+					,XMLInput.Item.value('@UpdatedComments[1]', 'varchar(1000)') AS TradeComment
+				FROM @XMLTSheet.nodes('//TSheet/Event') AS XMLInput(Item)
+				) XmlInput ON XmlInput.EventID = Evnt.EventID
+
+			INSERT INTO [TBL_TR_TSheetApprovedTrade] (
+				[EventID]
+				,[EventAccountID]
+				,[SecurityTypeCode]
+				,[SecuritySymbol]
+				,[TradeQuantity]
+				,[DollarAmount]
+				,[TradeDate]
+				,[TradeType]
+				,[SubmissionType]
+				,[LastModifiedUserID]
+				,[LastModifiedDate]
+				)
+			SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+				,XMLInput.Item.value('@EventAccountID', 'INT') AS EventAccountID
+				,XMLInput.Item.value('@SecurityTypeCode', 'varchar(50)') AS SecurityTypeCode
+				,XMLInput.Item.value('@SecuritySymbol', 'varchar(50)') AS SecuritySymbol
+				,XMLInput.Item.value('@TradeProposedQuantity', 'float') AS TradeProposedQuantity
+				,XMLInput.Item.value('@TradeProposedDollarAmount', 'float') AS TradeProposedDollarAmount
+				,GetDate()
+				,XMLInput.Item.value('@TradeType', 'varchar(5)') AS TradeType
+				,XMLInput.Item.value('@SubmissionType', 'varchar(20)') AS SubmissionType
+				,@ApproveUserID
+				,GetDate()
+			FROM @XMLTSheet.nodes('//TSheet/TSheetTradeProposalCollection/TSheetTradeProposal') AS XMLInput(Item)
+			WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+				AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+
+			SET @ReturnStatus = 0;
+
+			COMMIT TRANSACTION @ProcName
+
+			EXEC USP_TR_GetEventByID @XMLTSheet
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+			SET @ErrorDesc = 'Dirty Write';
+		END
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = error_message();
+
+		ROLLBACK TRANSACTION @ProcName;
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

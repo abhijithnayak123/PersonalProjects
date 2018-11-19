@@ -1,0 +1,497 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_ProposeTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_ProposeTSheet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_ProposeTSheet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_TR_ProposeTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_TR_ProposeTSheet                      
+** Short Desc: Updates the Trade Proposal to the tables for the specified EventIDs
+**                      
+** Full Description: Updates the Trade Proposal to the tables for the specified EventIDs
+**      
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+
+ DECLARE @XMLTSheet XML
+ DECLARE @XMLTSheetInvestmentCommentHistoryCollection XML
+ DECLARE @XMLTSheetAuthorizedSignerCollection XML
+ DECLARE @XMLTSheetTradeRestrictionCollection XML
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(1000)   
+ 
+ SET @XMLTSheet = '<TSheet>
+	<Event EventID="1" RecordVersion="0x00000000020A9F05"  AXYSPositionDate="2009-11-13"  ImposeBenePayments="1" LoadPaymentsDataUpTo="2009-12-13" LastModifiedUserID="1" Comments="rbandak 11/18/2009 09:19: investing proceeds 11/18" UpdatedComments="" EventTrancheRate="" />
+	<EventAccountCollection>
+	   <EventAccount EventID="1" CustomerAccountNumber="VTROB" AccountName="Harry E. Robson and Sarah B. Robson Charitable Remainder Unitrust" AccountType="CRUT" PayoutRate="6.5" AnnuityAmount="0" SLMasterAccount="08593924" Managed="1" Custodian="Charles Schwab" CustodianAccountNumber="70676043" InvestmentTypeCode="M" TaxStatus="STGSensitive" TradeDiscretion="1" TradeStatusCode="Trade w/o Restrictions" FSIOption="CR" InvestmentComment="" TrancheStatusCode="Not Applicable" ImposedBenePayment="0" ObjectiveCode="VTGro" PoliByCli="Addition - Investment Of Asset - Fully Invest Immediately - 1tranche(s)/0days apart Addition - Sell of Assets - Immediately Sell All - 1tranche(s)/0days apart New Trust - Investment Of Asset - Fully Invest Immediately - 1tranche(s)/0days apart New Trust - Sell of Assets - Immediately Sell All - 1tranche(s)/0days apart" LastModifiedUserID="1" LotAccountingCode="FIFO" PaymentDate="" AnnualPayment="" ScheduledAmount="" IMlevel1Count="" IMlevel2Count="" />
+	</EventAccountCollection>
+	<TSheetTradeProposalCollection> 
+	   <TSheetTradeProposal EventID="1" EventAccountID="1" SecurityTypeCode="caus" SecurityTypeOrder="48"  SecurityTypeDescription="Cash and Equivalents" SecuritySymbol="Test" SecurityDescription="Test" TSheetTradeForReview ="0" AssetClass="Test" TargetPercentage="0" AdjustedPercentage="0" TotalDollarChange="0" TrancheDollarChange="0" TradeProposedDollarAmount="0" TradeProposedQuantity="0" TPlusOne="0" TPlusTwo="0" TPlusThree="0" SubmissionType="Phone" SellAll="0" LastModifiedUserID="1" IsAdd="0" IsSubstitute="0" IsExclude="0" IsAboveTheLine="1" />
+	</TSheetTradeProposalCollection>
+	<TSheetLotsCollection>
+	   <TSheetLots LotID="0" Industry="" CostBasis="0" PortfolioCode="" UnitCost="" AquisitionDate="1900-01-01" SharePrice="6608.47" Marketvalue="" Quantity="0" UnrealizedGainLossDollars="0" UnrealizedGainLossPercentage="0" SecurityTypeCode="caus" SecuritySymbol="CSca" EventID="1" EventAccountID="1" TSheetTradeForReview ="0" LastModifiedUserID="100060" />
+	</TSheetLotsCollection>
+ </TSheet>'
+ 
+ SET @XMLTSheetInvestmentCommentHistoryCollection= ' <InvestmentCommentHistoryCollection>
+  <InvestmentCommentHistory EventID="17365" EventAccountID="19181" EventStatusID="2" InvestmentCommentId="3531" CustomerAccountNumber="OSHAN" InvestmentComments="Trustee, John Fenner.Non-Discretionary" CreatedUserID="100124" ModifiedUserID="100124" CreatedDate="2011-03-01" />
+ </InvestmentCommentHistoryCollection>'
+ SET @XMLTSheetAuthorizedSignerCollection='<AuthorizedSignerCollection>
+ <AuthorizedSigner EventID="35665" EventAccountID="39853" EventStatusID="2" EmployeeID="102025" CustomerAccountNumber="VCGAPRMU" AuthorizationType="IM Level 1" UserName="USER1" />
+</AuthorizedSignerCollection>'
+ SET @XMLTSheetTradeRestrictionCollection='<TradeRestrictionCollection>
+ <TradeRestriction EventID="17365" EventAccountID="19181" EventStatusID="2" TradeRestrictionID="194" CustomerAccountNumber="OSHAN" TradeRestrictionType="Cap Gains - Restricted" SecuritySymbol="" Comments="Cap gain sensitive.  NQI" CreatedBy="User1" StartDate="2011-03-01" EndDate="1900-01-01" />
+</TradeRestrictionCollection>'
+           
+ EXEC dbo.USP_TR_ProposeTSheet @XMLTSheet,@XMLTSheetInvestmentCommentHistoryCollection,@XMLTSheetAuthorizedSignerCollection,@XMLTSheetTradeRestrictionCollection,@ReturnStatus OUTPUT,@ErrorDesc  OUTPUT
+ Select @ReturnStatus ,@ErrorDesc 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_ProposeTSheet] (
+	@XMLTSheet XML
+	,@XMLTSheetInvestmentCommentHistoryCollection XML
+	,@XMLTSheetAuthorizedSignerCollection XML
+	,@XMLTSheetTradeRestrictionCollection XML
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpTSheetEvent]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpTSheetEvent]
+	END
+
+	DECLARE @PropasalCount AS INT
+	DECLARE @procname AS VARCHAR(60)
+	DECLARE @EventStatusID AS INT
+
+	SELECT @procname = 'USP_TR_ProposeTSheet'
+
+	SET @PropasalCount = 0
+
+	SELECT @PropasalCount = @XMLTSheet.value('count(/TSheet/TSheetTradeProposalCollection)', 'INT')
+
+	CREATE TABLE #TmpTSheetEvent (
+		EventID INT
+		,RecordVersion VARCHAR(1000)
+		,AXYSPositionDate DATETIME
+		,ImposeBenePayments BIT
+		,LoadPaymentsDataUpTo DATETIME
+		,LastModifiedUserID INT
+		,Comments VARCHAR(1000)
+		,TradeComment VARCHAR(1000)
+		,EventTrancheRate FLOAT
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION @procname
+
+		INSERT INTO #TmpTSheetEvent (
+			EventID
+			,RecordVersion
+			,AXYSPositionDate
+			,ImposeBenePayments
+			,LoadPaymentsDataUpTo
+			,LastModifiedUserID
+			,Comments
+			,TradeComment
+			,EventTrancheRate
+			)
+		SELECT XMLInput.Item.value('@EventID[1]', 'INT') AS EventID
+			,XMLInput.Item.value('@RecordVersion[1]', 'VARCHAR(1000)') AS RecordVersion
+			,XMLInput.Item.value('@AXYSPositionDate[1]', 'DATETIME') AS AXYSPositionDate
+			,XMLInput.Item.value('@ImposeBenePayments[1]', 'BIT') AS ImposeBenePayment
+			,XMLInput.Item.value('@LoadPaymentsDataUpTo[1]', 'DATETIME') AS LoadPaymentsDataUpTo
+			,XMLInput.Item.value('@LastModifiedUserID[1]', 'INT') AS LastModifiedUserID
+			,XMLInput.Item.value('@Comments[1]', 'VARCHAR(1000)') AS Comments
+			,XMLInput.Item.value('@UpdatedComments[1]', 'VARCHAR(1000)') AS TradeComment
+			,XMLInput.Item.value('@EventTrancheRate[1]', 'FLOAT') AS EventTrancheRate
+		FROM @XMLTSheet.nodes('//TSheet/Event') AS XMLInput(Item)
+
+		IF (@PropasalCount > 0)
+		BEGIN
+			IF EXISTS (
+					SELECT 1
+					FROM TBL_TR_Event Evnt
+					INNER JOIN #TmpTSheetEvent XmlInput ON XmlInput.EventID = Evnt.EventID
+						AND sys.fn_varbintohexsubstring(1, Evnt.recordversion, 1, 0) = XmlInput.RecordVersion
+					)
+			BEGIN
+				SELECT @EventStatusID = EventStatusID
+				FROM TBL_TR_EventStatus
+				WHERE EventStatus = 'Proposed'
+
+				UPDATE TBL_TR_Event
+				SET EventStatusID = @EventStatusID
+					,AXYSPositionDate = XmlInput.AXYSPositionDate
+					,ImposeBenePayment = XmlInput.ImposeBenePayments
+					,LastModifiedUserID = XmlInput.LastModifiedUserID
+					,LastModifiedDate = GetDate()
+					,LoadPaymentsDataUpTo = XmlInput.LoadPaymentsDataUpTo
+					,Comments = XmlInput.Comments
+					,TradeComment = XmlInput.TradeComment
+					,EventTrancheRate = XmlInput.EventTrancheRate
+				FROM TBL_TR_Event Evnt
+				INNER JOIN #TmpTSheetEvent XmlInput ON XmlInput.EventID = Evnt.EventID
+
+				UPDATE TBL_TR_EventAccount
+				SET [AccountName] = XmlInput.AccountName
+					,[AccountType] = XmlInput.AccountType
+					,[PayoutRate] = XmlInput.PayoutRate
+					,[AnnuityAmount] = XmlInput.AnnuityAmount
+					,[SLMasterAccount] = XmlInput.SLMasterAccount
+					,[Managed] = XmlInput.Managed
+					,[Custodian] = XmlInput.Custodian
+					,[CustodianAccountNumber] = XmlInput.CustodianAccountNumber
+					,[InvestmentTypeCode] = XmlInput.InvestmentTypeCode
+					,[TaxStatus] = XmlInput.TaxStatus
+					,[TradeDiscretion] = XmlInput.TradeDiscretion
+					,[TradeStatusCode] = XmlInput.TradeStatusCode
+					,[FSIOption] = XmlInput.FSIOption
+					,[InvestmentComment] = XmlInput.InvestmentComment
+					,[TrancheStatusCode] = XmlInput.TrancheStatusCode
+					,[ImposedBenePayment] = XmlInput.ImposedBenePayment
+					,[ObjectiveCode] = XmlInput.ObjectiveCode
+					,[PoliByCli] = XmlInput.PoliByCli
+					,[LastModifiedUserID] = XmlInput.LastModifiedUserID
+					,[LastModifiedDate] = GetDate()
+					,[LotAccountingCode] = XmlInput.LotAccountingCode
+					,[PaymentDate] = XmlInput.PaymentDate
+					,[AnnualPayment] = XmlInput.AnnualPayment
+					,[ScheduledAmount] = XmlInput.ScheduledAmount
+					,[IMlevel1Count] = XmlInput.IMlevel1Count
+					,[IMlevel2Count] = XmlInput.IMlevel2Count
+				FROM TBL_TR_EventAccount REAccount
+				INNER JOIN (
+					SELECT XMLInput.Item.value('@EventID', 'int') AS EventID
+						,XMLInput.Item.value('@CustomerAccountNumber', 'VARCHAR(14)') AS CustomerAccountNumber
+						--,XMLInput.Item.value('@AccountOrder', 'INT') AS AccountOrder
+						,XMLInput.Item.value('@AccountName', 'VARCHAR(160)') AS AccountName
+						,XMLInput.Item.value('@AccountType', 'VARCHAR(20)') AS AccountType
+						,XMLInput.Item.value('@PayoutRate', 'FLOAT') AS PayoutRate
+						,XMLInput.Item.value('@AnnuityAmount', 'money') AS AnnuityAmount
+						,XMLInput.Item.value('@SLMasterAccount', 'VARCHAR(20)') SLMasterAccount
+						,XMLInput.Item.value('@Managed', 'BIT') AS Managed
+						,XMLInput.Item.value('@Custodian', 'VARCHAR(150)') AS Custodian
+						,XMLInput.Item.value('@CustodianAccountNumber', 'INT') AS CustodianAccountNumber
+						,XMLInput.Item.value('@InvestmentTypeCode', 'VARCHAR(25)') AS InvestmentTypeCode
+						,XMLInput.Item.value('@TaxStatus', 'VARCHAR(20)') AS TaxStatus
+						,XMLInput.Item.value('@TradeDiscretion', 'BIT') AS TradeDiscretion
+						,XMLInput.Item.value('@TradeStatusCode', 'VARCHAR(25)') AS TradeStatusCode
+						,XMLInput.Item.value('@FSIOption', 'VARCHAR(2)') AS FSIOption
+						,XMLInput.Item.value('@InvestmentComment', 'VARCHAR(1000)') AS InvestmentComment
+						,XMLInput.Item.value('@TrancheStatusCode', 'VARCHAR(25)') AS TrancheStatusCode
+						,XMLInput.Item.value('@ImposedBenePayment', 'money') AS ImposedBenePayment
+						,XMLInput.Item.value('@ObjectiveCode', 'VARCHAR(30)') AS ObjectiveCode
+						,XMLInput.Item.value('@PoliByCli', 'VARCHAR(1000)') AS PoliByCli
+						,XMLInput.Item.value('@LastModifiedUserID', 'INT') AS LastModifiedUserID
+						,XMLInput.Item.value('@LotAccountingCode', 'VARCHAR(5)') AS LotAccountingCode
+						,XMLInput.Item.value('@PaymentDate', 'DATETIME') AS PaymentDate
+						,XMLInput.Item.value('@AnnualPayment', 'money') AS AnnualPayment
+						,XMLInput.Item.value('@ScheduledAmount', 'money') AS ScheduledAmount
+						,XMLInput.Item.value('@IMlevel1Count', 'INT') AS IMlevel1Count
+						,XMLInput.Item.value('@IMlevel2Count', 'INT') AS IMlevel2Count
+					FROM @XMLTSheet.nodes('//TSheet/EventAccountCollection/EventAccount') AS XMLInput(Item)
+					) XmlInput ON XmlInput.EventID = REAccount.EventID
+					AND XmlInput.CustomerAccountNumber = REAccount.CustomerAccountNumber
+
+				DELETE TSLot
+				FROM TBL_TR_TSheetLot TSLot
+				INNER JOIN #TmpTSheetEvent XmlInput ON XmlInput.EventID = TSLot.EventID
+
+				DELETE TTPrpsl
+				FROM TBL_TR_TSheetTradeProposal TTPrpsl
+				INNER JOIN #TmpTSheetEvent XmlInput ON XmlInput.EventID = TTPrpsl.EventID
+
+				DELETE TATrade
+				FROM TBL_TR_TSheetApprovedTrade TATrade
+				INNER JOIN #TmpTSheetEvent XmlInput ON XmlInput.EventID = TATrade.EventID
+
+				INSERT INTO [TBL_TR_TSheetTradeProposal] (
+					[EventID]
+					,[EventAccountID]
+					,[SecurityTypeCode]
+					,[SecurityTypeOrder]
+					,[SecurityTypeDescription]
+					,[SecuritySymbol]
+					,[SecurityDescription]
+					,[TSheetTradeForReview]
+					,[AssetClass]
+					,[TargetPercentage]
+					,[AdjustedPercentage]
+					,[TotalDollarChange]
+					,[TrancheDollarChange]
+					,[TradeProposedDollarAmount]
+					,[TradeProposedQuantity]
+					,[TPlusOne]
+					,[TPlusTwo]
+					,[TPlusThree]
+					,[SubmissionType]
+					,[SellAll]
+					,[LastModifiedUserID]
+					,[LastModifiedDate]
+					,[IsAdd]
+					,[IsSubstitute]
+					,[IsExclude]
+					,[IsAboveTheLine]
+					)
+				SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+					,XMLInput.Item.value('@EventAccountID', 'INT') AS EventAccountID
+					,XMLInput.Item.value('@SecurityTypeCode', 'VARCHAR(50)') AS SecurityTypeCode
+					,XMLInput.Item.value('@SecurityTypeOrder', 'INT') AS SecurityTypeOrder
+					,XMLInput.Item.value('@SecurityTypeDescription', 'VARCHAR(150)') AS SecurityTypeDescription
+					,XMLInput.Item.value('@SecuritySymbol', 'VARCHAR(50)') AS SecuritySymbol
+					,XMLInput.Item.value('@SecurityDescription', 'VARCHAR(150)') AS SecurityDescription
+					,XMLInput.Item.value('@TSheetTradeForReview', 'BIT') AS TSheetTradeForReview
+					,XMLInput.Item.value('@AssetClass', 'VARCHAR(100)') AS AssetClass
+					,XMLInput.Item.value('@TargetPercentage', 'FLOAT') AS TargetPercentage
+					,XMLInput.Item.value('@AdjustedPercentage', 'FLOAT') AS AdjustedPercentage
+					,XMLInput.Item.value('@TotalDollarChange', 'money') AS TotalDollarChange
+					,XMLInput.Item.value('@TrancheDollarChange', 'money') AS TrancheDollarChange
+					,XMLInput.Item.value('@TradeProposedDollarAmount', 'FLOAT') AS TradeProposedDollarAmount
+					,XMLInput.Item.value('@TradeProposedQuantity', 'FLOAT') AS TradeProposedQuantity
+					,XMLInput.Item.value('@TPlusOne', 'money') AS TPlusOne
+					,XMLInput.Item.value('@TPlusTwo', 'money') AS TPlusTwo
+					,XMLInput.Item.value('@TPlusThree', 'money') AS TPlusThree
+					,XMLInput.Item.value('@SubmissionType', 'VARCHAR(20)') AS SubmissionType
+					,XMLInput.Item.value('@SellAll', 'BIT') AS SellAll
+					,XMLInput.Item.value('@LastModifiedUserID', 'INT') AS LastModifiedUserID
+					,GetDate()
+					,XMLInput.Item.value('@IsAdd', 'BIT') AS IsAdd
+					,XMLInput.Item.value('@IsSubstitute', 'BIT') AS IsSubstitute
+					,XMLInput.Item.value('@IsExclude', 'BIT') AS IsExclude
+					,XMLInput.Item.value('@IsAboveTheLine', 'BIT') AS IsAboveTheLine
+				FROM @XMLTSheet.nodes('//TSheet/TSheetTradeProposalCollection/TSheetTradeProposal') AS XMLInput(Item)
+				WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+					AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+
+				INSERT INTO [TBL_TR_TSheetLot] (
+					[LotID]
+					,[Industry]
+					,[CostBasis]
+					,[PortfolioCode]
+					,[UnitCost]
+					,[AquisitionDate]
+					,[SharePrice]
+					,[Marketvalue]
+					,[Quantity]
+					,[UnrealizedGainLossDollars]
+					,[UnrealizedGainLossPercentage]
+					,[SecurityTypeCode]
+					,[SecuritySymbol]
+					,[EventID]
+					,[EventAccountID]
+					,[TSheetTradeForReview]
+					,[LastModifiedUserID]
+					,[LastModifiedDate]
+					)
+				SELECT XMLInput.Item.value('@LotID', 'INT') AS LotID
+					,XMLInput.Item.value('@Industry', 'VARCHAR(50)') AS Industry
+					,XMLInput.Item.value('@CostBasis', 'money') AS CostBasis
+					,XMLInput.Item.value('@PortfolioCode', 'VARCHAR(50)') AS PortfolioCode
+					,XMLInput.Item.value('@UnitCost', 'money') AS UnitCost
+					,XMLInput.Item.value('@AquisitionDate', 'DATETIME') AS AquisitionDate
+					,XMLInput.Item.value('@SharePrice', 'money') AS SharePrice
+					,XMLInput.Item.value('@Marketvalue', 'money') AS Marketvalue
+					,XMLInput.Item.value('@Quantity', 'FLOAT') AS Quantity
+					,XMLInput.Item.value('@UnrealizedGainLossDollars', 'money') AS UnrealizedGainLossDollars
+					,XMLInput.Item.value('@UnrealizedGainLossPercentage', 'FLOAT') AS UnrealizedGainLossPercentage
+					,XMLInput.Item.value('@SecurityTypeCode', 'VARCHAR(50)') AS SecurityTypeCode
+					,XMLInput.Item.value('@SecuritySymbol', 'VARCHAR(50)') AS SecuritySymbol
+					,XMLInput.Item.value('@EventID', 'INT') AS EventID
+					,XMLInput.Item.value('@EventAccountID', 'int') AS EventAccountID
+					,XMLInput.Item.value('@TSheetTradeForReview', 'BIT') AS TSheetTradeForReview
+					,XMLInput.Item.value('@LastModifiedUserID', 'INT') AS LastModifiedUserID
+					,GetDate()
+				FROM @XMLTSheet.nodes('//TSheet/TSheetLotsCollection/TSheetLots') AS XMLInput(Item)
+				WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+					AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+
+				IF NOT EXISTS (
+						SELECT EventID
+						FROM TBL_TR_InvestmentCommentHistorySnapshot
+						WHERE EventID IN (
+								SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+								FROM @XMLTSheetInvestmentCommentHistoryCollection.nodes('//InvestmentCommentHistoryCollection/InvestmentCommentHistory') AS XMLInput(Item)
+								WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+									AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+								)
+						)
+				BEGIN
+					INSERT INTO [TBL_TR_InvestmentCommentHistorySnapshot] (
+						[EventID]
+						,[EventAccountID]
+						,[EventStatusID]
+						,[InvestmentCommentId]
+						,[CustomerAccountNumber]
+						,[InvestmentComments]
+						,[CreatedUserID]
+						,[ModifiedUserID]
+						,[CreatedDate]
+						,[ModifiedDate]
+						)
+					SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+						,XMLInput.Item.value('@EventAccountID', 'INT') AS EventAccountID
+						,XMLInput.Item.value('@EventStatusID', 'INT') AS EventStatusID
+						,XMLInput.Item.value('@InvestmentCommentId', 'INT') AS InvestmentCommentId
+						,XMLInput.Item.value('@CustomerAccountNumber', 'VARCHAR(14)') AS CustomerAccountNumber
+						,XMLInput.Item.value('@InvestmentComments', 'VARCHAR(500)') AS InvestmentComments
+						,XMLInput.Item.value('@CreatedUserID', 'INT') AS CreatedUserID
+						,XMLInput.Item.value('@ModifiedUserID', 'INT') AS ModifiedUserID
+						,XMLInput.Item.value('@CreatedDate', 'DATETIME') AS CreatedDate
+						,GETDATE()
+					FROM @XMLTSheetInvestmentCommentHistoryCollection.nodes('//InvestmentCommentHistoryCollection/InvestmentCommentHistory') AS XMLInput(Item)
+					WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+						AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+				END
+
+				IF NOT EXISTS (
+						SELECT EventID
+						FROM TBL_TR_AuthorizedSignerSnapshot
+						WHERE EventID IN (
+								SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+								FROM @XMLTSheetAuthorizedSignerCollection.nodes('//AuthorizedSignerCollection/AuthorizedSigner') AS XMLInput(Item)
+								WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+									AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+								)
+						)
+				BEGIN
+					INSERT INTO [TBL_TR_AuthorizedSignerSnapshot] (
+						[EventID]
+						,[EventAccountID]
+						,[EventStatusID]
+						,[EmployeeID]
+						,[CustomerAccountNumber]
+						,[AuthorizationType]
+						,[UserName]
+						)
+					SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+						,XMLInput.Item.value('@EventAccountID', 'INT') AS EventAccountID
+						,XMLInput.Item.value('@EventStatusID', 'INT') AS EventStatusID
+						,XMLInput.Item.value('@EmployeeID', 'INT') AS EmployeeID
+						,XMLInput.Item.value('@CustomerAccountNumber', 'VARCHAR(14)') AS CustomerAccountNumber
+						,XMLInput.Item.value('@AuthorizationType', 'VARCHAR(250)') AS AuthorizationType
+						,XMLInput.Item.value('@UserName', 'VARCHAR(250)') AS UserName
+					FROM @XMLTSheetAuthorizedSignerCollection.nodes('//AuthorizedSignerCollection/AuthorizedSigner') AS XMLInput(Item)
+					WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+						AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+				END
+
+				IF NOT EXISTS (
+						SELECT EventID
+						FROM TBL_TR_TradeRestrictionSnapshot
+						WHERE EventID IN (
+								SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+								FROM @XMLTSheetTradeRestrictionCollection.nodes('//TradeRestrictionCollection/TradeRestriction') AS XMLInput(Item)
+								WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+									AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+								)
+						)
+				BEGIN
+					INSERT INTO [TBL_TR_TradeRestrictionSnapshot] (
+						[EventID]
+						,[EventAccountID]
+						,[EventStatusID]
+						,[TradeRestrictionID]
+						,[CustomerAccountNumber]
+						,[TradeRestrictionType]
+						,[SecuritySymbol]
+						,[Comments]
+						,[CreatedBy]
+						,[StartDate]
+						,[EndDate]
+						)
+					SELECT XMLInput.Item.value('@EventID', 'INT') AS EventID
+						,XMLInput.Item.value('@EventAccountID', 'INT') AS EventAccountID
+						,XMLInput.Item.value('@EventStatusID', 'INT') AS EventStatusID
+						,XMLInput.Item.value('@TradeRestrictionID', 'INT') AS TradeRestrictionID
+						,XMLInput.Item.value('@CustomerAccountNumber', 'VARCHAR(14)') AS CustomerAccountNumber
+						,XMLInput.Item.value('@TradeRestrictionType', 'VARCHAR(250)') AS TradeRestrictionType
+						,XMLInput.Item.value('@SecuritySymbol', 'VARCHAR(250)') AS SecuritySymbol
+						,XMLInput.Item.value('@Comments', 'VARCHAR(250)') AS Comments
+						,XMLInput.Item.value('@CreatedBy', 'VARCHAR(250)') AS CreatedBy
+						,XMLInput.Item.value('@StartDate', 'DATETIME') AS StartDate
+						,XMLInput.Item.value('@EndDate', 'DATETIME') AS EndDate
+					FROM @XMLTSheetTradeRestrictionCollection.nodes('//TradeRestrictionCollection/TradeRestriction') AS XMLInput(Item)
+					WHERE isnull(XMLInput.Item.value('@EventID', 'INT'), 0) <> 0
+						AND isnull(XMLInput.Item.value('@EventAccountID', 'INT'), 0) <> 0
+				END
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @procname
+				END
+
+				SET @ReturnStatus = 0;
+			END
+			ELSE
+			BEGIN
+				SET @ReturnStatus = - 2;
+				SET @ErrorDesc = 'Dirty Write';
+					--	ROLLBACK TRANSACTION @procname;
+			END
+		END
+
+		EXEC USP_TR_GetEventByID @XMLTSheet
+
+		COMMIT TRANSACTION @procname
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		PRINT ERROR_MESSAGE()
+
+		SET @ReturnStatus = - 1;
+
+		ROLLBACK TRANSACTION @procname;
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

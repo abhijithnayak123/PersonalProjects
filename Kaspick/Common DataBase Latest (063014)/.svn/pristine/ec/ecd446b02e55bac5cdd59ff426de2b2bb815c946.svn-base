@@ -1,0 +1,185 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetBeneficiaryPaymentHistory]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetBeneficiaryPaymentHistory]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetBeneficiaryPaymentHistory]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetBeneficiaryPaymentHistory]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetBeneficiaryPaymentHistory                      
+** Short Desc: Procedure to get data for the Beneficiary payment history report 
+**                      
+** Full Description: Procedure to get data for the Beneficiary payment history report 
+**      
+**                              
+** Input Arguments: @AllianceNumber CHAR(15) 
+**	,@CustomerAccountNumber VARCHAR(14)
+**	,@FromDate DATETIME 
+**	,@ToDate DATETIME 
+**	,@ExcludeGAP BIT
+**	,@ExcludePIF BIT
+**	,@ExcludeVoid BIT
+**	,@ManagerCode CHAR(4)             
+** Sample Call     
+       
+ EXEC USP_PP_ReportGetBeneficiaryPaymentHistory null,'DCPIF2','01/28/2003','01/28/2005',1,0,1
+ EXEC USP_PP_ReportGetBeneficiaryPaymentHistory 'SM',null,'06/22/2006','06/20/2008',0,0,0    
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 20-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetBeneficiaryPaymentHistory] (
+	@AllianceNumber CHAR(15) = NULL
+	,@CustomerAccountNumber VARCHAR(14) = NULL
+	,@FromDate DATETIME = NULL
+	,@ToDate DATETIME = NULL
+	,@ExcludeGAP BIT
+	,@ExcludePIF BIT
+	,@ExcludeVoid BIT
+	,@ManagerCode CHAR(4) = NULL -- Added for Kaspick Website Payments  
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT BenPymt.CustomerAccountNumber AS AdventID
+		,convert(VARCHAR, BenPymt.PaymentDate, 101) AS PaymentDate
+		,ContMstr.PrimaryLastName AS LastName
+		,BenPymt.PayeeName
+		,BenPymt.PaymentAmount
+		,BenPymt.DocumentNumber AS CheckNumber
+		,CASE 
+			WHEN BenPymt.PaymentMethod = 'ACH'
+				THEN 'ACH'
+			ELSE (upper(left(lower(BenPymt.PaymentMethod), 1)) + substring(lower(BenPymt.PaymentMethod), 2, len(BenPymt.PaymentMethod)))
+			END AS PaymentMethod
+		,convert(VARCHAR, BenPymt.VoidDate, 101) AS VoidDate
+		,Alliance.ContactName AS FullName
+		,BenPymt.PaymentDate AS PaymentDate1
+		,rtrim(ltrim(ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, ''))) AS AccountName
+	FROM TBL_PP_BeneficiaryPayment BenPymt
+	INNER JOIN SYN_IT_ContactMaster ContMstr
+		ON ContMstr.ContactID = BenPymt.ContactID
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCode
+		ON AccMgrCode.ManagerCode = BenPymt.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster Alliance
+		ON Alliance.ContactID = AccMgrCode.ContactID
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+	WHERE (
+			(@FromDate IS NULL)
+			OR (
+				@FromDate IS NOT NULL
+				AND BenPymt.PaymentDate >= @FromDate
+				)
+			)
+		AND (
+			(@ToDate IS NULL)
+			OR (
+				@ToDate IS NOT NULL
+				AND BenPymt.PaymentDate <= @ToDate
+				)
+			)
+		AND (
+			@ManagerCode IS NULL
+			OR (
+				@ManagerCode IS NOT NULL
+				AND BenPymt.ManagerCode = @ManagerCode
+				)
+			)
+		AND (
+			@CustomerAccountNumber IS NULL
+			OR (
+				@CustomerAccountNumber IS NOT NULL
+				AND BenPymt.CustomerAccountNumber = @CustomerAccountNumber
+				)
+			)
+		AND (
+			@AllianceNumber IS NULL
+			OR (
+				@AllianceNumber IS NOT NULL
+				AND BenPymt.AllianceNumber = @AllianceNumber
+				)
+			)
+		AND (
+			CASE 
+				WHEN @ExcludeGAP = 1
+					THEN (
+							CASE 
+								WHEN BenPymt.AccountType IN (
+										'GAP'
+										,'GAPR'
+										,'GAPP'
+										)
+									THEN 0
+								ELSE - 1
+								END
+							)
+				ELSE - 1
+				END
+			) = - 1
+		AND (
+			CASE 
+				WHEN @ExcludePIF = 1
+					THEN (
+							CASE 
+								WHEN BenPymt.AccountType = 'PIF'
+									THEN 0
+								ELSE - 1
+								END
+							)
+				ELSE - 1
+				END
+			) = - 1
+		AND (
+			CASE 
+				WHEN @ExcludeVoid = 1
+					THEN (
+							CASE 
+								WHEN VoidDate IS NULL
+									THEN - 1
+								ELSE 0
+								END
+							)
+				ELSE - 1
+				END
+			) = - 1
+	ORDER BY BenPymt.CustomerAccountNumber ASC
+		,BenPymt.PaymentDate ASC
+		,ContMstr.PrimaryLastName ASC
+
+	SET NOCOUNT OFF;
+END

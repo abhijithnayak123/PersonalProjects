@@ -1,0 +1,235 @@
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_HG_GetHistoicalGiftsData'
+		)
+BEGIN
+	DROP PROCEDURE USP_HG_GetHistoicalGiftsData;
+
+	PRINT 'DROPPED USP_HG_GetHistoicalGiftsData';
+END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : USP_HG_GetHistoicalGiftsData
+** Old Name:          
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the data for populating the data in the search controls of historical gifts page.
+**      
+** Sample Call      
+	EXEC [dbo].USP_HG_GetHistoicalGiftsData @XMLDATA =
+			'<HistoricalGiftSearchControlData>
+			<ManagerCode>
+			<Value>TMC</Value>
+			</ManagerCode>
+			<CustomerAccountNumber>
+			<Value>7776602</Value>
+			</CustomerAccountNumber>
+			<SecurityType>
+			<Value>Equities</Value>
+			</SecurityType>
+			<TransactionNumber>
+			<Value>12345678912</Value>
+			</TransactionNumber>
+			</HistoricalGiftSearchControlData>'
+			,@FromDate = '05/22/2014'
+			,@ToDate = '05/27/2014'
+
+EXEC [dbo].USP_HG_GetHistoicalGiftsData @XMLDATA ='<HistoricalGiftsSearchControlData>
+														<ArrayOfCustomerAccountNumber />
+														<ArrayOfCustomerAccountNumber />
+														<ArrayOfSecurityType />
+														<ArrayOfCustomerAccountNumber />
+													</HistoricalGiftsSearchControlData>'
+
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 05/22/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_HG_GetHistoicalGiftsData]
+(
+	@XMLData XML = NULL
+	,@FromDate DateTime = NULL
+	,@ToDate DateTime = NULL
+)
+AS
+BEGIN
+	DECLARE @idoc	INT
+	DECLARE @sql    NVARCHAR(4000)
+	DECLARE @debug	BIT
+
+	DECLARE @SecurityTypeName VARCHAR(20), @FundingTypeIDName VARCHAR(20)
+			,@FundingTypeListTypeID INT, @SecurityTypeListTypeID INT
+			,@DefaultSelectItem VARCHAR(20)
+
+	SELECT @SecurityTypeName = dbo.FN_GetSecurityTypeListTypeName()
+			,@FundingTypeIDName = dbo.FN_GetFundingTypeListTypeName()
+			,@DefaultSelectItem = ''--'--Select--'
+
+	/* Get the ListTypeID */
+	SELECT @FundingTypeListTypeID = ListTypeID
+	FROM TBL_ListType WHERE ListTypeName = @FundingTypeIDName
+
+	SELECT @SecurityTypeListTypeID = ListTypeID
+	FROM TBL_ListType WHERE ListTypeName = @SecurityTypeName
+
+
+	/* Get the HistoricalGift data based on search criteria*/
+	CREATE TABLE [#ManagerCode]
+	(
+		[TmpManagerCode] [varchar](20) NULL
+	)
+	
+	CREATE TABLE [#CustomerAccountNumber]
+	(
+		[TmpCustomerAccountNumber] [varchar](20) NULL
+	)
+	
+	CREATE TABLE [#TransactionNumber]
+	(
+		[TmpTransactionNumber] [varchar](20) NULL
+	)
+	
+	CREATE TABLE [#SecurityType]
+	(
+		[TmpSecurityType] [varchar](20) NULL
+	)
+
+	EXEC sp_xml_preparedocument @idoc OUTPUT, @XMLDATA;
+
+	INSERT INTO #ManagerCode (TmpManagerCode)
+	SELECT * FROM OPENXML(@idoc, N'/HistoricalGiftsSearchControlData/ArrayOfCustomerAccountNumber/CustomerAccountNumber', 2) WITH (
+			ManagerCodes  Varchar(50) )
+
+
+	EXEC sp_xml_preparedocument @idoc OUTPUT, @XMLDATA;
+	INSERT INTO #CustomerAccountNumber (TmpCustomerAccountNumber)	   
+	SELECT * FROM OPENXML(@idoc, N'/HistoricalGiftsSearchControlData/ArrayOfCustomerAccountNumber/CustomerAccountNumber', 2) WITH (
+			CustomerAccountNumbers  Varchar(50) )	
+				
+
+	INSERT INTO #TransactionNumber (TmpTransactionNumber)	   
+	SELECT * FROM OPENXML(@idoc, N'/HistoricalGiftsSearchControlData/ArrayOfCustomerAccountNumber/CustomerAccountNumber', 2) WITH (
+			TransactionNumbers  Varchar(50) )	
+
+
+	INSERT	INTO #SecurityType (TmpSecurityType)	   
+	SELECT * FROM OPENXML(@idoc, N'/HistoricalGiftsSearchControlData/ArrayOfSecurityType/SecurityType', 2) WITH (
+			SecurityTypes  Varchar(50) )	
+			 
+
+	/*Clean up*/
+	DELETE FROM #ManagerCode WHERE LTRIM(RTRIM(ISNULL(TmpManagerCode, ''))) = ''
+	DELETE FROM #CustomerAccountNumber WHERE LTRIM(RTRIM(ISNULL(TmpCustomerAccountNumber, ''))) = ''
+	DELETE FROM #TransactionNumber WHERE LTRIM(RTRIM(ISNULL(TmpTransactionNumber, ''))) = ''
+	DELETE FROM #SecurityType WHERE LTRIM(RTRIM(ISNULL(TmpSecurityType, ''))) = ''
+
+	SET @sql='SELECT DISTINCT
+	   GiftAssetID, ManagerCode, CustomerAccountNumber
+	   --,CONVERT(VARCHAR(10), GiftDate, 101) AS ''GiftDate''
+	   ,GiftDate
+	   --,SecurityType
+	   ,ISNULL(LstScTyp.ListItemName, ''' + @DefaultSelectItem + ''') AS ''SecurityType''
+	   --,dbo.FN_TrimDecimalValue(Shares_Original_Face) AS ''Shares_Original_Face''
+	   ,CASE WHEN dbo.FN_TrimDecimalValue(Shares_Original_Face) = '''' THEN ''0'' ELSE dbo.FN_TrimDecimalValue(Shares_Original_Face) END AS ''Shares_Original_Face''
+	   --,FUNDING_TYPE_ID
+	   ,ISNULL(LstFndTyp.ListItemName, ''' + @DefaultSelectItem + ''') AS ''FUNDING_TYPE_ID''
+	   --,dbo.FN_TrimDecimalValue(MarketValue) AS ''MarketValue''
+	   ,CASE WHEN dbo.FN_TrimDecimalValue(MarketValue) = '''' THEN ''0'' ELSE dbo.FN_TrimDecimalValue(MarketValue) END AS ''MarketValue''
+	   ,CASE WHEN dbo.FN_TrimDecimalValue(CostBasis) = '''' THEN ''0'' ELSE dbo.FN_TrimDecimalValue(CostBasis) END AS ''CostBasis''
+	   --,dbo.FN_TrimDecimalValue(CostBasis) AS ''CostBasis''
+	   ,Main.Description
+	   --,CONVERT(VARCHAR(10), AcquireDate, 101) AS ''AcquireDate''
+	   ,AcquireDate AS ''AcquireDate''
+	   ,ISIN, TransactionNumber 
+	   ,ISNULL(LstState.ListItemName, ''' + @DefaultSelectItem + ''') AS ''PROPERTY_STATE_LOCATION_ID''
+	   , CASE WHEN Is_RentRoyaltyIncomeGenerating = 1 THEN ''Yes'' ELSE ''No'' END AS ''Is_RentRoyaltyIncomeGenerating''
+
+	FROM
+		[TBL_HG_GiftHistory]	Main
+	LEFT OUTER JOIN
+		TBL_ListItem LstScTyp
+	ON
+		LstScTyp.ListItemID = Main.SecurityType
+		AND LstScTyp.ListTypeID = ' + CONVERT(VARCHAR(10), @SecurityTypeListTypeID) + ' 
+	LEFT OUTER JOIN
+		TBL_ListItem LstFndTyp
+	ON
+		LstFndTyp.ListItemID = Main.FUNDING_TYPE_ID
+		AND LstFndTyp.ListTypeID = ' + CONVERT(VARCHAR(10), @FundingTypeListTypeID) + '
+	LEFT OUTER JOIN
+		VW_ListItem LstState
+	ON
+		LstState.ListItemID = Main.Property_State_Location_Id
+		AND LstState.ListTypeName = ''' + dbo.FN_GetStatesListTypeName() + ''' '
+
+	IF (EXISTS (SELECT 1 FROM #ManagerCode))
+		SET @sql=@sql + '
+		INNER JOIN 
+			#ManagerCode M
+		ON
+			Main.ManagerCode=M.TmpManagerCode'
+		
+	IF (EXISTS (SELECT 1 FROM #CustomerAccountNumber))
+		SET @sql=@sql +'		 
+		INNER JOIN 	
+			#CustomerAccountNumber CAN
+		ON
+			Main.CustomerAccountNumber=CAN.TmpCustomerAccountNumber'
+
+
+	IF (EXISTS (SELECT 1 FROM #SecurityType))
+		SELECT @sql=@sql +'
+		INNER JOIN
+			#SecurityType ST
+		ON
+			LstScTyp.ListItemName = ST.TmpSecurityType'
+
+	IF (EXISTS (SELECT 1 FROM #TransactionNumber))
+		SET @sql=@sql +'
+		INNER JOIN
+			#TransactionNumber TN
+		ON
+			Main.TransactionNumber=TN.TmpTransactionNumber'
+		
+	 -----DATE CONDITION HERE-----------
+	IF (@FromDate IS NOT NULL) AND (@ToDate IS NOT NULL)
+		SET @sql=@sql+'
+		WHERE
+			GiftDate BETWEEN   ''' + CONVERT(VARCHAR(10),@FromDate,101)  + ''' AND ''' +  CONVERT(VARCHAR(10),@ToDate ,101) + '''
+		ORDER BY GiftAssetID ASC'
+
+	EXEC (@sql)
+	
+	PRINT (@sql)
+END
+GO

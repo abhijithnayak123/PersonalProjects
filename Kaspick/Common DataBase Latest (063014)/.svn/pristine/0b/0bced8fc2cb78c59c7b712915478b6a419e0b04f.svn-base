@@ -1,0 +1,119 @@
+  IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingRestriction'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsVALMissingRestriction;
+
+	PRINT 'DROPPED USP_BR_FASB_InsVALMissingRestriction';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** Name		  :   USP_BR_FASB_InsVALMissingRestriction
+** OLD Name   :   USP_EIS_RPT_FASB_VAL_MissingRestriction_InsProc                
+** Short Desc : Gets the records for Client/AccountType requiring reporting on restriction missing restriction data for an account.    
+**                
+** Full Description                
+**             Client/AccountType with Excelsior FASB profile with Run by Restriction = Yes AND     
+      associated DeferredGiftAccount.AccountID has Remainderman.FASBRestrictionType=NULL AND     
+      associated DesignationFund.FASBRestrictionType =NULL.    
+       
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC [USP_BR_FASB_InsVALMissingRestriction] 89          
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Aug/25/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Aug/10/2012   Ganapati           Created        
+**  Nov/19/12 Saravanan  Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules    
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsVALMissingRestriction] 
+@RuleId INT  
+AS  
+		DECLARE @ValidationMessage VARCHAR(max)  
+		DECLARE @ValidationType VARCHAR(25)  
+		  
+		--select @ValidationMessage = DisplayMessage, @ValidationType = ResultType from TBL_EIS_PP_Validation_Rules where RuleID = @RuleId        
+		SELECT 
+				@ValidationMessage = DisplayMessage  
+			   ,@ValidationType = ResultType  
+		FROM 
+				TBL_DLV_ValidationRule  
+		WHERE 
+				ValidationRuleID = @RuleId  
+		  
+		--Rule 7. Client/AccountType requiring reporting on restriction missing restriction data for an account.    
+		INSERT INTO TBL_BR_FASBValidationResult (  
+		  ClientID  
+		 ,ClientName  
+		 ,RecordIdentifier  
+		 ,ValidationMessage  
+		 ,ValidationType  
+		 )  
+		SELECT DISTINCT 
+		  PF.ManagerCode  
+		 ,C.FullName  
+		 ,'AdventID = ' + DGA.AdventID AS identifier  
+		 ,@ValidationMessage AS ValidationMessage  
+		 ,@ValidationType AS ValidationType  
+		FROM 
+					TBL_BR_FASBProfileInformation PF  
+		INNER JOIN 
+					dbo.SYN_IT_AccountManagerCodes  C  
+				ON 
+					C.ManagerCode = PF.ManagerCode  
+		INNER JOIN 
+					TBL_BR_STG_FASBGift Gift 
+				ON 
+					PF.ManagerCode = Gift.EX_ManagerCode_OrgID  
+		INNER JOIN 
+					TBL_BR_FASBInputParam IParam 
+				ON 
+					IParam.FASB_InstanceID = PF.FASB_InstanceID  
+		INNER JOIN 
+					VW_EX_Account DGA 
+				ON 
+					DGA.AccountID = Gift.CustomerAccountNumber  
+		INNER JOIN REMAINDERMAN RM ON DGA.AccountID = RM.AccountID  
+		INNER JOIN RemaindermanDesignation RD ON RM.RemaindermanID = RD.RemaindermanID  
+		INNER JOIN DesignationFund DF ON DF.designationid = RD.ClientDesignationID  
+		WHERE IParam.IsRun_ByRestriction = 1  
+		 AND RM.FASBRestrictionType IS NULL  
+		 AND DF.FASBRestrictionType IS NULL  
+		 AND (  
+		  DGA.UDFAMColumn030 IS NULL  
+		  OR DGA.UDFAMColumn030 >= Gift.MarketValueDate  
+		  )  
+		  
+ GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingRestriction'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_InsVALMissingRestriction';
+END 

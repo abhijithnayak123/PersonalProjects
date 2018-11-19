@@ -1,0 +1,184 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetGiftAdditionFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetGiftAdditionFromGiftwrapPIF]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetGiftAdditionFromGiftwrapPIF]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetGiftAdditionFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetGiftAdditionFromGiftwrapPIF                      
+** Short Desc: A data extract from GiftWrap
+**                      
+** Full Description: A data extract from GiftWrap,which gives gifts enetered in Giftwrap application 
+** for given date range. In case of PIF accounts the gifts and gift additions which are unitized     
+**                              
+** Input Arguments:   	@XMLCustomerAccountNumber XML
+**	,@GiftDateFrom DATETIME
+**	,@GiftDateTo DATETIME      
+** Sample Call     
+          
+ EXEC USP_PV_GetGiftAdditionFromGiftwrapPIF   @XMLCustomerAccountNumber = '<CustomerAccountCollection>  
+      <InsertList>  
+      <CustomerAccount CustomerAccountNumber="WMPIF3" />
+      </InsertList>  
+      </CustomerAccountCollection>',  
+  @GiftDateFrom = '1/1/2013',  
+  @GiftDateTo = '12/31/2013' 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetGiftAdditionFromGiftwrapPIF] (
+	@XMLCustomerAccountNumber XML
+	,@GiftDateFrom DATETIME
+	,@GiftDateTo DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	DECLARE @ClientID AS VARCHAR(10)
+	DECLARE @GiftStatusID INT
+
+	SELECT @ClientID = ClientID
+	FROM SYN_GW_TBLClient
+	WHERE ClientName = 'Kaspick'
+
+	SELECT @GiftStatusID = LookUpID
+	FROM SYN_GW_TBLLookup Lukp
+	INNER JOIN SYN_GW_TBLLookupGroup LukpGrp
+		ON LukpGrp.LookUpGroupID = Lukp.LookUpGroupID
+	WHERE LukpGrp.GroupName = 'GiftStatus'
+		AND Lukp.short = 'Current'
+
+	SELECT PIF.PifID AS OrgID
+		,LTRIM(RTRIM(PIF.PifNickname)) AS OrgAccount1
+		,GiftDetail.GiftDate AS GiftDate
+		,GiftType.Short AS GiftType
+		,GiftDetail.GiftAmount AS GiftAmount
+		,Gift.MarketValue AS MarketValue
+		,Gift.MarketValueDate AS MarketValueDate
+		,GftStat.GiftStatus AS GiftStatus
+		,Gift.GiftKey AS GiftKey
+		,isnull(Gift.AccountClosedDate, '01/01/1900') AS AccountClosedDate
+		,Gift.DistributionAmount AS Distributions
+		,'' AS MatchComment
+		,'' AS MatchKey
+		,'' AS MatchStatus
+		,0 AS TransactionID
+		,0 AS ValuationID
+		,Link.PersonGiftMapID AS PersonGiftMapID
+		,Link.GiftID AS GiftKeyFK
+		,Assoc.short AS Association
+		,Link.PersonKey AS PersonID
+		,LTRIM(RTRIM(Link.FirstName) + SPACE(1) + RTRIM(Link.LastName)) AS PersonName
+		,LTRIM(RTRIM(Link.LastName)) AS LastName
+		,LTRIM(RTRIM(Link.FirstName)) AS FirstName
+		,CAST(DECRYPTBYPASSPHRASE(@ClientID, Link.SSN) AS VARCHAR(10)) AS SSN
+		,CAST(DECRYPTBYPASSPHRASE(@ClientID, Link.BirthDate) AS VARCHAR(25)) AS BirthDate
+		,PrsnStat.PersonStatus AS PersonStatus
+		,isnull(Link.DeathDate, '01/01/1900') AS DeathDate
+	FROM SYN_GW_TBLGift Gift
+	INNER JOIN SYN_GW_TBLPIF PIF
+		ON PIF.PifID = Gift.PifID
+	INNER JOIN SYN_GW_TBLGiftDetail GiftDetail
+		ON Gift.GiftID = GiftDetail.GiftID
+	INNER JOIN SYN_GW_TBLGiftType GiftType
+		ON Gift.GiftTypeID = GiftType.GiftTypeID
+	CROSS APPLY (
+		SELECT TOP 1 Link1.PersonGiftMapID
+			,Link1.GiftID
+			,Link1.AssociationID
+			,TblPerson.PersonKey
+			,RTRIM(RTRIM(TblPerson.FirstName) + SPACE(1) + RTRIM(TblPerson.LastName)) AS personname
+			,TblPerson.LastName
+			,TblPerson.FirstName
+			,TblPerson.SSN
+			,TblPerson.BirthDate
+			,TblPerson.PersonStatusIDLookup AS PersonStatusIDLookupID
+			,PrsnStat1.PersonStatus AS PersonStatusIDLookup
+			,TblPerson.DeathDate
+		FROM SYN_GW_TblPersonGiftMap Link1
+		INNER JOIN SYN_GW_TblPerson TblPerson
+			ON TblPerson.PersonID = Link1.PersonID
+		LEFT OUTER JOIN (
+			SELECT Lkp.LookupID AS LookUpID
+				,Lkp.short AS PersonStatus
+			FROM SYN_GW_TBLLookupGroup LkpGrp
+			INNER JOIN SYN_GW_TBLLookup Lkp
+				ON LkpGrp.LookupGroupID = Lkp.LookupGroupID
+					AND LkpGrp.GroupName = 'PersonStatus'
+			) PrsnStat1
+			ON PrsnStat1.lookupid = PersonStatusIDLookup
+		WHERE Link1.GiftID = Gift.GiftID
+		ORDER BY Link1.PersonGiftMapID DESC
+		) AS Link
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS PifNickname
+		FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.PifNickname = LTRIM(RTRIM(PIF.PifNickname))
+	LEFT OUTER JOIN (
+		SELECT Lkp.LookupID AS LookUpID
+			,Lkp.short AS GiftStatus
+		FROM SYN_GW_TBLLookup Lkp
+		INNER JOIN SYN_GW_TBLLookupGroup LkpGrp
+			ON LkpGrp.LookUpGroupID = Lkp.LookUpGroupID
+		WHERE LkpGrp.GroupName = 'GiftStatus'
+		) GftStat
+		ON GftStat.LookUpID = Gift.GiftStatusIDLookup
+	LEFT OUTER JOIN (
+		SELECT Lkp.LookupID AS LookUpID
+			,Lkp.short AS PersonStatus
+		FROM SYN_GW_TBLLookupGroup LkpGrp
+		INNER JOIN SYN_GW_TBLLookup Lkp
+			ON LkpGrp.LookupGroupID = Lkp.LookupGroupID
+				AND LkpGrp.GroupName = 'PersonStatus'
+		) PrsnStat
+		ON PrsnStat.lookupid = Link.PersonStatusIDLookupID
+	LEFT OUTER JOIN SYN_GW_TBLAssociation Assoc
+		ON Assoc.AssociationID = Link.AssociationID
+	WHERE Gift.GiftStatusIDLookup = @GiftStatusID
+		AND GiftType.Short = 'PIF'
+		AND GiftDetail.GiftDate >= @GiftDateFrom
+		AND GiftDetail.GiftDate <= @GiftDateTo
+		AND GiftDetail.Units > 0
+	ORDER BY LTRIM(RTRIM(PIF.PifNickname))
+		,GiftType.Short
+		,GiftDetail.GiftDate
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,390 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_SubmitTrade]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_SubmitTrade]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_TR_SubmitTrade        
+** Short Desc : Submit Trades      
+**      
+** Full Description : Saves all the trades to TBL_TR_TradeSubmission
+**                
+**        
+** Sample Call   
+   Declare @InsUpdDelValues XML
+   Declare @ReturnStatus INT
+   Declare @ErrorDesc VARCHAR(8000)
+	Set @InsUpdDelValues = 
+	'<TSheetApprovedTradeCollection><InsertList><TSheetApprovedTrade ActiveTradeID="0"  ArchiveTradeID=""  DollarAmount="-10095.1"  
+	EventAccountID="0"  EventID="8"  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300029" 
+	RecordVersion="0x00000000001A42B2"  SecuritySymbol="692020KN9"  SecurityTypeCode="mgus"  
+	SplitTrade="True"  SubmissionType="Executed Trades"  SubmittedQuantityTillDate="-265400"  
+	TradeDate="01/01/1900 00:00:00:000"  TradeID="39"  TradeQuantity="30800"  TradeType="S"  Source="TRex"  
+	CustodianAccountNumber="80649542"  CustomerAccountNumber="CBFRI2"  SLMasterAccount="08360159"  EventStatus="Approved"  
+	FSITypeCode="CR"  Price="1"  Broker="DuncanW"  SettleDate="3/18/2014 12:00:00 AM"  SecurityDescription="Oxnard CA Sch Dist GO"  
+	AccountID="0"  TradeStatus=""  SubmissionDate="01/01/1900 00:00:00:000"  SubmissionFile=""  Comments=""  DiscretionaryTrade=""  />
+	</InsertList><UpdateList></UpdateList><DeleteList></DeleteList></TSheetApprovedTradeCollection>'    
+	EXEC USP_TR_SubmitTrade @InsUpdDelValues,@ReturnStatus,@ErrorDesc
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+**                                Created      
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_SubmitTrade] (
+	@InsUpdDelValues XML
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds          
+
+	DECLARE @NOOFTRADESCOUNT AS INT
+	DECLARE @TRADEID AS INT
+	DECLARE @LastModifiedUser AS INT
+	DECLARE @SubmittedStatusId AS INT
+	DECLARE @ApprovedStatusId AS INT
+
+	SELECT @SubmittedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Submitted'
+
+	SELECT @ApprovedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Approved'
+
+	BEGIN TRANSACTION;
+
+	BEGIN TRY
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_TSHEETAPPROVEDTRADES]')
+				)
+			DROP TABLE [DBO].[#TEMP_TSHEETAPPROVEDTRADES]
+
+		CREATE TABLE #TEMP_TSHEETAPPROVEDTRADES (
+			TEMPTRADEID BIGINT IDENTITY(1, 1)
+			,[TradeID] INT
+			,[EventID] INT
+			,[EventAccountID] INT
+			,[SecurityTypeCode] VARCHAR(50)
+			,[SecuritySymbol] VARCHAR(50)
+			,[TradeQuantity] FLOAT
+			,[DollarAmount] MONEY
+			,[TradeDate] DATETIME
+			,[TradeType] VARCHAR(5)
+			,[ArchiveTradeID] CHAR(10)
+			,[ActiveTradeID] INT
+			,[SubmissionType] VARCHAR(25)
+			,[SplitTrade] BIT
+			,[SubmittedQuantityTillDate] FLOAT
+			,[Source] VARCHAR(10)
+			,[CustodianAccountNumber] INT
+			,[CustomerAccountNumber] VARCHAR(14)
+			,[SLMasterAccount] VARCHAR(12)
+			,[FSITypeCode] VARCHAR(2)
+			,[Price] MONEY
+			,[Broker] VARCHAR(50)
+			,[LastModifiedUser] INT
+			,[LastModifiedDate] DATETIME
+			,[Record] VARCHAR(MAX)
+			,[SubmissionFile] VARCHAR(150)
+			)
+
+		INSERT INTO #TEMP_TSHEETAPPROVEDTRADES (
+			[TradeType]
+			,[TradeID]
+			,[EventID]
+			,[SecurityTypeCode]
+			,[SecuritySymbol]
+			,[TradeQuantity]
+			,[DollarAmount]
+			,[TradeDate]
+			,[ArchiveTradeID]
+			,[ActiveTradeID]
+			,[SubmissionType]
+			,[SplitTrade]
+			,[SubmittedQuantityTillDate]
+			,[Source]
+			,[CustodianAccountNumber]
+			,[CustomerAccountNumber]
+			,[SLMasterAccount]
+			,[FSITypeCode]
+			,[Price]
+			,[Broker]
+			,[LastModifiedUser]
+			,[LastModifiedDate]
+			,[Record]
+			,[SubmissionFile]
+			)
+		SELECT TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeType', 'VARCHAR(5)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeID', 'INT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@EventID', 'INT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SecurityTypeCode', 'VARCHAR(50)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SecuritySymbol', 'VARCHAR(50)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeQuantity', 'FLOAT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@DollarAmount', 'MONEY')
+			,CASE YEAR(TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeDate', 'DATETIME'))
+				WHEN 1900
+					THEN NULL
+				ELSE TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeDate', 'DATETIME')
+				END
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@ArchiveTradeID', 'CHAR(10)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@ActiveTradeID', 'INT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SubmissionType', 'VARCHAR(25)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SplitTrade', 'BIT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SubmittedQuantityTillDate', 'FLOAT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@Source', 'VARCHAR(10)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@CustodianAccountNumber', 'INT')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@CustomerAccountNumber', 'VARCHAR(14)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SLMasterAccount', 'VARCHAR(12)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@FSITypeCode', 'VARCHAR(2)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@Price', 'MONEY')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@Broker', 'VARCHAR(50)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@LastModifiedUser', 'INT')
+			,GETDATE()
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@RecordVersion', 'VARCHAR(MAX)')
+			,TempApprovedTradeTable.ApprovedTradeColumns.value('@SubmissionFile', 'VARCHAR(150)')
+		FROM @InsUpdDelValues.nodes('/TSheetApprovedTradeCollection/InsertList/TSheetApprovedTrade') AS TempApprovedTradeTable(ApprovedTradeColumns)
+
+		SET @NOOFTRADESCOUNT = (
+				SELECT COUNT(TEMPTRADEID)
+				FROM #TEMP_TSHEETAPPROVEDTRADES
+				)
+
+		IF @NOOFTRADESCOUNT = (
+				SELECT COUNT(TSheetAprvdTrd.TRADEID)
+				FROM TBL_TR_TSheetApprovedTrade TSheetAprvdTrd
+				INNER JOIN (
+					SELECT XMLDATA.item.value('@TradeID', 'int') AS TRADEID
+						,XMLDATA.item.value('@RecordVersion', 'varchar(max)') AS TradeRecordVersion
+					FROM @InsUpdDelValues.nodes('/TSheetApprovedTradeCollection/InsertList/TSheetApprovedTrade') AS XMLDATA(item)
+					) tempTrade ON tempTrade.TRADEID = TSheetAprvdTrd.TRADEID
+					AND sys.fn_varbintohexsubstring(1, TSheetAprvdTrd.recordversion, 1, 0) = tempTrade.TradeRecordVersion
+				)
+		BEGIN
+			DECLARE @tblSubmissionID TABLE (
+				SubmissionID INT
+				,SubmissionFile VARCHAR(150)
+				);
+
+			INSERT INTO TBL_TR_TradeSubmission (
+				[SubmissionFile]
+				,[SubmissionType]
+				,[SubmissionDate]
+				,[SubmissionUserID]
+				)
+			OUTPUT inserted.SubmissionID
+				,inserted.SubmissionFile
+			INTO @tblSubmissionID
+			SELECT DISTINCT [SubmissionFile]
+				,[SubmissionType]
+				,GETDATE()
+				,[LastModifiedUser]
+			FROM #TEMP_TSHEETAPPROVEDTRADES tempTrades
+			WHERE tempTrades.SubmissionType = 'Schwab File'
+			ORDER BY tempTrades.SubmissionType
+
+			INSERT INTO TBL_TR_TradeSubmission (
+				[SubmissionType]
+				,[SubmissionFile]
+				,[SubmissionDate]
+				,[SubmissionUserID]
+				)
+			OUTPUT inserted.SubmissionID
+				,inserted.SubmissionFile
+			INTO @tblSubmissionID
+			SELECT TOP 1 [SubmissionType]
+				,[SubmissionFile]
+				,GETDATE()
+				,[LastModifiedUser]
+			FROM #TEMP_TSHEETAPPROVEDTRADES tempTrades
+			WHERE tempTrades.SubmissionType <> 'Schwab File'
+			ORDER BY tempTrades.SubmissionType
+
+			SELECT @TRADEID = ISNULL(MAX(TradeID), 0) + 1
+			FROM TBL_TR_TradeImport
+
+			INSERT INTO TBL_TR_TradeImport (
+				TradeID
+				,[FSITypeCode]
+				,[SchwabMasterID]
+				,[CustodialAccount]
+				,[CustomerAccountNumber]
+				,[SecuritySymbol]
+				,[TradeType]
+				,[DollarTradeAmt]
+				,[TradeQuantity]
+				,[FileGenDate]
+				,[TradeDate]
+				,[UserID]
+				,[Source]
+				,[SecurityType]
+				,[TradeIDTRex]
+				,[ExecutionPrice]
+				,[Broker]
+				,[SubmissionID]
+				,[TradeStatus]
+				,[SettleDate]
+				,[ApprovedDate]
+				)
+			SELECT @TRADEID + tempTrade.TEMPTRADEID
+				,[FSITypeCode]
+				,[SLMasterAccount]
+				,[CustodianAccountNumber]
+				,[CustomerAccountNumber]
+				,[SecuritySymbol]
+				,[TradeType]
+				,[DollarAmount]
+				,[TradeQuantity]
+				,CASE tempTrade.SubmissionType
+					WHEN 'Schwab File'
+						THEN GETDATE()
+					ELSE NULL
+					END
+				,GETDATE()
+				,[LastModifiedUser]
+				,[Source]
+				,[SecurityTypeCode]
+				,[TradeID]
+				,[Price]
+				,[Broker]
+				,sub.SubmissionID
+				,'executed'
+				,DateAdd(Day, 1, GETDATE())
+				,GETDATE()
+			FROM #TEMP_TSHEETAPPROVEDTRADES tempTrade
+			INNER JOIN @tblSubmissionID sub ON tempTrade.SubmissionFile = sub.SubmissionFile
+
+			UPDATE TBL_TR_TSheetApprovedTrade
+			SET SubmittedQuantityTillDate = isnull(appTrade.SubmittedQuantityTillDate, 0) + isnull(tempTrade.TotalSubmittedTradeQuantity, 0)
+				,SplitTrade = tempTrade.SplitTrade
+			FROM TBL_TR_TSheetApprovedTrade appTrade
+			INNER JOIN (
+				SELECT tempTrade.TRADEID
+					,sum(tempTrade.TradeQuantity) AS TotalSubmittedTradeQuantity
+					,tempTrade.SplitTrade
+				FROM #TEMP_TSHEETAPPROVEDTRADES tempTrade
+				GROUP BY tempTrade.TRADEID
+					,tempTrade.SplitTrade
+				) tempTrade ON appTrade.TRADEID = tempTrade.TRADEID
+
+			SET @LastModifiedUser = (
+					SELECT TOP 1 LastModifiedUser
+					FROM #TEMP_TSHEETAPPROVEDTRADES
+					)
+
+			UPDATE TBL_TR_Event
+			SET EventStatusID = @SubmittedStatusId
+			FROM TBL_TR_Event EvntUpd
+			INNER JOIN #TEMP_TSHEETAPPROVEDTRADES tempTrade ON tempTrade.EventID = EvntUpd.EventID
+			INNER JOIN (
+				SELECT TshtAprvdTrd.eventID
+					,sum(TshtAprvdTrd.tradequantity) AS TotalTradeCount
+					,sum(isnull((
+								CASE 
+									WHEN isnull(TrdErr.tradeid, 0) = 0
+										THEN TshtAprvdTrd.submittedquantitytilldate
+									ELSE TshtAprvdTrd.tradequantity
+									END
+								), 0)) TradeCountAfterError
+				FROM TBL_TR_TSheetApprovedTrade TshtAprvdTrd
+				INNER JOIN TBL_TR_Event Evnt1 ON Evnt1.EventID = TshtAprvdTrd.EventID --and Evnt1.EventStatusID=3   
+				LEFT OUTER JOIN TBL_TR_TradeError TrdErr ON TrdErr.tradeid = TshtAprvdTrd.tradeid
+				GROUP BY TshtAprvdTrd.eventid
+				) AllApprovedTrades ON AllApprovedTrades.EventID = EvntUpd.EventID
+				AND round((abs(isnull(AllApprovedTrades.TotalTradeCount, 0)) - abs(isnull(AllApprovedTrades.TradeCountAfterError, 0))), 3) = 0
+			WHERE EvntUpd.EventStatusID = @ApprovedStatusId
+
+			-- For DirtyWrite update TimeStamp    
+			UPDATE TBL_TR_Event
+			SET BlockRevokeApproval = 1
+				,LastModifiedUserID = tempTrade.LastModifiedUser
+				,LastModifiedDate = GetDate()
+			FROM TBL_TR_Event EvntFrDWrt
+			INNER JOIN TBL_TR_TSheetApprovedTrade appTrade ON appTrade.EventID = EvntFrDWrt.EventID
+			INNER JOIN #TEMP_TSHEETAPPROVEDTRADES tempTrade ON tempTrade.TradeID = appTrade.TradeID
+
+			SELECT Evnt.EVENTID
+				,EvntAcnt.CustomerAccountNumber
+				,EvntAcnt.SLMASTERACCOUNT
+				,TShtAprvdTrd.TRADEID
+				,TShtAprvdTrd.SECURITYSYMBOL
+				,TShtAprvdTrd.SECURITYTYPECODE
+				,TShtAprvdTrd.TRADETYPE
+				,(TShtAprvdTrd.TRADEQUANTITY - ISNULL(TShtAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) AS TRADEQUANTITY
+				,TShtAprvdTrd.SUBMISSIONTYPE
+				,TShtAprvdTrd.DOLLARAMOUNT
+				,TShtAprvdTrd.SPLITTRADE
+				,TShtAprvdTrd.SUBMITTEDQUANTITYTILLDATE
+				,ISNULL(EvntAcnt.CUSTODIANACCOUNTNUMBER, 0) CUSTODIANACCOUNTNUMBER
+				,Evnt.SOURCE
+				,EvntSts.EVENTSTATUS
+				,EvntAcnt.FSIOPTION
+				,TShtAprvdTrd.RECORDVERSION
+			FROM TBL_TR_TSheetApprovedTrade TShtAprvdTrd
+			INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON TShtAprvdTrd.EventAccountID = EvntAcnt.EventAccountID
+			INNER JOIN TBL_TR_Event Evnt ON TShtAprvdTrd.EVENTID = Evnt.EVENTID
+			INNER JOIN TBL_TR_EventSTATUS EvntSts ON Evnt.EVENTSTATUSID = EvntSts.EVENTSTATUSID
+			LEFT OUTER JOIN TBL_TR_TradeImport TrdImp ON TShtAprvdTrd.TradeID = TrdImp.TradeIDTRex
+			LEFT OUTER JOIN TBL_TR_TradeError TErr ON TShtAprvdTrd.TradeID = TErr.TradeID
+			WHERE EvntSts.EVENTSTATUS = 'APPROVED'
+				AND (
+					CASE 
+						WHEN TShtAprvdTrd.SUBMISSIONTYPE = 'Schwab File'
+							AND isnull(TrdImp.TradeID, 0) = 0
+							THEN 1
+						ELSE (ISNULL(TShtAprvdTrd.TRADEQUANTITY, 0) - ISNULL(TShtAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0))
+						END
+					) <> 0
+				AND isnull(TErr.TradeID, 0) = 0
+		END
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		BEGIN TRANSACTION;
+
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+

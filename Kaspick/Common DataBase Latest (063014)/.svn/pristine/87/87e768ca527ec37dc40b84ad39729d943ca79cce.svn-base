@@ -1,0 +1,143 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftInnotrustAddressesForContact'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftInnotrustAddressesForContact;
+
+	PRINT 'DROPPED USP_EX_GetWftInnotrustAddressesForContact';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************
+** Name : USP_EX_GetWftInnotrustAddressesForContact
+** Old Name: It was not there in old it is new
+** Short Desc:	
+** Full Description
+**        This stored proc is used to populate New addresses for web serviece
+**
+** Sample Call
+	[USP_EX_GetWftInnotrustAddressesForContact]'<root><Item ID="7777654"></Item></root>',	36274 
+	
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: NageswaraRao 
+**	Company	  :	Opteamix
+**	Project	  :	Excelsior TAG
+**	Created DT:	11-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+** 
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftInnotrustAddressesForContact] --2--'A8BBBA5C-D6DA-4A4F-8062-4443FF8CBBEF'  --'<root><Item ID="7777654^ccgap^"></Item></root>',	36274 
+	(
+	@DonorBeneContactAddressID int
+	)
+AS
+BEGIN
+	BEGIN TRY
+		Select DonoBeneAddr.DonorBeneContactAddressID,
+				AddChg.DBAddressChangeID,
+				AddChg.GUID,
+		ISNULL(DonoBeneAddr.Address1,'') AS Address1,
+		ISNULL(DonoBeneAddr.Address2,'') AS Address2,
+		ISNULL(DonoBeneAddr.Address3,'') AS Address3, 
+		ISNULL(DonoBeneAddr.City,'') AS City,
+		ISNULL(DonoBeneAddr.State,'') AS State,
+		ISNULL(DonoBeneAddr.ZipCode,'') AS ZipCode,
+		ISNULL(DonoBeneAddr.CountryCode,'') AS CountryCode,
+		DonoBeneAddr.AddressType AS AddressType,
+		DonoBeneAddr.Action,
+		CASE  
+		WHEN DonoBeneAddr.isPrimaryAddress = 1 
+			THEN 1
+		WHEN DonoBeneAddr.isPrimaryAddress = 0 OR DonoBeneAddr.isPrimaryAddress IS NULL
+			THEN 0
+		END AS IsPrimary,
+		
+		CASE  
+		WHEN DonoBeneAddr.isTaxAddress = 1 
+			THEN 1
+		WHEN DonoBeneAddr.isTaxAddress = 0 OR DonoBeneAddr.isTaxAddress IS NULL
+			THEN 0
+		END AS TaxMailing,
+		
+		CASE  
+		WHEN DonoBeneAddr.isAltenativePaymentAddress = 1 
+			THEN 1
+		WHEN DonoBeneAddr.isAltenativePaymentAddress = 0 OR DonoBeneAddr.isAltenativePaymentAddress IS NULL
+			THEN 0
+		END AS AlternatePayment,
+		
+		CASE  
+		WHEN DonoBeneAddr.isMailingAddress = 1 
+			THEN 1
+		WHEN DonoBeneAddr.isMailingAddress = 0 OR DonoBeneAddr.isMailingAddress IS NULL
+			THEN 0
+		END AS ReportMailing,
+		DonoBeneAddr.AddressID,
+		DonoBeneAddr.FromDate,
+		DonoBeneAddr.ToDate,
+		BD.SeasonalAddressFlag
+		FROM TBL_WFT_DBAddressChange AddChg
+		INNER JOIN TBL_WFT_DonorBeneContactAddress DonoBeneAddr ON AddChg.DBAddressChangeID=DonoBeneAddr.DBAddressChangeID
+		LEFT JOIN SYN_IT_BeneficiaryDistributions BD ON DonoBeneAddr.AddressID = BD.PayeeAddressID
+		WHERE DonoBeneAddr.DonorBeneContactAddressID=@DonorBeneContactAddressID
+		
+	END TRY
+
+	BEGIN CATCH
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_GetWftInnotrustAddressesForContact';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage,
+				-- Message text.
+				@ErrorSeverity,
+				-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+
+
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftInnotrustAddressesForContact'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftInnotrustAddressesForContact';
+END

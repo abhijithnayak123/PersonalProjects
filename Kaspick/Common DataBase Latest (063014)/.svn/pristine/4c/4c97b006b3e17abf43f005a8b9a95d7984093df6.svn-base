@@ -1,0 +1,182 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplate1Info]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetTemplate1Info]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetTemplate1Info]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplate1Info]    Script Date: 05/10/2013 14:33:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_GetTemplate1Info                      
+** Short Desc	:	To get the Template wise information from the STG_PAYMENTEXPORT table for Template1     
+*                  
+**                      
+** Full Description: To get the Template wise information from the STG_PAYMENTEXPORT table for Template1   
+**                              
+** Input Arguments:   Template Category
+**         
+** Sample Call     
+        
+	 EXEC USP_PP_GetTemplate1Info 'E' 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetTemplate1Info] @TEMPLATECATEGORY AS CHAR(1)
+AS
+SET NOCOUNT ON
+SET LOCK_TIMEOUT 30000
+
+DECLARE @PolicyLevel INT
+DECLARE @PolicyDimensionID INT
+DECLARE @PolicyDropdownIDYes INT
+DECLARE @TemplateDescription VARCHAR(100)
+
+BEGIN
+	SELECT @PolicyLevel = policylevel
+	FROM TBL_PolicyLevel
+	WHERE LevelName = 'Manager'
+
+	SELECT @PolicyDimensionID = PolicyDimensionID
+	FROM TBL_PolicyDimension
+	WHERE FullName = 'Templates with withholding info'
+		AND DataType = 'List'
+
+	SELECT @PolicyDropdownIDYes = policyDropdownid
+	FROM TBL_PolicyDropDown
+	WHERE PolicyDimensionID = @PolicyDimensionID
+		AND DropDownText = 'YES'
+
+	SELECT @TemplateDescription = TemplateDescription
+	FROM TBL_PP_TemplateMaster
+	WHERE TemplateCode = 1
+
+	SELECT PaymentID
+		,ClientName1
+		,ClientName2
+		,AccountName1
+		,AccountName2
+		,ClientAddress1
+		,ClientAddress2
+		,ClientAddress3
+		,ClientAddress4
+		,ClientAddress5
+		,SourceBankName
+		,SourceBankAddress
+		,BankID 
+		,DocumentNumber AS CheckNumber 
+		,PayeeName
+		,PaymentDate
+		,PaymentAmount
+		,PaymentAddress1
+		,PaymentAddress2
+		,PaymentAddress3
+		,PaymentAddress4
+		,PaymentAddress5
+		,PaymentAddress6
+		,MemoLine1
+		,MemoLine2
+		,SourceBankABA
+		,SourceAccount
+		,PaymentAmount AS PaymentAmount1
+		,(
+			CASE 
+				WHEN PaymentFrequency = 1
+					THEN 'Annual Distribution'
+				WHEN PaymentFrequency = 2
+					THEN 'Semi-Annual Distribution'
+				WHEN PaymentFrequency = 4
+					THEN 'Quarterly Distribution'
+				WHEN PaymentFrequency = 12
+					THEN 'Monthly Distribution'
+				ELSE 'Others'
+				END
+			) AS PaymentFrequency
+		,PayeeName1
+		,PayeeName2
+		,MailingAddress1
+		,MailingAddress2
+		,MailingAddress3
+		,MailingAddress4
+		,MailingAddress5
+		,MailingAddress6
+		,Memo
+		,Reminder
+		,(
+			CASE 
+				WHEN BriefName <> CustomerAccountNumber
+					THEN BriefName
+				ELSE ' '
+				END
+			) AS BriefName
+		,CustomerAccountNumber
+		,PaymentMethod
+		,PrintSeqNo
+		,REFBACKTOIVAN 
+		,(
+			CASE 
+				WHEN PolicyItem.PolicyDropDownID = @policydropdownidYes
+					THEN 'MT'
+				ELSE 'T'
+				END
+			) + CONVERT(CHAR(3), TEMPLATECODE) AS TEMPLATECODE
+		,ClientCode
+		,'' AS PaymentBatch ----PaymentBatch  has been removed from TBL_PP_STG_PaymentExport
+		,Custom1
+		,Custom2
+		,Custom3
+		,Custom4
+		,Custom5
+		,Custom6
+		,Custom7
+		,Custom8
+		,Custom9
+		,Custom10
+		,MarketingMessage
+		,@TemplateDescription AS TemplateDescription
+	FROM TBL_PP_STG_PaymentExport StgPymtExp
+	LEFT OUTER JOIN TBL_PolicyItem PolicyItem ON PolicyItem.ownerid = StgPymtExp.ManagerCode
+		AND PolicyItem.policydimensionID = @PolicyDimensionID
+		AND PolicyItem.policylevel = @PolicyLevel
+	WHERE TemplateCode = 1
+		AND ExceptionCode = CASE 
+			WHEN @TEMPLATECATEGORY = 'E'
+				AND ExceptionCode > 0
+				THEN ExceptionCode
+			WHEN @TEMPLATECATEGORY = 'S'
+				AND ExceptionCode = 0
+				THEN ExceptionCode
+			ELSE - 9999
+			END
+	ORDER BY PrintSeqNo
+END

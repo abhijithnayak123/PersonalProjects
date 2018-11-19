@@ -1,0 +1,129 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryProxyStatus]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryProxyStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryProxyStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryProxyStatus]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryProxyStatus                      
+** Short Desc:  To get Beneficiary Proxy Status
+**                      
+** Full Description:   To get Beneficiary Proxy Status. This sp uses Innotrust response data from table 
+					   TBL_PP_STG_InnoTrustValidationEngineInput for validation.            
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto 
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryProxyStatus  1      
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 04-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryProxyStatus]
+	-- paremeters here                                
+	@UserID INT
+	,@Type BIT = 1 --auto 
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	---Declare Variable
+	DECLARE @RuleID INT
+	DECLARE @PaidToAccountRole VARCHAR(20)
+	DECLARE @PaidForAccountRole VARCHAR(20)
+
+	SET @PaidToAccountRole = 'Proxy Recipient'
+	SET @PaidForAccountRole = 'Beneficiary'
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Proxy beneficiary linked to inactive beneficiary'
+		AND RuleCategory = 'Beneficiary payment'
+
+	CREATE TABLE #TmpData (
+		ID INT identity(1, 1)
+		,ScheduleID INT
+		,PaidToAccountRole XML
+		,PaidForAccountRole XML
+		)
+
+	-- PaidToAccountRole and PaidForAccountRole has multiple roles. Performing string search reduces performance
+	-- Hence forming XML list so that the where condition search becomes faster.
+	INSERT INTO #TmpData (
+		ScheduleID
+		,PaidToAccountRole
+		,PaidForAccountRole
+		)
+	SELECT ScheduleID
+		,'<PaidToAccountRole>' + REPLACE(PaidToAccountRole, ',', '</PaidToAccountRole><PaidToAccountRole>') + '</PaidToAccountRole>'
+		,'<PaidForAccountRole>' + REPLACE(PaidForAccountRole, ',', '</PaidForAccountRole><PaidForAccountRole>') + '</PaidForAccountRole>'
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput
+	WHERE PaymentType IN (
+			'Beneficiarypayment'
+			,'PGCalcImport'
+			)
+		AND UserID = @UserID
+
+	---Return data      
+	SELECT PaymentType
+		,Data.ScheduleID
+		,@RuleID AS RuleID
+		,'ProxyBeneStatus' AS Attribute
+		,@PaidToAccountRole AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN #TmpData Data
+		ON StgData.ScheduleID = Data.ScheduleID
+			AND @PaidToAccountRole IN (
+				SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+				FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+				)
+			AND @PaidForAccountRole IN (
+				SELECT x.i.value('.', 'varchar(20)') AS PaidForAccountRole
+				FROM Data.PaidForAccountRole.nodes('//PaidForAccountRole') x(i)
+				)
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

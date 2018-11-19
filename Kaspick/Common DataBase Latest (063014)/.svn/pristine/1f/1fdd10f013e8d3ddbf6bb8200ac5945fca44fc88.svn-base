@@ -1,0 +1,79 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetListDeliverable')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetListDeliverable;
+        PRINT 'DROPPED USP_RP_GetListDeliverable';
+    END
+GO
+  
+  
+/******************************************************************************                          
+** Name:     USP_EIS_DT_List_Deliverable    
+  
+** New SP Name :    USP_RP_GetListDeliverable                
+**        
+** Short Desc:         
+**        
+** Full Description:         
+**                                  
+** Input Arguments:         
+**             
+** Sample Call         
+ EXEC [USP_RP_GetListDeliverable]        
+**                 
+** Return values: Return Status        
+**                          
+** Standard declarations                          
+**                           
+** Created By: Venugopal      
+**        
+** Company   : Kaspick & Company                          
+** Project   : Deliverable Tool        
+** Created DT: 12-Oct-2011                    
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------                    
+    28-Jun-2012  Anand   Added condition for "Track In Reportoire"    
+      
+    19-May-2014 RAJ  Modify with New Name of SP in Excelsior DB into KaspickDB  
+    
+    09-06-2014	RAJ	SP Name Renamed and Formatted
+      
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/        
+CREATE PROCEDURE [dbo].[USP_RP_GetListDeliverable]        
+AS        
+BEGIN        
+ --DECLARE @QueueCreationEnabled INT    
+ --SELECT @QueueCreationEnabled = LIST_ITEM_ID FROM v_eis_list_items WHERE LIST_TYPE_NAME = 'Logical Value' AND LIST_ITEM_NAME = 'Yes'    
+    
+ SELECT     
+  D.DeliverableID AS DDVALUE,           
+  D.DeliverableName AS [DDTEXT]        
+ FROM TBL_DLV_Deliverable D     
+  INNER JOIN TBL_DLV_DeliverableType DT ON DT.DeliverableTypeID = D.DeliverableTypeID    
+ WHERE DT.DeliverableTypeName IN ('Report', 'Report Package')     
+  AND D.IsActive = 1    
+  --AND D.QueueCreationEnabled = @QueueCreationEnabled    
+ ORDER BY D.DeliverableName ASC        
+END 
+
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetListDeliverable') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetListDeliverable';
+	END

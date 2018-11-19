@@ -1,0 +1,157 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroupManager]    Script Date: 09/06/2013 14:55:39 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetScheduleIncomeEstimationGroupManager]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroupManager]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroupManager]    Script Date: 09/06/2013 14:55:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_PP_GetScheduleIncomeEstimationGroupManager        
+** Short Desc : Get Schedule of Income Estimation Group Managers     
+**        
+** Full Description        
+**                
+**   
+** Sample Call        
+	EXEC USP_PP_GetScheduleIncomeEstimationGroupManager '<ManagerDetailCollection>
+            <ManagerDetail CustomerAccountNumber="WSBUG" ManagerCode="WS" ManagerDescription="WS dfjlsd s ldjljfsd" />
+            <ManagerDetail CustomerAccountNumber="7770010" ManagerCode="TMC" ManagerDescription="TMC TMC TMC TMC" />
+            <ManagerDetail CustomerAccountNumber="WVWOL" ManagerCode="WV" ManagerDescription="some trust" />
+	</ManagerDetailCollection>', 'My Manager Codes', 100134 
+	
+	 EXEC USP_PP_GetScheduleIncomeEstimationGroupManager '<ManagerDetailCollection>
+            <ManagerDetail CustomerAccountNumber="WSBUG" ManagerCode="WS" ManagerDescription="WS dfjlsd s ldjljfsd" />
+            <ManagerDetail CustomerAccountNumber="7770010" ManagerCode="TMC" ManagerDescription="TMC TMC TMC TMC" />
+            <ManagerDetail CustomerAccountNumber="WVWOL" ManagerCode="WV" ManagerDescription="some trust" />
+	</ManagerDetailCollection>' ,'My Backup Manager Codes', 100134 
+	
+	 EXEC USP_PP_GetScheduleIncomeEstimationGroupManager '<ManagerDetailCollection>
+            <ManagerDetail CustomerAccountNumber="WSBUG" ManagerCode="WS" ManagerDescription="WS dfjlsd s ldjljfsd" />
+            <ManagerDetail CustomerAccountNumber="7770010" ManagerCode="TMC" ManagerDescription="TMC TMC TMC TMC" />
+            <ManagerDetail CustomerAccountNumber="WVWOL" ManagerCode="WV" ManagerDescription="some trust" />
+	</ManagerDetailCollection>', 'All Manager Codes', 100134 
+	
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :   Niveditha        
+** Company  : Kaspick & Company        
+** Project  : Payments        
+** Created DT : 09/11/2013        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 
+*******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroupManager] @AccountXML XML
+	,@ViewOption VARCHAR(25)
+	,@UserID INT
+	-- paremeters here        
+AS
+--  Initial Set statements  --        
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds        
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+--  Variable Declarations  --        
+DECLARE @OffGroupId INT
+
+-- Body of procedure  --        
+IF EXISTS (
+		SELECT *
+		FROM TEMPDB..sysobjects
+		WHERE id = object_id(N'TEMPDB..[#TmpAccount]')
+		)
+	DROP TABLE #TmpAccount
+
+CREATE TABLE #TmpAccount (
+	CustomerAccountNumber CHAR(14)
+	,ManagerCode VARCHAR(4)
+	,ManagerDescription VARCHAR(255)
+	)
+
+-- Inserting input XML data into temp table
+INSERT INTO #TmpAccount
+SELECT x.item.value('@CustomerAccountNumber[1]', 'char(14)') AS CustomerAccountNumber
+	,x.item.value('@ManagerCode[1]', 'char(4)') AS ManagerCode
+	,x.item.value('@ManagerDescription[1]', 'char(255)') AS ManagerDescription
+FROM @AccountXML.nodes('//ManagerDetailCollection/ManagerDetail') AS x(item)
+
+SELECT @OffGroupId = GroupID
+FROM TBL_IE_Group 
+WHERE TaxYear = YEAR(GETDATE())
+	AND IsOfficial = 1
+	AND IsDeleted = 0;
+
+IF @ViewOption = 'My Manager Codes'
+BEGIN
+	SELECT Acc.ManagerCode As DDVALUE
+		,Acc.ManagerDescription As DDTEXT
+	FROM TBL_IE_STG_Estimate Est
+	INNER JOIN #TmpAccount Acc ON Est.CustomerAccountNumber = Acc.CustomerAccountNumber
+	INNER JOIN TBL_KS_StaffRole Staff ON Staff.ManagerCode = Acc.ManagerCode
+		AND Staff.UserID = @UserID
+		AND Staff.IsPrimary = 1
+	WHERE Est.GroupID = @OffGroupId
+		AND Est.ParentStagingID IS NULL
+		AND Est.IsDeleted = 0
+	GROUP BY Acc.ManagerCode
+		,Acc.ManagerDescription
+	ORDER BY Acc.ManagerCode
+END
+ELSE
+	IF @ViewOption = 'My Backup Manager Codes'
+	BEGIN
+		SELECT Acc.ManagerCode As DDVALUE
+			,Acc.ManagerDescription As DDTEXT
+		FROM TBL_IE_STG_Estimate Est
+		INNER JOIN #TmpAccount Acc ON Est.CustomerAccountNumber = Acc.CustomerAccountNumber
+		INNER JOIN TBL_KS_StaffRole Staff ON Staff.ManagerCode = Acc.ManagerCode
+			AND Staff.UserID = @UserID
+			AND Staff.IsPrimary = 0
+		WHERE Est.GroupID = @OffGroupId
+			AND Est.ParentStagingID IS NULL
+			AND Est.IsDeleted = 0
+		GROUP BY Acc.ManagerCode
+			,Acc.ManagerDescription
+		ORDER BY Acc.ManagerCode
+	END
+	ELSE
+	BEGIN
+		SELECT Acc.ManagerCode As DDVALUE
+			,Acc.ManagerDescription As DDTEXT
+		FROM TBL_IE_STG_Estimate Est
+		INNER JOIN #TmpAccount Acc ON Est.CustomerAccountNumber = Acc.CustomerAccountNumber
+		WHERE Est.GroupID = @OffGroupId
+			AND Est.ParentStagingID IS NULL
+			AND Est.IsDeleted = 0
+		GROUP BY Acc.ManagerCode
+			,Acc.ManagerDescription
+		ORDER BY Acc.ManagerCode
+	END
+
+SET NOCOUNT OFF;
+	-- End of procedure  --        

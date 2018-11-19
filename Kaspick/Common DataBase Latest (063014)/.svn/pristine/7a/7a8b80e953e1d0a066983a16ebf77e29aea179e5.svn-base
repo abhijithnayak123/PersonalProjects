@@ -1,0 +1,82 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllMatchedTransactions]    Script Date: 05/21/2014 13:19:56 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllMatchedTransactions]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetAllMatchedTransactions]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllMatchedTransactions]    Script Date: 05/21/2014 13:19:56 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetAllMatchedTransactions      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call 
+EXEC USP_OP_GetAllMatchedTransactions  -- parameters      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Operations     
+** Created DT :		05-21-2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05-21-2014		Tanuj			    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_GetAllMatchedTransactions] 
+(
+	@GROUPID INT
+)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;    
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds    
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;    
+
+	SELECT 
+	RECONCILIATIONID
+	,RG.RECONCILIATIONGROUPID AS GROUPID
+	,TN.TransactionComment AS COMMENTS
+	,RG.Comments AS GROUPCOMMENTS
+	,RECONDATETIME
+	,TI.TRADEID
+	,TR.TRANSACTIONID
+	,RECONUSERID
+	,AM.CustomerAccountNumber AS TRCustomerAccountNumber
+	,TI.TRADEDATE AS TRTRADEDATE
+	,TI.TRADEQUANTITY AS TRTRADEQUANTITY
+	,TI.SECURITYSYMBOL AS TRSECURITYSYMBOL
+	,TN.CustomerAccountNumber AS TNCustomerAccountNumber
+	,TN.TRADEQUANTITY AS TNTRADEQUANTITY
+	,TN.SECURITYSYMBOL AS TNSECURITYSYMBOL
+	,TN.TRADEDATE AS TNTRADEDATE
+	 FROM TBL_OP_TRANSACTIONRECONCILIATION TR 
+	INNER JOIN TBL_OP_TRANSACTION TN ON TR.TRANSACTIONID = TN.TRANSACTIONID
+	INNER JOIN dbo.TBL_TR_TradeImport TI ON TR.TRADEID = TI.TRADEID
+	INNER JOIN SYN_IT_AccountMaster AM ON TI.CustomerAccountNumber = AM.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_OP_RECONCILIATIONGROUP RG ON TR.RECONCILIATIONGROUPID = RG.RECONCILIATIONGROUPID
+	WHERE TR.RECONCILIATIONGROUPID = @GROUPID --AND (TI.TRADESTATUS='executed' or TI.TRADESTATUS='generated')
+	
+END  
+GO
+
+

@@ -1,0 +1,61 @@
+/****** Object:  StoredProcedure [dbo].[UPS_SIT_GetAuditLog]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[UPS_SIT_GetAuditLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[UPS_SIT_GetAuditLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[UPS_SIT_GetAuditLog]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : UPS_SIT_GetAuditLog                      
+** Short Desc: Get audit log detail for specified user
+** Full Description: Get audit log detail for specified user
+** Input Arguments:  
+** Sample Call
+ EXEC UPS_SIT_GetAuditLog 100084
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE UPS_SIT_GetAuditLog (@UserID INT)
+AS
+BEGIN
+	SELECT [UserID]
+		,[Prior_Reference_Number]
+		,[ImportDateTime]
+		,[IsSuccess]
+		,[ErrorDetail]
+	FROM TBL_SIT_AuditLog
+	WHERE CONVERT(VARCHAR, ImportDateTime, 101) = CONVERT(VARCHAR, GetDate(), 101)
+		AND [UserID] = @UserID
+END

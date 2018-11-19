@@ -1,0 +1,104 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingRoleDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradingRoleDetail;
+
+	PRINT 'DROPPED USP_EX_GetTradingRoleDetail';
+END
+GO
+
+/******************************************************************************    
+** Name : USP_EX_GetTradingRoleDetail
+** Old Name:     USP_EIS_EX_TRADING_ROLE_DTLSelProc    
+** Short Desc: To retrieve records from table Based on Roll     
+**    
+EXEC USP_EX_GetTradingRoleDetail  
+@ROLE ='TRADER'    
+**    
+**    
+**     
+** Created By: Sandesh M M    
+** Company   : Kaspick & Company    
+** Project   : Excelsior-IM Profile    
+** Created DT: 28-03-07    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**  4/2/2014    Sanath    Trading task for Req INVREQ3.1  
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted 
+*******************************************************************************    
+** Copyright (C) <2007,,2006> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradingRoleDetail] --'Reporting Analyst'
+(
+	@role AS VARCHAR(100)
+)
+AS
+BEGIN
+	--  Variable Declarations  --    
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling -     
+	DECLARE @val1 VARCHAR(Max);
+
+	--  Variable Data Assignment  --    
+	SET @procname = 'USP_EX_GetTradingRoleDetail';
+
+	BEGIN TRY
+		SELECT DISTINCT KsUsr.UserID,KsUsr.LoginName
+		FROM TBL_KS_User KsUsr
+		--INNER JOIN TBL_KS_StaffRole KsStfRol ON KsUsr.UserID = KsStfRol.UserID
+		--INNER JOIN TBL_KS_ClientRole KsClntRol ON KsStfRol.roleid = KsClntRol.roleid
+		-- Begin
+		INNER JOIN TBL_KS_USERRole UsrRole ON UsrRole.UserID = KsUsr.UserID 
+		INNER JOIN TBL_KS_ClientRole KsClntRol ON KsClntRol.roleid = UsrRole.roleid
+		INNER JOIN SYN_IT_SubContactRoles subConRole ON subConRole.SubContactID = KsUsr.InnotrustContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRoleCodes ON ConRoleCodes.ID = subConRole.ContactRoleCode
+		WHERE ConRoleCodes.ID IN ( 2 -- 'Administrator'
+                  ,3 -- 'Backup Administrator'
+                  ,34 --'Relationship Manager'
+                  ,14 -- Investment Officer'
+                  ,512 -- 'Backup Relationship Manager'
+                  ,26 -- 'Plan Administrator'
+                  ,510 -- 'Trust Administrator'
+                  ,515 -- 'Portfolio Analyst'
+                  ,518 -- 'Custody Ops Administrator'
+                  ,519 -- 'Reporting Analyst'
+                  )
+-- End
+
+		AND KsClntRol.FullName = @role
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = @ROLE;
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'Role';
+	END CATCH;
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingRoleDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTradingRoleDetail';
+END

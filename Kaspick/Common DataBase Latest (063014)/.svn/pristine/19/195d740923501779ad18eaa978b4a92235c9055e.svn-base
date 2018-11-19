@@ -1,0 +1,126 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GiftsInRange]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GiftsInRange]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GiftsInRange]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GiftsInRange]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GiftsInRange                      
+** Short Desc: Retrieve gifts in specified range
+**                      
+** Full Description: Retrieve gifts in specified range
+**      
+**                              
+** Input Arguments:   	
+**	
+**	        
+** Sample Call     
+    
+ EXEC dbo.USP_PP_GiftsInRange 'AL','01/01/2000','01/01/2014'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 2-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GiftsInRange] (
+	@ClientBriefName VARCHAR(4)
+	,@GiftStartDate DATETIME
+	,@GiftEndDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT DISTINCT AccMstr.CustomerAccountNUmber
+		,ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, '') AS FullName
+		,AccMstr.TrustAccountNumber AS BriefName
+		,AccMstr.AccountTypeCode
+		,Gft.GiftDate
+		,Gft.giftID
+		,GftAsst.DeliverMethod
+		,GftAsst.DeliverDate
+		,GftAsst.Description
+		,GftAsst.AssetType
+		,GftAsst.MarketValue
+		,GftAsst.CostBasis
+		,AccMstr.AllianceNUmber
+		,AccMstr.ManagerCode
+		,ContMstr.ContactName AS ClientName
+		,Gft.Comments
+		,Gft.IsInitialGift
+		,Gft.IsTestamentary
+		,CASE 
+			WHEN isInitialGift = - 1
+				AND istestamentary = 1
+				THEN 'Testamentary Funding'
+			ELSE (
+					CASE 
+						WHEN isInitialGift = - 1
+							AND istestamentary = 0
+							THEN 'Initial Funding'
+						ELSE (
+								CASE 
+									WHEN isInitialGift = 0
+										THEN 'Addition'
+									END
+								)
+						END
+					)
+			END AS InitialAdd
+	FROM SYN_IT_AccountMaster AccMstr
+	INNER JOIN TBL_Lookup_Account LkpAccnt
+		ON LkpAccnt.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	INNER JOIN SYN_PS_GIFT Gft
+		ON LkpAccnt.AccountID = Gft.AccountID
+	INNER JOIN SYN_PS_GIFTASSET GftAsst
+		ON Gft.GiftID = GftAsst.GiftID
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCode
+		ON AccMgrCode.ManagerCode = AccMstr.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster ContMstr
+		ON ContMstr.ContactID = AccMgrCode.ContactID
+	WHERE (
+			(
+				(Gft.GiftDate) >= @GiftStartDate
+				AND (Gft.GiftDate) <= @GiftEndDate
+				)
+			AND (AccMstr.ManagerCode = @ClientBriefName) ----AND ((PROGRAM.ClientID) = 100046)
+			)
+	ORDER BY AccMstr.CustomerAccountNUmber
+		,Gft.GiftDate
+		,Gft.GiftID;
+
+	SET NOCOUNT OFF;
+END

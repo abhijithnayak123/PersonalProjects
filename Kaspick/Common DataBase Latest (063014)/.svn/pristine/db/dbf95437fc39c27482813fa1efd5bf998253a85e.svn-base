@@ -1,0 +1,198 @@
+
+/****** Object:  Trigger [dbo].[TRG_TBL_PP_SystemAdministration_INSUPDDEL]    Script Date: 11/05/2013 16:47:15 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Trigger Name: 	TRG_TBL_PP_SystemAdministration_INSUPDDEL
+** Table Name:		TRG_TBL_PP_SystemAdministration
+** Action			Insert, Update, Delete
+**
+** Description: 	Writes data changes to the audit table
+**
+**				
+**            
+**                      
+**                      
+** Standard declarations                      
+**                          
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 20-Nov-13                 
+** 
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+CREATE TRIGGER [dbo].[TRG_TBL_PP_SystemAdministration_INSUPDDEL]
+   ON [dbo].[TBL_PP_SystemAdministration]
+   AFTER INSERT,UPDATE,DELETE
+AS 
+
+--	Body of trigger  -- 
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the rowcount from Deleted > 0, then get the data from the
+-- Deleted table for recording the old values in the audit table.
+
+BEGIN TRY
+BEGIN TRANSACTION
+
+	DECLARE @UNKNOWN_ID INT
+	SELECT @UNKNOWN_ID = UserID FROM TBL_KS_User WHERE upper(LoginName) = 'UNKNOWN'
+
+	If (Select count(*) from Deleted) > 0 and (select count(*) from Inserted) > 0 
+	BEGIN
+					
+		INSERT INTO TBL_PP_AUDIT_SystemAdministration
+				(AuditUserId ,
+				AuditDatetime,
+				AuditType,
+				AuditDetails,
+				MinimumCheckPostingDays,
+				MinimumNonCheckPostingDays,
+				PaymentProcessStartTime,
+				MinimumWirePostingDays,
+				ModifiedDate,
+				ModifiedBy,
+				CreatedDate,
+				CreatedBy
+				--DeletedUserId
+				)
+
+		SELECT
+				I.ModifiedBy, 
+				GETDATE(), 
+				'U',
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.MinimumCheckPostingDays,
+				D.MinimumNonCheckPostingDays,
+				D.PaymentProcessStartTime,
+				D.MinimumWirePostingDays,
+				D.ModifiedDate,
+				D.ModifiedBy,
+				D.CreatedDate,
+				D.CreatedBy
+				--D.DeletedUserId
+
+		From Deleted D, inserted I 
+	
+	END
+	ELSE
+	IF (select count(*) from Inserted) > 0 and (select count(*) from deleted) = 0 
+	BEGIN
+
+		INSERT INTO TBL_PP_AUDIT_SystemAdministration
+				(AuditUserId ,
+				AuditDatetime,
+				AuditType,
+				AuditDetails,
+				MinimumCheckPostingDays,
+				MinimumNonCheckPostingDays,
+				PaymentProcessStartTime,
+				MinimumWirePostingDays,
+				ModifiedDate,
+				ModifiedBy,
+				CreatedDate,
+				CreatedBy
+				--DeletedUserId
+				)
+
+		SELECT
+				 ISNULL(I.CreatedBy, @UNKNOWN_ID),
+				 GETDATE(), 
+				'I',
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				I.MinimumCheckPostingDays,
+				I.MinimumNonCheckPostingDays,
+				I.PaymentProcessStartTime,
+				I.MinimumWirePostingDays,
+				I.ModifiedDate,
+				I.ModifiedBy,
+				I.CreatedDate,
+				I.CreatedBy
+				--I.DeletedUserId
+		From Inserted I 
+
+	END
+	ELSE
+	If (Select count(*) from Deleted) > 0 and (select count(*) from inserted) = 0 
+	BEGIN
+
+
+		INSERT INTO TBL_PP_AUDIT_SystemAdministration
+				(AuditUserId ,
+				AuditDatetime,
+				AuditType,
+				AuditDetails,
+				MinimumCheckPostingDays,
+				MinimumNonCheckPostingDays,
+				PaymentProcessStartTime,
+				MinimumWirePostingDays,
+				ModifiedDate,
+				ModifiedBy,
+				CreatedDate,
+				CreatedBy
+				--DeletedUserId
+				)
+
+		SELECT
+				--ISNULL(DELETED_USER_ID,@UNKNOWN_ID), 
+				@UNKNOWN_ID,
+				GETDATE(), 
+				'D',
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+			    D.MinimumCheckPostingDays,
+				D.MinimumNonCheckPostingDays,
+				D.PaymentProcessStartTime,
+				D.MinimumWirePostingDays  ,
+				D.ModifiedDate,
+				D.ModifiedBy,
+				D.CreatedDate,
+				D.CreatedBy
+				--D.DeletedUserId  
+		FROM Deleted D 
+	
+	END
+
+  END TRY
+  BEGIN CATCH
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.' 
+  END CATCH
+  
+  COMMIT TRANSACTION;
+ 
+GO
+
+

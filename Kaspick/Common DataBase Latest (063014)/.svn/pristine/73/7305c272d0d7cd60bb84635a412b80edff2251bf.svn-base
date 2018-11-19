@@ -1,0 +1,104 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportGetPaymentDate'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportGetPaymentDate
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportGetPaymentDate                      
+** Short Desc:
+**                      
+** Full Description: 
+**                              
+** Input Arguments:
+		@CustomerAccountNumber Varchar(14),   
+		@DStart datetime,  
+		@DCreate datetime  
+   
+**         
+** Sample Call     
+        
+	select  [dbo].[Fn_ReportGetPaymentDate] ('L',31,'JAN','12/31/2012','1/1/2014') 
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportGetPaymentDate] (
+	@FirstOccurrence VARCHAR(1)
+	,@FirstEventDay SMALLINT
+	,@FirstEventMonth VARCHAR(3)
+	,@DStart DATETIME
+	,@DCreate DATETIME
+	)
+RETURNS @RetTable TABLE (pmtDates DATETIME)
+AS
+BEGIN
+	DECLARE @ICounter INT
+	DECLARE @IDay INT
+	DECLARE @VMonth VARCHAR(3)
+	DECLARE @SFirstOccur VARCHAR(20)
+	DECLARE @IYear INT
+	DECLARE @pmtDates DATETIME
+
+	--declare @ICnt int  
+	IF @FirstEventDay > 0
+	BEGIN
+		-- Read Key Info From CYCLICEVENT table  
+		SET @IDay = @FirstEventDay
+		SET @VMonth = @FirstEventMonth
+		SET @SFirstOccur = @FirstOccurrence
+		--Get All dates for this year  
+		SET @IYear = year(@DStart)
+		--set @ICnt = 0  
+		SET @DStart = @DStart - 1
+		SET @ICounter = 0
+
+		WHILE (@ICounter = 0)
+		BEGIN
+			--Calculate next date  
+			SET @DStart = dbo.Fn_ReportCalcNextDate(@DStart, @IDay, @VMonth, @SFirstOccur)
+
+			--Make sure we get a valid date occuring in the same year  
+			IF @DStart = NULL
+				BREAK
+
+			IF (year(@DStart) <> @IYear)
+				BREAK
+
+			--Add Date to RetTable  
+			IF (@DStart >= @DCreate) --'No payments prior to creation date  
+			BEGIN
+				INSERT INTO @RetTable
+				VALUES (@DStart)
+					--set ICnt = ICnt + 1  
+			END
+		END -- while ends  
+	END -- if ends  
+
+	RETURN
+END

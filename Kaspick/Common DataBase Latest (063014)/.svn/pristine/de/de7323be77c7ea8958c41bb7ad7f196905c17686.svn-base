@@ -1,0 +1,132 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_TrustAdvisor]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_TrustAdvisor]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_TrustAdvisor
+* File Name		  : USP_Lookup_TrustAdvisor.SQL      
+* Description     : This SP loads the newly added TrustAdvisor into the TrustAdvisor Look Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+
+CREATE PROCEDURE USP_Lookup_TrustAdvisor(@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(100) ='TBL_Lookup_TrustAdvisor'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+
+		--Inserts the TrustAdvisor columns and the appropriate lookup Columns
+		--  which are not existing in TrustAdvisor lookup table
+		INSERT INTO TBL_Lookup_TrustAdvisor(ContactID,SubContactID,ContactRoleCode,ParticipantID)
+		SELECT	DISTINCT
+					 SCR.ContactID
+					,SCR.SubContactID
+					,SCR.ContactRoleCode							
+					,TP.ParticipantID
+									
+		FROM		dbo.SYN_IT_SubContactRoles SCR
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster SCM	
+					ON	SCR.SubContactID = SCM.ContactID
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC 
+					ON	SCR.ContactRoleCode = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster	CM		
+					ON SCR.ContactID = CM.ContactID
+		
+		INNER JOIN	dbo.TBL_Lookup_TrustParticipant TP
+					ON SCR.ContactID = TP.ContactID		--SCR.contactid= benificiary Participantid
+					
+		LEFT JOIN	dbo.TBL_Lookup_TrustAdvisor  LP
+					ON 	SCR.ContactID = LP.ContactID
+					AND	SCR.SubContactID = LP.SubContactID
+					AND	SCR.ContactRoleCode	= LP.ContactRoleCode
+							
+		WHERE		CRC.ContactRoleCodeDesc = 'Third Party'
+		AND			LP.ContactID IS NULL
+		
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+		
+		--TBL_Lookup_TrustAdvisor_DeletedRecord 
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_TrustAdvisor_DeletedRecord'
+		
+		DELETE		LP
+		OUTPUT		 Deleted.ContactID
+					,Deleted.SubContactID
+					,Deleted.ContactRoleCode
+					,Deleted.TrustAdvisorID
+					,Deleted.ParticipantID
+					,GETDATE() 
+		INTO TBL_Lookup_TrustAdvisor_DeletedRecord(ContactID ,SubContactID ,ContactRoleCode ,TrustAdvisorID ,ParticipantID, DeletedDate)
+		FROM		TBL_Lookup_TrustAdvisor	LP
+		
+		LEFT JOIN   dbo.SYN_IT_SubContactRoles SCR
+					ON 	LP.ContactID = SCR.ContactID
+					AND	LP.SubContactID = SCR.SubContactID
+					AND	LP.ContactRoleCode	= SCR.ContactRoleCode	
+					
+		INNER JOIN	dbo.SYN_IT_ContactMaster SCM	
+					ON	SCR.SubContactID = SCM.ContactID
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC 
+					ON	SCR.ContactRoleCode = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster	CM		
+					ON SCR.ContactID = CM.ContactID
+		
+		INNER JOIN	dbo.TBL_Lookup_TrustParticipant TP
+					ON SCR.ContactID = TP.ContactID		--SCR.contactid= benificiary Participantid
+				
+		WHERE	CRC.ContactRoleCodeDesc = 'Third Party'
+		AND		SCR.ContactID IS NULL
+				
+		--LOGGING
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - Physical Delete - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+		
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental Load - Error: ' + Error_Message() 
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message()  
+	    
+	    EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error'   ,@RunID       
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

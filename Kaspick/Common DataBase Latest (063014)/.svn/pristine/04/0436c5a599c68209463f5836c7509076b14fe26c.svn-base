@@ -1,0 +1,741 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEnginePaymentsToBeValidated]    Script Date: 08/30/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEnginePaymentsToBeValidated]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEnginePaymentsToBeValidated]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEnginePaymentsToBeValidated]    Script Date: 08/30/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEnginePaymentsToBeValidated  
+**                    
+** Short Desc: Payments to be validated(For Validation Engine)
+**                      
+** Full Description:  Payments to be validated(For Validation Engine) -In Case of both Automatic and Manual       
+**        
+**                              
+** Input Arguments: 
+	@XMLData XML,    
+	@RunDate Datetime,    
+	@UserID	INT,
+	@IsAutoValidation BIT,
+	@IsPosted	Bit      
+    
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEnginePaymentsToBeValidated        
+'','9/5/2014',1,1,1
+
+
+EXEC USP_PP_GetValidationEnginePaymentsToBeValidated        
+	'<ValidationDataSourceCollection>  
+	 <InsertList>																					  
+		  <ValidationDataSource PaymentType="BeneficiaryPayment"  ScheduleID="278211" RecordVersion="0x0000000000AB2E55"/> 
+		  <ValidationDataSource PaymentType="BeneficiaryPayment"  ScheduleID="278214" RecordVersion="0x0000000000AB2E56"/>
+	 </InsertList>																					 
+	</ValidationDataSourceCollection>','12/31/2013',1,0,1
+
+
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 30-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 26-may-14   Salih               Splitcheck implementation changes, AdviceFlag check 
+**							    	modified from 1 to -4 
+** 05-june-14  Anand			   Auto validation: filter for payments needs to be validated after posting
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.								  
+** 30-June-14  Ashvin			   Modifying for ET 16169		
+** 08-Aug-14   Anand			   Modified for ET 16777	
+** 05-Sep-14   Anand			   Modified filter condition for posted payments in Auto validation							
+					
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEnginePaymentsToBeValidated] @XMLData XML
+	,@RunDate DATETIME
+	,@UserID INT
+	,@IsAutoValidation BIT
+	,@IsPosted BIT
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds       
+
+	----DECLARE VARIABLES 
+	DECLARE @ContactRoleCode INT
+	DECLARE @MinCheck INT;
+	DECLARE @MinNonCheck INT;
+	DECLARE @MinWirePosting INT
+	DECLARE @AdministratorID INT
+
+	SELECT @AdministratorID = UserID
+	FROM TBL_KS_User
+	WHERE LoginName = 'Administrator'
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpBeneficiaryLeadTime]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpBeneficiaryLeadTime]
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpWirePostingDays]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpWirePostingDays]
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpPaymentsForYear]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpPaymentsForYear]
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpValidationDataSource]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpValidationDataSource]
+	END
+
+	CREATE TABLE #TmpBeneficiaryLeadTime (
+		ContactID INT
+		,ContactRoleCode INT
+		,CustomerAccountNumber VARCHAR(14)
+		,LeadTime INT
+		,BeneficiaryDistributionID INT
+		)
+
+	CREATE TABLE #TmpWirePostingDays (
+		ContactID INT
+		,ContactRoleCode INT
+		,CustomerAccountNumber VARCHAR(14)
+		,DaysValue INT
+		)
+
+	CREATE TABLE #TmpPaymentsForYear (
+		PaymentType VARCHAR(50)
+		,ScheduleID INT
+		,PaymentDate DATETIME
+		,InstructionID INT
+		,BeneficiaryDistributionID INT
+		,TaxYear INT
+		,ScheduledAmount MONEY
+		,ManagerCode VARCHAR(4)
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,ContactRoleCode INT
+		,EPD DATETIME NULL
+		,LeadTime INT DEFAULT(0)
+		,RecordVersion VARCHAR(20)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	CREATE TABLE #TmpValidationDataSource (
+		PaymentType VARCHAR(50)
+		,ScheduleID INT
+		,RecordVersion VARCHAR(20)
+		)
+
+	BEGIN TRANSACTION
+
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	SET @ContactRoleCode = 21 --'Beneficiary'
+
+	IF @IsAutoValidation = 'True'
+	BEGIN
+		--Inserting  BeneficiaryPayment Type into Temp Table 
+		INSERT INTO #TmpPaymentsForYear (
+			PaymentType
+			,ScheduleID
+			,PaymentDate
+			,InstructionID
+			,BeneficiaryDistributionID
+			,TaxYear
+			,ScheduledAmount
+			,ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,EPD
+			)
+		SELECT 'BeneficiaryPayment' AS PaymentType
+			,BenPay.BPScheduleID
+			,BenPay.PaymentDate
+			,AccntPay.InstructionID
+			,BenPay.BeneficiaryDistributionID
+			,BenPay.TaxYear
+			,BenPay.ScheduledAmount
+			,AccntPay.ManagerCode
+			,AccntPay.CustomerAccountNumber
+			,BenPay.ContactID
+			,BenPay.ContactRoleCode
+			,BenPay.EPD
+		FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+		INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay ON BenPay.APScheduleid = AccntPay.APScheduleID
+		LEFT OUTER JOIN TBL_PP_BeneficiaryPayment Payment ON BenPay.PaymentID = Payment.PaymentID
+		--WHERE ISNULL(BenPay.PaymentID, 0) = 0
+		WHERE (
+				YEAR(BenPay.PaymentDate) BETWEEN (YEAR(@RunDate) - 1)
+					AND (YEAR(@RunDate) + 1)
+				)
+			AND IsNull(BenPay.PaymentID, 0) = CASE 
+				WHEN @IsPosted = 1
+					AND ISNULL(BenPay.PaymentID, 0) <> 0
+					AND @RunDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), BenPay.EPD, 101))
+					--Added condition for filtering uncleared wire posted payments which needs to be validated as part of auto validation 
+					AND Payment.ClearDate IS NULL
+					AND PaymentMethod = 'WIRE'
+					THEN IsNull(BenPay.PaymentID, 0)
+				WHEN @IsPosted = 0
+					AND ISNULL(BenPay.PaymentID, 0) = 0
+					THEN IsNull(BenPay.PaymentID, 0)
+				END
+
+		----Inserting  PGCalcImport Type into Temp Table 		
+		INSERT INTO #TmpPaymentsForYear (
+			PaymentType
+			,ScheduleID
+			,PaymentDate
+			,InstructionID
+			,BeneficiaryDistributionID
+			,TaxYear
+			,ScheduledAmount
+			,ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,EPD
+			)
+		SELECT 'PGCalcImport' AS PaymentType
+			,MergedPGCalcPaymentID
+			,pgcalc.PaymentDate
+			,Pgcalc.InstructionID
+			,Pgcalc.BeneficiaryDistributionID
+			,Pgcalc.TaxYear
+			,pgcalc.PaymentAmount
+			,pgcalc.ManagerCode
+			,pgcalc.CustomerAccountNumber
+			,pgcalc.ContactID
+			,pgcalc.ContactRoleCode
+			,pgcalc.EPD
+		FROM TBL_PP_PGCalcPaymentDataMerged pgcalc
+		LEFT OUTER JOIN TBL_PP_BeneficiaryPayment Payment ON pgcalc.PaymentID = Payment.PaymentID
+		WHERE (
+				YEAR(pgcalc.PaymentDate) BETWEEN (YEAR(@RunDate) - 1)
+					AND (YEAR(@RunDate) + 1)
+				)
+			AND IsNull(pgcalc.PaymentID, 0) = CASE 
+				WHEN @IsPosted = 1
+					AND ISNULL(pgcalc.PaymentID, 0) <> 0
+					AND @RunDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), pgcalc.EPD, 101))
+					--Added condition for filtering uncleared wire posted payments which needs to be validated as part of auto validation 
+					AND Payment.ClearDate IS NULL
+					AND PaymentMethod = 'WIRE'
+					THEN IsNull(pgcalc.PaymentID, 0)
+				WHEN @IsPosted = 0
+					AND ISNULL(pgcalc.PaymentID, 0) = 0
+					THEN IsNull(pgcalc.PaymentID, 0)
+				END
+	END
+	ELSE
+	BEGIN
+		----Inserting XML Data into Temp table     
+		INSERT INTO #TmpValidationDataSource
+		SELECT x.DataSource.value('@PaymentType[1]', 'varchar(50)') AS PaymentType
+			,x.DataSource.value('@ScheduleID[1]', 'INT') AS ScheduleID
+			,x.DataSource.value('@RecordVersion[1]', 'varchar(100)') AS RecordVersion
+		FROM @XMLData.nodes('//ValidationDataSourceCollection/InsertList/ValidationDataSource') AS x(DataSource)
+
+		IF EXISTS (
+				SELECT 1
+				FROM #TmpValidationDataSource
+				)
+		BEGIN
+			INSERT INTO #TmpPaymentsForYear (
+				PaymentType
+				,ScheduleID
+				,PaymentDate
+				,InstructionID
+				,BeneficiaryDistributionID
+				,TaxYear
+				,ScheduledAmount
+				,ManagerCode
+				,CustomerAccountNumber
+				,ContactID
+				,ContactRoleCode
+				,RecordVersion
+				)
+			SELECT TmpVal.PaymentType
+				,Benpay.BPScheduleID
+				,BenPay.PaymentDate
+				,AccntPay.InstructionID
+				,BenPay.BeneficiaryDistributionID
+				,BenPay.TaxYear
+				,BenPay.ScheduledAmount
+				,AccntPay.ManagerCode
+				,AccntPay.CustomerAccountNumber
+				,BenPay.ContactID
+				,BenPay.ContactRoleCode
+				,TmpVal.RecordVersion
+			FROM #TmpValidationDataSource TmpVal
+			INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON TmpVal.Scheduleid = BenPay.BPScheduleID
+			INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay ON BenPay.APScheduleid = AccntPay.APScheduleID
+			WHERE TmpVal.PaymentType = 'Beneficiarypayment'
+				AND IsNull(PaymentID, 0) = CASE 
+					WHEN @IsPosted = 1
+						AND ISNULL(BenPay.PaymentID, 0) <> 0
+						THEN IsNull(PaymentID, 0)
+					WHEN @IsPosted = 0
+						AND ISNULL(BenPay.PaymentID, 0) = 0
+						THEN IsNull(PaymentID, 0)
+					END
+
+			INSERT INTO #TmpPaymentsForYear (
+				PaymentType
+				,ScheduleID
+				,PaymentDate
+				,InstructionID
+				,BeneficiaryDistributionID
+				,TaxYear
+				,ScheduledAmount
+				,ManagerCode
+				,CustomerAccountNumber
+				,ContactID
+				,ContactRoleCode
+				,RecordVersion
+				)
+			SELECT TmpVal.PaymentType
+				,MergedPGCalcPaymentID
+				,PaymentDate
+				,pgcalc.InstructionID
+				,pgcalc.BeneficiaryDistributionID
+				,pgcalc.TaxYear
+				,PaymentAmount
+				,pgcalc.ManagerCode
+				,pgcalc.CustomerAccountNumber
+				,pgcalc.ContactID
+				,pgcalc.ContactRoleCode
+				,TmpVal.RecordVersion
+			FROM #TmpValidationDataSource TmpVal
+			INNER JOIN TBL_PP_PGCalcPaymentDataMerged pgcalc ON TmpVal.ScheduleID = pgcalc.MergedPGCalcPaymentID
+			WHERE TmpVal.PaymentType = 'PGCalcImport'
+				--AND ISNULL(pgcalc.PaymentID, 0) = 0
+				AND IsNull(PaymentID, 0) = CASE 
+					WHEN @IsPosted = 1
+						AND ISNULL(pgcalc.PaymentID, 0) <> 0
+						THEN IsNull(PaymentID, 0)
+					WHEN @IsPosted = 0
+						AND ISNULL(pgcalc.PaymentID, 0) = 0
+						THEN IsNull(PaymentID, 0)
+					END
+		END
+	END
+
+	--To calculate Lead Time
+	--Get the list of Contact IDs from temp table 
+	--Calculate Lead Time only in first run of validation
+	IF @IsPosted = 'False'
+	BEGIN
+		INSERT INTO #TmpBeneficiaryLeadTime (
+			ContactID
+			,ContactRoleCode
+			,CustomerAccountNumber
+			,BeneficiaryDistributionID
+			,LeadTime
+			)
+		SELECT DISTINCT ContactID
+			,ContactRoleCode
+			,CustomerAccountNumber
+			,BeneficiaryDistributionID
+			,0
+		FROM #TmpPaymentsForYear
+
+		--get the default values for check and noncheck from sys table        
+		SELECT @MinCheck = MinimumCheckPostingDays
+			,@MinNonCheck = MinimumNonCheckPostingDays
+			,@MinWirePosting = MinimumWirePostingDays
+		FROM TBL_PP_SystemAdministration
+
+		---Get the list of Contact for PaymentMethod = 'Wire'
+		INSERT INTO #TmpWirePostingDays (
+			ContactID
+			,ContactRoleCode
+			,CustomerAccountNumber
+			,DaysValue
+			)
+		SELECT TmpBeneLeadTime.ContactID
+			,TmpBeneLeadTime.ContactRoleCode
+			,TmpBeneLeadTime.CustomerAccountNumber
+			,@MinWirePosting AS DaysValue
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist ON BeneDist.BeneficiaryDistributionID = TmpBeneLeadTime.BeneficiaryDistributionID
+		INNER JOIN SYN_IT_ContactPaymentMethods SynPmntMthds ON BeneDist.PayeePaymentMethodID = SynPmntMthds.ID
+			AND SynPmntMthds.PaymentType = 'Wire'
+
+		----lowest priority Manager	
+		UPDATE #TmpBeneficiaryLeadTime
+		SET LeadTime = MgrRule.DaysValue
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN SYN_IT_AccountMaster AccMst ON AccMst.CustomerAccountNumber = TmpBeneLeadTime.CustomerAccountNumber
+		INNER JOIN dbo.TBL_PP_ManagerRule MgrRule ON MgrRule.ManagerCode = AccMst.ManagerCode
+		WHERE MgrRule.DaysValue IS NOT NULL
+
+		--second priority CustomerAccountNumber  
+		UPDATE TmpBeneLeadTime
+		SET LeadTime = CASE 
+				WHEN AccntRule.DaysValue IS NULL
+					THEN LeadTime
+				ELSE AccntRule.DaysValue
+				END
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN dbo.TBL_PP_AccountRule AccntRule ON AccntRule.CustomerAccountNumber = TmpBeneLeadTime.CustomerAccountNumber
+		WHERE AccntRule.DaysValue IS NOT NULL
+
+		--Highest priority Contact       
+		UPDATE TmpBeneLeadTime
+		SET LeadTime = CASE 
+				WHEN CnctRule.DaysValue IS NULL
+					THEN LeadTime
+				ELSE CnctRule.DaysValue
+				END
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN dbo.TBL_PP_ContactRule CnctRule ON CnctRule.ContactID = TmpBeneLeadTime.Contactid
+		WHERE CnctRule.DaysValue IS NOT NULL
+
+		UPDATE TmpBeneLeadTime
+		SET LeadTime = CASE 
+				WHEN ISNULL(LeadTime, 0) > @MinNonCheck
+					THEN ISNULL(LeadTime, 0)
+				ELSE @MinNonCheck
+				END
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist ON BeneDist.BeneficiaryDistributionID = TmpBeneLeadTime.BeneficiaryDistributionID
+		INNER JOIN SYN_IT_ContactPaymentMethods SynPmntMthds ON BeneDist.PayeePaymentMethodID = SynPmntMthds.ID
+			AND (
+				FixedOrPercentageFlag = 3
+				OR FixedOrPercentageFlag = 4
+				)
+		WHERE SynPmntMthds.PaymentType IS NULL
+			OR (
+				NOT (
+					SynPmntMthds.PaymentType = 'CHECK'
+					OR (
+						-- 26-may-2014	Salih :  Splitcheck implementation changes, AdviceFlag check modified from 1 to -4 
+						SynPmntMthds.PaymentType = 'CHECK'
+						AND BeneDist.AdviceFlag = - 4
+						)
+					)
+				)
+
+		--For Chek payment method MW rules..If not found then System admin value      
+		UPDATE #TmpBeneficiaryLeadTime
+		SET LeadTime = CASE 
+				WHEN LeadTime IS NULL
+					THEN @MinCheck
+				ELSE LeadTime
+				END
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist ON BeneDist.BeneficiaryDistributionID = TmpBeneLeadTime.BeneficiaryDistributionID
+		INNER JOIN SYN_IT_ContactPaymentMethods SynPmntMthds ON BeneDist.PayeePaymentMethodID = SynPmntMthds.ID
+			AND (
+				FixedOrPercentageFlag = 3
+				OR FixedOrPercentageFlag = 4
+				)
+		WHERE SynPmntMthds.PaymentType IS NOT NULL
+			AND (
+				SynPmntMthds.PaymentType = 'CHECK'
+				OR (
+					-- 26-may-2014	Salih :  Splitcheck implementation changes, AdviceFlag check modified from 1 to -4 
+					SynPmntMthds.PaymentType = 'CHECK'
+					AND BeneDist.AdviceFlag = - 4
+					)
+				)
+
+		UPDATE #TmpBeneficiaryLeadTime
+		SET LeadTime = CASE 
+				WHEN ISNULL(LeadTime, 0) > TmpWirePstng.DaysValue
+					THEN ISNULL(LeadTime, 0)
+				ELSE TmpWirePstng.DaysValue
+				END
+		FROM #TmpBeneficiaryLeadTime TmpBeneLeadTime
+		INNER JOIN #TmpWirePostingDays TmpWirePstng ON TmpBeneLeadTime.ContactID = TmpWirePstng.ContactID
+			AND TmpBeneLeadTime.ContactRoleCode = TmpWirePstng.ContactRoleCode
+			AND TmpBeneLeadTime.CustomerAccountNumber = TmpWirePstng.CustomerAccountNumber
+	END
+
+	---Lead Time Calculation ends here
+	IF @IsAutoValidation = 'True'
+	BEGIN
+		DECLARE @maxRuleLeadTime INT;
+
+		SELECT @maxRuleLeadTime = MAX(RuleLeadTime) * - 1
+		FROM TBL_PP_ValidationRule
+
+		--Update Lead Time & EPD and inserting into staging table only in first run of validation
+		IF @IsPosted = 'False'
+		BEGIN
+			-----Updating temp table for EPD & LeadTime
+			UPDATE #TmpPaymentsForYear
+			SET EPD = dateadd(day, (TmpLeadTime.LeadTime * - 1) - dbo.FN_GetHoliday(PaymentDate - TmpLeadTime.LeadTime, PaymentDate), PaymentDate)
+				,LeadTime = TmpLeadTime.LeadTime
+			FROM #TmpPaymentsForYear TmpPmntYear
+			INNER JOIN #TmpBeneficiaryLeadTime TmpLeadTime ON TmpPmntYear.ContactID = TmpLeadTime.ContactID
+				AND TmpPmntYear.ContactRoleCode = TmpLeadTime.ContactRoleCode
+				AND TmpLeadTime.CustomerAccountNumber = TmpPmntYear.CustomerAccountNumber
+			WHERE PaymentDate >= @RunDate
+
+			UPDATE TBL_PP_PGCalcPaymentDataMerged
+			SET EPD = TmpPmntYear.EPD
+				,ModifiedBy = @AdministratorID
+				,ModifiedDate = getdate()
+			FROM TBL_PP_PGCalcPaymentDataMerged PgCalc
+			INNER JOIN #TmpPaymentsForYear TmpPmntYear ON TmpPmntYear.ScheduleID = PgCalc.MergedPGCalcPaymentID
+			WHERE TmpPmntYear.Paymentdate >= @RunDate
+				AND TmpPmntYear.EPD <> isnull(PgCalc.EPD, '1900-01-01')
+
+			UPDATE TBL_PP_BeneficiaryPayoutSchedule
+			SET EPD = TmpPmntYear.EPD
+				,ModifiedBy = @AdministratorID
+				,ModifiedDate = getdate()
+			FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+			INNER JOIN #TmpPaymentsForYear TmpPmntYear ON TmpPmntYear.ScheduleID = BenPay.BPScheduleID
+			WHERE TmpPmntYear.Paymentdate >= @RunDate
+				AND TmpPmntYear.EPD <> isnull(BenPay.EPD, '1900-01-01')
+
+			---Deleting existing staging data for the same user
+			DELETE
+			FROM TBL_PP_STG_InnoTrustValidationEngineInput
+			WHERE UserID = @UserID
+
+			---Inserting data into Validation Engine Staging Table
+			INSERT INTO TBL_PP_STG_InnoTrustValidationEngineInput (
+				ScheduleID
+				,PaymentType
+				,EPD
+				,LeadTime
+				,UserID
+				)
+			SELECT ScheduleID
+				,PaymentType
+				,EPD
+				,LeadTime
+				,@UserID
+			FROM #TmpPaymentsForYear
+			WHERE @RunDate >= DATEADD(DAY, @maxRuleLeadTime, EPD)
+		END
+
+		--Select Data from #TmpPaymentsForYear        
+		SELECT PaymentType
+			,ScheduleID
+			,PaymentDate
+			,InstructionID
+			,BeneficiaryDistributionID
+			,TaxYear
+			,ScheduledAmount
+			,ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,EPD
+			,LeadTime
+		FROM #TmpPaymentsForYear
+		WHERE @RunDate >= DATEADD(DAY, @maxRuleLeadTime, EPD)
+	END
+	ELSE
+	BEGIN
+		IF @IsPosted = 'False'
+		BEGIN
+			-----Updating temp table for EPD & LeadTime
+			UPDATE #TmpPaymentsForYear
+			SET EPD = dateadd(day, (TmpBeneLeadTime.LeadTime * - 1) - dbo.FN_GetHoliday(PaymentDate - TmpBeneLeadTime.LeadTime, PaymentDate), PaymentDate)
+				,--PaymentDate - Lead_Time,        
+				LeadTime = TmpBeneLeadTime.LeadTime
+			FROM #TmpPaymentsForYear TmpPmnt
+			INNER JOIN #TmpBeneficiaryLeadTime TmpBeneLeadTime ON TmpPmnt.ContactID = TmpBeneLeadTime.ContactID
+				AND TmpPmnt.ContactRoleCode = TmpBeneLeadTime.ContactRoleCode
+
+			--Record Version Check  
+			UPDATE #TmpPaymentsForYear
+			SET ReturnStatus = - 2
+			FROM #TmpPaymentsForYear TmpPmnt
+			INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON BenPay.BPScheduleID = TmpPmnt.ScheduleID
+			WHERE PaymentType = 'Beneficiarypayment'
+				AND CONVERT(VARCHAR(20), CAST(BenPay.RecordVersion AS VARBINARY(8)), 1) <> TmpPmnt.RecordVersion
+
+			UPDATE #TmpPaymentsForYear
+			SET ReturnStatus = - 2
+			FROM #TmpPaymentsForYear TmpPmnt
+			INNER JOIN TBL_PP_PGCalcPaymentDataMerged PgCalc ON PgCalc.MergedPGCalcPaymentID = TmpPmnt.ScheduleID
+			WHERE PaymentType = 'PGCalcImport'
+				AND CONVERT(VARCHAR(20), CAST(PgCalc.RecordVersion AS VARBINARY(8)), 1) <> TmpPmnt.RecordVersion
+
+			----Update EPD,ModifiedBy,ModifiedDate in TBL_PP_PGCalcPaymentDataMerged
+			UPDATE TBL_PP_PGCalcPaymentDataMerged
+			SET EPD = TmpPmnt.EPD
+				,ModifiedBy = @AdministratorID
+				,ModifiedDate = GetDate()
+			FROM TBL_PP_PGCalcPaymentDataMerged PgCalc
+			JOIN #TmpPaymentsForYear TmpPmnt ON TmpPmnt.ScheduleID = PgCalc.MergedPGCalcPaymentID
+			WHERE TmpPmnt.EPD <> ISNULL(PgCalc.EPD, '1900-01-01')
+				AND TmpPmnt.PaymentType = 'PGCalcImport'
+				AND ReturnStatus <> - 2
+
+			----Update EPD,ModifiedBy,ModifiedDate in TBL_PP_BeneficiaryPayoutSchedule
+			UPDATE TBL_PP_BeneficiaryPayoutSchedule
+			SET EPD = TmpPmnt.EPD
+				,ModifiedBy = @AdministratorID
+				,ModifiedDate = GETDATE()
+			FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+			JOIN #TmpPaymentsForYear TmpPmnt ON TmpPmnt.ScheduleID = BenPay.BPScheduleID
+			WHERE TmpPmnt.EPD <> ISNULL(BenPay.EPD, '1900-01-01')
+				AND TmpPmnt.PaymentType = 'BeneficiaryPayment'
+				AND ReturnStatus <> - 2
+
+			---Deleting existing staging data for the same user
+			DELETE
+			FROM TBL_PP_STG_InnoTrustValidationEngineInput
+			WHERE UserID = @UserID
+
+			---Inserting data into Validation Engine Staging Table
+			INSERT INTO TBL_PP_STG_InnoTrustValidationEngineInput (
+				ScheduleID
+				,PaymentType
+				,EPD
+				,LeadTime
+				,UserID
+				)
+			SELECT ScheduleID
+				,PaymentType
+				,EPD
+				,LeadTime
+				,@UserID
+			FROM #TmpPaymentsForYear
+			WHERE ReturnStatus <> - 2
+		END
+
+		----Select data from #TmpPaymentsForYear
+		SELECT PaymentType
+			,ScheduleID
+			,PaymentDate
+			,InstructionID
+			,BeneficiaryDistributionID
+			,TaxYear
+			,ScheduledAmount
+			,ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,EPD
+			,LeadTime
+			,NULL AS RecordVersion
+			,ReturnStatus
+		FROM #TmpPaymentsForYear
+		WHERE ReturnStatus = - 2
+		
+		UNION ALL
+		
+		SELECT TmpPmnt.PaymentType
+			,TmpPmnt.ScheduleID
+			,TmpPmnt.PaymentDate
+			,AccntPay.InstructionID
+			,BenPay.BeneficiaryDistributionID
+			,BenPay.TaxYear
+			,TmpPmnt.ScheduledAmount
+			,TmpPmnt.ManagerCode
+			,TmpPmnt.CustomerAccountNumber
+			,TmpPmnt.ContactID
+			,TmpPmnt.ContactRoleCode
+			,TmpPmnt.EPD
+			,TmpPmnt.LeadTime
+			,BenPay.RecordVersion
+			,TmpPmnt.ReturnStatus
+		FROM #TmpPaymentsForYear TmpPmnt
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON BenPay.BPScheduleid = TmpPmnt.ScheduleID
+		INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay ON BenPay.APScheduleid = AccntPay.APScheduleID
+		WHERE ReturnStatus = 0
+			AND PaymentType = 'BeneficiaryPayment'
+		
+		UNION ALL
+		
+		SELECT TmpPmnt.PaymentType
+			,TmpPmnt.ScheduleID
+			,TmpPmnt.PaymentDate
+			,PgCalc.InstructionID
+			,PgCalc.BeneficiaryDistributionID
+			,PgCalc.TaxYear
+			,TmpPmnt.ScheduledAmount
+			,TmpPmnt.ManagerCode
+			,TmpPmnt.CustomerAccountNumber
+			,TmpPmnt.ContactID
+			,TmpPmnt.ContactRoleCode
+			,TmpPmnt.EPD
+			,TmpPmnt.LeadTime
+			,PgCalc.RecordVersion
+			,TmpPmnt.ReturnStatus
+		FROM #TmpPaymentsForYear TmpPmnt
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged PgCalc ON PgCalc.MergedPGCalcPaymentID = TmpPmnt.ScheduleID
+		WHERE ReturnStatus = 0
+			AND PaymentType = 'PGCalcImport'
+	END
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

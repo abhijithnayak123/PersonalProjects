@@ -1,0 +1,70 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_FASB_GetListItemName'
+		)
+BEGIN
+	DROP FUNCTION FN_FASB_GetListItemName;
+
+	PRINT 'DROPPED FN_FASB_GetListItemName';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : FN_FASB_GetListItemName
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the ListItemName for the ListItemID
+**      
+** Sample Call      
+   SELECT dbo.[FN_FASB_GetListItemName]('1234.10')
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 09/05/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_FASB_GetListItemName]
+(
+@list_item_id INT
+)
+RETURNS VARCHAR(100)
+AS
+BEGIN
+	DECLARE @list_item_name VARCHAR(100)
+	
+	SELECT
+		@list_item_name = LTRIM(RTRIM(ListItemName))
+	FROM
+		TBL_ListItem
+	WHERE
+		ListItemID = @list_item_id
+
+	RETURN @list_item_name
+END
+GO

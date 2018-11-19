@@ -1,0 +1,183 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveTradeGroup'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveTradeGroup;
+
+	PRINT 'DROPPED USP_EX_SaveTradeGroup';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                          
+** Name : USP_EX_SaveTradeGroup
+** Old Name:     USP_EIS_EX_TRADE_GROUP_INSUPDPROC                          
+** Short Desc: To save the Trade Group Accounts Data                
+**                          
+** Full Description: To save the Trade Group Accounts Data                
+**                                  
+** Input Arguments: NONE        
+**             
+** Sample Call                          
+**  EXEC USP_EX_SaveTradeGroup   
+  'Edit',   
+  113,   
+  '<TradeGroup><Name></Name><UserID>100048</UserID><Account><AdventID>ACCORP</AdventID></Account><Account><AdventID>ACMOC</AdventID></Account><Account><AdventID>ACPIF1</AdventID></Account></TradeGroup>'      
+           
+**                 
+** Return values: NONE        
+**                          
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Soorya                   
+** Company   : Kaspick & Company                          
+** Project   : Excelsior  - Enfuego3B                          
+** Created DT: 12/06/2010                          
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------                    
+** 8-Apr-2014     Abhijith      EXCREQ 7.4
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveTradeGroup] (
+	@Mode VARCHAR(10)
+	,@GroupID BIGINT
+	,@TradeGroupAccountXML XML
+	)
+AS
+BEGIN
+	--  Variable Declarations  --              
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed              
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	DECLARE @GroupName VARCHAR(50);
+	DECLARE @UserID BIGINT;
+	--  Temp tables, Cursors, Table Variables  --            
+	DECLARE @AdventIDSet TABLE (AdventID VARCHAR(10));
+
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_EX_SaveTradeGroup';
+
+	-- Body of procedure  --              
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF (@Mode = 'New')
+		BEGIN
+			SELECT @UserID = XMLDATA.Item.value('UserID[1]', 'INT')
+			FROM @TradeGroupAccountXML.nodes('/TradeGroup') AS XMLDATA(Item)
+
+			INSERT INTO TBL_TR_TradeGroup
+			SELECT XMLDATA.Item.value('Name[1]', 'VARCHAR(50)') AS GroupName
+				,@UserID
+				,GETDATE()
+				,NULL
+				,NULL
+			FROM @TradeGroupAccountXML.nodes('/TradeGroup') AS XMLDATA(Item)
+
+			SELECT @GroupID = IDENT_CURRENT('TBL_TR_TradeGroup')
+
+			INSERT INTO TBL_TR_TradeGroupAccount
+			SELECT @GroupID
+				,XMLDATA.Item.value('AdventID[1]', 'VARCHAR(10)')
+				,@UserID
+				,GETDATE()
+				,NULL
+				,NULL
+			FROM @TradeGroupAccountXML.nodes('/TradeGroup/Account') AS XMLDATA(Item)
+		END
+
+		IF (@Mode = 'Edit')
+		BEGIN
+			SELECT @UserID = XMLDATA.Item.value('UserID[1]', 'INT')
+			FROM @TradeGroupAccountXML.nodes('/TradeGroup') AS XMLDATA(Item)
+
+			INSERT INTO @AdventIDSet
+			SELECT XMLDATA.Item.value('AdventID[1]', 'VARCHAR(10)')
+			FROM @TradeGroupAccountXML.nodes('/TradeGroup/Account') AS XMLDATA(Item)
+
+			DELETE TBL_TR_TradeGroupAccount
+			WHERE GroupID = @GroupID
+				AND CustomerAccountNumber NOT IN (
+					SELECT AdventID
+					FROM @AdventIDSet
+					)
+
+			UPDATE TBL_TR_TradeGroup
+			SET LastModifiedUserID = @UserID
+				,LastModifiedDate = GETDATE()
+			WHERE GroupID = @GroupID;
+
+			INSERT INTO TBL_TR_TradeGroupAccount
+			SELECT @GroupID
+				,AdventID
+				,@UserID
+				,GETDATE()
+				,NULL
+				,NULL
+			FROM @AdventIDSet
+			WHERE AdventID NOT IN (
+					SELECT CustomerAccountNumber
+					FROM TBL_TR_TradeGroupAccount
+					WHERE GroupID = @GroupID
+					)
+		END
+
+		IF (@Mode = 'Delete')
+		BEGIN
+			DELETE TBL_TR_TradeGroupAccount
+			WHERE GroupID = @GroupID
+
+			DELETE TBL_TR_TradeGroup
+			WHERE GroupID = @GroupID
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveTradeGroup: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --              
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveTradeGroup'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveTradeGroup';
+END

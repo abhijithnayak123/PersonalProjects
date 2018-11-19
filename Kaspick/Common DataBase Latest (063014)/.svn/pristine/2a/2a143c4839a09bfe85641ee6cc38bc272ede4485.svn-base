@@ -1,0 +1,232 @@
+IF EXISTS (SELECT *
+   FROM   sysobjects 
+   WHERE  type = 'TR'
+		  AND name = 'TRG_EX_AudReportIndiceManagement')
+BEGIN
+	DROP TRIGGER TRG_EX_AudReportIndiceManagement;
+	PRINT 'DROPPED TRIGGER TRG_EX_AudReportIndiceManagement';
+END
+GO  
+
+/****** Object:  Trigger [dbo].[TRG_EX_AudReportIndiceManagement]    Script Date: 06/23/2014 14:32:58 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name : TRG_EX_AudReportIndiceManagement
+** Old Trigger Name: 	TRG_EX_AudReportIndiceManagement
+** Table Name  :	TBL_BR_ReportIndiceManagementVersion
+** Action	   :	Insert, Update, Delete
+** 
+** Description : 	Writes data changes to the audit table
+**
+**				
+**	Created By :	by TriggerGenerator Program (Rajesh)
+**	Company	   :	Kaspick & Company
+**	Project	   :	BeneReport
+**	Created DT :	6/1/2009
+**
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+** 6/1/2009	Madhuri				 Created for TBL_BR_ReportIndiceManagementVersion table
+** 6/23/2014 Mallikarjun created for TBL_BR_ReportIndiceManagementVersion table
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+
+CREATE TRIGGER [dbo].[TRG_EX_AudReportIndiceManagement]
+   ON [dbo].[TBL_BR_ReportIndiceManagement]
+   AFTER INSERT,UPDATE,DELETE
+AS 
+
+--  Variable Declarations  --
+Declare @trgname					varchar(60);
+Declare @errmsg						varchar(1000);
+Declare @errnbr						int;
+Declare @ReportIndexMgmtVersionID				int;
+
+
+-- Variables used for error handling - uncomment if needed
+Declare @val1						varchar(30);
+--Declare @val2						varchar(30);
+
+--  Temp tables, Cursors, Table Variables  --
+
+--  Variable Data Assignment  --
+
+Set @trgname = 'TRG_EX_AudReportIndiceManagement';
+
+--	Body of trigger  --
+
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the rowcount from Deleted > 0, then get the data from the
+-- Deleted table for recording the old values in the audit table.
+
+BEGIN TRY
+
+	DECLARE @UNKNOWN_ID INT
+	SELECT @UNKNOWN_ID = USERID FROM TBL_KS_USER WHERE upper(LOGINNAME) = 'UNKNOWN'
+
+	If (Select count(*) from Deleted) > 0 and (select count(*) from Inserted) > 0 
+	BEGIN
+
+	insert into TBL_BR_AUDIT_ReportIndiceManagement
+				(AUDIT_USER_ID ,
+				 AUDIT_DATETIME,
+				 AUDIT_FLAG,
+				 AUDIT_TABLE,
+				 AUDIT_DETAILS,
+				 ReportIndexMgmtID,
+				ReportIndexMgmtVersionID,
+				IndexNo,
+				IndexID,
+				MODIFIED_DATE,
+				MODIFIED_USER_ID,
+				CREATED_DATE,
+				CREATED_USER_ID,
+				DELETED_USER_ID)
+
+		SELECT
+				I.MODIFIED_USER_ID, 
+				GETDATE(), 
+				'U',
+				'TBL_BR_ReportIndiceManagement',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.ReportIndexMgmtID,
+				D.ReportIndexMgmtVersionID,
+				D.IndexNo,
+				D.IndexID,
+				D.MODIFIED_DATE,
+				D.MODIFIED_USER_ID,
+				D.CREATED_DATE,
+				D.CREATED_USER_ID,
+				D.DELETED_USER_ID
+		From Deleted D inner join inserted I on D.ReportIndexMgmtID = I.ReportIndexMgmtID
+		WHERE D.ReportIndexMgmtID IN (SELECT RIM.ReportIndexMgmtID FROM TBL_BR_ReportIndiceManagementVersion RIMV
+			INNER JOIN TBL_BR_ReportIndiceManagement RIM ON RIM.ReportIndexMgmtVersionID=RIMV.ReportIndexMgmtVersionID
+			WHERE (RIM.IndexNo IN (1,2,3,4) AND RIMV.VersionNo IN (1,2,3,4))
+			OR	(RIM.IndexNo IN (5) AND RIMV.VersionNo IN (1,2))
+			)
+	END
+	ELSE
+	IF (select count(*) from Inserted) > 0 
+	BEGIN
+
+		insert into TBL_BR_AUDIT_ReportIndiceManagement
+				(AUDIT_USER_ID ,
+				 AUDIT_DATETIME,
+				 AUDIT_FLAG,
+				 AUDIT_TABLE,
+				 AUDIT_DETAILS,
+				 ReportIndexMgmtID,
+				ReportIndexMgmtVersionID,
+				IndexNo,
+				IndexID,
+				MODIFIED_DATE,
+				MODIFIED_USER_ID,
+				CREATED_DATE,
+				CREATED_USER_ID,
+				DELETED_USER_ID)
+
+		SELECT
+				ISNULL(I.CREATED_USER_ID, @UNKNOWN_ID),
+				GETDATE(), 
+				'I',
+				'TBL_BR_ReportIndiceManagement',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				I.ReportIndexMgmtID,
+				I.ReportIndexMgmtVersionID,
+				I.IndexNo,
+				I.IndexID,
+				I.MODIFIED_DATE,
+				I.MODIFIED_USER_ID,
+				I.CREATED_DATE,
+				I.CREATED_USER_ID,
+				I.DELETED_USER_ID
+		From Inserted I 
+		WHERE I.ReportIndexMgmtID IN (SELECT RIM.ReportIndexMgmtID FROM TBL_BR_ReportIndiceManagementVersion RIMV
+			INNER JOIN TBL_BR_ReportIndiceManagement RIM ON RIM.ReportIndexMgmtVersionID=RIMV.ReportIndexMgmtVersionID
+			WHERE (RIM.IndexNo IN (1,2,3,4) AND RIMV.VersionNo IN (1,2,3,4))
+			OR	(RIM.IndexNo IN (5) AND RIMV.VersionNo IN (1,2))
+			)
+	END
+	ELSE
+	If (Select count(*) from Deleted) > 0 
+	BEGIN
+
+
+		insert into TBL_BR_AUDIT_ReportIndiceManagement
+				(AUDIT_USER_ID ,
+				 AUDIT_DATETIME,
+				 AUDIT_FLAG,
+				 AUDIT_TABLE,
+				 AUDIT_DETAILS,
+				 ReportIndexMgmtID,
+				ReportIndexMgmtVersionID,
+				IndexNo,
+				IndexID,
+				MODIFIED_DATE,
+				MODIFIED_USER_ID,
+				CREATED_DATE,
+				CREATED_USER_ID,
+				DELETED_USER_ID)
+
+		SELECT
+				ISNULL(DELETED_USER_ID,@UNKNOWN_ID), 
+				GETDATE(), 
+				'D',
+				'TBL_BR_ReportIndiceManagement',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.ReportIndexMgmtID,
+				D.ReportIndexMgmtVersionID,
+				D.IndexNo,
+				D.IndexID,
+				D.MODIFIED_DATE,
+				D.MODIFIED_USER_ID,
+				D.CREATED_DATE,
+				D.CREATED_USER_ID,
+				D.DELETED_USER_ID    
+		From Deleted D 
+		WHERE D.ReportIndexMgmtID IN (SELECT RIM.ReportIndexMgmtID FROM TBL_BR_ReportIndiceManagementVersion RIMV
+			INNER JOIN TBL_BR_ReportIndiceManagement RIM ON RIM.ReportIndexMgmtVersionID=RIMV.ReportIndexMgmtVersionID
+			WHERE (RIM.IndexNo IN (1,2,3,4) AND RIMV.VersionNo IN (1,2,3,4))
+			OR	(RIM.IndexNo IN (5) AND RIMV.VersionNo IN (1,2))
+			)
+	END
+  END TRY
+  BEGIN CATCH
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SET @ProcName = 'TRG_EX_AudReportIndiceManagement';
+
+	DECLARE @ErrorNumber INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE(),
+		@ErrorSeverity = ERROR_SEVERITY(),
+		@ErrorState = ERROR_STATE(),
+		@ErrorNumber = ERROR_NUMBER();
+
+	RAISERROR (
+			@ErrorMessage,
+			-- Message text.
+			@ErrorSeverity,
+			-- Severity.
+			@ErrorState -- State.
+			);
+  END CATCH
+GO
+
+IF EXISTS (	SELECT * FROM sysobjects
+		    WHERE type = 'TR' AND name = 'TRG_EX_AudReportIndiceManagement')
+BEGIN
+	PRINT 'CREATED TRIGGER TRG_EX_AudReportIndiceManagement';
+END 

@@ -1,0 +1,122 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_GetAllManagerAccount]    Script Date: 02/14/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllManagerAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllManagerAccount]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name   :   USP_TR_GetAllManagerAccount          
+** Short Desc : Put in Short Description          
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC USP_TR_GetAllManagerAccount 100038     
+   -- parameters          
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By : Soorya     
+** Company  :  Kaspick & Company          
+** Project  :  BOI - TRex          
+** Created DT :  02/14/2014          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** 02/14/2014   Soorya             Created 
+** 05/30/2014   Salih              Implementation for the staffrole change
+** 26-jun-14    Salih              Modified Rolecode implementation from Rolecode description to ID.
+** 25-jul-14    Chaithra           To fix ET #16494.Include UColDef.ColumnName = 'UDFAMColumn005' 
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllManagerAccount] @UserID INT
+AS
+BEGIN
+	CREATE TABLE #TempTrader (
+		UserID INT
+		,ManagerCode VARCHAR(4)
+		,rownum INT
+		)
+
+	INSERT INTO #TempTrader
+	SELECT UserID
+		,AccMgrCod.ManagerCode AS ManagerCode
+		,row_number() OVER (
+			PARTITION BY AccMgrCod.ManagerCode ORDER BY CASE 
+					WHEN UserID = @UserID
+						THEN 0
+					ELSE 1
+					END
+			) AS rownum
+	FROM TBL_KS_User Usr
+	INNER JOIN SYN_IT_SubContactRoles SubCntRol ON SubCntRol.SubContactID = Usr.InnotrustContactID
+		-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+		AND SubCntRol.ContactRoleCode = 515 -- 'Portfolio Analyst'
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod ON AccMgrCod.ContactID = SubCntRol.ContactID
+
+	--GROUP BY AccMgrCod.ManagerCode
+	SELECT AcntMstr.ManagerCode
+		,RTRIM(LTRIM(AcntMstr.CustomerAccountNumber)) AS CustomerAccountNumber
+		,ISNULL(SRMyClient.UserID, '') AS PrimaryTrader
+		,CASE 
+			WHEN ISNULL(SRMyClient.UserID, '') = @UserID
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsMyClient
+		,CASE 
+			WHEN AcntMstr.ActiveFlag = - 1
+				AND AcntMstr.ClosedFlag <> - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsClientActive
+		,CASE 
+			WHEN AcntMstr.ActiveFlag = - 1
+				AND AcntMstr.ClosedFlag <> - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsAccountActive
+		,ISNULL(CAST(UTablDef.TableDesc AS VARCHAR(40)), '') AS SLMasterAccount
+		,TrdGrpAcnt.GROUPID
+	FROM SYN_IT_AccountMaster AcntMstr
+	INNER JOIN SYN_IT_UDF_AccountMaster UAcntMstr ON UAcntMstr.CustomerAccountNumber_Key = AcntMstr.CustomerAccountNumber
+	LEFT OUTER JOIN SYN_IT_UDFTableDefinitions UTablDef ON UTablDef.TableCode = UAcntMstr.UDFAMColumn005
+	LEFT OUTER JOIN SYN_IT_UDFColumnDefinitions UColDef ON UColDef.TableID = UTablDef.TableID
+	-- 05-30-14 -Salih : Implementation for the staffrole change 	
+	LEFT OUTER JOIN (
+		SELECT UserID
+			,ManagerCode
+		FROM #TempTrader
+		WHERE rownum = 1
+		) SRMyClient ON SRMyClient.ManagerCode = AcntMstr.ManagerCode
+	LEFT OUTER JOIN TBL_TR_TradeGroupAccount TrdGrpAcnt ON AcntMstr.CustomerAccountNumber = TrdGrpAcnt.CustomerAccountNumber
+	WHERE UColDef.ColumnName = 'UDFAMColumn005'
+	ORDER BY AcntMstr.ManagerCode
+		,CASE 
+			WHEN SRMyClient.UserID = @UserID
+				THEN 1
+			ELSE 0
+			END DESC
+END

@@ -1,0 +1,237 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_CancelEvent]  Script Date: 03/17/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_CancelEvent]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_CancelEvent]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** NAME:     USP_TR_CancelEvent          
+** SHORT DESC: USED IN 'CANCEL EVENT' FUNCTIONALITY IN EVENT SCREEN OF T-REX APPLICATION          
+**          
+** FULL DESCRIPTION          
+**        MORE DETAILED DESCRIPTION IF NECESSARY          
+**          
+** SAMPLE CALL          
+		DECLARE @RETURNSTATUS INT;      
+		DECLARE @ERRORDESC VARCHAR(8000);         
+		EXEC USP_TR_CancelEvent    
+		'<EventCollection>    
+		   <InsertList>    
+				<Event CancelComments="cancel OneEvent"  EventID="59995"  EventStatusID="9"  LastModifiedDate="06/01/2009 06:15:12:000"  LastModifiedUser="300008"  RecordVersion="0x00000000001DC3B8"  />    
+		   </InsertList>    
+		</EventCollection>',    
+		   
+		@RETURNSTATUS OUT,
+		@ERRORDESC OUT
+		SELECT @ERRORDESC,@RETURNSTATUS
+**          
+** RETURN VALUES: 0,-1,-2 AND ERROR DESCRIPTION    
+**          
+**          
+** STANDARD DECLARATIONS          
+**       SET LOCK_TIMEOUT         30000   -- 30 SECONDS          
+**           
+** CREATED BY: Soorya          
+** COMPANY   : KASPICK & COMPANY          
+** PROJECT   : Back Office Integration - TRex          
+** CREATED DT: 03/17/2014          
+**                      
+*******************************************************************************          
+**       CHANGE HISTORY          
+*******************************************************************************          
+** DATE:        AUTHOR:  BUG #     DESCRIPTION:                           RVWD          
+** --------     -------- ------    -------------------------------------- --------          
+** 03/17/2014   Soorya				created
+*******************************************************************************          
+** COPYRIGHT (C) KASPICK & COMPANY, 2009 ALL RIGHTS RESERVED          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [DBO].[USP_TR_CancelEvent] (
+	@XMLDATA XML
+	,@RETURNSTATUS INT = - 1 OUTPUT
+	,-- ASSUME SP FAILS     
+	@ERRORDESC VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  INITIAL SET STATEMENTS  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 SECONDS        
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+	DECLARE @Review1StatusId AS INT
+
+	SELECT @Review1StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review1'
+
+	CREATE TABLE #TBL_TR_CANCELEVENT (
+		ID INT IDENTITY(1, 1)
+		,CANCELCOMMENTS VARCHAR(1000)
+		,EVENTID INT
+		,EVENTSTATUSID INT
+		,LASTMODIFIEDDATE DATETIME
+		,LASTMODIFIEDUSER INT
+		,RECORDVERSION VARCHAR(MAX)
+		,RETURN_STATUS VARCHAR(20) DEFAULT('0')
+		)
+
+	-- BODY OF PROCEDURE  --          
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO #TBL_TR_CANCELEVENT (
+			EVENTID
+			,EVENTSTATUSID
+			,CANCELCOMMENTS
+			,LASTMODIFIEDDATE
+			,LASTMODIFIEDUSER
+			,RECORDVERSION
+			)
+		SELECT XMLDATA.item.value('@EventID[1]', 'INT') AS EVENTID
+			,XMLDATA.item.value('@EventStatusID[1]', 'INT') AS EVENTSTATUSID
+			,XMLDATA.item.value('@CancelComments[1]', 'VARCHAR(1000)') AS CANCELCOMMENTS
+			,XMLDATA.item.value('@LastModifiedDate[1]', 'DATETIME') AS LASTMODIFIEDDATE
+			,XMLDATA.item.value('@LastModifiedUser[1]', 'INT') AS LASTMODIFIEDUSER
+			,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(MAX)') AS RECORDVERSION
+		FROM @XMLDATA.nodes('//EventCollection/InsertList/Event') AS XMLDATA(item)
+
+		---------------- Dirty Write Implementation -----------------------    
+		UPDATE #TBL_TR_CANCELEVENT
+		SET RETURN_STATUS = '-2'
+			,@RETURNSTATUS = '-2'
+		FROM #TBL_TR_CANCELEVENT TempCancelEvent
+		INNER JOIN TBL_TR_EVENT EvntForDirtyWrt ON TempCancelEvent.EVENTID = EvntForDirtyWrt.EventID
+			AND TempCancelEvent.RECORDVERSION <> CONVERT(VARCHAR(20), CAST(EvntForDirtyWrt.RecordVersion AS VARBINARY(8)), 1)
+
+		--Update EVENT table    
+		UPDATE TBL_TR_Event
+		SET EventStatusID = CanclEvnt.EVENTSTATUSID
+			,CancelComment = CanclEvnt.CANCELCOMMENTS
+			,LastModifiedDate = GETDATE()
+			,LastModifiedUserID = CanclEvnt.LASTMODIFIEDUSER
+		FROM TBL_TR_Event Evnt
+		INNER JOIN #TBL_TR_CANCELEVENT CanclEvnt ON Evnt.EventID = CanclEvnt.EVENTID
+		WHERE RETURN_STATUS <> '-2'
+
+		/*** Fetching Cancelled Events - Start**/
+		SELECT AcntMstr.ManagerCode
+			,Evnt.EVENTID
+			,Evnt.EventName
+			,Evnt.EventStatusID
+			,EvntSts.EventStatus
+			,Evnt.RecordVersion AS EventRecordVersion
+			,Evnt.LastModifiedUserID AS EventLastModifiedUser
+			,Evnt.LastModifiedDate AS EventLastModifiedDate
+			,Evnt.CombinedAccount
+			,Evnt.CreatedDate
+			,Evnt.EventSource
+			,Evnt.Comments
+			,Evnt.TradeComment AS UpdatedComments
+			,Evnt.CancelComment
+			,Evnt.AXYSPositionDate
+			,Evnt.LoadPaymentsDataUpTo
+			,Evnt.ImposeBenePayment
+			,Evnt.[Source]
+			,Evnt.SourceFille
+			,EvntAcnt.EventAccountID
+			,EvntAcnt.EventID
+			,EvntAcnt.CustomerAccountNumber
+			,EvntAcnt.AccountOrder
+			,EvntAcnt.AccountName
+			,EvntAcnt.AccountType
+			,EvntAcnt.PayoutRate
+			,EvntAcnt.AnnuityAmount
+			,EvntAcnt.SLMasterAccount
+			,EvntAcnt.Managed
+			,EvntAcnt.Custodian
+			,EvntAcnt.CustodianAccountNumber
+			,EvntAcnt.InvestmentTypeCode
+			,EvntAcnt.TaxStatus
+			,EvntAcnt.TradeDiscretion
+			,EvntAcnt.TradeStatusCode
+			,EvntAcnt.FSIOption
+			,EvntAcnt.InvestmentComment
+			,EvntAcnt.TrancheStatusCode
+			,EvntAcnt.ImposedBenePayment
+			,EvntAcnt.ObjectiveCode
+			,EvntAcnt.LotAccountingCode
+			,EvntAcnt.RecordVersion AS EventAccountRecordVersion
+			,EvntAcnt.LastModifiedUserID AS EventAccountLastModifiedUser
+			,EvntAcnt.LastModifiedDate AS EventAccountLastModifiedDate
+			,EvntTypMstr.EventTypeID
+			,EvntTypMstr.EventType
+			,EvntTypMstr.RiskLevel
+			,Usr1.LoginName AS EventCreatedUserName
+			,Usr2.LoginName AS EventAccountAssignedTraderName
+			,isnull(Evnt.BlockRevokeApproval, 0) AS HasSubmittedQuantityTillDate
+			,Reviewer.LoginName AS Reviewer
+			,CURRENT_TIMESTAMP AS PaymentDate
+			,0 AS ScheduledAmount
+			,0 AS IMlevel1Count
+			,0 AS IMlevel2Count
+			,0 AS AnnualPayment
+		FROM TBL_TR_EVENT Evnt
+		INNER JOIN TBL_TR_EVENTACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+		INNER JOIN TBL_TR_EVENTTYPE EvntTyp ON EvntTyp.EVENTID = Evnt.EVENTID
+		INNER JOIN TBL_TR_EVENTTYPEMASTER EvntTypMstr ON EvntTyp.EventTypeID = EvntTypMstr.EventTypeID
+		INNER JOIN TBL_TR_EVENTSTATUS EvntSts ON Evnt.EventStatusID = EvntSts.EventStatusID
+		INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_KS_USER Usr1 ON Evnt.CreatedUserID = Usr1.UserID
+		LEFT OUTER JOIN TBL_KS_USER Usr2 ON Evnt.AssignedTraderID = Usr2.UserID
+		LEFT OUTER JOIN (
+			SELECT EvntTrkr.EventID
+				,EvntTrkr.ModifiedUserID
+				,EvntTrkr.ModifiedDate
+				,ROW_NUMBER() OVER (
+					PARTITION BY EvntTrkr.EventID ORDER BY EvntTrkr.ModifiedDate DESC
+					) AS RowNum
+			FROM TBL_TR_EventTracker EvntTrkr
+			WHERE EventStatusID = @Review1StatusId
+			) ReviewTracker ON ReviewTracker.EventID = Evnt.EventID
+			AND RowNum = 1
+		LEFT OUTER JOIN TBL_KS_USER Reviewer ON ReviewTracker.ModifiedUserID = Reviewer.UserID
+		WHERE Evnt.EventID IN (
+				SELECT EventID
+				FROM #TBL_TR_CANCELEVENT
+				)
+
+		/*** Fetching Cancelled Events - End**/
+		---------------- Dirty Write Implementation -----------------------    
+		IF (@ReturnStatus = - 2)
+		BEGIN
+			SET @ErrorDesc = 'Dirty Write';
+		END
+		ELSE
+		BEGIN
+			SET @RETURNSTATUS = 0;
+		END
+
+		-------------------------    
+		COMMIT TRANSACTION;
+
+		DROP TABLE #TBL_TR_CANCELEVENT
+	END TRY
+
+	BEGIN CATCH
+		SET @RETURNSTATUS = - 1;
+		SET @ERRORDESC = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

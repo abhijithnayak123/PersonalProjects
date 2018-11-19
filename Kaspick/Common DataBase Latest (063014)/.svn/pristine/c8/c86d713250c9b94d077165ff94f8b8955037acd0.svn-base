@@ -1,0 +1,99 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetSecurityIncomeDetails]    Script Date: 06/25/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetSecurityIncomeDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetSecurityIncomeDetails]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetSecurityIncomeDetails]    Script Date: 06/25/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_GetSecurityIncomeDetails  
+** Short Desc: Put in Short Description  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call    
+        EXEC USP_IE_GetSecurityIncomeDetails   
+   '<ImportStagingCollection><InsertList>  
+    <ImportStaging StagingID="87" />  
+    </InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ImportStagingCollection>'  
+  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Aashay Thodar  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 06/25/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetSecurityIncomeDetails]
+	-- paremeters here  
+	@XMLDATA XML
+AS
+BEGIN
+	--  Initial Set statements  --  
+	--SET NOCOUNT ON;  
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+	SET ARITHABORT ON;
+
+	--  Temp tables, Cursors, Table Variables  --  
+	DECLARE @TBL_Accounts_ToBe_Imported TABLE (StagingID INT)
+
+	-- Body of procedure  --  
+	INSERT INTO @TBL_Accounts_ToBe_Imported
+	SELECT XMLDATA.item.value('@StagingID[1]', 'int') AS StagingID
+	FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XMLDATA(item)
+
+	SELECT dtl.StagingID
+		,dtl.GroupID
+		,dtl.CustomerAccountNumber
+		,dtl.RunDate
+		,dtl.ImportDate
+		,dtl.SecuritySymbol
+		,dtl.CUSIP
+		,dtl.Quantity
+		,dtl.DividendRate
+		,dtl.EstimatedIncome
+		,dtl.UserID
+		,dtl.UserName
+		,dtl.DetailID
+		,sec.Type AS SecurityType
+		,dtl.CalcMethod
+		,dtl.EstNoPymts
+	FROM TBL_IE_STG_EstimateDetail dtl
+	INNER JOIN @TBL_Accounts_ToBe_Imported imp_acc ON dtl.StagingID = imp_acc.StagingID
+	LEFT OUTER JOIN TBL_IE_STG_Securities sec ON dtl.securitysymbol = sec.Symbol
+	ORDER BY dtl.CustomerAccountNumber
+		,dtl.SecuritySymbol
+		,dtl.RunDate
+
+	SET NOCOUNT OFF;
+END
+	-- End of procedure  --

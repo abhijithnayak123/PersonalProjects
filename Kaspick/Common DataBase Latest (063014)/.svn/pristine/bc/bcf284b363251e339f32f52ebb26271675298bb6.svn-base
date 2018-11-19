@@ -1,0 +1,158 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_DelMessageManagement]    Script Date: 05/21/2013 12:52:37 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_DelMessageManagement]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_DelMessageManagement]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_DelMessageManagement]    Script Date: 05/21/2013 12:52:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_DelMessageManagement                      
+** Short Desc: To delete the message management details
+**                      
+** Full Description: To delete the message management details. It performs soft delete.      
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+ 
+DECLARE @ReturnStatus INT
+select * from TBL_PP_MESSAGEMGMT where MessageMgmtCode IN ('AM', 'ACL') and MessageMgmtType = 'Manager'
+EXEC USP_PP_DelMessageManagement  
+'<MessageManagementCollection>
+			  <MessageManagement MessageMgmtCode="AM" Description="" RemainderMessage="" MarketingMessage=""  RecordVersion="0x0000000000000A0C"  />
+			  <MessageManagement MessageMgmtCode="ACL" Description="" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			</MessageManagementCollection>',
+			'Manager',1,@ReturnStatus OUTPUT
+SELECT @ReturnStatus as returnstatus
+select * from TBL_PP_MESSAGEMGMT where MessageMgmtCode IN ('AM', 'ACL') and MessageMgmtType = 'Manager'
+
+DECLARE @ReturnStatus INT
+EXEC USP_PP_DelMessageManagement        
+'<MessageManagementCollection>
+			  <MessageManagement MessageMgmtCode="AM" Description="a" RemainderMessage="" MarketingMessage=""  RecordVersion="0x0000000000962243"  />
+			  <MessageManagement MessageMgmtCode="ACL" Description="b" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			  <MessageManagement MessageMgmtCode="zzz" Description="c" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			</MessageManagementCollection>',
+			'Alliance',1,@ReturnStatus OUTPUT
+SELECT @ReturnStatus
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_DelMessageManagement] @MessageFilterXML XML
+	,@MessageMgmtType AS VARCHAR(10)
+	,@ModifiedBy INT
+	,@ReturnStatus INT
+OUTPUT -- 0 for Normal Return, -1 for error, -2 for DirtyRead
+	AS
+
+BEGIN TRY
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	BEGIN TRANSACTION
+
+	DECLARE @TBL_Message TABLE (
+		MessageMgmtCode VARCHAR(15)
+		,RecordVersion VARCHAR(20)
+		)
+
+	INSERT INTO @TBL_Message (
+		MessageMgmtCode
+		,RecordVersion
+		)
+	SELECT x.item.value('@MessageMgmtCode[1]', 'VARCHAR(15)') AS MessageMgmtCode
+		,x.item.value('@RecordVersion[1]', 'varchar(20)') AS RecordVersion
+	FROM @MessageFilterXML.nodes('/MessageManagementCollection/MessageManagement') AS x(item)
+
+
+	IF EXISTS (
+			SELECT 1
+			FROM TBL_PP_MESSAGEMGMT MsgMgmt
+			INNER JOIN @TBL_Message TempMsg
+				ON TempMsg.MessageMgmtCode = MsgMgmt.MessageMgmtCode
+					AND MessageMgmtType = @MessageMgmtType
+			WHERE CONVERT(VARCHAR(20), CAST(MsgMgmt.RecordVersion AS VARBINARY(8)), 1) <> TempMsg.RecordVersion
+				AND IsDeleted = 0
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+	ELSE
+	BEGIN
+		UPDATE TBL_PP_MessageMgmt
+		SET IsDeleted = 1
+			,ModifiedBy = @ModifiedBy
+			,ModifiedDate = getdate()
+		FROM TBL_PP_MessageMgmt
+		WHERE MessageMgmtCode IN (
+				SELECT MessageMgmtCode
+				FROM @TBL_Message
+				)
+			AND MessageMgmtType = @MessageMgmtType
+			AND IsDeleted = 0
+
+		SET @ReturnStatus = ISNULL(@ReturnStatus, 0)
+	END
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

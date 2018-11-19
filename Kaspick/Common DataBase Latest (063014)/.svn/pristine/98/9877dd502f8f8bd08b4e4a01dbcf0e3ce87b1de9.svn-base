@@ -1,0 +1,137 @@
+
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc')
+    BEGIN
+        DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc;
+        PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc';
+    END
+GO
+
+
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc                    
+** Short Desc: Retrieves the number of days difference between TLAsofDate_Date  
+    and dtStartDate.     
+**                    
+** Full Description:   
+    Rule Implemented for CR #11008  
+ If the date TLAsofDate_Date > dtStartDate, the function DATEDIFF(day,DPDL.TLAsofDate_Date,DPDL.dtStartDate)  
+    returns the value less than zero.    
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList>  
+ <DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"    
+ BeneficiaryID="645"  ClientEmployeeID="0"  Clientid="1"  DeliverableItemID="3"  DeliverableQueueID="1"    
+ DonorID="0"  TrustparticipantID="27"  /></SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc  
+    @XMLDeliverableItems  
+   
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 12/09/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 01/20/2010   VENU           Value for DisplayMessage is updated.  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc]        
+ -- paremeters here        
+ @XMLDeliverableItems xml  
+AS        
+ --  Initial Set statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+ --  Variable Declarations  --        
+ Declare @procname    varchar(60);        
+ Declare @errmsg     varchar(1000);        
+ Declare @errnbr     int;   
+   
+    -- Variables used for error handling - uncomment if needed        
+ Declare @val1      varchar(30);        
+ Declare @val2      varchar(30);        
+  
+ --  Temp tables, Cursors, Table Variables  --        
+ Declare @DeliverableItemData Table  
+ (      
+   DeliverableItemID int,  
+   AccountID int,         
+   DeliverableQueueID int             
+ );  
+   
+ --  Variable Data Assignment  --        
+ Set @procname = 'USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc';        
+  
+ -- Body of procedure  --        
+ BEGIN TRY        
+  INSERT INTO @DeliverableItemData      
+  SELECT        
+   XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID,      
+   XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID,      
+   XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID                  
+  FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)  
+   
+     SELECT  
+   DID.DeliverableItemID,       
+   7 AS RuleID,          'DataLoadDateDifference' as Attribute,  
+   (CASE WHEN ISNULL(DPDL.TLAsofDate_Date,0) = 0 OR ISNULL(DPDL.dtStartDate,0) = 0 THEN 1000  
+      ELSE DATEDIFF(day,DPDL.TLAsofDate_Date,DPDL.dtStartDate)  
+     END) AS ActualValue,  
+   ('TLAsofDate_Date = '+(CASE WHEN (ISNULL(DPDL.TLAsofDate_Date,0) = 0) THEN 'Null' ELSE CAST(DPDL.TLAsofDate_Date AS VARCHAR) END)+' and dtStartDate = '+(CASE WHEN (ISNULL(DPDL.dtStartDate,0) = 0) THEN 'Null' ELSE CAST(DPDL.dtStartDate AS VARCHAR) END))
+ AS DisplayMessage  
+        FROM @DeliverableItemData DID  
+  JOIN TBL_EIS_DT_Deliverable_Queue DQ ON DQ.DeliverableQueueID = DID.DeliverableQueueID  
+  LEFT JOIN TBL_EIS_DT_STG_Detect_PostDataLoad DPDL ON DID.AccountID = DPDL.AccountID   -- Not changed to Kaspick DB table since AccountID is changed to CustomerAccountNumber
+               AND DID.DeliverableQueueID = DPDL.DQueueID    
+               AND DATEDIFF(DAY,DQ.DeliverableEndDate,DQEndDate)=0  
+   END TRY        
+ BEGIN CATCH        
+     Set @errmsg = ERROR_MESSAGE();        
+  Set @errnbr = ERROR_NUMBER();        
+  Set @val1 = '';        
+  Set @val2 = '';        
+      
+  exec dbo.spSYS_ErrorHandler @codename = @procname,        
+  @errmsg = @errmsg,         
+  @errnbr = @errnbr,        
+  @val1 = '',         
+  @val1str = 'USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc: Cannot Select.',         
+  @val2 = '',         
+  @val2str = '';        
+ END CATCH        
+ -- End of procedure  --   
+  
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EIS_RPT_BR_VE_DR_DataloadTransactions_SelProc';
+	END

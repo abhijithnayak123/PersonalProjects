@@ -1,0 +1,130 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_SaveRptFasbAdventID')
+    BEGIN
+        DROP PROCEDURE USP_EX_SaveRptFasbAdventID;
+        PRINT 'DROPPED USP_EX_SaveRptFasbAdventID';
+    END
+GO
+
+   
+/******************************************************************************              
+** New Name : USP_EX_SaveRptFasbAdventID  
+** Old Name : USP_EIS_RPT_FASB_AdventID_InsUpdProc              
+** Short Desc : Gets the Excelsior Profile values.    
+**              
+** Full Description              
+**                  
+**              
+** Return values: NONE              
+**       
+** Sample Call    
+**        
+** EXEC USP_EIS_RPT_FASB_AdventID_InsUpdProc      
+**               
+** Created By : Basavaraj Elalli         
+** Company  :  Kaspick & Company              
+** Project  :  FASB              
+** Created DT : Sep/26/2012              
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+**  Sep/26/2012    Basu Elalli           Created      
+**  Apr/14/2014  Mallikarjun       EXCREQ5.4  
+** 23/05/2014 Mallikaarjun  SP Name Renamed and Formatted  
+******************************************************************************              
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved              
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION              
+*******************************************************************************/         
+    
+    
+CREATE PROCEDURE [dbo].[USP_EX_SaveRptFasbAdventID]    
+ @CreatedUserID int,    
+ @AdventXML xml     
+  AS      
+BEGIN      
+BEGIN TRY  
+BEGIN TRANSACTION  
+    
+ IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPADVENT]'))      
+ BEGIN      
+  DROP TABLE [DBO].[#TEMPADVENT]      
+ END     
+        
+ CREATE TABLE #TEMPADVENT    
+ (    
+  AdventID   varchar(20),    
+  FASB_InstanceID  int,    
+  ListItemName  Varchar(100),    
+  ConditionComments varchar(255),    
+      
+ )    
+    
+ INSERT INTO #TEMPADVENT(AdventID,FASB_InstanceID,ListItemName,ConditionComments)    
+ SELECT     
+   x.e.value('AdventID[1]', 'varchar(20)') AS "AdventID" ,    
+   x.e.value('FASBInstanceID[1]', 'int') AS "FASBInstanceID",     
+   x.e.value('Type[1]', 'varchar(100)') AS "ListItemName" ,      
+   x.e.value('ConditionComments[1]', 'varchar(255)') AS "ConditionComments"     
+        
+ FROM @AdventXML.nodes('/ArrayOfFASBAdventID/FASBAdventID') as x(e)      
+     
+ DELETE FROM TBL_BR_FASBAccountExclusionConditionList     
+ WHERE FASB_InstanceID IN (SELECT DISTINCT FASB_InstanceID FROM #TEMPADVENT)    
+     
+ INSERT INTO TBL_BR_FASBAccountExclusionConditionList    
+ SELECT     
+  AccPrfl.CustomerAccountNumber,    
+  Temp.FASB_InstanceID,    
+  VwLstItm.ListItemID,    
+  Temp.ConditionComments,    
+  GETDATE(),    
+  @CreatedUserID    
+ FROM #TEMPADVENT Temp     
+  INNER JOIN TBL_INV_AccountProfile AccPrfl on AccPrfl.CustomerAccountNumber = Temp.AdventID    
+  INNER JOIN VW_EX_ListItem VwLstItm on VwLstItm.ListItemName=Temp.ListItemName AND VwLstItm.ListTypeName='FASB AdventID'     
+  
+COMMIT TRANSACTION  
+END TRY  
+  
+BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @ProcName VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @ProcName = 'USP_EX_SaveRptFasbAdventID';  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE();  
+   
+     RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );
+  
+ 
+ END CATCH  
+END        
+    
+    
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_SaveRptFasbAdventID') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_SaveRptFasbAdventID';
+	END

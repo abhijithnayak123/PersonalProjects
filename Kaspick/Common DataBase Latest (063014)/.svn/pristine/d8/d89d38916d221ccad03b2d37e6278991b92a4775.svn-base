@@ -1,0 +1,208 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetPODTAccountIdXML')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetPODTAccountIdXML;
+        PRINT 'DROPPED USP_RP_GetPODTAccountIdXML';
+    END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** New SP Name : USP_RP_GetPODTAccountIdXML
+** Name:     USP_EIS_PO_DT_AccountIdXML_SelProc                    
+** Short Desc: To retrieve Ending market value for candidate deliverable items.   
+**                    
+** Full Description: This sp has a call to SSISPackage to calculate Ending MarketValue.  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLItems XML  
+ DECLARE @LoadType INT  
+ DECLARE @ReturnStatus VARCHAR(max)  
+ DECLARE @XMLAccountId XML  
+ DECLARE @DeliverableQueueID bigint    
+    SET @XMLItems ='<root><Item ID="acl"></Item><Item ID="az"></Item></root>'  
+ SET @LoadType = 2  
+ SET @ReturnStatus = 0  
+ SET @XMLAccountId = ''  
+ EXEC USP_RP_GetPODTAccountIdXML  
+    @XMLItems = @XMLItems,  
+ @LoadType = @LoadType,  
+ @ReturnStatus = @ReturnStatus OUTPUT,  
+ @XMLAccountId = @XMLAccountId OUTPUT  
+ select @XMLAccountId  
+ select @ReturnStatus  
+  
+ DECLARE @LoadType INT  
+ DECLARE @DeliverableQueueID bigint    
+ DECLARE @ReturnStatus VARCHAR(max)  
+ DECLARE @XMLAccountId XML  
+   
+ SET @LoadType = 1  
+    SET @DeliverableQueueID = 18  
+ SET @ReturnStatus = 0  
+ SET @XMLAccountId = ''  
+ EXEC USP_RP_GetPODTAccountIdXML  
+    @LoadType = @LoadType,  
+ @DeliverableQueueID = @DeliverableQueueID,  
+ @ReturnStatus = @ReturnStatus OUTPUT,  
+ @XMLAccountId = @XMLAccountId OUTPUT  
+ select @XMLAccountId  
+ select @ReturnStatus  
+  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 09/03/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 10/06/2014	RAJ			SP Name Renamed and Formatted as DB Naming Conversions      
+** 10/06/2014	RAJ			Added V_EIS_EX_ACCOUNT join to get account ID from old excelsior DB
+** 30/07/2014	RAJ			Modified join to get correct data 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_RP_GetPODTAccountIdXML]        
+ -- paremeters here        
+ @XMLItems xml = '',  
+ @LoadType INT,  
+ @DeliverableQueueID bigint = 0,   
+ @ReturnStatus INT = 0 output,  
+ @XMLAccountId xml output  
+  
+AS        
+ --  Initial SET statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+ --  Variable Declarations  --        
+ DECLARE @procname    VARCHAR(60);        
+ DECLARE @ErrorMessage     VARCHAR(1000);        
+ DECLARE @ErrorNumber     INT;   
+   
+    -- Variables used for error handling - uncomment if needed        
+ DECLARE @val1      VARCHAR(30);        
+ DECLARE @val2      VARCHAR(30);        
+  
+ --  Temp tables, Cursors, Table Variables  --        
+ DECLARE @Data Table  
+ (      
+   ID VARCHAR(100)       
+  );  
+      
+ --  Variable Data Assignment  --        
+ SET @procname = 'USP_RP_GetPODTAccountIdXML';        
+  
+ -- Body of procedure  --        
+ BEGIN TRY        
+      
+	INSERT INTO @Data      
+	SELECT XMLdoc.Data.value('@ID[1]', 'VARCHAR(100)') AS ID  
+	FROM @XMLItems.nodes('//root/Item') AS XMLdoc(Data)  
+
+        IF(@LoadType = 1)  
+			BEGIN  
+				SET @XMLAccountId = (SELECT VA.AdventID AS ID, VXACCOUNT.AccountID AS Value  
+				FROM VW_EX_Account VA     
+				INNER JOIN V_EIS_EX_ACCOUNT VXACCOUNT ON VXACCOUNT.ADVENTID =VA.ADVENTID --to get account id from profilestageDB (Synonym)
+				WHERE VA.CLIENTID    
+				IN (SELECT DISTINCT ManagerCode FROM TBL_DLV_DeliverableItem WHERE DeliverableQueueID= @DeliverableQueueID)  
+				for xml raw ( 'Item' ) , ROOT ('root'))      
+			END  
+		ELSE IF(@LoadType = 2)  
+			BEGIN  
+				SELECT @ReturnStatus = count(ID)   
+				FROM @Data  
+				WHERE ID NOT IN (SELECT ManagerCode FROM SYN_IT_AccountManagerCodes)  
+
+				IF(@ReturnStatus = 0)  
+					BEGIN  
+						SET @XMLAccountId = (SELECT VA.AdventID AS ID,VXACCOUNT.AccountID AS Value    
+						FROM @Data D   
+						INNER JOIN VW_EX_Account VA ON VA.Client_BriefName = D.ID  --to get account id from profilestageDB (Synonym)
+						INNER JOIN V_EIS_EX_ACCOUNT VXACCOUNT ON VXACCOUNT.Client_BriefName =VA.Client_BriefName  
+						for xml raw ( 'Item' ) , ROOT ('root'))       
+					END  
+				ELSE  
+					BEGIN  
+						SET @XMLAccountId = (SELECT ID  
+						FROM @Data  
+						WHERE ID NOT IN (SELECT ManagerCode FROM SYN_IT_AccountManagerCodes)  
+						for xml raw ( 'Item' ) , ROOT ('root'))  
+					END       
+			END  
+		ELSE IF(@LoadType = 3)  
+			BEGIN  
+				SELECT @ReturnStatus = COUNT(ID)  
+				FROM @Data  
+				WHERE ID NOT IN (SELECT CustomerAccountNumber FROM SYN_IT_SecurityTransaction)  
+
+				IF(@ReturnStatus = 0)  
+					BEGIN  
+						SET @XMLAccountId = (SELECT ID, VXACCOUNT.AccountID AS Value  
+						FROM @Data D 
+						INNER JOIN VW_EX_Account VA ON VA.AdventID = D.ID    --to get account id from profilestageDB (Synonym)
+						INNER JOIN V_EIS_EX_ACCOUNT VXACCOUNT ON VXACCOUNT.Client_BriefName =VA.Client_BriefName
+						for xml raw ( 'Item' ) , ROOT ('root'))  
+					END  
+				ELSE  
+					BEGIN  
+						SET @XMLAccountId = (SELECT ID  
+						FROM @Data  
+						WHERE ID NOT IN (SELECT CustomerAccountNumber FROM SYN_IT_SecurityTransaction)  
+						for xml raw ( 'Item' ) , ROOT ('root'))  
+					END  
+			END  
+   
+ END TRY        
+ BEGIN CATCH        
+			SET @ErrorMessage  = ERROR_MESSAGE();        
+			SET @ErrorNumber  = ERROR_NUMBER();        
+			SET @val1 = '';        
+			SET @val2 = '';        
+
+			SET @ReturnStatus = -1;   
+
+			exec dbo.spSYS_ErrorHandler @codename = @procname,        
+			@errmsg = @ErrorMessage,         
+			@errnbr = @ErrorNumber,        
+			@val1 = '',         
+			@val1str = 'USP_RP_GetPODTAccountIdXML: Cannot Select.',         
+			@val2 = '',         
+			@val2str = '';        
+ END CATCH        
+ -- End of procedure  --   
+  
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetPODTAccountIdXML') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetPODTAccountIdXML';
+	END
+

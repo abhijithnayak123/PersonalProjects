@@ -1,0 +1,160 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineAcknowledge]    Script Date: 08/06/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveValidationEngineAcknowledge]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveValidationEngineAcknowledge]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineAcknowledge]    Script Date: 08/06/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SaveValidationEngineAcknowledge                      
+** Short Desc: To save acknowledge 
+**                      
+** Full Description:  To save validation engine acknowledge          
+**        
+**                              
+** Input Arguments:
+	@XMLDATA xml  
+
+**         
+** Sample Call     
+  DECLARE @ReturnStatus INT      
+  EXEC USP_PP_SaveValidationEngineAcknowledge  
+        '<ValidationResultsScheduledPaymentsCollection>
+        <UpdateList>  
+				<ValidationResultsScheduledPayments ValidationResultID="14665" IsAcknowledged="1" RecordVersion="0x000000000078F075" />   
+				<ValidationResultsScheduledPayments ValidationResultID="14666" IsAcknowledged="1" RecordVersion="0x000000000078F076" /> 
+		</UpdateList>  
+		</ValidationResultsScheduledPaymentsCollection>', @ReturnStatus OUTPUT  
+  select @ReturnStatus 
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 6-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 01/14/2014	Niveditha	Simplified the select statement which displays the acknowledge results
+** 01/29/2014   Salih       Changed table variables with temp tables
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveValidationEngineAcknowledge] @XMLDATA XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+--  Initial Set statements  --        
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+-- Temporary table dropping
+IF OBJECT_ID('tempdb..[#TBL_ValidationEngineSaveAcknowledge]') IS NOT NULL
+	DROP TABLE [#TBL_ValidationEngineSaveAcknowledge]
+
+--  Temp table --    
+CREATE TABLE #TBL_ValidationEngineSaveAcknowledge (
+	ValidationResultID INT
+	,IsAcknowledged BIT
+	,RecordVersion VARCHAR(100)
+	,ReturnStatus INT DEFAULT(0)
+	)
+
+-- Body of procedure  --      
+BEGIN TRY
+	--  Transactions      
+	BEGIN TRANSACTION
+
+	SET @ReturnStatus = 0;
+
+	----Insert input data to temp table  
+	INSERT INTO #TBL_ValidationEngineSaveAcknowledge (
+		ValidationResultID
+		,IsAcknowledged
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@ValidationResultID[1]', 'INT') AS ValidationResultID
+		,XMLDATA.item.value('@IsAcknowledged[1]', 'BIT') AS IsAcknowledged
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLDATA.nodes('//ValidationResultsScheduledPaymentsCollection/UpdateList/ValidationResultsScheduledPayments') AS XMLDATA(item)
+
+	UPDATE #TBL_ValidationEngineSaveAcknowledge
+	SET ReturnStatus = - 2
+		,@ReturnStatus = - 2
+	FROM #TBL_ValidationEngineSaveAcknowledge SaveAcknwldge
+	INNER JOIN TBL_PP_ValidationResult ValRslt
+		ON ValRslt.ValidationResultID = SaveAcknwldge.ValidationResultID
+			AND CONVERT(varchar(20),CAST(ValRslt.RecordVersion AS varbinary(8)),1) <> SaveAcknwldge.RecordVersion
+
+	--Updating the IsAcknowledged field   
+	IF @ReturnStatus <> - 2
+	BEGIN
+		UPDATE TBL_PP_ValidationResult
+		SET IsAcknowledged = SaveAcknwldge.IsAcknowledged
+		FROM TBL_PP_ValidationResult ValRslt
+		INNER JOIN #TBL_ValidationEngineSaveAcknowledge SaveAcknwldge
+			ON ValRslt.ValidationResultID = SaveAcknwldge.ValidationResultID
+	END
+
+	--Display results
+	--14-jan-2014	Niveditha	Simplified the select statement which displays the acknowledge results
+	SELECT SaveAcknwldge.ValidationResultID
+		,CASE 
+			WHEN SaveAcknwldge.ReturnStatus = - 2
+				THEN NULL
+			ELSE ValRslt.RecordVersion
+			END AS RecordVersion
+		,SaveAcknwldge.ReturnStatus
+	FROM #TBL_ValidationEngineSaveAcknowledge SaveAcknwldge
+	INNER JOIN TBL_PP_ValidationResult ValRslt
+		ON ValRslt.ValidationResultID = SaveAcknwldge.ValidationResultID
+	ORDER BY ValidationResultID
+
+	COMMIT TRANSACTION;
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TBL_ValidationEngineSaveAcknowledge]') IS NOT NULL
+		DROP TABLE [#TBL_ValidationEngineSaveAcknowledge]
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

@@ -1,0 +1,78 @@
+/****** Object:  StoredProcedure [dbo].[sp_dsNextDayInSet]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_dsNextDayInSet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_dsNextDayInSet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_dsNextDayInSet]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_dsNextDayInSet                      
+** Short Desc: Date calculation utility proc
+**                      
+** Full Description: Date calculation utility proc. Resets date to the next day which falls on or after @seed_date and 
+which falls on a day indicated in @day_set.  
+**                              
+** Input Arguments:   
+**         
+** Sample Call  
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+** 
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_dsNextDayInSet @day_set VARCHAR(20)
+	,@seed_date DATETIME
+OUTPUT AS
+
+DECLARE @search_char CHAR(1)
+
+WHILE (1 = 1)
+BEGIN
+	/* Convert day of week into a character */
+	SELECT @search_char = CASE DATEPART(weekday, @seed_date)
+			WHEN 1
+				THEN 'U'
+			WHEN 2
+				THEN 'M'
+			WHEN 3
+				THEN 'T'
+			WHEN 4
+				THEN 'W'
+			WHEN 5
+				THEN 'R'
+			WHEN 6
+				THEN 'F'
+			WHEN 7
+				THEN 'S'
+			END
+
+	/* See if this day of week appears in @freq_day_occurrence */
+	IF (CHARINDEX(@search_char, @day_set) > 0)
+		BREAK
+
+	/* Advance one day */
+	SELECT @seed_date = DATEADD(day, 1, @seed_date)
+END

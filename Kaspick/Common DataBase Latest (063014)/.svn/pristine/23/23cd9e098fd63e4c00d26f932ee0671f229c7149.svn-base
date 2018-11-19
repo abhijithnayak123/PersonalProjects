@@ -1,0 +1,337 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_Inc_SSN_Bene]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_Inc_SSN_Bene]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************      
+** Name:     USP_EIS_IRS_Inc_SSN_Bene      
+** Short Desc:  SELECTS ALL Incomplete SSN for Beneficiaries    
+**      
+** Full Description      
+**        SELECTS ALL Incomplete SSN for Beneficiaries      
+**      
+** Sample Call       
+**     EXEC USP_EIS_IRS_Inc_SSN_Bene 2013, 'AM' ,'' 
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Asit Kar      
+** Company   : Ciber offshore      
+** Project   : BOI Reports & Queries     
+** Created DT: 05/09/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** <mm/dd/yyyy>      
+*******************************************************************************      
+** Copyright (Clnt) 2014, Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_Inc_SSN_Bene] (
+	@TAXYEAR INT
+	,@CLIENT_BRIEF_NAME VARCHAR(10)
+	,@ADVENT_ID VARCHAR(10)
+	)
+AS
+BEGIN
+	IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+		AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+	BEGIN
+		SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+			,DefGiftAct.ADVENTID
+			,DefGiftAct.ACCOUNTTYPE
+			,TrstPrtcpt.FIRSTNAME
+			,TrstPrtcpt.LASTNAME
+			,TrstPrtcpt.TAXID
+			,Bene.PARTICIPANTID
+			,Bene.BENEFICIARYID
+			,VPTP.PARTICIPANT_TYPE AS [PARTICIPANT STATUS]
+			,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+			,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+		FROM SYN_EP_Beneficiary Bene
+		INNER JOIN SYN_EP_TRUSTPARTICIPANT TrstPrtcpt
+			ON TrstPrtcpt.PARTICIPANTID = Bene.PARTICIPANTID
+		INNER JOIN SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+			ON Bene.ACCOUNTID = DefGiftAct.ACCOUNTID
+		INNER JOIN SYN_EP_Program Prgm
+			ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+		INNER JOIN SYN_EP_Client Clnt
+			ON Clnt.CLIENTID = Prgm.CLIENTID
+		INNER JOIN SYN_KD_VW_EX_TrustParticipantType VPTP
+			ON TrstPrtcpt.PARTICIPANTID = VPTP.PARTICIPANTID
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+			ON Clnt.BriefName = KCO_TA.ManagerCode
+				AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+			ON Clnt.BriefName = KCO_CM.ManagerCode
+				AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+		WHERE DefGiftAct.ACCOUNTTYPE NOT IN (
+				'990'
+				,'CGA'
+				,'PRIV-EXMT'
+				,'PRIV-TAX'
+				,'TMC-ASSOC'
+				,'TMC-BRANCH'
+				,'TMC-FUND'
+				)
+			AND VPTP.PARTICIPANT_TYPE IN (
+				'Beneficiary Active'
+				,'Donor Active/Beneficiary Active'
+				)
+			AND (
+				(
+					REPLACE(TrstPrtcpt.TAXID, '-', '') IS NULL
+					OR REPLACE(TrstPrtcpt.TAXID, '-', '') = ''
+					)
+				OR LEN(REPLACE(TrstPrtcpt.TAXID, '-', '')) < 9
+				OR REPLACE(TrstPrtcpt.TAXID, '-', '') IN (
+					'123456789'
+					,'987654321'
+					,'111111111'
+					,'222222222'
+					,'333333333'
+					,'444444444'
+					,'555555555'
+					,'666666666'
+					,'777777777'
+					,'888888888'
+					,'999999999'
+					,'000000000'
+					)
+				)
+		ORDER BY DefGiftAct.ADVENTID
+			,TrstPrtcpt.LASTNAME
+	END
+	ELSE
+		IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+			AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+		BEGIN
+			SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+				,DefGiftAct.ADVENTID
+				,DefGiftAct.ACCOUNTTYPE
+				,TrstPrtcpt.FIRSTNAME
+				,TrstPrtcpt.LASTNAME
+				,TrstPrtcpt.TAXID
+				,Bene.PARTICIPANTID
+				,Bene.BENEFICIARYID
+				,VPTP.PARTICIPANT_TYPE AS [PARTICIPANT STATUS]
+				,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+				,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+			FROM SYN_EP_Beneficiary Bene
+			INNER JOIN SYN_EP_TRUSTPARTICIPANT TrstPrtcpt
+				ON TrstPrtcpt.PARTICIPANTID = Bene.PARTICIPANTID
+			INNER JOIN SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+				ON Bene.ACCOUNTID = DefGiftAct.ACCOUNTID
+			INNER JOIN SYN_EP_Program Prgm
+				ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+			INNER JOIN SYN_EP_Client Clnt
+				ON Clnt.CLIENTID = Prgm.CLIENTID
+			INNER JOIN SYN_KD_VW_EX_TrustParticipantType VPTP
+				ON TrstPrtcpt.PARTICIPANTID = VPTP.PARTICIPANTID
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+				ON Clnt.BriefName = KCO_TA.ManagerCode
+					AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+				ON Clnt.BriefName = KCO_CM.ManagerCode
+					AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+			WHERE DefGiftAct.ACCOUNTTYPE NOT IN (
+					'990'
+					,'CGA'
+					,'PRIV-EXMT'
+					,'PRIV-TAX'
+					,'TMC-ASSOC'
+					,'TMC-BRANCH'
+					,'TMC-FUND'
+					)
+				AND VPTP.PARTICIPANT_TYPE IN (
+					'Beneficiary Active'
+					,'Donor Active/Beneficiary Active'
+					)
+				AND (
+					(
+						REPLACE(TrstPrtcpt.TAXID, '-', '') IS NULL
+						OR REPLACE(TrstPrtcpt.TAXID, '-', '') = ''
+						)
+					OR LEN(REPLACE(TrstPrtcpt.TAXID, '-', '')) < 9
+					OR REPLACE(TrstPrtcpt.TAXID, '-', '') IN (
+						'123456789'
+						,'987654321'
+						,'111111111'
+						,'222222222'
+						,'333333333'
+						,'444444444'
+						,'555555555'
+						,'666666666'
+						,'777777777'
+						,'888888888'
+						,'999999999'
+						,'000000000'
+						)
+					)
+				AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+			ORDER BY DefGiftAct.ADVENTID
+				,TrstPrtcpt.LASTNAME
+		END
+		ELSE
+			IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+				AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+			BEGIN
+				SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+					,DefGiftAct.ADVENTID
+					,DefGiftAct.ACCOUNTTYPE
+					,TrstPrtcpt.FIRSTNAME
+					,TrstPrtcpt.LASTNAME
+					,TrstPrtcpt.TAXID
+					,Bene.PARTICIPANTID
+					,Bene.BENEFICIARYID
+					,VPTP.PARTICIPANT_TYPE AS [PARTICIPANT STATUS]
+					,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+					,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+				FROM SYN_EP_Beneficiary Bene
+				INNER JOIN SYN_EP_TRUSTPARTICIPANT TrstPrtcpt
+					ON TrstPrtcpt.PARTICIPANTID = Bene.PARTICIPANTID
+				INNER JOIN SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+					ON Bene.ACCOUNTID = DefGiftAct.ACCOUNTID
+				INNER JOIN SYN_EP_Program Prgm
+					ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EP_Client Clnt
+					ON Clnt.CLIENTID = Prgm.CLIENTID
+				INNER JOIN SYN_KD_VW_EX_TrustParticipantType VPTP
+					ON TrstPrtcpt.PARTICIPANTID = VPTP.PARTICIPANTID
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+					ON Clnt.BriefName = KCO_TA.ManagerCode
+						AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+					ON Clnt.BriefName = KCO_CM.ManagerCode
+						AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+				WHERE DefGiftAct.ACCOUNTTYPE NOT IN (
+						'990'
+						,'CGA'
+						,'PRIV-EXMT'
+						,'PRIV-TAX'
+						,'TMC-ASSOC'
+						,'TMC-BRANCH'
+						,'TMC-FUND'
+						)
+					AND VPTP.PARTICIPANT_TYPE IN (
+						'Beneficiary Active'
+						,'Donor Active/Beneficiary Active'
+						)
+					AND (
+						(
+							REPLACE(TrstPrtcpt.TAXID, '-', '') IS NULL
+							OR REPLACE(TrstPrtcpt.TAXID, '-', '') = ''
+							)
+						OR LEN(REPLACE(TrstPrtcpt.TAXID, '-', '')) < 9
+						OR REPLACE(TrstPrtcpt.TAXID, '-', '') IN (
+							'123456789'
+							,'987654321'
+							,'111111111'
+							,'222222222'
+							,'333333333'
+							,'444444444'
+							,'555555555'
+							,'666666666'
+							,'777777777'
+							,'888888888'
+							,'999999999'
+							,'000000000'
+							)
+						)
+					AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+					AND DefGiftAct.ADVENTID = @ADVENT_ID
+				ORDER BY DefGiftAct.ADVENTID
+					,TrstPrtcpt.LASTNAME
+			END
+			ELSE
+				IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+					AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+				BEGIN
+					SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+						,DefGiftAct.ADVENTID
+						,DefGiftAct.ACCOUNTTYPE
+						,TrstPrtcpt.FIRSTNAME
+						,TrstPrtcpt.LASTNAME
+						,TrstPrtcpt.TAXID
+						,Bene.PARTICIPANTID
+						,Bene.BENEFICIARYID
+						,VPTP.PARTICIPANT_TYPE AS [PARTICIPANT STATUS]
+						,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+						,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+					FROM SYN_EP_Beneficiary Bene
+					INNER JOIN SYN_EP_TRUSTPARTICIPANT TrstPrtcpt
+						ON TrstPrtcpt.PARTICIPANTID = Bene.PARTICIPANTID
+					INNER JOIN SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+						ON Bene.ACCOUNTID = DefGiftAct.ACCOUNTID
+					INNER JOIN SYN_EP_Program Prgm
+						ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+					INNER JOIN SYN_EP_Client Clnt
+						ON Clnt.CLIENTID = Prgm.CLIENTID
+					INNER JOIN SYN_KD_VW_EX_TrustParticipantType VPTP
+						ON TrstPrtcpt.PARTICIPANTID = VPTP.PARTICIPANTID
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+						ON Clnt.BriefName = KCO_TA.ManagerCode
+							AND KCO_TA.RoleCode = 510 --'Trust Administrator'
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+						ON Clnt.BriefName = KCO_CM.ManagerCode
+							AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+					WHERE DefGiftAct.ACCOUNTTYPE NOT IN (
+							'990'
+							,'CGA'
+							,'PRIV-EXMT'
+							,'PRIV-TAX'
+							,'TMC-ASSOC'
+							,'TMC-BRANCH'
+							,'TMC-FUND'
+							)
+						AND VPTP.PARTICIPANT_TYPE IN (
+							'Beneficiary Active'
+							,'Donor Active/Beneficiary Active'
+							)
+						AND (
+							(
+								REPLACE(TrstPrtcpt.TAXID, '-', '') IS NULL
+								OR REPLACE(TrstPrtcpt.TAXID, '-', '') = ''
+								)
+							OR LEN(REPLACE(TrstPrtcpt.TAXID, '-', '')) < 9
+							OR REPLACE(TrstPrtcpt.TAXID, '-', '') IN (
+								'123456789'
+								,'987654321'
+								,'111111111'
+								,'222222222'
+								,'333333333'
+								,'444444444'
+								,'555555555'
+								,'666666666'
+								,'777777777'
+								,'888888888'
+								,'999999999'
+								,'000000000'
+								)
+							)
+						AND DefGiftAct.ADVENTID = @ADVENT_ID
+					ORDER BY DefGiftAct.ADVENTID
+						,TrstPrtcpt.LASTNAME
+				END
+END
+GO
+
+

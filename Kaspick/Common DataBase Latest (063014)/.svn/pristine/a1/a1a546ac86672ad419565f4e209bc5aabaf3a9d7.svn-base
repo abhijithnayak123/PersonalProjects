@@ -1,0 +1,212 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveMessageManagement]    Script Date: 06/17/2013 16:28:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveMessageManagement]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveMessageManagement]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_SaveMessageManagement                      
+** Short Desc: Procedure to save/update/delete MessageManagement 
+**                      
+** Full Description: Procedure to save/update/delete MedssageManagement      
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+
+DECLARE @ReturnStatus int
+ EXEC USP_PP_SaveMessageManagement  		
+			'<MessageManagementCollection>
+			  <MessageManagement MessageMgmtCode="AM" Description="" RemainderMessage="" MarketingMessage=""  RecordVersion="0x0000000000962243"  />
+			  <MessageManagement MessageMgmtCode="ACL" Description="" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			</MessageManagementCollection>',
+			'Manager',
+			1,
+			@ReturnStatus OUTPUT
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveMessageManagement] (
+	@XMLDATA XML
+	,@Type VARCHAR(10)
+	,@ModifiedBy INT
+	,@ReturnStatus INT OUTPUT -- 0 for Normal Return, -1 for error, -2 for DirtyRead
+	)
+AS
+BEGIN TRY
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	BEGIN TRANSACTION
+
+	DECLARE @TBL_Message TABLE (
+		MessageMgmtCode VARCHAR(15)
+		,Description VARCHAR(255)
+		,ReminderText VARCHAR(255)
+		,MarketingText VARCHAR(2000)
+		,ModifiedBy VARCHAR(20)
+		,ModifiedDate DATETIME
+		,RecordVersion VARCHAR(20)
+		,TableRecordVersion VARBINARY(8)
+		)
+
+	INSERT INTO @TBL_Message (
+		MessageMgmtCode
+		,Description
+		,ReminderText
+		,MarketingText
+		,RecordVersion
+		)
+	SELECT x.item.value('@MessageMgmtCode[1]', 'VARCHAR(15)') AS MessageMgmtCode
+		,x.item.value('@Description[1]', 'VARCHAR(255)') AS ReminderText
+		,x.item.value('@ReminderText[1]', 'VARCHAR(255)') AS ReminderText
+		,x.item.value('@MarketingText[1]', 'VARCHAR(2000)') AS MarketingText
+		,x.item.value('@RecordVersion[1]', 'varchar(20)') AS RecordVersion
+	FROM @XMLDATA.nodes('/MessageManagementCollection/MessageManagement') AS x(item)
+
+	IF EXISTS (
+			SELECT 1
+			FROM TBL_PP_MESSAGEMGMT MsgMgmt
+			INNER JOIN @TBL_Message TempMsg
+				ON TempMsg.MessageMgmtCode = MsgMgmt.MessageMgmtCode
+					AND MessageMgmtType = @Type
+			WHERE (
+					CONVERT(VARCHAR(20), CAST(MsgMgmt.RecordVersion AS VARBINARY(8)), 1) <> TempMsg.RecordVersion
+					AND MsgMgmt.IsDeleted = 0
+					)
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+	ELSE
+	BEGIN
+		MERGE TBL_PP_MessageMgmt AS MsgMgmt
+		USING @TBL_Message AS TempMsg
+			ON TempMsg.MessageMgmtCode = MsgMgmt.MessageMgmtCode
+				AND MsgMgmt.MessageMgmtType = @Type
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET MsgMgmt.Description = TempMsg.Description
+					,MsgMgmt.ReminderText = TempMsg.ReminderText
+					,MsgMgmt.MarketingText = TempMsg.MarketingText
+					,MsgMgmt.ModifiedBy = @ModifiedBy
+					,MsgMgmt.ModifiedDate = getdate()
+					,MsgMgmt.IsDeleted = 0
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					MessageMgmtCode
+					,MessageMgmtType
+					,Description
+					,ReminderText
+					,MarketingText
+					,IsDeleted
+					,ModifiedBy
+					,ModifiedDate
+					,CreatedBy
+					,CreatedDate
+					)
+				VALUES (
+					TempMsg.MessageMgmtCode
+					,@Type
+					,TempMsg.Description
+					,TempMsg.ReminderText
+					,TempMsg.MarketingText
+					,0
+					,@ModifiedBy
+					,GETDATE()
+					,@ModifiedBy
+					,GETDATE()
+					);
+
+		UPDATE @TBL_Message
+		SET TableRecordVersion = cast(MsgMgmt.RecordVersion AS VARBINARY)
+			,ModifiedBy = MsgMgmt.ModifiedBy
+			,ModifiedDate = MsgMgmt.ModifiedDate
+		FROM @TBL_Message TempMsg
+		INNER JOIN TBL_PP_MessageMgmt MsgMgmt
+			ON TempMsg.MessageMgmtCode = MsgMgmt.MessageMgmtCode
+				AND MessageMgmtType = @Type
+
+		SET @ReturnStatus = ISNULL(@ReturnStatus, 0)
+	END
+
+	SELECT MessageMgmtCode
+		,TempMsg.Description
+		,ReminderText
+		,MarketingText
+		,ModifiedUser.LoginName AS LastModifiedBy
+		,TempMsg.ModifiedDate AS LastModifiedDate
+		,TableRecordVersion AS RecordVersion
+	FROM @TBL_Message TempMsg
+	LEFT OUTER JOIN TBL_KS_User ModifiedUser
+		ON ModifiedUser.UserID = TempMsg.ModifiedBy
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+

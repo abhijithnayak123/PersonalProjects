@@ -1,0 +1,198 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_InsBRVEReportDBResults'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_InsBRVEReportDBResults;
+
+	PRINT 'DROPPED USP_RP_InsBRVEReportDBResults';
+END
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_RP_InsBRVEReportDBResults]    Script Date: 07/14/2014 13:32:32 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/**********************************************************************************************                     
+** Name:     USP_RP_InsBRVEReportDBResults                                        
+** Old Name:     USP_EIS_RPT_BR_VE_ReportDB_Results_InsProc                      
+** Short Desc:     
+**                      
+** Full Description: To insert the Validation Engine result for SP FROM ReportDB
+**         
+** Sample Call                      
+**    
+DECLARE @RulesCategory VARCHAR(50)  
+DECLARE @ISReportGeneration INT  
+SET @RulesCategory = 'Data Readiness'   
+SET @ISReportGeneration =0   
+EXEC USP_RP_InsBRVEReportDBResults       
+    '<clsValidationResultsCollection><InsertList><clsValidationResults   
+DeliverableItemID="1779"  ErrorDetails="Unexpected number of payments"  UserID="1"  RecordVersion=""  ValidationResultID="0"  ValidationRuleID="1"  RunDate="9/27/2009 9:38:09 PM"  /><clsValidationResults   
+DeliverableItemID="3"  ErrorDetails="Missing Spigot data"  UserID="1"  RecordVersion=""  ValidationResultID="0"  ValidationRuleID="3"  RunDate="9/27/2009 9:38:09 PM"  /><clsValidationResults   
+DeliverableItemID="2323"  ErrorDetails="Missing DAF Distributions data"  UserID="1"  RecordVersion=""  ValidationResultID="0"  ValidationRuleID="4"  RunDate="9/27/2009 9:38:09 PM"  /><clsValidationResults   
+DeliverableItemID="2323"  ErrorDetails="Missing DAF Activity Summary Data"  UserID="1"  RecordVersion=""  ValidationResultID="0"  ValidationRuleID="5"  RunDate="9/27/2009 9:38:09 PM"  /></InsertList><UpdateList></UpdateList><DeleteList>  
+</DeleteList></clsValidationResultsCollection>',@RulesCategory,@ISReportGeneration  
+       
+**             
+** Return values: NONE    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara    
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 10/31/2012                      
+**                                  
+**********************************************************************************************                
+**       Change History                      
+**********************************************************************************************                
+** Date:    Author:   Bug #   Description:                           Rvwd                
+** --------  -------- ------    -----------  ---------------------------   --------                
+*********************************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*********************************************************************************************/                      
+      
+      
+CREATE PROCEDURE [dbo].[USP_RP_InsBRVEReportDBResults]       
+(      
+ @XMLData xml,  
+ @RulesCategory VARCHAR(50),  
+ @ISReportGeneration INT
+)      
+AS      
+BEGIN      
+	--  Initial SET statements  --          
+	SET NOCOUNT ON;          
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds          
+	SET TRANSACTION ISOLATION LEVEL SNAPSHOT;          
+
+	--  Variable Declarations  --          
+	DECLARE @procname   VARCHAR(60);          
+	DECLARE @errmsg     VARCHAR(1000);          
+	DECLARE @errnbr     INT;    
+	--DECLARE @idoc INT;  Delete         
+
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1      VARCHAR(30);          
+	DECLARE @val2      VARCHAR(30);          
+
+	--  Temp tables, Cursors, Table Variables  --          
+
+	DECLARE @CurrentRunResults table  
+	(  
+		DeliverableItemID INT,    
+		ValidationRuleID INT,  
+		RunDate DATETIME,  
+		ErrorDetails VARCHAR(max),  
+		IsAcknowledged BIT,  
+		UserID INT     
+	)    
+
+	--  Variable Data Assignment  --          
+	SET @procname = 'USP_RP_InsBRVEReportDBResults';          
+	-- Body of procedure  --          
+	BEGIN TRY    
+		BEGIN TRAN    
+
+			INSERT INTO @CurrentRunResults(ValidationRuleID, DeliverableItemID, RunDate, ErrorDetails,IsAcknowledged,UserID)    
+			SELECT     
+			XMLDoc.item.value('@ValidationRuleID[1]', 'INT') AS ValidationRuleID,    
+			XMLDoc.item.value('@DeliverableItemID[1]', 'INT') AS DeliverableItemID,    
+			XMLDoc.item.value('@RunDate[1]', 'DATETIME') AS RunDate,    
+			XMLDoc.item.value('@ErrorDetails[1]', 'VARCHAR(max)') AS ErrorDetails,  
+			0 AS IsAcknowledged,   
+			XMLDoc.item.value('@UserID[1]', 'INT') AS UserID    
+			FROM @XMLData.nodes('//clsValidationResultsCollection/InsertList/clsValidationResults') AS XMLDoc(item)    
+
+			UPDATE @CurrentRunResults  
+			SET IsAcknowledged = VR.IsAcknowledged   
+			FROM @CurrentRunResults CRR  
+			JOIN TBL_DLV_ValidationResult VR ON CRR.DeliverableItemID = VR.DeliverableItemID  
+			AND CRR.ValidationRuleID = VR.ValidationRuleID  
+			WHERE VR.IsAcknowledged  = 1  
+
+
+			IF @RulesCategory <> 'Report Generation'  
+				BEGIN  
+					
+					INSERT INTO TBL_DLV_ValidationResult(ValidationRuleID, DeliverableItemID, RunDate, ErrorDetails,IsAcknowledged,UserID)    
+					SELECT ValidationRuleID, DeliverableItemID, RunDate, ErrorDetails,IsAcknowledged,UserID  
+					FROM @CurrentRunResults   
+
+				END  
+			ELSE  
+				BEGIN  
+					IF @ISReportGeneration =1 -- 1 denotes that Report generation is success for the item  
+						BEGIN  
+							DELETE FROM TBL_DLV_ValidationResult  
+							FROM TBL_DLV_ValidationResult VRES  
+							JOIN TBL_DLV_ValidationRule VR ON VRES.ValidationRuleID = VR.ValidationRuleID  
+							JOIN VW_ListItem VLI ON VLI.LISTITEMID = VR.RuleCategoryID   
+							WHERE VLI.LISTITEMNAME = @RulesCategory AND VLI.LISTTYPENAME ='BeneReports Report Generation Error Category'   
+							AND  DeliverableItemID IN (SELECT DeliverableItemID FROM @CurrentRunResults)  
+						END  
+					ELSE IF @ISReportGeneration =2 -- 2 denotes that Report generation ended with error for the item  
+						BEGIN  
+							DELETE FROM TBL_DLV_ValidationResult  
+							FROM TBL_DLV_ValidationResult VRES  
+							JOIN tbl_eis_dt_validation_rules VR ON VRES.ValidationRuleID = VR.ValidationRuleID  
+							JOIN V_EIS_LIST_ITEMS VLI ON VLI.LIST_ITEM_ID = VR.RuleCategoryID   
+							WHERE VLI.LIST_ITEM_NAME = @RulesCategory AND VLI.LIST_TYPE_NAME ='BeneReports Report Generation Error Category'  
+							AND  DeliverableItemID IN (SELECT DeliverableItemID FROM @CurrentRunResults)  
+
+							INSERT INTO TBL_DLV_ValidationResult(ValidationRuleID, DeliverableItemID, RunDate, ErrorDetails,IsAcknowledged,UserID)    
+							SELECT ValidationRuleID, DeliverableItemID, RunDate, ErrorDetails,IsAcknowledged,UserID  
+							FROM @CurrentRunResults   
+						END  
+				END  
+
+		COMMIT TRAN    
+	END TRY        
+
+	BEGIN CATCH  
+		IF @@TRANCOUNT > 0  
+			BEGIN  
+				ROLLBACK TRAN  
+			END  
+			                
+		SET @errmsg = ERROR_MESSAGE();          
+		SET @errnbr = ERROR_NUMBER();          
+		SET @val1 = '';          
+		SET @val2 = '';          
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname,          
+		@errmsg = @errmsg,           
+		@errnbr = @errnbr,          
+		@val1 = '',           
+		@val1str = 'USP_RP_InsBRVEReportDBResults: Cannot Delete.',           
+		@val2 = '',           
+		@val2str = '';          
+
+	END CATCH          
+	-- End of procedure  --   
+END 
+
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_InsBRVEReportDBResults'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_InsBRVEReportDBResults';
+END
+GO	
+
+
+

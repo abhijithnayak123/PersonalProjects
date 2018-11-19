@@ -1,0 +1,184 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdStagingInnoTrustValidationEngineInput]    Script Date: 09/27/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_UpdStagingInnoTrustValidationEngineInput]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_UpdStagingInnoTrustValidationEngineInput]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdStagingInnoTrustValidationEngineInput]    Script Date: 09/27/2013 14:24:25 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_UpdStagingInnoTrustValidationEngineInput                      
+** Short Desc: To Update Staging table 
+**                      
+** Full Description:  To Update Staging table with input from InnoTrust  on basis of ScheduleID     
+**        
+**                              
+** Input Arguments: 
+	@InnoTrustXML XML,
+	@UserID	INT,
+	@ReturnStatus INT OUTPUT 
+
+**         
+** Sample Call     
+
+DECLARE @Ret INT 
+EXEC USP_PP_UpdStagingInnoTrustValidationEngineInput        
+	'<InnoTrustInputCollection><UpdateList><InnoTrustInput ScheduleID="669366" PaymentType="BeneficiaryPayment" CustomerAccountNumber="7777668" ContactID="34758" ScheduleAmount="6350.5800" PaymentDate="6/30/2014" DistributionID="459407" AccountActive="1" AccountClosed="False" AccountCloseDate="" AccountTypeCode="CRAT" TrustTypeCode="" AccountPaysActual="FALSE" PaymentMethod="Check" DDANumber="3969824693" PaidToAddress="402 Jude Island Circle" ReadyForPayments="TRUE" MoneyLinkProfileErrorDescription="" PaidToAccountRole="Proxy Recipient" PaidForAccountRole="Beneficiary" AllianceAddress="1345 Doris PlaceBuilding #3Service BuildingDumontMA81123" FirstOccurrence="L" FirstEventDay="31" FirstEventMonth="1" AnnualFrequency="12" FixedPayment="0" PercentOfPayment="0" AuthorizedFlag="False" ExtractFlag="False" ExtractStatus="" ErrorMessage=""/></UpdateList></InnoTrustInputCollection>'
+	,100110,@Ret OUTPUT
+SELECT @RET
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Sep-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 6_30_2014	Saravanan		Fixed PaymentMethod length issue
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_UpdStagingInnoTrustValidationEngineInput] @InnoTrustXML XML
+	,@UserID INT
+	,@ReturnStatus INT
+OUTPUT AS
+
+SET NOCOUNT ON
+
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds   
+	--  Variable Data Assignment  --      
+	SET @Returnstatus = 0
+
+	---Updating input data into Staging table
+	UPDATE dbo.TBL_PP_STG_InnoTrustValidationEngineInput
+	SET CustomerAccountNumber = XMLdata.CustomerAccountNumber
+		,ContactID = XMLdata.ContactID
+		,ScheduleAmount = XMLdata.ScheduleAmount
+		,PaymentDate = XMLdata.PaymentDate
+		,DistributionID = XMLdata.DistributionID
+		,AccountActive = XMLdata.AccountActive
+		,AccountClosed = XMLdata.AccountClosed
+		,AccountCloseDate = XMLdata.AccountCloseDate
+		,AccountTypeCode = XMLdata.AccountTypeCode
+		,TrustTypeCode = XMLdata.TrustTypeCode
+		--,BeneficiaryActive = XMLdata.BeneficiaryActive
+		--,PrimaryBeneficiaryActive = XMLdata.PrimaryBeneficiaryActive
+		,AccountPaysActual = XMLdata.AccountPaysActual
+		,PaymentMethod = XMLdata.PaymentMethod
+		,DDANumber = XMLdata.DDANumber
+		,PaidToAddress = XMLdata.PaidToAddress
+		,PaidToAccountRole = Xmldata.PaidToAccountRole
+		,PaidForAccountRole = XmlData.PaidForAccountRole
+		--,RecentGiftAdditionDate = XMLdata.RecentGiftAdditionDate
+		,ReadyForPayments = XMLdata.ReadyForPayments
+		,AuthorizedFlag = XMLdata.AuthorizedFlag
+		,ExtractStatus = XMLdata.ExtractStatus
+		,ExtractFlag = XMLData.ExtractFlag
+		,MoneyLinkProfileErrorDescription = XMLData.MoneyLinkProfileErrorDescription
+		,AllianceAddress = XMLdata.AllianceAddress
+		,FirstOccurrence = XMLData.FirstOccurrence
+		,FirstEventDay = XMLdata.FirstEventDay
+		,FirstEventMonth = XMLdata.FirstEventMonth
+		,AnnualFrequency = XMLData.AnnualFrequency
+		,FixedPayment = XMLData.FixedPayment
+		,PercentOfPayment = XMLData.PercentOfPayment
+		,ErrorMessage = XMLdata.ErrorMessage
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgInput
+	INNER JOIN (
+		SELECT XMLDoc.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+			,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+			,XMLDoc.item.value('@ContactID[1]', 'INT') AS ContactID
+			,XMLDoc.item.value('@ScheduleAmount[1]', 'Money') AS ScheduleAmount
+			,XMLDoc.item.value('@PaymentDate[1]', 'DATETIME') AS PaymentDate
+			,XMLDoc.item.value('@DistributionID[1]', 'INT') AS DistributionID
+			,XMLDoc.item.value('@AccountActive[1]', 'BIT') AS AccountActive
+			,XMLDoc.item.value('@AccountClosed[1]', 'BIT') AS AccountClosed
+			,XMLDoc.item.value('@AccountCloseDate[1]', 'DATETIME') AS AccountCloseDate
+			,XMLDoc.item.value('@AccountTypeCode[1]', 'VARCHAR(4)') AS AccountTypeCode
+			,XMLDoc.item.value('@TrustTypeCode[1]', 'VARCHAR(8)') AS TrustTypeCode
+			--,XMLDoc.item.value('@BeneficiaryActive[1]', 'BIT') AS BeneficiaryActive
+			--,XMLDoc.item.value('@PrimaryBeneficiaryActive[1]', 'BIT') AS PrimaryBeneficiaryActive
+			,XMLDoc.item.value('@AccountPaysActual[1]', 'VARCHAR(5)') AS AccountPaysActual
+			,XMLDoc.item.value('@PaymentMethod[1]', 'VARCHAR(15)') AS PaymentMethod
+			,XMLDoc.item.value('@DDANumber[1]', 'VARCHAR(17)') AS DDANumber
+			,XMLDoc.item.value('@PaidToAddress[1]', 'VARCHAR(255)') AS PaidToAddress
+			,XMLDoc.item.value('@PaidToAccountRole[1]', 'VARCHAR(100)') AS PaidToAccountRole
+			,XMLDoc.item.value('@PaidForAccountRole[1]', 'VARCHAR(100)') AS PaidForAccountRole
+			--,XMLDoc.item.value('@RecentGiftAdditionDate[1]', 'DATETIME') AS RecentGiftAdditionDate
+			,XMLDoc.item.value('@ReadyForPayments[1]', 'VARCHAR(5)') AS ReadyForPayments
+			,XMLDoc.item.value('@AuthorizedFlag[1]', 'VARCHAR(5)') AS AuthorizedFlag
+			,XMLDoc.item.value('@ExtractStatus[1]', 'VARCHAR(100)') AS ExtractStatus
+			,XMLDoc.item.value('@ExtractFlag[1]', 'VARCHAR(5)') AS ExtractFlag
+			,XMLDoc.item.value('@MoneyLinkProfileErrorDescription[1]', 'VARCHAR(100)') AS MoneyLinkProfileErrorDescription
+			,XMLDoc.item.value('@AllianceAddress[1]', 'VARCHAR(255)') AS AllianceAddress
+			,XMLDoc.item.value('@FirstOccurrence[1]', 'CHAR(1)') AS FirstOccurrence
+			,XMLDoc.item.value('@FirstEventDay[1]', 'INT') AS FirstEventDay
+			,XMLDoc.item.value('@FirstEventMonth[1]', 'INT') AS FirstEventMonth
+			,XMLDoc.item.value('@AnnualFrequency[1]', 'INT') AS AnnualFrequency
+			,XMLDoc.item.value('@FixedPayment[1]', 'Bit') AS FixedPayment
+			,XMLDoc.item.value('@PercentOfPayment[1]', 'Float') AS PercentOfPayment
+			,XMLDoc.item.value('@ErrorMessage[1]', 'VARCHAR(100)') AS ErrorMessage
+			,XMLDoc.item.value('@PaymentType[1]', 'VARCHAR(18)') AS PaymentType
+			,@UserID AS UserID
+		FROM @InnoTrustXML.nodes('//InnoTrustInputCollection/UpdateList/InnoTrustInput') AS XMLDoc(item)
+		) XMLData
+		ON StgInput.ScheduleID = XMLData.ScheduleID
+			AND StgInput.PaymentType = XMLData.PaymentType
+			AND StgInput.UserID = @UserID
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

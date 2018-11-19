@@ -1,0 +1,72 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetSchedulePaymentGroup]    Script Date: 09/06/2013 15:20:52 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetSchedulePaymentGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetSchedulePaymentGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetSchedulePaymentGroup]    Script Date: 09/06/2013 15:20:52 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_PP_GetSchedulePaymentGroup      
+** Short Desc : Get Schedule of Payment Group      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_PP_GetSchedulePaymentGroup         
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Bandish Gupta  
+** Company   : Kaspick & Company  
+** Project   : BackOffice Integration  
+** Created DT: 03-Sep-2013  
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**   
+*******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetSchedulePaymentGroup]
+	-- parameters here      
+AS
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+-- Body of procedure  --      
+SELECT PaymentStagingGroupID
+	,PaymentStagingGroupName
+	,TaxYear
+FROM TBL_IE_PaymentStagingGroup
+WHERE IsOfficial <> 0
+ORDER BY RunDate DESC
+
+SET NOCOUNT OFF;
+	-- End of procedure  --     
+GO
+
+

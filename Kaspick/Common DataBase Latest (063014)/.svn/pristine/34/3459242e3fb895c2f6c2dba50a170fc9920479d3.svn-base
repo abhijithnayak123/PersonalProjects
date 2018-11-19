@@ -1,0 +1,96 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetPaymentFile]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetPaymentFile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetPaymentFile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetPaymentFile]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetPaymentFile    
+** Short Desc:   Get All Client and PIF Accounts associated to the Client.     
+**    
+** Full Description : Get All Client and PIF Accounts associated to the Client.   
+**            
+**    
+** Sample Call    
+        EXEC USP_SIT_GetPaymentFile  3169    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetPaymentFile] @ValuationID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	SELECT BenPymt.ValuationID
+		,BenPymt.PriorReferenceNumber
+		,BenPymt.TaxID
+		,BenPymt.PayToTheOrderOf
+		,BenPymt.AddressType
+		,BenPymt.PaymentDate
+		,BenPymt.GrossAmount
+		,BenPymt.StateWithheld
+		,BenPymt.FederalWithheld
+		,BenPymt.IncomeUnit
+		,BenPymt.OrgName
+		,DataHub.DataHubIdentifier
+		,MgrcdParam.ManagerCode AS OrgShortName
+	FROM TBL_SIT_BeneficiaryPayment BenPymt 
+	INNER JOIN TBL_PV_Valuation PVal
+		ON PVal.ValuationID = BenPymt.ValuationID
+	INNER JOIN TBL_PV_ManagerCodeParameter MgrcdParam
+		ON MgrcdParam.CustomerAccountNumber = PVal.CustomerAccountNumber
+	INNER JOIN TBL_SIT_GiftDataHubIdentifier DataHub
+		ON BenPymt.PriorReferenceNumber = 'KCO' + convert(VARCHAR(100), DataHub.GiftKey)
+	WHERE BenPymt.ValuationID = @ValuationID
+		AND 0 = (
+			SELECT count(*)
+			FROM TBL_SIT_BeneficiaryPayment BenPymt
+			INNER JOIN TBL_SIT_GiftDataHubIdentifier DataHub
+				ON BenPymt.PriorReferenceNumber = 'KCO' + convert(VARCHAR(100), DataHub.GiftKey)
+			WHERE (
+					ltrim(rtrim(DataHub.DataHubIdentifier)) = ''
+					OR DataHub.DataHubIdentifier IS NULL
+					)
+				AND BenPymt.ValuationID = @ValuationID
+			)
+
+	SET NOCOUNT OFF;
+END
+
+

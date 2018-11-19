@@ -1,0 +1,189 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdDlvFolderNameAndFileName'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_UpdDlvFolderNameAndFileName;
+
+	PRINT 'DROPPED USP_RP_UpdDlvFolderNameAndFileName';
+END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************  
+** New SP Name : USP_RP_UpdDlvFolderNameAndFileName                      
+** Old Name:     sp_dlv_UpdateFolderNameAndFileName                        
+** Short Desc: To Update the file name and folder name for Deliverable Queue    
+**                        
+** Full Description: To Update Deliverable Queues Items folder name and file name which is of 'Subscription' type.    
+**      Deliverable Items table 'TBL_EIS_DT_Deliverable_Items' will be updated for FolderName and FileName    
+** Input Arguments:       
+**           
+** Sample Call       
+ DECLARE @ReturnStatus INT        
+ DECLARE @ErrorDesc VARCHAR(8000)      
+ EXEC USP_RP_UpdDlvFolderNameAndFileName     
+  @DeliverableQueueID = 68,    
+  @UserID = 300028,    
+  @ReturnStatus = -1,    
+  @ErrorDesc = ''    
+**               
+** Return values: Return Status      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Ashvin    
+** Company   : Kaspick & Company                        
+** Project   : Deliverable Tool                        
+** Created DT: 22-May-2012    
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:  Author:  Bug #     Description:                           Rvwd         
+** 29-Jun-2012 Anand Kumar    Updated for QueueCreationEnabled validation             
+** --------  -------- ------    -------------------------------------- --------         
+  
+** 20-05-2014 RAJ    Changed Table Name and Column Name ExcelsiorDB into KaspickDB           
+** 09/06/2014 RAJ		SP Name Renamed and Formatted
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE PROCEDURE USP_RP_UpdDlvFolderNameAndFileName (
+	@DeliverableQueueID BIGINT = 0
+	,@UserID INT = 0
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails       
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --                  
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                  
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;                 
+	SET ARITHABORT ON
+
+	--  Variable Declarations  --   
+	DECLARE @ErrorNumber INT;
+	DECLARE @ErrorState INT;
+	DECLARE @ReportDate DATETIME;
+	DECLARE @QueueStatusID BIGINT;
+	DECLARE @ReportLevel VARCHAR(100);
+	DECLARE @Frequency VARCHAR(2);
+	DECLARE @QueueCreationMethod VARCHAR(75);
+	DECLARE @QueueType VARCHAR(100);
+
+	--DECLARE @QueueCreationEnabled INT    
+	--SELECT @QueueCreationEnabled = LIST_ITEM_ID FROM v_eis_list_items WHERE LIST_TYPE_NAME = 'Logical Value' And LIST_ITEM_NAME = 'Yes'    
+	--  Variable Data Assignment  --    
+	SET @ReturnStatus = 0;
+
+	SELECT @QueueStatusID = QueueStatusID
+	FROM TBL_DLV_QueueStatus
+	WHERE StatusName = 'Open'
+
+	SELECT @ReportLevel = RTRIM(LTRIM(LI.LISTITEMNAME))
+	FROM TBL_DLV_Deliverable D
+	INNER JOIN TBL_DLV_DeliverableQueue DQ ON D.DeliverableID = DQ.DeliverableID
+	INNER JOIN TBL_ListItem LI ON LI.LISTITEMID = D.ReportLevelID
+		AND D.DeliverableLevel = 1
+	INNER JOIN dbo.TBL_ListType LT ON LT.LISTTYPEID = LI.LISTTYPEID
+	WHERE LT.LISTTYPENAME = 'ReportLevel'
+		AND DQ.DeliverableQueueID = @DeliverableQueueID
+
+	--AND D.QueueCreationEnabled = @QueueCreationEnabled    
+	SET @QueueCreationMethod = 'QueueCreationMethod';
+	SET @QueueType = 'Subscription';
+
+	IF (@UserID = 0)
+	BEGIN
+		SET @UserID = 1
+	END
+
+	BEGIN TRY
+		BEGIN
+			BEGIN TRANSACTION
+
+			IF (@ReportLevel = 'Account')
+			BEGIN
+				UPDATE TBL_DLV_DeliverableItem
+				SET FolderName = dbo.FN_GetDTFolderOrFileName(DD.RootFolderPath, AccMst.AccountTypeCode, AccMst.CustomerAccountNumber, DQ.DeliverableStartDate, AccMgrCodes.Managercode, SUBSTRING(DQ.DeliverableQueueBriefName, 1, 1), 1)
+					,FileName = dbo.FN_GetDTFolderOrFileName(DD.FileNameConvention, AccMst.AccountTypeCode, AccMst.CustomerAccountNumber, DQ.DeliverableStartDate, AccMgrCodes.Managercode, SUBSTRING(DQ.DeliverableQueueBriefName, 1, 1), 1)
+				FROM TBL_DLV_DeliverableItem
+				INNER JOIN TBL_DLV_DeliverableQueue DQ ON DQ.DeliverableQueueID = TBL_DLV_DeliverableItem.DeliverableQueueID
+				INNER JOIN TBL_DLV_Deliverable DD ON DQ.DeliverableID = DD.DeliverableID
+				INNER JOIN TBL_DLV_DeliverableProcess DP ON DD.DeliverableProcessID = DP.DeliverableProcessID
+				INNER JOIN SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.Managercode = TBL_DLV_DeliverableItem.ManagerCode
+				INNER JOIN SYN_IT_AccountMaster AccMst ON AccMst.CustomerAccountNumber = TBL_DLV_DeliverableItem.CustomerAccountNumber
+				INNER JOIN TBL_INV_AccountProfile ACCPRO ON ACCPRO.CustomerAccountNumber = TBL_DLV_DeliverableItem.CustomerAccountNumber
+				INNER JOIN TBL_ListItem LIM ON LIM.LISTITEMID = DP.QueueCreationMethodID
+				INNER JOIN TBL_ListType LTM ON LTM.LISTTYPEID = LIM.LISTTYPEID
+				WHERE DD.IsActive = 1
+					AND DQ.DeliverableQueueID = @DeliverableQueueID
+					AND DQ.QueueStatusID = @QueueStatusID
+					AND LTM.LISTTYPENAME = @QueueCreationMethod
+					AND LIM.LISTITEMNAME = @QueueType
+					--AND DD.QueueCreationEnabled = @QueueCreationEnabled    
+			END
+			ELSE
+			BEGIN
+				UPDATE TBL_DLV_DeliverableItem
+				SET FolderName = dbo.FN_GetDTFolderOrFileName(DD.RootFolderPath, '', '', DQ.DeliverableStartDate, AccMgrCodes.ManagerCode, SUBSTRING(DQ.DeliverableQueueBriefName, 1, 1), 1)
+					,FileName = dbo.FN_GetDTFolderOrFileName(DD.FileNameConvention, '', '', DQ.DeliverableStartDate, AccMgrCodes.ManagerCode, SUBSTRING(DQ.DeliverableQueueBriefName, 1, 1), 1)
+				FROM TBL_DLV_DeliverableItem
+				INNER JOIN TBL_DLV_DeliverableQueue DQ ON DQ.DeliverableQueueID = TBL_DLV_DeliverableItem.DeliverableQueueID
+				INNER JOIN TBL_DLV_Deliverable DD ON DQ.DeliverableID = DD.DeliverableID
+				INNER JOIN TBL_DLV_DeliverableProcess DP ON DD.DeliverableProcessID = DP.DeliverableProcessID
+				INNER JOIN SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.ManagerCode = TBL_DLV_DeliverableItem.ManagerCode
+				INNER JOIN TBL_ListItem LIM ON LIM.LISTITEMID = DP.QueueCreationMethodID
+				INNER JOIN TBL_ListType LTM ON LTM.LISTTYPEID = LIM.LISTTYPEID
+				WHERE DD.IsActive = 1
+					AND DQ.DeliverableQueueID = @DeliverableQueueID
+					AND DQ.QueueStatusID = @QueueStatusID
+					AND LTM.LISTTYPENAME = @QueueCreationMethod
+					AND LIM.LISTITEMNAME = @QueueType
+					--AND DD.QueueCreationEnabled = @QueueCreationEnabled    
+			END
+
+			COMMIT TRANSACTION
+		END
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ReturnStatus = - 1;
+
+		SELECT @ErrorDesc = ERROR_MESSAGE()
+			,@ErrorNumber = ERROR_NUMBER()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorDesc
+				,-- Message text.
+				@ErrorNumber
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdDlvFolderNameAndFileName'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_UpdDlvFolderNameAndFileName';
+END

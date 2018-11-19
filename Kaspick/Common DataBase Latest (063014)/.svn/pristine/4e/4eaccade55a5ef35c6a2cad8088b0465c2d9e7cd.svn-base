@@ -1,0 +1,148 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc')
+    BEGIN
+        DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc;
+        PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc';
+    END
+GO
+
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc                    
+** Short Desc: RetrieveS Datarow of  TBL_EIS_RPT_DAFDistributions  
+      for deliverable items.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  BeneficiaryID="645"  ClientEmployeeID="0"  Cli
+entID="1"  DeliverableItemID="3"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="27"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="103909"  BeneficiaryID="115632"  ClientEmployeeID="0"  ClientID="100084"    
+DeliverableItemID="2323"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="116079"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="102842"  BeneficiaryID="110240"  ClientEmployeeID="0"  ClientID="100065"  DeliverableItemID=
+"1779"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="111051"  DeliverableFrequency="A"  /></SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc  
+    @XMLDeliverableItems  
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 09/02/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 25-Sep-2009  Venugopal ET #10389    Conditon is added to check the flag include DAF page = 1  
+   28-sep-2009  Venugopal              Count function is used to get the count of   
+            Daf Distributions.            
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc]        
+ -- paremeters here        
+ @XMLDeliverableItems xml  
+AS        
+ --  Initial Set statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+ --  Variable Declarations  --        
+ Declare @procname    varchar(60);        
+ Declare @errmsg     varchar(1000);        
+ Declare @errnbr     int;   
+ Declare @Cnt        int;  
+    Declare @IncludeDAFPageID int;  
+    -- Variables used for error handling - uncomment if needed        
+ Declare @val1      varchar(30);        
+ Declare @val2      varchar(30);        
+      
+ --  Temp tables, Cursors, Table Variables  --        
+ Declare @DeliverableItemData Table  
+ (      
+   DeliverableItemID int,  
+   AccountID int,         
+   DeliverableQueueID int  
+ );  
+ --  Variable Data Assignment  --        
+ Set @procname = 'USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc';  
+ -- Body of procedure  --        
+ BEGIN TRY    
+  SELECT @IncludeDAFPageID = policydimensionid   
+  FROM policydimension   
+  WHERE fullname = 'Donor Advised Fund'   
+           
+  INSERT INTO @DeliverableItemData      
+  SELECT        
+   XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID,      
+   XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID,      
+   XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID          
+  FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)  
+  JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')    
+  JOIN policyitem PA ON VA.ACCOUNTID = PA.ownerid AND PA.PolicyLevel = 300 AND PA.policydimensionid =@IncludeDAFPageID  
+  WHERE XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar') = 'A'  
+  AND VA.ACCOUNT_TYPE = 'D-A FUND'   
+  AND PA.LogicalValue = 1  
+  
+        SELECT   
+  DeliverableItemID,       
+  4 AS RuleID,       
+  'DAFDistributionID' as Attribute,      
+  COUNT(DD.DAFDistributionID)  AS ActualValue,  
+  ''  AS DisplayMessage  
+        FROM @DeliverableItemData DID  
+  JOIN TBL_EIS_DT_Deliverable_Queue DQ on DID.DeliverableQueueID = DQ.DeliverableQueueID    
+  LEFT JOIN TBL_EIS_RPT_DAFDistributions DD on DID.AccountID = DD.AccountID AND DATEDIFF(DAY,DQ.DeliverableEndDate,DD.ReportDate) = 0  
+        GROUP BY DID.DeliverableItemID   
+  
+ END TRY        
+ BEGIN CATCH        
+     Set @errmsg = ERROR_MESSAGE();        
+  Set @errnbr = ERROR_NUMBER();        
+  Set @val1 = '';        
+  Set @val2 = '';        
+      
+  exec dbo.spSYS_ErrorHandler @codename = @procname,        
+  @errmsg = @errmsg,         
+  @errnbr = @errnbr,        
+  @val1 = '',         
+  @val1str = 'USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc: Cannot Select.',         
+  @val2 = '',         
+  @val2str = '';        
+ END CATCH        
+ -- End of procedure  --   
+  
+  
+  
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EIS_RPT_BR_VE_DR_MissingDAFDistributions_SelProc';
+	END
+
+
+
+
+
+
+
+

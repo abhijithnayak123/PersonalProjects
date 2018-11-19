@@ -1,0 +1,67 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplateRule]    Script Date: 05/22/2013 12:11:12 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetTemplateRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetTemplateRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetTemplateRule]    Script Date: 05/22/2013 12:11:12 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_GetTemplateRule                      
+** Short Desc:To Get all the Templates defined 
+**                      
+** Full Description: To Get all the Templates defined       
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+ EXEC USP_PP_GetTemplateRule     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 22-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetTemplateRule]
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT DISTINCT TemplRule.TemplateCode
+		,TemplMaster.TemplateDescription
+	FROM TBL_PP_TemplateTypeRule TemplRule
+	INNER JOIN TBL_PP_TemplateMaster TemplMaster ON TemplRule.TemplateCode = TemplMaster.TemplateCode
+	ORDER BY TemplRule.TemplateCode
+END
+GO
+
+

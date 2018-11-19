@@ -1,0 +1,117 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_EML_InsEmailTemplateRuleEngineContent]    Script Date: 04/14/2014 17:59:05 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_InsEmailTemplateRuleEngineContent]') AND type in (N'P', N'PC'))
+Begin
+DROP PROCEDURE [dbo].[USP_EML_InsEmailTemplateRuleEngineContent]
+PRINT 'Procedure USP_EML_InsEmailTemplateRuleEngineContent Dropped.'
+End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EML_InsEmailTemplateRuleEngineContent]    Script Date: 04/14/2014 17:59:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                    
+** Name:     USP_EML_InsEmailTemplateRuleEngineContent                    
+** Short Desc: Insert record to EmailQueue table.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**   
+ USP_EML_InsEmailTemplateRuleEngineContent   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Soorya  
+** Company   : Kaspick & Company                    
+** Project   : EmailRuleEngine                    
+** Created DT: 04/20/2010                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** <MM/DD/YYYY>  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EML_InsEmailTemplateRuleEngineContent]  
+(  
+	@subject VARCHAR(MAX),  
+	@body VARCHAR(MAX),  
+	@to_email_address VARCHAR(100),  
+	@from_email_address VARCHAR(100),  
+	@cc_email_address VARCHAR(100),  
+	@bcc_email_address VARCHAR(100),  
+	@bounce_back_email_address VARCHAR(100),  
+	@reply_to_email_address VARCHAR(100),  
+	@is_html BIT,  
+	@user_id INT,
+	@created_proxy_webuser_id INT,
+	@created_webuser_id INT,
+	@email_template_id BIGINT,
+	@priority_flag BIT  
+)  
+AS  
+ --  Initial Set statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+ 
+	INSERT INTO TBL_EML_EmailQueue  
+		([from_email_address]  
+		,[reply_to_email_address]  
+		,[bounce_back_email_address]  
+		,[to_email_address]  
+		,[cc_email_address]  
+		,[bcc_email_address]  
+		,[subject]  
+		,[body]  
+		,[is_html_email]  
+		,[is_sent]  
+		,[created_datetime]  
+		,[created_user_id]
+		,[created_proxy_webuser_id]
+		,[created_webuser_id]
+		,[email_template_id]
+		,[priority_flag])  
+	VALUES  
+		(@from_email_address  
+		,@reply_to_email_address  
+		,@bounce_back_email_address  
+		,@to_email_address  
+		,(CASE WHEN @cc_email_address = '' THEN NULL ELSE @cc_email_address END) 
+		,(CASE WHEN @bcc_email_address = '' THEN NULL ELSE @bcc_email_address END) 
+		,@subject  
+		,@body  
+		,@is_html  
+		,0  
+		,GETDATE()  
+		,@user_id
+		,(CASE WHEN @created_proxy_webuser_id = 0 THEN NULL ELSE @created_proxy_webuser_id END) 
+		,(CASE WHEN @created_webuser_id = 0 THEN NULL ELSE @created_webuser_id END)
+		,@email_template_id
+		,@priority_flag)  
+ 
+
+GO
+
+
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_InsEmailTemplateRuleEngineContent]') AND type in (N'P', N'PC'))
+Begin
+PRINT 'Procedure USP_EML_InsEmailTemplateRuleEngineContent Created.'
+END
+
+GO

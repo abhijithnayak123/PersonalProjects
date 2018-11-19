@@ -1,0 +1,103 @@
+GO
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetRPTBRProfileStagePartialLoadSSIS')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetRPTBRProfileStagePartialLoadSSIS;
+        PRINT 'DROPPED USP_RP_GetRPTBRProfileStagePartialLoadSSIS';
+    END
+GO
+ 
+    
+      
+/******************************************************************************                        
+** Name:     USP_RP_GetRPTBRProfileStagePartialLoadSSIS         
+**               
+** Short Desc: This will execute the profile stage DB Partial Load SSIS package       
+**                        
+** Full Description:       
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+**        
+	DECLARE @SSISPath VARCHAR(MAX);      
+	DECLARE @SSISConfigPath VARCHAR(MAX);      
+	SET @SSISPath = 'D:\SSISPackageETL devtest\Package.dtsx';      
+	SET @SSISConfigPath ='D:\SSISPackageETL devtest\BenereportETL.dtsConfig'             
+	EXEC USP_RP_GetRPTBRProfileStagePartialLoadSSIS      
+	@SSISPath,      
+	@SSISConfigPath      
+      
+**               
+** Return values: Boolean Value   
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Geervani       
+** Company   : Opteamix                   
+** Project   : Reportoire - BeneReport - Scheduler
+** Created DT: 05 Aug 2014                        
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------        
+**
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/                        
+CREATE PROCEDURE USP_RP_GetRPTBRProfileStagePartialLoadSSIS            
+@SSISPath VARCHAR(MAX),      
+@SSISConfigPath VARCHAR(MAX),     
+@ReturnStatus INT OUTPUT
+AS            
+	-- Body of procedure  --            
+	BEGIN TRY            
+		DECLARE @procname    VARCHAR(60);            
+		DECLARE @ErrorMessage     VARCHAR(1000);            
+		DECLARE @ErrorNumber     INT;       
+		DECLARE @SQL NVARCHAR(max);      
+		-- Variables used for error handling - uncomment if needed            
+		DECLARE @val1      VARCHAR(30);            
+		DECLARE @val2      VARCHAR(30); 
+		  
+		EXEC USP_RP_GetRPTBRSSIS @SSISPath, @SSISConfigPath
+
+		SET @ReturnStatus = 1   
+
+	END TRY            
+	BEGIN CATCH     
+	
+		SET @ReturnStatus = 0             
+		SET @ErrorMessage  = ERROR_MESSAGE();            
+		SET @ErrorNumber = ERROR_NUMBER();            
+		SET @val1 = '';            
+		SET @val2 = '';            
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname,            
+		@errmsg = @ErrorMessage,             
+		@errnbr = @ErrorNumber,            
+		@val1 = '',             
+		@val1str = 'USP_RP_GetRPTBRProfileStagePartialLoadSSIS: Cannot Select.',             
+		@val2 = '',             
+		@val2str = '';  
+	END CATCH            
+-- End of procedure  -- 
+ 
+ 
+
+
+GO
+	IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetRPTBRProfileStagePartialLoadSSIS') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetRPTBRProfileStagePartialLoadSSIS';
+	END

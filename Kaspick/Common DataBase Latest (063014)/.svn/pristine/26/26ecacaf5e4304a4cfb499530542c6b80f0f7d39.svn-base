@@ -1,0 +1,114 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSAStatusLog]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetSAStatusLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetSAStatusLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSAStatusLog]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetSAStatusLog    
+** Short Desc:  Get valuation status log data for selected valuation id     
+**    
+** Full Description : Get valuation status log data for selected valuation id  
+**            
+**    
+** Sample Call     
+        EXEC USP_SIT_GetSAStatusLog  '<ValuationCollection> <InsertList>
+										<Valuation ValuationID="13600" NewStatusID="8" />
+										<Valuation ValuationID="1" NewStatusID="8" />
+									</InsertList> </ValuationCollection>'
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetSAStatusLog] @ValuationXML XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+		-- Temporary table dropping
+
+	IF OBJECT_ID('tempdb..[#TmpBeneficiaryLeadTime]') IS NOT NULL
+		DROP TABLE [#Tmp_GenerateFile]
+
+	CREATE TABLE #Tmp_GenerateFile (
+		ValuationID INT
+		,NewStatusID INT
+		)
+
+	INSERT INTO #Tmp_GenerateFile (
+		ValuationID
+		,NewStatusID
+		)
+	SELECT XmlInput.Item.value('@ValuationID[1]', 'int') AS ValuationID
+		,XmlInput.Item.value('@NewStatusID[1]', 'int') AS NewStatusID
+	FROM @ValuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XmlInput(Item)
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --   
+	SELECT [StatusChangeLogID] AS ValuationTrackerID
+		,StChngLg.[ValuationID]
+		,[OldStatusID] AS PrvStatusID
+		,[NewStatusID] AS CurrentStatusID
+		,[StatusChangeUserID] AS ModifiedUserID
+		,[StatusChangeDate] AS ModifiedDate
+		,NewSt.StatusName AS CurrentStatus
+		,OldSt.StatusName AS PrvStatus
+		,Usr.LoginName AS ModifiedUser
+		,StChngLg.Comment
+		,PVal.CustomerAccountNumber
+		,PVal.ValuationDate
+	FROM TBL_SIT_StatusChangeLog StChngLg
+	INNER JOIN TBL_PV_Valuation PVal
+		ON PVal.ValuationID = StChngLg.ValuationID
+			AND StChngLg.StatusChangeLogID > (
+				SELECT Max(StatusChangeLogID)
+				FROM TBL_SIT_StatusChangeLog StChngLg2
+				INNER JOIN #Tmp_GenerateFile TmpGFile
+					ON TmpGFile.ValuationID = TmpGFile.ValuationID
+						and StChngLg2.NewStatusID = TmpGFile.NewStatusID
+						AND StChngLg2.ValuationID = StChngLg.ValuationID
+						)
+	INNER JOIN TBL_SIT_Status NewSt
+		ON NewSt.SITStatusID = StChngLg.NewStatusID
+	LEFT OUTER JOIN TBL_SIT_Status OldSt
+		ON OldSt.SITStatusID = StChngLg.OldStatusID
+	LEFT OUTER JOIN TBL_KS_User Usr
+		ON Usr.UserID = StChngLg.StatusChangeUserID
+	WHERE StChngLg.ValuationID IN (
+			SELECT ValuationID
+			FROM #Tmp_GenerateFile
+			)
+END
+

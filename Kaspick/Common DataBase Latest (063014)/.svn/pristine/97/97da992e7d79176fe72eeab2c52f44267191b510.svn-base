@@ -1,0 +1,121 @@
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS]    Script Date: 07/09/2014 12:50:46 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS]    Script Date: 07/09/2014 12:50:46 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/********************************************************************************************                                          
+* PROCEDURE NAME  : [DBO].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS]                                           
+* PURPOSE         :   ThirdParty Data               
+*                                                         
+*                                          
+* INPUT PARAMETER :  @Tax_YEAR int,@CLIENT_BRIEF_NAME varchar(10),@ADVENT_ID varchar(8)    
+* Sample Call : EXEC USP_EIS_IRS_REP_TESTAMENTARYGIFTS 2013, 'AM' ,'' ,''                                                          
+*  Created by : Saravanan Muthu                                                                                    
+*                                                                      
+* DATE : 11/27/2012                                                                                           
+*---------------------------------------------------------------------------------                                          
+* * 09-Jul-14        Salih      Modifed data sources with the synonyms      
+********************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_REP_TESTAMENTARYGIFTS] (
+	@TAX_YEAR INT = NULL
+	,@CLIENT_BRIEF_NAME VARCHAR(10)
+	,@ADVENT_ID VARCHAR(10) = NULL
+	,@FUNDINGTYPE VARCHAR(50) = NULL
+	)
+AS
+BEGIN
+	IF (@FUNDINGTYPE = '')
+		SET @FUNDINGTYPE = 'Initial Testamentary'
+
+	SELECT *
+	FROM (
+		SELECT ISNULL(Clnt.BRIEFNAME, '') CL_BRIEFNAME
+			,ISNULL(DfrGft.ADVENTID, '') AC_ADVENTID
+			,DfrGft.ACCOUNTTYPE
+			,AC_ACCOUNTTYPE = Lst.LIST_ITEM_NAME
+			,DfrGft.FirstTaxYear
+			,DfrGft.CreationDate
+			,CONVERT(VARCHAR(12), Gft.GIFTDATE, 101) AS "GIFTDATE"
+			,(
+				CASE 
+					WHEN IsInitialGift = 1
+						AND IsTestamentary = 1
+						THEN 'Initial Testamentary'
+					WHEN IsInitialGift = 1
+						AND IsTestamentary = 0
+						THEN 'Initial'
+					WHEN IsInitialGift = 0
+						AND IsTestamentary = 0
+						THEN 'Addition'
+					WHEN IsInitialGift = 0
+						AND IsTestamentary = 1
+						THEN 'Addition Testamentary'
+					END
+				) AS FUNDINGTYPE
+		FROM SYN_EP_GIFT Gft
+		INNER JOIN SYN_EP_TBL_EIS_EX_GIFT_SUPPLEMENT GftSup
+			ON Gft.GIFTID = GftSup.GIFTID
+		INNER JOIN SYN_EP_DEFERREDGIFTACCOUNT DfrGft
+			ON Gft.ACCOUNTID = DfrGft.ACCOUNTID
+		INNER JOIN SYN_EP_TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DfrGftSup
+			ON DfrGftSup.ACCOUNTID = DfrGft.ACCOUNTID
+		INNER JOIN SYN_EP_Program Pgm
+			ON DfrGft.PROGRAMID = Pgm.PROGRAMID
+		INNER JOIN SYN_EP_TBL_EIS_EX_PROGRAM_SUPPLEMENT PgmSup
+			ON Pgm.PROGRAMID = PgmSup.PROGRAMID
+		INNER JOIN SYN_EP_Client Clnt
+			ON Clnt.CLIENTID = Pgm.CLIENTID
+		INNER JOIN SYN_EP_TBL_EIS_EX_CLIENT_SUPPLEMENT ClntSup
+			ON ClntSup.CLIENTID = Clnt.CLIENTID
+		LEFT OUTER JOIN (
+			SELECT LstItm.LIST_ITEM_NAME
+				,LstItm.IVAN_VALUE
+				,LstTyp.LIST_TYPE_NAME
+			FROM SYN_EP_TBL_EIS_LIST_TYPE LstTyp
+			INNER JOIN SYN_EP_TBL_EIS_LIST_ITEM LstItm
+				ON LstItm.LIST_TYPE_ID = LstTyp.LIST_TYPE_ID
+			) Lst
+			ON Lst.IVAN_VALUE = DfrGft.ACCOUNTTYPE
+				AND Lst.LIST_TYPE_NAME = 'Account Type'
+		WHERE DATEPART(YYYY, DfrGft.CreationDate) <> DATEPART(YYYY, DfrGft.FirstTaxYear)
+		) a
+	WHERE (
+			(
+				@CLIENT_BRIEF_NAME <> ''
+				AND CL_BRIEFNAME = @CLIENT_BRIEF_NAME
+				)
+			OR @CLIENT_BRIEF_NAME = ''
+			)
+		AND (
+			(
+				@ADVENT_ID <> ''
+				AND AC_ADVENTID = @ADVENT_ID
+				)
+			OR @ADVENT_ID = ''
+			)
+		AND (
+			(
+				@FUNDINGTYPE <> ''
+				AND FUNDINGTYPE = @FUNDINGTYPE
+				)
+			OR @FUNDINGTYPE = ''
+			)
+END
+GO
+
+

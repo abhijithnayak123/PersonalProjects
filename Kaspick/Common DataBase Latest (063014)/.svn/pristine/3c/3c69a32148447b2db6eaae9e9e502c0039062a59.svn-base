@@ -1,0 +1,149 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetTradeEventHistory]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetTradeEventHistory]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name   :   USP_TR_GetTradeEventHistory    
+** Short Desc : Gets a list of Trade Event History for a given Advent Id     
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC USP_TR_GetTradeEventHistory     
+		'<CustomerAccountNumbers>
+		<EventId>59994</EventId>
+		<EventStatusID>3</EventStatusID>
+		<CustomerAccountNumber>ACADW</CustomerAccountNumber>
+		<EventAccountId>65696</EventAccountId>
+		<CustomerAccountNumber>ACBAD</CustomerAccountNumber>
+		<EventAccountId>65697</EventAccountId>
+		</CustomerAccountNumbers>' ,    
+			'2014-03-25',    
+			'2014-03-25'    
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By :Chaithra Madappa     
+** Company  :  Kaspick & Company          
+** Project  :  Back Office Integration (T-Rex)    
+** Created DT :Mar-25-2014       
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**     
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetTradeEventHistory] (
+	@CustomerAccountNumbers XML
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @CustomerAccountNumberTable TABLE (CustomerAccountNumber VARCHAR(14))
+	DECLARE @AnalysisPrepStatusId AS INT
+	DECLARE @ProposedStatusId AS INT
+	DECLARE @ApprovedStatusId AS INT
+	DECLARE @CancelledStatusId AS INT
+
+	SELECT @AnalysisPrepStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'AnalysisPrep'
+
+	SELECT @ProposedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Proposed'
+
+	SELECT @ApprovedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Approved'
+
+	SELECT @CancelledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Cancelled'
+
+	INSERT INTO @CustomerAccountNumberTable (CustomerAccountNumber)
+	SELECT XMLDATA.ID.value('(.)', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/CustomerAccountNumber') AS XMLDATA(ID)
+
+	SELECT EventId
+		,EventName
+		,Comments
+		,CreatedDate
+		,EventStatus
+		,CreatedUserID
+		,EventType
+		,CustomerAccountNumber
+	FROM (
+		SELECT Evnt.EventId
+			,Evnt.EventName
+			,AudtEvnt.Comments
+			,Evnt.CreatedDate
+			,(
+				SELECT EventStatus
+				FROM TBL_TR_EventStatus
+				WHERE EventStatusID = (
+						SELECT TOP (1) EventStatusId
+						FROM TBL_TR_EventTracker
+						WHERE EventID = Evnt.EventId
+							AND EventStatusId NOT IN (
+								@AnalysisPrepStatusId
+								,@ProposedStatusId
+								,@ApprovedStatusId
+								,@CancelledStatusId
+								)
+						ORDER BY ModifiedDate DESC
+						)
+				) AS EventStatus
+			,Usr.LOGINNAME AS CreatedUserID
+			,EvntTypMstr.EventType
+			,EvntAcnt.CustomerAccountNumber
+		FROM TBL_TR_Event Evnt
+		INNER JOIN TBL_TR_AUDIT_Event AudtEvnt ON Evnt.EventID = AudtEvnt.EventID
+			AND AudtEvnt.AuditFlag = 'I'
+		INNER JOIN TBL_TR_EventAccount EvntAcnt ON Evnt.EventID = EvntAcnt.EventID
+		INNER JOIN TBL_TR_Eventtype EvntType ON Evnt.EventID = EvntType.EventID
+		INNER JOIN TBL_TR_EventtypeMaster EvntTypMstr ON EvntType.EventTypeID = EvntTypMstr.EventTypeID
+		LEFT OUTER JOIN TBL_KS_User Usr ON Evnt.CreatedUserID = Usr.[USERID]
+		WHERE EvntAcnt.CustomerAccountNumber IN (
+				SELECT CustomerAccountNumber
+				FROM @CustomerAccountNumberTable
+				)
+			AND Evnt.CreatedDate BETWEEN CONVERT(DATETIME, FLOOR(CONVERT(FLOAT, @FromDate))) -- Convert the from date with the time as 00:00:000    
+				AND DATEADD(millisecond, - 2, CONVERT(DATETIME, FLOOR(CONVERT(FLOAT, @ToDate + 1)))) -- Convert the to date with the time as 23:59:999    
+		) TradeEvents
+	WHERE EventStatus IS NOT NULL
+	ORDER BY CustomerAccountNumber ASC
+		,CreatedDate DESC
+END
+GO
+
+

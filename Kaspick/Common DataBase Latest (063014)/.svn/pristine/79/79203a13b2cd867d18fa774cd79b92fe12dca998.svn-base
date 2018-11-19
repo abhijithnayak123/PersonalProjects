@@ -1,0 +1,133 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineAccountPaymentFrequency]    Script Date: 10/18/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineAccountPaymentFrequency]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineAccountPaymentFrequency]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineAccountPaymentFrequency]    Script Date: 10/18/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineAccountPaymentFrequency                      
+** Short Desc: Validation rule for AccountPaymentFrequency
+**                      
+** Full Description:  Return True if payment freq found. else returns false in actual value wih CustomerAccountNumber        
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineAccountPaymentFrequency  1,1      
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineAccountPaymentFrequency]
+	-- paremeters here                                
+	@UserID INT
+	,@Type BIT = 1 --auto
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	IF @Type = 1
+	BEGIN
+		---Declare Variable
+		DECLARE @RuleID INT
+
+		---Assigning value to Variable
+		SELECT @RuleID = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Missing Payment Frequency'
+			AND RuleCategory = 'Account'
+
+		-- Body of procedure  --      
+		SELECT 'Account' AS PaymentType
+			,CustomerAccountNumber AS ScheduleID
+			,@RuleID AS RuleID
+			,'AccountPaymentFrequencyFound' AS 'Attribute'
+			,(
+				CASE 
+					WHEN ISNULL(AnnualFrequency, 0) = 0
+						THEN 'False'
+					ELSE 'True'
+					END
+				) AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput
+		WHERE UserID = @UserID
+			AND AccountActive = 1
+			--05-feb-2014-Salih: Account Type mapping changes
+			AND AccountTypeCode NOT IN (
+				'PIF'
+				,'GAP'
+				,'GAPR'
+				,'GAPP'
+				--,'1041'
+				,'DDF'
+				,'ENDQ'
+				--,'T1041'
+				,'CORP'
+				,'PTA'
+				,'PSHIP'
+				,'SIMP'
+				,'DAF'
+				,'QPE'
+				,'EST'
+				,'CLR'
+				,'GENLEND'
+				,'RET'
+				,'NQP'
+				--,'LIFE-ESTATE'
+				,'END'
+				,'ENDT'
+				,'SIMP'
+				,'ROTH'
+				,'IRA'
+				,'RET'
+				,'SEP'
+				,'PSP'
+				,'GREV'
+				)
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

@@ -1,0 +1,73 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetUseruser'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetUseruser;
+
+	PRINT 'DROPPED USP_EX_GetUseruser';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetUseruser
+** Old Name:  [TBL_EIS_USERUSERSelProc]
+** Short Desc:	
+**
+** Full Description : This SP is used to get the USER_ID from TBL_EIS_USER table based  
+**              on the LOGIN_NAME which is passed as parameter  
+**       
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: 
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 20-Feb-2014   Sanath			 EXCREQ 5.4 Modified
+** 23-MAY-2014   Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetUseruser] (@LOGIN_NAME AS VARCHAR(50))
+AS
+BEGIN
+	IF EXISTS (
+			SELECT USERID
+				,ISNULL(LOGINNAME, ' ') AS LOGIN_NAME
+			FROM TBL_KS_USER
+			WHERE LOGINNAME = @LOGIN_NAME
+			)
+	BEGIN
+		SELECT USERID
+			,ISNULL(LOGINNAME, ' ') AS LOGIN_NAME
+		FROM TBL_KS_USER
+		WHERE LOGINNAME = @LOGIN_NAME
+	END
+	ELSE
+		SELECT 0 USER_ID
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetUseruser'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetUseruser';
+END

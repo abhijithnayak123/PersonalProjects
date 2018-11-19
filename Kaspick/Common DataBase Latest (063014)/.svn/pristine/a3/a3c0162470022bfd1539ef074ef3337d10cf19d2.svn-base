@@ -1,0 +1,136 @@
+  IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingDiscountRate'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsVALMissingDiscountRate;
+
+	PRINT 'DROPPED USP_BR_FASB_InsVALMissingDiscountRate';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************   
+** Name       :   USP_BR_FASB_InsVALMissingDiscountRate             
+** OLD Name   :   USP_EIS_RPT_FASB_VAL_MissingDiscountRate_InsProc                
+** Short Desc : Gets the records for Client/AccountType requires reporting on IRS discount rate but missing discount rate.    
+**                
+** Full Description                
+**             Client/AccountType with Excelsior FASB profile with Rate of Rtn Type = "IRS Discount Rate" AND     
+    an associated record in DeferredGiftAccount.IRSDiscountRate=0 or NULL    
+    
+       
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC [USP_BR_FASB_InsVALMissingDiscountRate] 90        
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Aug/25/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Aug/10/2012   Ganapati           Created        
+**  Nov/19/12 Saravanan  Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules  
+** 07/08/2014	Gaurav Nahar	   Sp & Table Name Change as per new Kaspick Naming Convention  
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsVALMissingDiscountRate] 
+	@RuleId INT  
+	AS  
+	DECLARE @ValidationMessage VARCHAR(max)  
+	DECLARE @ValidationType VARCHAR(25)  
+	DECLARE @RateOf_ReturnType INT  
+	  
+	--select @ValidationMessage = DisplayMessage, @ValidationType = ResultType from TBL_EIS_PP_Validation_Rules where RuleID = @RuleId        
+	SELECT 
+			@ValidationMessage = DisplayMessage  
+			,@ValidationType = ResultType  
+	FROM 
+			TBL_DLV_ValidationRule  
+	WHERE 
+			ValidationRuleID = @RuleId  
+	  
+	SELECT 
+			@RateOf_ReturnType = LI.LISTITEMID  
+	FROM 
+			TBL_ListType LT  
+	INNER JOIN 
+			TBL_ListItem LI 
+		ON 
+			LT.LISTTYPEID = LI.LISTTYPEID  
+	WHERE 
+			LI.LISTITEMNAME = 'IRS Discount Rate'  
+	 AND 
+			LT.LISTTYPENAME = 'Rate of Return Type'  
+  
+--Rule 8. Client/AccountType requires reporting on IRS discount rate but missing discount rate.    
+	INSERT INTO TBL_BR_FASBValidationResult (  
+	  ManagerCode  
+	 ,ManagerName  
+	 ,RecordIdentifier  
+	 ,ValidationMessage  
+	 ,ValidationType  
+	 )  
+	SELECT DISTINCT 
+				  PF.ManagerCode  
+				 ,C.ManagerName  
+				 ,'AdventID = ' + DGA.AdventID AS identifier  
+				 ,@ValidationMessage AS ValidationMessage  
+				 ,@ValidationType AS ValidationType 
+				 
+	FROM 
+				TBL_BR_FASBProfileInformation PF  
+	INNER JOIN 
+				dbo.SYN_IT_AccountManagerCodes  C 
+			ON 
+				C.ManagerCode = PF.ManagerCode  
+	INNER JOIN 
+				TBL_BR_STG_FASBGift Gift 
+			ON 
+				PF.ManagerCode = Gift.EX_ManagerCode_OrgID  
+	INNER JOIN 
+				TBL_BR_FASBInputParam IParam 
+			ON 
+				IParam.FASB_InstanceID = PF.FASB_InstanceID  
+	INNER JOIN 
+				VW_EX_Account DGA 
+			ON 
+				DGA.ACCOUNTID = Gift.CustomerAccountNumber
+	INNER JOIN 
+			SYN_IT_UDF_ContactAccountRole CAR
+		ON
+			CAR.CustomerAccountNumber_Key= DGA.ACCOUNTID
+	WHERE 
+				Isnull(CAR.UDFCAColumn007, 0) = 0  
+			AND 
+				IParam.RateOf_ReturnType = @RateOf_ReturnType  
+			AND	(  
+				  DGA.UDFAMColumn030 IS NULL  
+				  OR UDFAMColumn030 >= Gift.MarketValueDate  
+				)  
+				  
+	GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALMissingDiscountRate'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_InsVALMissingDiscountRate';
+END 

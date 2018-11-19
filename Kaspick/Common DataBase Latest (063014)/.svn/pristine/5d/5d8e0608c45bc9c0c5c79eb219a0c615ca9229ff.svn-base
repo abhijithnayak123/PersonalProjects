@@ -1,0 +1,77 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetUser')
+BEGIN
+    DROP PROCEDURE USP_RP_GetUser;
+    PRINT 'DROPPED USP_RP_GetUser';
+END
+GO
+/****** Object:  StoredProcedure [dbo].[USP_RP_GetUser]    Script Date: 06/09/2014 18:36:02 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+/************************************r******************************************                  
+** Name:     USP_RP_GetUser                  
+** Old Name: TBL_EIS_USERUSERSelProc
+** Short Desc: To retrieve Filter Section details
+**                  
+** Full Description: 
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+		USP_RP_GetUser 'bkim'
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: 
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT:               
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- ----,----            
+** Jun-18-2014  Geervani		changes in table name and sp name to refer the kaspick db
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/   
+CREATE PROCEDURE [dbo].[USP_RP_GetUser]  
+(  
+    @LOGIN_NAME	AS	VARCHAR(50))  
+AS  
+BEGIN  
+
+	IF EXISTS(SELECT UserID,  
+	ISNULL(LoginName,' ') AS LoginName  
+	FROM TBL_KS_User  
+	WHERE LoginName = @LOGIN_NAME)  
+		BEGIN  
+			SELECT UserID,  
+			ISNULL(LoginName,' ') AS LOGIN_NAME  
+			FROM TBL_KS_User  
+			WHERE LoginName = @LOGIN_NAME  
+		END  
+		ELSE                  
+			SELECT  0 USER_ID  
+END  
+GO
+	IF EXISTS (SELECT *
+		   FROM   sysobjects 
+		   WHERE  type = 'P'
+				  AND name = 'USP_RP_GetUser')
+	BEGIN
+		PRINT 'CREATED USP_RP_GetUser';
+	END
+  
+  

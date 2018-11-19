@@ -1,0 +1,334 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStrategicalallocationDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveEnfStrategicalallocationDetails;
+
+	PRINT 'DROPPED USP_EX_SaveEnfStrategicalallocationDetails';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** New Name:     USP_EX_SaveEnfStrategicalallocationDetails
+** Old Name:     <USP_EIS_ENF_STRATEGICALLOCATION_DETAILS_InsUpdProc>                
+** Short Desc: Put in Short Description                
+**                
+** Full Description                
+**        More detailed description if necessary                
+**                
+** Sample Call                
+EXEC <USP_EX_SaveEnfStrategicalallocationDetails>  -- parameters                
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET NOCOUNT             ON                
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                
+**                 
+** Created By: Tanuj Gupta                
+** Company   : Kaspick & Company                
+** Project   : Excelsior                
+** Created DT: 02/Feb/2010                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+** 03/21/2014  Sanath             Investment Management module pointing to KaspickDB for Excelsior Prime project 
+** 23-May-2014  Sanath            Sp name renamed as per Kaspick naming convention standard    
+    
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveEnfStrategicalallocationDetails]
+	-- 15,'MayoHighInc','Mayo High Income',30,70,201,'29','Mayo High Income','',100038,'<StrategicAsset>\r\n  <StrategicAllocation>\r\n    <AssetClassName>agus</AssetClassName>\r\n    <TargetPercent>0</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>caus</AssetClassName>\r\n    <TargetPercent>3.5</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>emus</AssetClassName>\r\n    <TargetPercent>0</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>ieus</AssetClassName>\r\n    <TargetPercent>0</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>isus</AssetClassName>\r\n    <TargetPercent>0</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>lcus</AssetClassName>\r\n    <TargetPercent>2.5</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>mgus</AssetClassName>\r\n    <TargetPercent>46.5</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>mhus</AssetClassName>\r\n    <TargetPercent>15</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>mius</AssetClassName>\r\n    <TargetPercent>20</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>mjus</AssetClassName>\r\n    <TargetPercent>7.5</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>reus</AssetClassName>\r\n    <TargetPercent>5</TargetPercent>\r\n  </StrategicAllocation>\r\n  <StrategicAllocation>\r\n    <AssetClassName>rius</AssetClassName>\r\n    <TargetPercent>0</TargetPercent>\r\n  </StrategicAllocation>\r\n</StrategicAsset>',100                
+	(
+	@StrategicAllocationID INT = 0
+	,@StrategicCode VARCHAR(100)
+	,@StrategicName VARCHAR(100)
+	,@MABenchmarkID INT
+	,@TradBenchmarkID INT
+	,@PortfoliioCodeID INT
+	,@MasterObjectiveNameID VARCHAR(100)
+	,@StrategicDescription VARCHAR(MAX)
+	,@DecisionComments VARCHAR(MAX)
+	,@UserID INT
+	,@StrategicAsset XML
+	,@CurrentStrategicAllocationID INT OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	DECLARE @PrevMABenchMarkID INT
+	DECLARE @PrevTradeBenchMarkID INT
+	DECLARE @PrevMasterObjectiveNameID INT
+	DECLARE @DecisionCommentsID BIGINT
+		,@TypeID BIGINT
+	--  Temp tables, Cursors, Table Variables  --          
+	DECLARE @StrategicAllocation TABLE (
+		AssetClassName VARCHAR(25)
+		,TargetPercent FLOAT
+		,FLAG VARCHAR(1)
+		)
+
+	--  Variable Data Assignment  --          
+	SET @ProcName = 'USP_EX_SaveEnfStrategicalallocationDetails';
+
+	-- Body of procedure  --          
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF EXISTS (
+				SELECT StrategicAllocationID
+				FROM TBL_INV_StrategicAllocation
+				WHERE StrategicAllocationID = @StrategicAllocationID
+				)
+		BEGIN
+			SET @CurrentStrategicAllocationID = @StrategicAllocationID
+			SET @PrevMABenchMarkID = (
+					SELECT StrgcAllcBnchMrk.BenchMarkID
+					FROM TBL_INV_StrategicAllocationBenchMark StrgcAllcBnchMrk
+					INNER JOIN TBL_INV_BenchMark BnchMrk ON BnchMrk.BenchMarkID = StrgcAllcBnchMrk.BenchMarkID
+					INNER JOIN TBL_INV_BenchMarkType BnchMrkTyp ON BnchMrk.BenchMarkTypeID = BnchMrkTyp.BenchMarkTypeID
+					WHERE BnchMrkTyp.BenchMarkTypeName = 'MultiAsset'
+						AND StrgcAllcBnchMrk.StrategicAllocationID = @StrategicAllocationID
+					)
+			SET @PrevTradeBenchMarkID = (
+					SELECT StrgcAllcBnchMrk.BenchMarkID
+					FROM TBL_INV_StrategicAllocationBenchMark StrgcAllcBnchMrk
+					INNER JOIN TBL_INV_BenchMark BnchMrk ON BnchMrk.BenchMarkID = StrgcAllcBnchMrk.BenchMarkID
+					INNER JOIN TBL_INV_BenchMarkType BnchMrkTyp ON BnchMrk.BenchMarkTypeID = BnchMrkTyp.BenchMarkTypeID
+					WHERE BnchMrkTyp.BenchMarkTypeName = 'Traditional'
+						AND StrgcAllcBnchMrk.StrategicAllocationID = @StrategicAllocationID
+					)
+			SET @PrevMasterObjectiveNameID = (
+					SELECT MasterObjectiveID
+					FROM TBL_INV_StrategicAllocation
+					WHERE StrategicAllocationID = @StrategicAllocationID
+					)
+
+			UPDATE TBL_INV_StrategicAllocation
+			SET [StrategicAllocationCode] = @StrategicCode
+				,[StrategicAllocationName] = @StrategicName
+				,[Description] = @StrategicDescription
+				,[ModifiedDate] = getdate()
+				,[ModifiedBy] = @UserID
+				,[BRCommentID] = @PortfoliioCodeID
+				,MasterObjectiveID = @MasterObjectiveNameID
+			WHERE StrategicAllocationID = @StrategicAllocationID
+
+			UPDATE TBL_INV_StrategicAllocationBenchMark
+			SET [BenchMarkID] = @MABenchmarkID
+				,[ModifiedBy] = @UserID
+				,[ModifiedDate] = getdate()
+			WHERE StrategicAllocationID = @StrategicAllocationID
+				AND BenchMarkID = @PrevMABenchMarkID
+
+			UPDATE TBL_INV_StrategicAllocationBenchMark
+			SET [BenchMarkID] = @TradBenchmarkID
+				,[ModifiedBy] = @UserID
+				,[ModifiedDate] = getdate()
+			WHERE StrategicAllocationID = @StrategicAllocationID
+				AND BenchMarkID = @PrevTradeBenchMarkID
+		END
+		ELSE
+		BEGIN
+			INSERT INTO [TBL_INV_StrategicAllocation] (
+				[StrategicAllocationCode]
+				,[StrategicAllocationName]
+				,[Description]
+				,[IsActive]
+				,[ModifiedDate]
+				,[ModifiedBy]
+				,[BRCommentID]
+				,MasterObjectiveID
+				)
+			VALUES (
+				@StrategicCode
+				,@StrategicName
+				,@StrategicDescription
+				,1
+				,getdate()
+				,@UserID
+				,@PortfoliioCodeID
+				,@MasterObjectiveNameID
+				)
+
+			SET @CurrentStrategicAllocationID = IDENT_CURRENT('TBL_INV_StrategicAllocation')
+
+			INSERT INTO [TBL_INV_StrategicAllocationBenchMark] (
+				[StrategicAllocationID]
+				,[BenchMarkID]
+				,[ModifiedBy]
+				,[ModifiedDate]
+				)
+			VALUES (
+				@CurrentStrategicAllocationID
+				,@MABenchmarkID
+				,@UserID
+				,getdate()
+				)
+
+			INSERT INTO [TBL_INV_StrategicAllocationBenchMark] (
+				[StrategicAllocationID]
+				,[BenchMarkID]
+				,[ModifiedBy]
+				,[ModifiedDate]
+				)
+			VALUES (
+				@CurrentStrategicAllocationID
+				,@TradBenchmarkID
+				,@UserID
+				,getdate()
+				)
+		END
+
+		IF (@DecisionComments IS NOT NULL)
+		BEGIN
+			SELECT @TypeID = TypeID
+			FROM TBL_INV_DecisionCommentType
+			WHERE TypeName = 'Strategic'
+
+			INSERT INTO TBL_INV_DecisionComment (
+				Comment
+				,OriginType
+				,DecisionDate
+				,CommentUser
+				)
+			VALUES (
+				@DecisionComments
+				,@TypeID
+				,GETDATE()
+				,@UserID
+				)
+
+			SET @DecisionCommentsID = IDENT_CURRENT('TBL_INV_DecisionComment')
+
+			INSERT INTO TBL_INV_DecisionCommentTypeLink (
+				DecisionCommentID
+				,DecisionTypeValue
+				,TypeID
+				)
+			VALUES (
+				@DecisionCommentsID
+				,@StrategicCode
+				,@TypeID
+				)
+
+			SELECT @TypeID = TypeID
+			FROM TBL_INV_DecisionCommentType
+			WHERE TypeName = 'Objective'
+
+			INSERT INTO TBL_INV_DecisionCommentTypeLink (
+				DecisionCommentID
+				,DecisionTypeValue
+				,TypeID
+				)
+			SELECT @DecisionCommentsID
+				,ObjectiveCode
+				,@TypeID
+			FROM TBL_INV_InvestmentObjective
+			WHERE StrategicAllocationID = @CurrentStrategicAllocationID
+
+			SELECT @TypeID = TypeID
+			FROM TBL_INV_DecisionCommentType
+			WHERE TypeName = 'Account'
+
+			INSERT INTO TBL_INV_DecisionCommentTypeLink (
+				DecisionCommentID
+				,DecisionTypeValue
+				,TypeID
+				)
+			SELECT @DecisionCommentsID
+				,CustomerAccountNumber
+				,@TypeID
+			FROM TBL_INV_AccountProfile
+			WHERE objectiveCode IN (
+					SELECT ObjectiveCode
+					FROM TBL_INV_InvestmentObjective
+					WHERE StrategicAllocationID = @CurrentStrategicAllocationID
+					)
+		END
+
+		------------------ Insertion of StrategicAllocationDetails --------------------------------------------  
+		INSERT INTO @StrategicAllocation (
+			AssetClassName
+			,TargetPercent
+			,Flag
+			)
+		SELECT XMLDATA.ID.value('AssetClassName[1]', 'VARCHAR(25)') AS AssetClassName
+			,XMLDATA.ID.value('TargetPercent[1]', 'FLOAT') AS TargetPercent
+			,XMLDATA.ID.value('Flag[1]', 'Varchar(1)') AS Flag
+		FROM @StrategicAsset.nodes('/StrategicAsset/StrategicAllocation') AS XMLDATA(ID)
+
+		DELETE
+		FROM [TBL_INV_StrategicAllocationDetail]
+		WHERE StrategicAllocationID = @CurrentStrategicAllocationID
+
+		INSERT INTO [TBL_INV_StrategicAllocationDetail] (
+			[StrategicAllocationID]
+			,[AssetClassName]
+			,[AssetClassType]
+			,[AssetClassDescription]
+			,[TargetPercentage]
+			,[ModifiedBy]
+			,ModifiedDate
+			)
+		SELECT @CurrentStrategicAllocationID
+			,TmpStrgcAllc.AssetClassName
+			,AsetClsLst.AssetClassType
+			,AsetClsLst.AssetClassDescription
+			,TmpStrgcAllc.TargetPercent
+			,@UserID
+			,GETDATE()
+		FROM @StrategicAllocation TmpStrgcAllc
+		INNER JOIN TBL_TR_AssetClassList AsetClsLst ON TmpStrgcAllc.AssetClassName = AsetClsLst.AssetClassName + 'us'
+
+		---------------------------------------------------------------------------------------------  
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveEnfStrategicalallocationDetails: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --          
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStrategicalallocationDetails'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveEnfStrategicalallocationDetails';
+END

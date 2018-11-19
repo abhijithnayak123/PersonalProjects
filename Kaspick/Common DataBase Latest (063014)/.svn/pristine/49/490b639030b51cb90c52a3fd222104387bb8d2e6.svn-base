@@ -1,0 +1,117 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetDataImportByRunID]    Script Date: 05/28/2014 16:41:47 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetDataImportByRunID]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_GetDataImportByRunID]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetDataImportByRunID]    Script Date: 05/28/2014 16:41:47 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetDataImportByRunID      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**      
+** Sample Call 
+	EXEC USP_OP_GetDataImportByRunID 922
+
+** Return values: NONE      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana     
+** Created DT :		
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** July/9/2009                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_GetDataImportByRunID] (@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	SET QUOTED_IDENTIFIER ON
+
+	IF @RunID = 0
+	BEGIN
+		SELECT @RunID = Max(RunID)
+		FROM TBL_OP_DataImport
+	END
+
+	SELECT di.*
+		,u.Loginname AS RunUserName
+	FROM TBL_OP_DataImport di
+	INNER JOIN TBL_KS_User u ON di.RunUserID = u.UserID
+	WHERE RunID = @RunID
+
+	SELECT sym.*
+		,STATUS.StatusName
+	FROM TBL_OP_CustodialDataImportMissingSymbol sym
+	INNER JOIN TBL_OP_MissingSymbolStatus STATUS ON sym.MissingStatus = STATUS.StatusID
+	WHERE sym.RunID = @RunID
+
+	SELECT *
+	FROM TBL_OP_CustodialDataImport
+	WHERE RunID = @RunID
+
+	SELECT @RunID AS RunID
+		,cust.CustodianCode
+		,usr.Loginname AS ResolutionUserName
+		,trans.*
+	FROM TBL_OP_CustodialDataImportTransactionToResolve trans
+	INNER JOIN dbo.TBL_KS_User usr ON usr.UserID = trans.ResolutionUserID
+	INNER JOIN TBL_OP_CustodialDataImport custDI ON custDI.CustodialDataImportID = trans.CustodialDataImportID
+	INNER JOIN TBL_OP_Custodian cust ON cust.CustodianID = custDI.CustodianID
+	WHERE custDI.RunID = @RunID
+
+	SELECT DISTINCT @RunID AS RunID
+		,trans.CustomerAccountNumber
+		,P.PaymentID
+		,P.PayeeName
+		,P.PaymentDate
+		,P.DocumentNumber
+		,P.PaymentAmount
+		,ec.AXYS_ExpenseCode
+		,P.ChargeType
+		,P.TaxYear
+		,ec.TaxYearAware
+		,ec.ToReview
+	FROM dbo.TBL_PP_BeneficiaryPayment P
+	INNER JOIN TBL_OP_CustodialDataImportTransactionToResolve trans ON trans.CustomerAccountNumber=p.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_OP_ExpenseCode ec ON p.TaxCode = ec.InnoTrust_TaxCode
+	INNER JOIN TBL_OP_CustodialDataImport custDataImport ON custDataImport.CustodialDataImportID = trans.CustodialDataImportID
+	INNER JOIN TBL_OP_DataImport dataImp ON dataImp.RunID = custDataImport.RunID
+	WHERE dataImp.RunID = @RunID
+		AND trans.TranCode = 'lo'
+		AND isnull(trans.paymentid, 0) = 0
+		AND ABS(p.PaymentAmount - trans.Amount) <= 10
+		AND p.VoidDate IS NULL
+		AND p.ClearDate IS NULL
+	ORDER BY trans.CustomerAccountNumber
+		,P.PaymentDate
+		,P.PaymentAmount
+END
+GO
+
+

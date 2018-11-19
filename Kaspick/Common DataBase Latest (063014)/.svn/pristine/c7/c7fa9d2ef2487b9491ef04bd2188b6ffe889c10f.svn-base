@@ -1,0 +1,69 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetMyClient]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewGetMyClient]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewGetMyClient]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetMyClient]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewGetMyClient    
+** Short Desc:   Gets all accounts under given user.  
+**    
+** Full Description : Gets all accounts under given user.
+**            
+**    
+** Sample Call    
+   EXEC USP_IE_ReviewGetMyClient 100061  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewGetMyClient] -- paremeters here        
+	@UserID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	-- Body of procedure  --  
+	SELECT DISTINCT STGEst.CustomerAccountNumber
+		,STGEst.ManagerCode
+	FROM TBL_IE_STG_Estimate STGEst
+	INNER JOIN VW_KS_SysAdminKCoStaffPaging StfPgng
+		ON StfPgng.ManagerCode = STGEst.ManagerCode
+	WHERE StfPgng.UserID = @UserID
+	ORDER BY STGEst.CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

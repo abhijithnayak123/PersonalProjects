@@ -1,0 +1,144 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc')
+    BEGIN
+        DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc;
+        PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc';
+    END
+GO
+
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc                    
+** Short Desc: Retrieves Account Creation Date for deliverable items.   
+**                    
+** Full Description:   
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList>  
+ <DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"    
+ BeneficiaryID="645"  ClientEmployeeID="0"  Clientid="1"  DeliverableItemID="3"  DeliverableQueueID="1"    
+ DonorID="0"  TrustparticipantID="27"  /></SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc  
+    @XMLDeliverableItems  
+   
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/17/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 09/07/2009 Venugopal ET #10310  Updated condition to check with year 1920.  
+           added YEAR function for field VA.CreationDate.   
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc]        
+ -- paremeters here        
+ @XMLDeliverableItems xml  
+AS        
+ --  Initial Set statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+ --  Variable Declarations  --        
+ Declare @procname    varchar(60);        
+ Declare @errmsg     varchar(1000);        
+ Declare @errnbr     int;   
+ Declare @PriorPeriodAdjustmentFlag bit;  
+    -- Variables used for error handling - uncomment if needed        
+ Declare @val1      varchar(30);        
+ Declare @val2      varchar(30);        
+  
+ --  Temp tables, Cursors, Table Variables  --        
+ Declare @DeliverableItemData Table  
+ (      
+   DeliverableItemID int,  
+      AccountID int  
+ );  
+   
+ --  Variable Data Assignment  --        
+ Set @procname = 'USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc';        
+  
+ -- Body of procedure  --        
+ BEGIN TRY        
+  INSERT INTO @DeliverableItemData      
+  SELECT        
+   XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID,      
+    XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID  
+   FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)  
+      
+        SELECT  
+  DID.DeliverableItemID,       
+  27 AS RuleID,       
+  'AccountCreationDate' as Attribute,      
+  (CASE WHEN ISNULL(VA.CreationDate,0)=0 THEN 'Null' ELSE 'Not Null' END) AS ActualValue,  
+  '' as DisplayMessage     
+        FROM @DeliverableItemData DID  
+        JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = DID.AccountID  
+  WHERE VA.ACCOUNT_TYPE <> 'PIF'  
+  UNION  
+        SELECT  
+  DID.DeliverableItemID,       
+  27 AS RuleID,       
+  'AccountCreationYear' as Attribute,      
+  CAST(YEAR(VA.CreationDate)-1920 as varchar)AS ActualValue,  
+  CAST(VA.CreationDate as varchar) as DisplayMessage  
+  FROM @DeliverableItemData DID  
+        JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = DID.AccountID  
+  WHERE VA.ACCOUNT_TYPE <> 'PIF' AND ISNULL(VA.CreationDate,0)<>0    
+        
+ END TRY        
+ BEGIN CATCH        
+     Set @errmsg = ERROR_MESSAGE();        
+  Set @errnbr = ERROR_NUMBER();        
+  Set @val1 = '';        
+  Set @val2 = '';        
+      
+  exec dbo.spSYS_ErrorHandler @codename = @procname,        
+  @errmsg = @errmsg,         
+  @errnbr = @errnbr,        
+  @val1 = '',         
+  @val1str = 'USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc: Cannot Select.',         
+  @val2 = '',         
+  @val2str = '';        
+ END CATCH        
+ -- End of procedure  --   
+  
+  
+  
+  
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EIS_RPT_BR_VE_DQ_NoAccountCreationDate_SelProc';
+	END

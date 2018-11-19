@@ -1,0 +1,156 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_InsRptFasbProfileInfoOPParam')
+    BEGIN
+        DROP PROCEDURE USP_EX_InsRptFasbProfileInfoOPParam;
+        PRINT 'DROPPED USP_EX_InsRptFasbProfileInfoOPParam';
+    END
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************              
+** New Name   :   USP_EX_InsRptFasbProfileInfoOPParam  
+** Old Name   :   USP_EIS_RPT_FASB_ProfileInfo_OPParam_InsProc              
+** Short Desc : Gets the Excelsior Profile values.    
+**              
+** Full Description              
+**                  
+**              
+** Return values: NONE              
+**       
+** Sample Call    
+**        
+** EXEC USP_EX_InsRptFasbProfileInfoOPParam      
+**               
+** Created By : Basavaraj Elalli         
+** Company  :  Kaspick & Company              
+** Project  :  FASB              
+** Created DT : Sep/21/2012              
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+**  Sep/21/2012    Basu Elalli           Created      
+**  Apr/14/2014  Mallikarjun EXCREQ5.4 Modified  
+** 22-MAY-2014 Mallikarjun EXCREQ 5.4    SP Name Renamed and Formatted  
+******************************************************************************              
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved              
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION              
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_EX_InsRptFasbProfileInfoOPParam] @OPParamXML XML  
+ ,@CreatedUserID INT  
+AS  
+IF EXISTS (  
+  SELECT *  
+  FROM TEMPDB.DBO.SYSOBJECTS  
+  WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPOPPARAM]')  
+  )  
+BEGIN  
+ DROP TABLE [DBO].[#TEMPOPPARAM]  
+END  
+  
+BEGIN  
+ BEGIN TRY  
+  BEGIN TRANSACTION  
+  
+  CREATE TABLE #TEMPOPPARAM (  
+   Output_ParamID INT  
+   ,FASB_InstanceID INT  
+   ,DisplaySequence INT  
+   ,ReportOutputType INT  
+   ,IsOutputRequired BIT  
+   ,Sort1 INT  
+   ,Sort2 INT  
+   )  
+  
+  INSERT INTO #TEMPOPPARAM  
+  SELECT x.e.value('Output_ParamID[1]', 'int') AS "Output_ParamID"  
+   ,x.e.value('FASB_InstanceID[1]', 'int') AS "FASB_InstanceID"  
+   ,x.e.value('DisplaySequence[1]', 'int') AS "DisplaySequence"  
+   ,x.e.value('ReportOutputType[1]', 'int') AS "ReportOutputType"  
+   ,x.e.value('IsOutputRequired[1]', 'bit') AS "IsOutputRequired"  
+   ,x.e.value('Sort1[1]', 'int') AS "Sort1"  
+   ,x.e.value('Sort2[1]', 'int') AS "Sort2"  
+  FROM @OPParamXML.nodes('/ArrayOfFASBOutputParam/FASBOutputParam') AS x(e)  
+  
+  INSERT INTO TBL_BR_FASBOutputParam (  
+   FASB_InstanceID  
+   ,DisplaySequence  
+   ,ReportOutputType  
+   ,IsOutputRequired  
+   ,Sort1  
+   ,Sort2  
+   ,CreatedDate  
+   ,CreatedUserID  
+   ,ModifiedDate  
+   ,ModifiedUserID  
+   )  
+  SELECT TEMP.FASB_InstanceID  
+   ,TEMP.DisplaySequence  
+   ,TEMP.ReportOutputType  
+   ,TEMP.IsOutputRequired  
+   ,TEMP.Sort1  
+   ,TEMP.Sort2  
+   ,GETDATE()  
+   ,@CreatedUserID  
+   ,GETDATE()  
+   ,@CreatedUserID  
+  FROM #TEMPOPPARAM TEMP  
+  WHERE TEMP.Output_ParamID = 0  
+  
+  UPDATE TBL_BR_FASBOutputParam  
+  SET DisplaySequence = TEMP.DisplaySequence  
+   ,ReportOutputType = TEMP.ReportOutputType  
+   ,IsOutputRequired = TEMP.IsOutputRequired  
+   ,Sort1 = TEMP.Sort1  
+   ,Sort2 = TEMP.Sort2  
+   ,ModifiedDate = GETDATE()  
+   ,ModifiedUserID = @CreatedUserID  
+  FROM #TEMPOPPARAM TEMP  
+  INNER JOIN TBL_BR_FASBOutputParam FasbOpPrm ON FasbOpPrm.FASB_InstanceID = TEMP.FASB_InstanceID  
+  WHERE FasbOpPrm.Output_ParamID = TEMP.Output_ParamID  
+  
+  COMMIT TRANSACTION  
+ END TRY  
+  
+ BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @procname VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @procname = 'USP_EX_InsRptFasbProfileInfoOPParam';  
+  
+  DECLARE @ErrorNumber INT;  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE()  
+   ,@ErrorNumber = ERROR_NUMBER();  
+  
+  EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname  
+   ,@ErrorMessage = @ErrorMessage  
+   ,@ErrorNumber = @ErrorNumber  
+   ,@val1 = ''  
+   ,@val1str = 'USP_EX_InsRptFasbProfileInfoOPParam: Cannot Select.'  
+   ,@val2 = ''  
+   ,@val2str = '';  
+  
+  
+ END CATCH  
+END  
+GO
+SET QUOTED_IDENTIFIER OFF
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_InsRptFasbProfileInfoOPParam') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_InsRptFasbProfileInfoOPParam';
+	END

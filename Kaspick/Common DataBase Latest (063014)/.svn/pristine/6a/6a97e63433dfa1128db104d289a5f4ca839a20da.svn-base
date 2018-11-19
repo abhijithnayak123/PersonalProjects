@@ -1,0 +1,66 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationStatus]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationStatus]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationStatus                      
+** Short Desc: Fetch all valuation status. 
+**                      
+** Full Description: Fetch all valuation status. 
+**      
+**                              
+** Input Arguments:          
+**   
+**         
+** Sample Call          
+ EXEC USP_PV_GetValuationStatus  
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationStatus]
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Get all valuation status 
+	SELECT StatusID
+		,STATUS
+	FROM TBL_PV_ValuationStatus
+END

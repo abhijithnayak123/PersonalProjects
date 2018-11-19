@@ -1,0 +1,132 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetUserPrivilegeNonstandardVal'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetUserPrivilegeNonstandardVal;
+
+	PRINT 'DROPPED USP_EX_GetUserPrivilegeNonstandardVal';
+END
+GO
+
+/******************************************************************************    
+** Name : USP_EX_GetUserPrivilegeNonstandardVal
+** Old Name:     USP_EIS_EX_USER_PRIVILEGE_NONSTANDARD_ValSelProc   
+** Short Desc: Put in Short Description    
+**    
+** Full Description    
+**        More detailed description if necessary    
+**    
+** Sample Call    
+        Exec USP_EX_GetUserPrivilegeNonstandardVal @userid  =9, @privilegename ='ModuleTradingTasks_Trading'  
+   
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Rahul Sharma    
+** Company   : Kaspick & Company    
+** Project   : Excelsior -- IM PROFILE    
+** Created DT: 04/16/2007    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** <mm/dd/yyyy>    
+** 03/21/2014   Sanath  Requirement INVREQ 3.1
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetUserPrivilegeNonstandardVal] (
+	@userid INT
+	,@privilegename VARCHAR(50)
+	)
+AS
+BEGIN
+	-- Declare @Privlg int;    
+	SELECT KsAppn.ApplicationName AS APPLICATION_NAME
+		,KsPrvleg.DESCRIPTION
+		,KsPrvleg.PRIVILEGENAME
+		,KsPrvleg.PRIVILEGEID AS NONSTANDARD
+		,0 AS NONSTANDARD_VALUE
+	INTO #TEMP_PRIVILEGE
+	FROM TBL_KS_Privilege KsPrvleg
+	INNER JOIN TBL_KS_Module KsModl ON KsPrvleg.MODULEID = KsModl.MODULEID
+	INNER JOIN TBL_KS_Application KsAppn ON KsAppn.APPLICATIONID = KsModl.APPLICATIONID
+	WHERE FUNCTIONID = (
+			SELECT FUNCTIONID
+			FROM TBL_KS_Function
+			WHERE FUNCTIONNAME = 'NON-STANDARD'
+			)
+
+	SELECT KsPrvleg.PRIVILEGEID
+		,KsUsr.USERID
+		,KsUsr.ROLEID
+	INTO #TEMP_PRIVILEGE1
+	FROM TBL_KS_UserRole KsUsr
+	INNER JOIN TBL_KS_RolePrivilege KsRolPrvleg ON KsRolPrvleg.ROLEID = KsUsr.ROLEID
+	INNER JOIN TBL_KS_Privilege KsPrvleg ON KsPrvleg.PRIVILEGEID = KsRolPrvleg.PRIVILEGEID
+	WHERE KsPrvleg.FUNCTIONID = (
+			SELECT FUNCTIONID
+			FROM TBL_KS_Function
+			WHERE FUNCTIONNAME = 'NON-STANDARD'
+			)
+		AND KsUsr.USERID = @userid
+
+	SELECT KsUsrExcptn.PRIVILEGEID
+		,KsUsrExcptn.USERID
+	INTO #TEMP_PRIVILEGE2
+	FROM TBL_KS_UserException KsUsrExcptn
+	INNER JOIN TBL_KS_Privilege KsPrvleg ON KsPrvleg.PRIVILEGEID = KsUsrExcptn.PRIVILEGEID
+	WHERE KsPrvleg.FUNCTIONID = (
+			SELECT FUNCTIONID
+			FROM TBL_KS_Function
+			WHERE FUNCTIONNAME = 'NON-STANDARD'
+			)
+		AND KsUsrExcptn.USERID = @userid
+		AND (
+			(
+				ADDORSUBTRACT = '+'
+				AND ENDDATE >= GETDATE()
+				)
+			OR (
+				ADDORSUBTRACT = '-'
+				AND ENDDATE < GETDATE()
+				)
+			)
+
+	UPDATE #TEMP_PRIVILEGE
+	SET NONSTANDARD_VALUE = 1
+	FROM #TEMP_PRIVILEGE P
+	INNER JOIN #TEMP_PRIVILEGE1 P1 ON P.NONSTANDARD = P1.PRIVILEGEID
+
+	UPDATE #TEMP_PRIVILEGE
+	SET NONSTANDARD_VALUE = 1
+	FROM #TEMP_PRIVILEGE P
+	INNER JOIN #TEMP_PRIVILEGE2 P2 ON P.NONSTANDARD = P2.PRIVILEGEID
+
+	SELECT NONSTANDARD_VALUE
+	FROM #TEMP_PRIVILEGE
+	WHERE privilegename = @privilegename
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetUserPrivilegeNonstandardVal'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetUserPrivilegeNonstandardVal';
+END

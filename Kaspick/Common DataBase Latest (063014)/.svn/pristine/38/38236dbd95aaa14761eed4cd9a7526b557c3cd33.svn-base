@@ -1,0 +1,140 @@
+IF EXISTS (
+		SELECT Object_ID
+		FROM sys.objects
+		WHERE NAME = 'USP_IE_SaveSecurityReclass'
+			AND type = 'p'
+		)
+	DROP PROCEDURE dbo.USP_IE_SaveSecurityReclass
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_SaveSecurityReclass  
+** Short Desc: Save changes made to group(s) from GUI  
+**  
+** Full Description  
+**        accepts a XML document. XML contains security class details
+**  
+** Sample Call  
+ Declare @Status varchar(max);  
+   
+ EXEC USP_IE_SaveSecurityReclass  -- parameters  
+  '<SecurityReclassCollection>  
+   <InsertList>  
+	<SecurityReclass SecurityID="0" SecurityType="TEST" SecuritySymbol="SYM1" CUSIP="Cusip" ReclassPercentage="12"
+					UserID="1" CreatedDate="01/01/2007" ModifiedDate="01/01/2007" />
+	<SecurityReclass SecurityID="0" SecurityType="TEST" SecuritySymbol="SYM2" CUSIP="Cusip" ReclassPercentage="12"
+					UserID="1" CreatedDate="01/01/2007" ModifiedDate="01/01/2007" />
+  </InsertList>  
+  </SecurityReclassCollection>' ,  @Status   
+**  
+** Return values: NONE  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Aashay Thodar  
+** Company   : Kaspick & Company  
+** Project   : Income Estimation  
+** Created DT: 06/19/2014 
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 06/19/2014  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_SaveSecurityReclass]
+	-- paremeters here  
+	@XMLDATA XML
+	,@return_status VARCHAR(MAX)
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+--  Temp tables, Cursors, Table Variables  --    
+DECLARE @TBL_Edit_Security_Reclass TABLE (
+	SecurityID INT
+	,SecurityType VARCHAR(20)
+	,SecuritySymbol VARCHAR(50)
+	,CUSIP CHAR(12)
+	,ReclassPercentage FLOAT
+	,UserID INT
+	);
+
+SET @return_status = '';
+
+-- Body of procedure  --    
+BEGIN TRY
+	--  Transactions    
+	BEGIN TRANSACTION
+
+	--delete
+	DELETE
+	FROM TBL_IE_SecurityReclass
+	WHERE SecurityID IN (
+			SELECT XMLDATA.item.value('@SecurityID[1]', 'int') AS SecurityID
+			FROM @XMLDATA.nodes('//SecurityReclassCollection/DeleteList/SecurityReclass') AS XMLDATA(item)
+			)
+
+	--Add
+	INSERT INTO TBL_IE_SecurityReclass (
+		SecurityType
+		,SecuritySymbol
+		,CUSIP
+		,ReclassPercentage
+		,UserID
+		,CreatedDate
+		,ModifiedDate
+		)
+	SELECT XMLDATA.item.value('@SecurityType[1]', 'varchar(20)') AS SecurityType
+		,XMLDATA.item.value('@SecuritySymbol[1]', 'varchar(50)') AS SecuritySymbol
+		,XMLDATA.item.value('@CUSIP[1]', 'char(12)') AS CUSIP
+		,XMLDATA.item.value('@ReclassPercentage[1]', 'float') AS ReclassPercentage
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+		,GETDATE() AS CreatedDate
+		,GETDATE() AS ModifiedDate
+	FROM @XMLDATA.nodes('//SecurityReclassCollection/InsertList/SecurityReclass') AS XMLDATA(item)
+
+	--Edit
+	INSERT INTO @TBL_Edit_Security_Reclass
+	SELECT XMLDATA.item.value('@SecurityID[1]', 'varchar(20)') AS SecurityID
+		,XMLDATA.item.value('@SecurityType[1]', 'varchar(20)') AS SecurityType
+		,XMLDATA.item.value('@SecuritySymbol[1]', 'varchar(50)') AS SecuritySymbol
+		,XMLDATA.item.value('@CUSIP[1]', 'char(12)') AS CUSIP
+		,XMLDATA.item.value('@ReclassPercentage[1]', 'float') AS ReclassPercentage
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+	FROM @XMLDATA.nodes('//SecurityReclassCollection/UpdateList/SecurityReclass') AS XMLDATA(item)
+
+	UPDATE TBL_IE_SecurityReclass
+	SET SecurityType = t.SecurityType
+		,SecuritySymbol = t.SecuritySymbol
+		,CUSIP = t.CUSIP
+		,ReclassPercentage = t.ReclassPercentage
+		,UserID = t.UserID
+		,ModifiedDate = GetDate()
+	FROM TBL_IE_SecurityReclass sr
+	INNER JOIN @TBL_Edit_Security_Reclass t ON sr.SecurityID = t.SecurityID
+
+	COMMIT TRANSACTION;
+
+	SET NOCOUNT OFF;
+END TRY
+
+BEGIN CATCH
+	EXEC USP_IE_RethrowError;
+
+	ROLLBACK TRANSACTION;
+END CATCH;
+	-- End of procedure  --

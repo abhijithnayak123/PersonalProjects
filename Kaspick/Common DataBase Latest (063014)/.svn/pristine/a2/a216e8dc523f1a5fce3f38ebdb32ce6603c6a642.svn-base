@@ -1,0 +1,75 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetSUBDTRelationshipManager'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetSUBDTRelationshipManager;
+
+	PRINT 'DROPPED USP_RP_GetSUBDTRelationshipManager';
+END
+GO      
+
+/******************************************************************************                      
+** New Name:     USP_RP_GetSUBDTRelationshipManager    
+** Old Name:     USP_EIS_SUB_DT_RELATIONSHIP_MANAGER_SelProc    
+
+** Short Desc: To fetch Relationship Manager users   
+**                      
+** Full Description: To fetch Relationship Manager users for Subscription    
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+  EXEC USP_EIS_SUB_DT_RELATIONSHIP_MANAGER_SelProc   
+    
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Anand Kumar    
+** Company   : Kaspick & Company                      
+** Project   : Deliverable Tool  - Subscription                      
+** Created DT: 18-Apr-2012    
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 09-Jun-2014 Abhijith  Sp name renamed as per Kaspick naming convention standard
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_GetSUBDTRelationshipManager                     
+AS                
+	BEGIN    
+		DECLARE @ROLEID INT  
+		SELECT @ROLEID= MasterRoleID FROM VW_EX_UserRole  WHERE RoleFullName='Relationship Manager'    
+		
+		SELECT     
+		DISTINCT KsUsr.UserID as DDVALUE, KsUsr.LoginName AS DDTEXT  
+		FROM SYN_IT_ContactMaster ConMstr
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID = AccMgrCds.ContactID
+		INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID = ConMstr.ContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id = subConRol.ContactRoleCode
+		INNER JOIN SYN_IT_ContactMaster KCoStfConMstr ON KCoStfConMstr.contactID = subConRol.subcontactID
+		INNER JOIN TBL_KS_User KsUsr ON KsUsr.InnotrustContactID = KCoStfConMstr.contactID    
+		INNER JOIN VW_EX_UserRole VUR ON KsUsr.UserID=VUR.UserID   
+		WHERE subConRol.ContactRoleCode = @ROLEID AND VUR.IsActive=1 --AND SR.IsPrimary=1 AND VUR.IsActive=1  -- IsPrimary to be changed once after getting the reply from Client.
+		--WHERE SR.RoleID=@ROLEID AND SR.IsPrimary=1 AND VUR.IsActive=1  
+		----AND subConRol.ContactRoleCode = 2
+		ORDER BY KsUsr.LoginName   
+END        
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetSUBDTRelationshipManager'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetSUBDTRelationshipManager';
+END

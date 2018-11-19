@@ -1,0 +1,505 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveAuditTransactions]    Script Date: 05/30/2014 10:31:19 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_SaveAuditTransactions]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_SaveAuditTransactions]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveAuditTransactions]    Script Date: 05/30/2014 10:31:19 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_OP_SaveAuditTransactions        
+** Short Desc : Put in Short Description        
+**        
+** Full Description        
+**                
+**        
+** Sample Call   
+DECLARE 	@XMLDATA XML
+	,@RunUser INT
+	,@TransactionCount INT
+	
+
+SET @XMLDATA = '<AuditTransactionCollection><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="706.04"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.81" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mopar" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="440" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="7963.79"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="10.01" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="momar2" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="764" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="208.23"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="9.28" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="momar1" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="767" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="2511.37"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.15" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="moloe" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="772" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="783.88"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.98" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="molit" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="549" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="15296.25"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="110.77" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="molee3" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="763" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="3741.67"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="27.1" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="molee2" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="755" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="1490.17"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="12.44" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="molee1" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="869" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="5380.86"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="6.74" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mokoe" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="759" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="702.49"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.87" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mokir" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="431" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="925.94"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.16" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mokin" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="727" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="1261.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.58" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mokah" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="737" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="13456.12"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="16.87" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mohor" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="764" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="2688.13"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.36" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mohaw" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="756" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="1468.45"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.84" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mohara" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="553" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="2934.41"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.67" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="moguf" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="759" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.79" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="612" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.25" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="611" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.58" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="610" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.15" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="609" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="110.77" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="608" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="27.1" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="607" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="12.44" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="606" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="11.1" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="605" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="22.01" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="604" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.94" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="603" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="11.54" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="602" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="27.17" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="601" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.79" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="600" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="37.33" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="599" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.29" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="598" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="2.12" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="597" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="10.01" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="596" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="9.28" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="595" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.81" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="594" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.98" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="593" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.36" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="592" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="12.29" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="591" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="5.68" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="590" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="10.54" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="589" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.54" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="588" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="6.74" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="587" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.84" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="586" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.67" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="585" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="16.87" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="584" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.58" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="583" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.16" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="582" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="0.87" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="581" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="-367.33"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Debit" TransactionCode="lo" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="10.5" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocorp" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="580" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="1228.6"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.54" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocoo" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="728" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="3071.7"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.79" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocla" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="770" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="8310.35"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="10.54" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocar3" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="760" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="983.58"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="1.25" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocar2" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="555" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="4490.31"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="5.68" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="mocar1" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="760" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="9771.86"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="12.29" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="moboy" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="764" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="1693.97"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="2.12" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="moandk" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="740" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="2902.72"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="3.58" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="moande" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="805" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="240694.11"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="200000" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="kugap" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="8181" UserDefinedCode="4"  /><AuditTransaction RunID="0"  TransactionDate="06/30/2014"  IsSigCash="True"  IsRecon="False"  IsError="False"  AccountFMV="208450.46"  AccountType=""  SecurityUserDefIndustryCode=""  LastModifiedUser="100372"  TransactionDescription="Account Transfer Credit" TransactionCode="li" TradeDate="06/07/2014 12:00:00:000" OrigninalCostDate="01/01/1900 12:00:00:000" OriginalCostAmount="0.0" TradeAmount="158544.56" SecurityType="caus" SecuritySymbol="CSica" SourceType="" SourceSymbol="" TradeQuantity="0.0" LotLocation="" Broker="" Commission="0.0" LotID="0" AdventId="cpfend" AXYSComment="" AXYSPostDate="06/27/2014 12:00:00:000" AXYSTransactionID="3557" UserDefinedCode="4"  /></AuditTransactionCollection>'
+SET @RunUser = 100372
+SET @TransactionCount = 59
+EXEC USP_OP_SaveAuditTransactions  @XMLDATA,   @RunUser ,@TransactionCount,0,''  
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :    
+** Company  :  Kaspick & Company        
+** Project  :  Katana    
+** Created DT :  30/05/2014        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 30/05/2014		Tanuj                  Created      
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_SaveAuditTransactions] (
+	@XMLDATA XML
+	,@RunUser INT
+	,@TransactionCount INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails and   
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	DECLARE @TradeQuantityRoundOffBy INT
+	DECLARE @TradeAmountRoundOffBy INT
+	DECLARE @TradeAmountTolarence FLOAT
+	DECLARE @TradeAmountSellAllTolarence FLOAT
+
+	/*Tolerence limit changed for fixing reconcilling isues*/
+	SET @TradeQuantityRoundOffBy = 3;
+	SET @TradeAmountRoundOffBy = 2;
+	SET @TradeAmountTolarence = 0.01;
+	SET @TradeAmountSellAllTolarence = 0.03;
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_Trade]')
+				)
+			DROP TABLE [DBO].[#TEMP_Trade]
+
+		CREATE TABLE [#TEMP_Trade] (
+			[TradeID] [bigint]
+			,CustomerAccountNumber VARCHAR(50)
+			,[TransactionCode] [varchar](2)
+			,[TradeDate] [datetime]
+			,[SecuritySymbol] [varchar](25)
+			)
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_Transaction]')
+				)
+			DROP TABLE [DBO].[#TEMP_Transaction]
+
+		CREATE TABLE [#TEMP_Transaction] (
+			[RunID] [bigint]
+			,[TransactionCode] [varchar](2)
+			,[TransactionDate] [datetime]
+			,[TradeDate] [datetime]
+			,[TransactionComment] [varchar](200)
+			,[TransactionDescription] [varchar](1000)
+			,[AccountFMV] [money]
+			,[OrigninalCostDate] [datetime]
+			,[TradeAmount] [money]
+			,[SecurityType] [varchar](4)
+			,[SecuritySymbol] [varchar](25)
+			,[SourceType] [varchar](4)
+			,[SourceSymbol] [varchar](25)
+			,[TradeQuantity] [float]
+			,[LotLocation] [varchar](10)
+			,[Broker] [varchar](100)
+			,[Commission] [money]
+			,[LotID] [int]
+			,CustomerAccountNumber VARCHAR(50)
+			,[AXYSComment] [varchar](100)
+			,[AXYSPostDate] [datetime]
+			,[AXYSTransactionID] [bigint]
+			,[UserDefinedCode] [int]
+			,[IsError] [bit]
+			,[IsRecon] [bit]
+			,[IsSigCash] [bit]
+			,[IsManagedAccount] [bit]
+			,[CurrentErrorResponse] [bigint]
+			,[CurrentReconResponse] [bigint]
+			,[CurrentErrorStatus] [char](10)
+			,[CurrentReconStatus] [char](10)
+			,[AccountType] [varchar](20)
+			,[SecurityUserDefIndustryCode] [int]
+			,[LastModifiedUser] [int]
+			,[LastModifiedDate] [datetime]
+			)
+
+		INSERT INTO [#TEMP_Transaction] (
+			[RunID]
+			,[TransactionCode]
+			,[TransactionDate]
+			,[TradeDate]
+			,[TransactionComment]
+			,[TransactionDescription]
+			,[AccountFMV]
+			,[OrigninalCostDate]
+			,[TradeAmount]
+			,[SecurityType]
+			,[SecuritySymbol]
+			,[SourceType]
+			,[SourceSymbol]
+			,[TradeQuantity]
+			,[LotLocation]
+			,[Broker]
+			,[Commission]
+			,[LotID]
+			,CustomerAccountNumber
+			,[AXYSComment]
+			,[AXYSPostDate]
+			,[AXYSTransactionID]
+			,[UserDefinedCode]
+			,[IsError]
+			,[IsRecon]
+			,[IsSigCash]
+			,[IsManagedAccount]
+			,[CurrentErrorResponse]
+			,[CurrentReconResponse]
+			,[CurrentErrorStatus]
+			,[CurrentReconStatus]
+			,[AccountType]
+			,[SecurityUserDefIndustryCode]
+			,[LastModifiedUser]
+			,[LastModifiedDate]
+			)
+		SELECT XMLDATA.item.value('@RunID[1]', 'INT') AS RunID
+			,XMLDATA.item.value('@TransactionCode', 'Varchar(2)') AS TransactionCode
+			,XMLDATA.item.value('@TransactionDate', 'DATETIME') AS TransactionDate
+			,XMLDATA.item.value('@TradeDate', 'DATETIME') AS TradeDate
+			,NULL AS TransactionComment
+			,XMLDATA.item.value('@TransactionDescription', 'varchar(1000)') AS TransactionDescription
+			,XMLDATA.item.value('@AccountFMV', 'money') AS AccountFMV
+			,XMLDATA.item.value('@OrigninalCostDate', 'DATETIME') AS OrigninalCostDate
+			,XMLDATA.item.value('@TradeAmount', 'money') AS TradeAmount
+			,XMLDATA.item.value('@SecurityType', 'varchar(4)') AS SecurityType
+			,XMLDATA.item.value('@SecuritySymbol', 'varchar(25)') AS SecuritySymbol
+			,XMLDATA.item.value('@SourceType', 'varchar(4)') AS SourceType
+			,XMLDATA.item.value('@SourceSymbol', 'varchar(25)') AS SourceSymbol
+			,XMLDATA.item.value('@TradeQuantity', 'float') AS TradeQuantity
+			,XMLDATA.item.value('@LotLocation', 'varchar(10)') AS LotLocation
+			,XMLDATA.item.value('@Broker', 'varchar(100)') AS Broker
+			,XMLDATA.item.value('@Commission', 'money') AS Commission
+			,XMLDATA.item.value('@LotID', 'int') AS LotID
+			,XMLDATA.item.value('@AdventId', ' varchar(8)') AS CustomerAccountNumber
+			,XMLDATA.item.value('@AXYSComment', 'varchar(100)') AS AXYSComment
+			,XMLDATA.item.value('@AXYSPostDate', 'datetime') AS AXYSPostDate
+			,XMLDATA.item.value('@AXYSTransactionID', 'bigint') AS AXYSTransactionID
+			,XMLDATA.item.value('@UserDefinedCode', 'int') AS UserDefinedCode
+			,XMLDATA.item.value('@IsError', 'bit') AS IsError
+			,XMLDATA.item.value('@IsRecon', 'bit') AS IsRecon
+			,XMLDATA.item.value('@IsSigCash', 'bit') AS IsSigCash
+			,acntProfl.AssetsUnderMgmt
+			,2 AS CurrentErrorResponse
+			,2 AS CurrentReconResponse
+			,'1' AS CurrentErrorStatus
+			,'1' AS CurrentReconStatus
+			,XMLDATA.item.value('@AccountType', 'varchar(20)') AS AccountType
+			,XMLDATA.item.value('@SecurityUserDefIndustryCode', 'int') AS SecurityUserDefIndustryCode
+			,XMLDATA.item.value('@LastModifiedUser', 'int') AS LastModifiedUser
+			,GetDate()
+		FROM @XMLDATA.nodes('//AuditTransactionCollection/AuditTransaction') AS XMLDATA(item)
+		INNER JOIN TBL_INV_AccountProfile acntProfl ON XMLDATA.item.value('@AdventId', ' varchar(8)') = acntProfl.CustomerAccountNumber
+
+		CREATE NONCLUSTERED INDEX IDX_temp ON #TEMP_Transaction (
+			TradeDate
+			,SecuritySymbol
+			) INCLUDE ([CustomerAccountNumber])
+			WITH (
+					SORT_IN_TEMPDB = OFF
+					,DROP_EXISTING = OFF
+					,IGNORE_DUP_KEY = OFF
+					,ONLINE = OFF
+					) ON [PRIMARY]
+
+		INSERT INTO TBL_OP_TransactionDataImport (
+			[RunStartDateTime]
+			,[RunEndDateTime]
+			,[NumberOfTransactions]
+			,[RunUserID]
+			)
+		VALUES (
+			GetDate()
+			,NULL
+			,0
+			,@RunUser
+			)
+
+		INSERT INTO #TEMP_Trade
+		SELECT t.tradeid
+			,transactions.CustomerAccountNumber
+			,transactions.TransactionCode
+			,transactions.TradeDate
+			,transactions.SecuritySymbol
+		FROM TBL_TR_TradeImport t
+		INNER JOIN (
+			SELECT CustomerAccountNumber
+				,TradeType
+				,TradeDate
+				,SecuritySymbol
+				,sum([TradeQuantity]) AS TotalTradeQTY
+				,sum(DollarTradeAmt) AS TotalTradeAmount
+			FROM dbo.TBL_TR_TradeImport
+			WHERE Tradestatus = 'executed'
+				OR Tradestatus = 'generated'
+			GROUP BY CustomerAccountNumber
+				,TradeType
+				,TradeDate
+				,SecuritySymbol
+			) ti ON t.CustomerAccountNumber = ti.CustomerAccountNumber
+			AND t.TradeType = ti.TradeType
+			AND t.TradeDate = ti.TradeDate
+			AND t.SecuritySymbol = ti.SecuritySymbol
+		INNER JOIN (
+			SELECT sum([TradeQuantity]) AS TotalQTY
+				,sum(TradeAmount) AS TotalAmount
+				,SecurityUserDefIndustryCode
+				,tempTran.CustomerAccountNumber
+				,tempTran.TransactionCode
+				,tempTran.TradeDate
+				,tempTran.SecuritySymbol
+			FROM [#TEMP_Transaction] tempTran
+			GROUP BY tempTran.CustomerAccountNumber
+				,tempTran.TransactionCode
+				,tempTran.TradeDate
+				,tempTran.SecuritySymbol
+				,tempTran.SecurityUserDefIndustryCode
+			) transactions ON ti.CustomerAccountNumber = transactions.CustomerAccountNumber
+			AND (
+				CASE ti.TradeType
+					WHEN 'sa'
+						THEN 'sl'
+					WHEN 's'
+						THEN 'sl'
+					ELSE 'by'
+					END
+				) = transactions.TransactionCode
+			AND convert(VARCHAR(10), transactions.TradeDate, 101) = convert(VARCHAR(10), ti.TradeDate, 101)
+			AND transactions.SecuritySymbol = ti.SecuritySymbol
+		WHERE (
+				t.Tradestatus = 'executed'
+				OR t.Tradestatus = 'generated'
+				)
+			AND abs((
+					CASE 
+						WHEN transactions.SecurityUserDefIndustryCode = 1
+							THEN (
+									CASE 
+										WHEN transactions.[TransactionCode] = 'by'
+											THEN (
+													CASE 
+														WHEN round((round(abs(isnull(ti.TotalTradeAmount, 0)), @TradeAmountRoundOffBy) - Round(abs(isnull(transactions.TotalAmount, 0)), @TradeAmountRoundOffBy)), @TradeAmountRoundOffBy) <= @TradeAmountTolarence
+															THEN 0
+														ELSE (round(abs(isnull(ti.TotalTradeAmount, 0)), @TradeAmountRoundOffBy) - Round(abs(isnull(transactions.TotalAmount, 0)), @TradeAmountRoundOffBy))
+														END
+													)
+										ELSE (
+												CASE 
+													WHEN transactions.[TransactionCode] = 'sl'
+														AND Upper(ti.TradeType) = 'S'
+														THEN round((ROUND(ABS(isnull(transactions.TotalQTY, 0)), @TradeQuantityRoundOffBy) - ROUND(ABS(isnull(ti.TotalTradeQTY, 0)), @TradeQuantityRoundOffBy)) / transactions.TotalQTY, @TradeQuantityRoundOffBy)
+													ELSE (
+															CASE 
+																WHEN transactions.[TransactionCode] = 'sl'
+																	AND Upper(ti.TradeType) = 'SA'
+																	THEN (
+																			CASE 
+																				WHEN round((ROUND(ABS(isnull(ti.TotalTradeQTY, 0)), @TradeQuantityRoundOffBy) - ROUND(ABS(isnull(transactions.TotalQTY, 0)), @TradeQuantityRoundOffBy)) / transactions.TotalQTY, @TradeQuantityRoundOffBy) <= @TradeAmountSellAllTolarence
+																					THEN 0
+																				ELSE round((ROUND(ABS(isnull(transactions.TotalQTY, 0)), @TradeQuantityRoundOffBy) - ROUND(ABS(isnull(ti.TotalTradeQTY, 0)), @TradeQuantityRoundOffBy)) / transactions.TotalQTY, @TradeQuantityRoundOffBy)
+																				END
+																			)
+																END
+															)
+													END
+												)
+										END
+									)
+						ELSE (ROUND(ABS(transactions.TotalQTY), @TradeQuantityRoundOffBy) - ROUND(ABS(ti.TotalTradeQTY), @TradeQuantityRoundOffBy))
+						END
+					)) = 0
+
+		INSERT INTO TBL_OP_Transaction (
+			[RunID]
+			,[TransactionCode]
+			,[TransactionDate]
+			,[TradeDate]
+			,[TransactionComment]
+			,[TransactionDescription]
+			,[AccountFMV]
+			,[OrigninalCostDate]
+			,[TradeAmount]
+			,[SecurityType]
+			,[SecuritySymbol]
+			,[SourceType]
+			,[SourceSymbol]
+			,[TradeQuantity]
+			,[LotLocation]
+			,[Broker]
+			,[Commission]
+			,[LotID]
+			,[CustomerAccountNumber]
+			,[AXYSComment]
+			,[AXYSPostDate]
+			,[AXYSTransactionID]
+			,[UserDefinedCode]
+			,[IsError]
+			,[IsRecon]
+			,[IsSigCash]
+			,[IsManagedAccount]
+			,[CurrentErrorResponse]
+			,[CurrentReconResponse]
+			,[CurrentErrorStatus]
+			,[CurrentReconStatus]
+			,[AccountType]
+			,[SecurityUserDefIndustryCode]
+			,[LastModifiedUserID]
+			,[LastModifiedDate]
+			)
+		SELECT IDENT_CURRENT('TBL_OP_TransactionDataImport') AS RUNID
+			,tempTran.[TransactionCode]
+			,tempTran.[TransactionDate]
+			,tempTran.[TradeDate]
+			,tempTran.[TransactionComment]
+			,tempTran.[TransactionDescription]
+			,tempTran.[AccountFMV]
+			,tempTran.[OrigninalCostDate]
+			,tempTran.[TradeAmount]
+			,tempTran.[SecurityType]
+			,tempTran.[SecuritySymbol]
+			,tempTran.[SourceType]
+			,tempTran.[SourceSymbol]
+			,tempTran.[TradeQuantity]
+			,tempTran.[LotLocation]
+			,tempTran.[Broker]
+			,tempTran.[Commission]
+			,tempTran.[LotID]
+			,tempTran.[CustomerAccountNumber]
+			,tempTran.[AXYSComment]
+			,tempTran.[AXYSPostDate]
+			,tempTran.[AXYSTransactionID]
+			,tempTran.[UserDefinedCode]
+			,tempTran.[IsError]
+			,tempTran.[IsRecon]
+			,tempTran.[IsSigCash]
+			,tempTran.[IsManagedAccount]
+			,tempTran.[CurrentErrorResponse]
+			,CASE 
+				WHEN isnull(ti.TradeID, 0) = 0
+					THEN tempTran.[CurrentReconResponse]
+				ELSE '12'
+				END
+			,tempTran.[CurrentErrorStatus]
+			,CASE 
+				WHEN isnull(ti.TradeID, 0) = 0
+					THEN '1'
+				ELSE '3'
+				END
+			,tempTran.[AccountType]
+			,tempTran.[SecurityUserDefIndustryCode]
+			,tempTran.[LastModifiedUser]
+			,tempTran.[LastModifiedDate]
+		FROM [#TEMP_Transaction] tempTran
+		LEFT OUTER JOIN #TEMP_Trade ti ON ti.CustomerAccountNumber = tempTran.CustomerAccountNumber
+			AND ti.TransactionCode = tempTran.TransactionCode
+			AND ti.TradeDate = tempTran.TradeDate
+			AND ti.SecuritySymbol = tempTran.SecuritySymbol
+		LEFT OUTER JOIN TBL_OP_Transaction existingTransaction ON existingTransaction.CustomerAccountNumber = tempTran.CustomerAccountNumber
+			AND existingTransaction.SecuritySymbol = tempTran.SecuritySymbol
+			AND existingTransaction.TradeAmount = tempTran.TradeAmount
+			AND existingTransaction.AXYSPostDate = tempTran.AXYSPostDate
+		WHERE existingTransaction.CustomerAccountNumber IS NULL
+			AND existingTransaction.SecuritySymbol IS NULL
+			AND existingTransaction.TradeAmount IS NULL
+			AND existingTransaction.AXYSPostDate IS NULL
+
+		UPDATE TBL_TR_TradeImport
+		SET Tradestatus = 'reconciled'
+			,ReconcileDate = GETDATE()
+		FROM TBL_TR_TradeImport ti
+		INNER JOIN [#TEMP_Trade] tempTrade ON ti.TradeID = tempTrade.TradeID
+
+		UPDATE TBL_OP_TransactionDataImport
+		SET RunEndDateTime = GetDate()
+			,NumberOfTransactions = @TransactionCount
+		WHERE RUNID = IDENT_CURRENT('TBL_OP_TransactionDataImport')
+
+		UPDATE TBL_TR_Event
+		SET EventStatusID = 5
+			,LastModifiedUserID = @RunUser
+			,LastModifiedDate = GetDate()
+		FROM tbl_tr_event ev
+		INNER JOIN (
+			SELECT apt1.eventID
+				,count(apt1.Tradeid) AS TotalTradeCount
+			FROM TBL_TR_TSheetApprovedTrade apt1
+			INNER JOIN tbl_tr_event ev1 ON ev1.EventID = apt1.EventID
+			WHERE ev1.EventStatusID = 4
+				AND apt1.tradeid NOT IN (
+					SELECT tradeid
+					FROM TBL_TR_TradeError
+					)
+			GROUP BY apt1.eventid
+			) AllApprovedTrades ON AllApprovedTrades.EventID = ev.EventID
+		INNER JOIN (
+			SELECT apt2.eventID
+				,count(apt2.Tradeid) AS SubmittedOrErroredTradeCount
+			FROM TBL_TR_TradeImport ti
+			INNER JOIN TBL_TR_TSheetApprovedTrade apt2 ON ti.TradeIDTRex = apt2.TradeID
+			INNER JOIN tbl_tr_event ev2 ON ev2.EventID = apt2.EventID
+			WHERE ev2.EventStatusID = 4
+				AND TradeStatus = 'reconciled'
+			--or apt2.tradeid in (select tradeid from TBL_TR_TradeError)    
+			GROUP BY apt2.eventid
+			) AS SubmittedOrErroredTrades ON SubmittedOrErroredTrades.EventID = ev.EventID
+		WHERE ev.EventStatusID = 4
+			AND (AllApprovedTrades.TotalTradeCount - SubmittedOrErroredTrades.SubmittedOrErroredTradeCount) = 0
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_Trade]')
+				)
+			DROP TABLE [DBO].[#TEMP_Trade]
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_Transaction]')
+				)
+			DROP TABLE [DBO].[#TEMP_Transaction]
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION
+
+		UPDATE TBL_OP_TransactionDataImport
+		SET RunEndDateTime = GetDate()
+			,NumberOfTransactions = @TransactionCount
+		WHERE RUNID = IDENT_CURRENT('TBL_OP_TransactionDataImport')
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+

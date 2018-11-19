@@ -1,0 +1,202 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProgramStatus')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProgramStatus;
+        PRINT 'DROPPED USP_EX_GetProgramStatus';
+    END
+GO
+
+
+
+    
+/******************************************************************************        
+** Name : USP_EX_GetProgramStatus  
+** Old Name: USP_EIS_EX_Program_Status_SelProc        
+** Short Desc: Procedure to get the status of a Program        
+**        
+** Full Description        
+ This procedure is used to get the status of a Program.        
+ A program is active if all the mandatory and required later fields are entered else it is in transition.        
+ If closed date is entered then the program is inactive.        
+ If the client is in transition then the program is also in transition.        
+**        
+** Sample Call        
+        EXEC USP_EIS_EX_Program_Status_SelProc 1234,0        
+**        
+** Return values: int (status of the program)        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000           
+**         
+** Created By: Ganapati        
+** Company   : Kaspick & Company        
+** Project   : Excelsior        
+** Created DT: 04/05/2007        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd       
+ 01-Aug-07 Ganapati   Added Tax check       
+** --------     -------- ------    -------------------------------------- --------        
+**03-Sep-2009 Saravanan PM  Production Isse Ticket Number: 4081    
+** 8-Apr-2014 Yugandhar  EXCREQ 6.1        
+** 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+*******************************************************************************        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/        
+        
+CREATE procedure USP_EX_GetProgramStatus              
+(              
+ @PROGRAMID VARCHAR(15),              
+ @PROGRAM_STATUS_ID INT OUTPUT                
+)              
+AS         
+begin        
+       
+----  Initial Set statements         
+SET NOCOUNT ON;        
+----  Variable Declarations          
+DECLARE @INACTIVE_ID INT -- STORING INACTIVE ID              
+DECLARE @TRANSITION_ID INT -- STORING TRANSITION ID              
+DECLARE @ACTIVE_ID INT -- STORING ACTIVE ID              
+Declare @ctr int -- min count              
+Declare @maxctr int -- max count              
+DECLARE @STATEMENT VARCHAR(400) -- sql statement              
+DECLARE @RECORD_COUNT INT -- used to count        
+DECLARE @COUNT INT          
+--            
+---- General tab             
+DECLARE @CLOSED_DATE DATETIME  -- program closed date            
+DECLARE @CLIENTID VARCHAR(15)            
+DECLARE @CLIENT_STATUS_ID INT            
+---- Operations tab            
+DECLARE @SL_MASTER_ID INT             
+DECLARE @STATEMENT_BUNDLING_ID INT            
+DECLARE @DOWNLOAD_ID VARCHAR(50)            
+DECLARE @FA_MASTER_ACCOUNT_NO VARCHAR(50)            
+DECLARE @CD_STATEMENTS_ID INT            
+DECLARE @TEMP_OPERATIONS TABLE(RECORDID INT IDENTITY, SL_MASTER_ID INT,DOWNLOAD_ID VARCHAR(50),FA_MASTER_ACCOUNT_NO VARCHAR(50),  
+STATEMENT_BUNDLING_ID INT, CD_STATEMENTS_ID INT)            
+---- STORE TRANSITION ID AND ACTIVE ID            
+ EXEC USP_EX_GetListItemID 'STATUS','ACTIVE',@ACTIVE_ID OUTPUT    -- 58            
+ EXEC USP_EX_GetListItemID 'STATUS','INACTIVE',@INACTIVE_ID OUTPUT   -- 59             
+ EXEC USP_EX_GetListItemID 'STATUS','TRANSITION',@TRANSITION_ID OUTPUT  -- 60            
+--              
+---- Checking Program existance            
+SELECT @RECORD_COUNT = COUNT(*) FROM SYN_IT_AllianceNumbers  WHERE AllianceNumber  = @PROGRAMID            
+IF @RECORD_COUNT = 0             
+ BEGIN              
+   SELECT @PROGRAM_STATUS_ID = -1              
+   RETURN              
+ END              
+---- Check if program is closed            
+IF @CLOSED_DATE IS NOT NULL              
+ BEGIN              
+  SELECT @PROGRAM_STATUS_ID = @INACTIVE_ID               
+  RETURN              
+ END              
+---- Check the related client status, If client is inactive or transition then program is also inactive or transition            
+SELECT @CLIENTID = ConMstr.MANAGERCODE   
+ FROM SYN_IT_AllianceNumbers AlnsNmbr   
+ INNER JOIN SYN_IT_ContactMaster ConMstr ON AlnsNmbr.CONTACTID=ConMstr.CONTACTID  
+ WHERE AlnsNmbr.AllianceNumber = @PROGRAMID -- get the client id            
+EXEC USP_EX_GetClientStatus @CLIENTID, @CLIENT_STATUS_ID OUTPUT  -- get client status          
+      
+IF @CLIENT_STATUS_ID = @INACTIVE_ID OR @CLIENT_STATUS_ID = @TRANSITION_ID            
+ BEGIN            
+   SELECT @PROGRAM_STATUS_ID = @CLIENT_STATUS_ID            
+   RETURN              
+ END            
+--              
+---- Checking Administration tab, if no records it is transition            
+ --1. CHK REQ TA 2 THRES        
+ EXEC USP_EX_GetPolicyItemExits      
+  @ENTITYID = @PROGRAMID,      
+  @ENTITYTYPE = 'PROGRAM',      
+  @POLICYNAME ='CHK REQ TA 2 THRES',      
+  @COUNT = @COUNT OUTPUT      
+   IF(@COUNT = 0)            
+   BEGIN            
+     SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID            
+     RETURN            
+   END          
+-- 'KCO VOTE PROXY'       
+ EXEC USP_EX_GetPolicyItemExits      
+  @ENTITYID = @PROGRAMID,      
+  @ENTITYTYPE = 'PROGRAM',      
+  @POLICYNAME ='KCO VOTE PROXY' ,      
+  @COUNT = @COUNT OUTPUT      
+   IF(@COUNT = 0)            
+   BEGIN            
+     SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID            
+     RETURN            
+   END         
+        
+--'INTR OF 1ST BUS DAY'       
+ EXEC USP_EX_GetPolicyItemExits      
+  @ENTITYID = @PROGRAMID,      
+  @ENTITYTYPE = 'PROGRAM',      
+  @POLICYNAME ='INTR OF 1ST BUS DAY',      
+  @COUNT = @COUNT OUTPUT      
+   IF(@COUNT = 0)            
+   BEGIN            
+     SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID            
+     RETURN            
+   END         
+----checking for Operations              
+SELECT @RECORD_COUNT = COUNT(*) FROM SYN_IT_AllianceNumbers WHERE AllianceNumber = @PROGRAMID            
+IF @RECORD_COUNT > 0            
+ BEGIN          
+IF @RECORD_COUNT > 0                     
+  BEGIN                          
+   SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID         
+   RETURN                          
+  END        
+      
+ IF @RECORD_COUNT > 0                     
+ BEGIN                          
+  SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID        
+  RETURN                          
+ END              
+        
+ END         
+---- checking for Payments              
+EXEC USP_EX_GetPolicyItemExits      
+  @ENTITYID = @PROGRAMID,      
+  @ENTITYTYPE = 'PROGRAM',      
+  @POLICYNAME ='Net Inc Pmt Rule',      
+  @COUNT = @COUNT OUTPUT      
+   IF(@COUNT = 0)            
+   BEGIN            
+     SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID            
+     RETURN            
+   END          
+---- Checking for Tax            
+SELECT @RECORD_COUNT = COUNT(*) FROM SYN_IT_AllianceNumbers WHERE AllianceNumber = @PROGRAMID            
+IF @RECORD_COUNT = 0            
+ BEGIN            
+  SELECT @PROGRAM_STATUS_ID = @TRANSITION_ID              
+  RETURN            
+ END            
+---- If not transition or closed, the status is active              
+SELECT @PROGRAM_STATUS_ID = @ACTIVE_ID         
+end    
+  
+  
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProgramStatus') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProgramStatus';
+	END
+  
+  
+  

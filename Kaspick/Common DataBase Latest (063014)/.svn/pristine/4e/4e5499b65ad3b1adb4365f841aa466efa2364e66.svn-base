@@ -1,0 +1,172 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized]    Script Date: 08/14/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineWireBeneficiaryAuthorized                      
+** Short Desc: To get Wire Authorised details
+**                      
+** Full Description: To get Wire Authorised details where KcoHasStanding is Yes
+**        
+**                              
+** Input Arguments: 
+		@UserID INT,
+		@Type Bit =1--auto 
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineWireBeneficiaryAuthorized     1   ,1
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 6/3/2014	 Anand		 Changed PaymentMethod data source in filter condition
+** 7/1/2014  Anand       Added WireAuthorizedDate and WireAuthorizedBy filter   
+** 8/21/2014 Anand		 Changed data source in case of Auto and Manual Validation
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized] @UserID INT
+	,@Type BIT = 1 --auto     
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	---Declare Variable
+	DECLARE @RuleID INT
+	DECLARE @CurrentDate DATETIME
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'WRD not faxed'
+		AND RuleCategory = 'Beneficiary payment'
+
+	SELECT @CurrentDate = CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+
+	-- Body of procedure  --            
+	---Selecting wire Beneficiary Authorised data for payment type Beneficiarypayment & PGCalcImport
+	IF @Type = 1
+	BEGIN
+		SELECT 'Beneficiarypayment' AS PaymentType
+			,BenPay.BPScheduleID AS ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestFaxed' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireSubmitted, NULL)), 'none') AS ActualValue
+		FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON BenPay.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(BenPay.PaymentDate, '') <> ''
+			AND BenPmnt.PaymentMethod = 'WIRE'
+			AND (
+				BenPmnt.WireSubmitted IS NULL
+				OR BenPmnt.WireSubmittedBy IS NULL
+				)
+			AND (
+				@CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), BenPay.EPD, 101))
+				AND @CurrentDate <= CONVERT(DATETIME, CONVERT(VARCHAR(25), BenPay.PaymentDate, 101))
+				)
+		
+		UNION ALL
+		
+		SELECT 'PGCalcImport' AS PaymentType
+			,pgcalc.MergedPGCalcPaymentID AS ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestFaxed' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireAuthorizedDate, NULL)), 'none') AS ActualValue
+		FROM dbo.TBL_PP_PGCalcPaymentDataMerged pgcalc
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON pgcalc.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(pgcalc.PaymentDate, '') <> ''
+			AND BenPmnt.PaymentMethod = 'WIRE'
+			AND (
+				BenPmnt.WireSubmitted IS NULL
+				OR BenPmnt.WireSubmittedBy IS NULL
+				)
+			AND (
+				@CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), pgcalc.EPD, 101))
+				AND @CurrentDate <= CONVERT(DATETIME, CONVERT(VARCHAR(25), pgcalc.PaymentDate, 101))
+				)
+	END
+	ELSE
+	BEGIN
+		SELECT PaymentType
+			,StgData.ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestFaxed' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireAuthorizedDate, NULL)), 'none') AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON StgData.ScheduleID = BenPay.BPScheduleID
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON BenPay.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(BenPay.PaymentDate, '') <> ''
+			AND StgData.PaymentType = 'Beneficiarypayment'
+			AND StgData.PaymentMethod = 'WIRE'
+			AND (
+				BenPmnt.WireSubmitted IS NULL
+				OR BenPmnt.WireSubmittedBy IS NULL
+				)
+			AND (
+				@CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), BenPay.EPD, 101))
+				AND @CurrentDate <= CONVERT(DATETIME, CONVERT(VARCHAR(25), BenPay.PaymentDate, 101))
+				)
+			AND UserID = @UserID
+		
+		UNION ALL
+		
+		SELECT PaymentType
+			,StgData.ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestFaxed' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireAuthorizedDate, NULL)), 'none') AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN dbo.TBL_PP_PGCalcPaymentDataMerged pgcalc ON pgcalc.MergedPGCalcPaymentID = StgData.ScheduleID
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON pgcalc.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(pgcalc.PaymentDate, '') <> ''
+			AND StgData.PaymentType = 'PGCalcImport'
+			AND StgData.PaymentMethod = 'WIRE'
+			AND (
+				BenPmnt.WireSubmitted IS NULL
+				OR BenPmnt.WireSubmittedBy IS NULL
+				)
+			AND (
+				@CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), pgcalc.EPD, 101))
+				AND @CurrentDate <= CONVERT(DATETIME, CONVERT(VARCHAR(25), pgcalc.PaymentDate, 101))
+				)
+			AND UserID = @UserID
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

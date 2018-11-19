@@ -1,0 +1,117 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsPDFServiceProcessLog]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsPDFServiceProcessLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsPDFServiceProcessLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsPDFServiceProcessLog]    Script Date: 09/17/2013 16:26:34 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_InsPDFServiceProcessLog                      
+** Short Desc: Logs the pdf generation process details 
+**                      
+** Full Description: Logs the pdf generation process details           
+**        
+**                              
+** Input Arguments:
+    @PaymentProcessID INT 
+	@ProcessStartDateTime [datetime] ,  
+	@ProcessEndDateTime [datetime] ,  
+	@NoOfPDFsGenerated [INT] ,  
+	@Status [varchar](100) ,  
+	@FailureDescription [varchar](4000)
+
+**         
+** Sample Call     
+
+EXEC USP_PP_InsPDFServiceProcessLog 12, '2013-09-17 04:05:17.030', '2013-09-17 04:28:17.030', 3, 'Failed', 'Test Failure'      
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Venkatesham  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 12-Sep-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsPDFServiceProcessLog] @PaymentProcessID INT
+	,@ProcessStartDateTime [datetime]
+	,@ProcessEndDateTime [datetime]
+	,@NoOfPDFsGenerated [INT]
+	,@Status [varchar] (100)
+	,@FailureDescription [varchar] (4000)
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000 -- 30 seconds   
+
+	BEGIN TRANSACTION
+
+	INSERT INTO TBL_PP_WirePDFProcessLog (
+		PaymentProcessID
+		,ProcessStartDateTime
+		,ProcessEndDateTime
+		,NoOfPDFsGenerated
+		,STATUS
+		,FailureDescription
+		)
+	VALUES (
+		@PaymentProcessID
+		,@ProcessStartDateTime
+		,@ProcessEndDateTime
+		,@NoOfPDFsGenerated
+		,@Status
+		,@FailureDescription
+		)
+
+	COMMIT TRANSACTION
+	SET NOCOUNT OFF;
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

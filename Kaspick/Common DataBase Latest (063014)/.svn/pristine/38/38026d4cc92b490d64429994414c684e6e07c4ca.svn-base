@@ -1,0 +1,46 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminCgastates'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetSysadminCgastates;
+
+	PRINT 'DROPPED PROCEDURE USP_EX_GetSysadminCgastates';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*********************************************************************************************************************                                                 
+* Procedure Name  : USP_EX_GetSysadminCgastates
+* Old Procedure Name  : USP_EIS_EX_SYSADMIN_CGASTATES_SelProc        
+* Description     :     
+* Input Parameter :     
+*                                    
+* Modification Log                                                     
+*                                    
+* Date   Modified By   Description                                                    
+*--------------------------------------------------------------------------------------------------------------------                                                 
+* 05-Feb-07  Venugopal.B  To select all cga states.      
+* 18-May-06    Venugopal B  Delete_Flag is removed
+* 15-Apr-14 Sanath  EXCREQ 3.1   
+* 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted   
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetSysadminCgastates]
+AS
+SELECT STATE_TYPE_ID
+FROM TBL_BR_CGASetup
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminCgastates'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetSysadminCgastates';
+END

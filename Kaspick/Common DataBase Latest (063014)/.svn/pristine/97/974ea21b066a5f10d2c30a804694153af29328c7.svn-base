@@ -1,0 +1,78 @@
+/****** Object:  StoredProcedure [dbo].[USP_EML_UpdateSentEmail]    Script Date: 04/01/2010 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_UpdateSentEmail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		DROP PROCEDURE [dbo].[USP_EML_UpdateSentEmail]
+		PRINT 'Procedure USP_EML_UpdateSentEmail Dropped.'
+	End
+GO
+
+SET ANSI_NULLS ON
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Name:     [USP_EML_UpdateSentEmail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to update the is_sent flag to indicate that email has been sent.
+**
+** Sample Call
+	[USP_EML_UpdateSentEmail]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Karunakaran
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	01-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 04/08/2013   Tanuj				Procedure is modified as per new KaspickDB 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EML_UpdateSentEmail] (
+	@email_id BIGINT
+	,@sent_datetime DATETIME
+	)
+AS
+UPDATE TBL_EML_EmailQueue
+SET is_sent = 1
+	,sent_datetime = @sent_datetime
+WHERE email_id = @email_id
+
+
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_UpdateSentEmail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		PRINT 'Procedure USP_Eml_GetEmailsToSend Created.'
+	End
+GO

@@ -1,0 +1,144 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc';
+END
+GO
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc                    
+** Short Desc: Retrieves value of UnitrustPercentage for deliverable items.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems =
+'<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList>
+<DeliverableItemsDataToValidate AccountID="100289"  BeneficiaryID="100504"  ClientEmployeeID="0"  ClientID="100002"  DeliverableItemID="6200"  
+DeliverableQueueID="1"  DonorID="100168"  TrustparticipantID="100365"    
+DeliverableFrequency="A"  />
+</SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc  
+    @XMLDeliverableItems  
+   
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/14/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:              Bug #     Description:             Rvwd              
+** --------  --------               ------    ---------------------- --------              
+** <10/28/2010> Chaithra Madappa  
+** 03-12-2012	  Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.
+** 03-14-2012	  Anand Kumar    ERD changes implemetation.
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted   
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc]
+	-- paremeters here        
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --        
+	--SET NOCOUNT ON;        
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --        
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		,Participant_Type VARCHAR(50)
+		);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc';
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,TPT.Participant_Type
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE TPT ON TPT.AccountID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')
+		INNER JOIN TBL_EIS_DT_DELIVERABLE_ITEMS DI ON TPT.ACCOUNTID = DI.ACCOUNTID
+			AND DI.DELIVERABLEITEMID = XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int')
+			AND DI.BeneficiaryID = TPT.BeneficiaryID
+		WHERE (TPT.ExpireDate IS NOT NULL)
+			AND TPT.Participant_Type IN (
+				'Donor Active/Beneficiary Active'
+				,'Beneficiary Active'
+				)
+
+		SELECT DeliverableItemID
+			,(
+				SELECT ValidationRuleID
+				FROM TBL_DLV_ValidationRule -- changed the Kaspick DB table as StagingDB table is missing
+				WHERE RuleName = 'Participant Active, Death Populated'
+				) AS RuleID
+			,'ParticipantType' AS Attribute
+			,Participant_Type AS ActualValue
+			,'' AS DisplayMessage
+		FROM @DeliverableItemData
+		GROUP BY DeliverableItemID
+			,Participant_Type
+			--Select * from @DeliverableItemData
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --   
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_DQ_BeneActive_SelProc';
+END

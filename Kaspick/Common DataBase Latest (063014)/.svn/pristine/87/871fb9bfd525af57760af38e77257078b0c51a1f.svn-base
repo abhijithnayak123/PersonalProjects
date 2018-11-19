@@ -1,0 +1,160 @@
+  IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc')
+BEGIN
+    DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc;
+    PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc';
+END
+GO
+
+
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc]    Script Date: 06/25/2014 11:56:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc                  
+** Short Desc: RetrieveS Datarow of Accountid & ReportDate in TBL_EIS_RPT_PostContribution_GainLoss & TBL_EIS_RPT_UnitrustDeficitAccountInfo
+			   for deliverable items. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList>
+	<DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  
+	BeneficiaryID="645"  ClientEmployeeID="0"  Clientid="1"  DeliverableItemID="3"  DeliverableQueueID="1"  
+	DonorID="0"  TrustparticipantID="27" DeliverableFrequency="A" /></SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc
+    @XMLDeliverableItems
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 09/02/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+**  25-Sep-2009	Venugopal ET #10388  Condition added to check Spigot flag = 1 and include Spigot page = 1
+    28-Sep-2009 Venugopal            Count function is used to get the count of PostContribution.          
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/                  
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc]      
+ -- paremeters here      
+ @XMLDeliverableItems xml
+AS   
+BEGIN   
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+
+	--  Variable Declarations  --      
+	DECLARE @procname    varchar(60);      
+	DECLARE @ErrorDesc     varchar(1000);      
+	DECLARE @ErrorNumber     int; 
+	DECLARE @Cnt        int;
+    DECLARE @IncludeSpigotPage int;
+   	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1      varchar(30);      
+	DECLARE @val2      varchar(30);      
+    
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData Table
+	(    
+		 DeliverableItemID int,
+		 AccountID int,       
+		 DeliverableQueueID int
+	);
+	--  Variable Data Assignment  --      
+	Set @procname = 'USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc';      
+  	-- Body of procedure  --      
+	BEGIN TRY 
+		SELECT @IncludeSpigotPage = policydimensionid 
+		FROM policydimension 
+		WHERE fullname = 'Spigot Special Page'
+     
+		INSERT INTO @DeliverableItemData    
+		SELECT      
+		 XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID,    
+		 XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID,    
+		 XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID        
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')  
+		JOIN tbl_eis_ex_deferredgiftaccount_supplement DGAS ON VA.ACCOUNTID = DGAS.ACCOUNTID
+		JOIN policyitem PA ON VA.ACCOUNTID = PA.ownerid AND PA.PolicyLevel = 300 AND PA.policydimensionid = @IncludeSpigotPage
+		WHERE XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar') = 'A'
+		AND VA.ACCOUNT_TYPE <> 'PIF'
+		AND DGAS.SpigotAccount = 1
+		AND PA.LogicalValue = 1  
+
+        SELECT
+		DeliverableItemID,     
+		3 AS RuleID,     
+		'PostContribution' as Attribute,    
+		COUNT(PCGL.AnnuityContractID)  AS ActualValue,
+		''  AS DisplayMessage
+        FROM @DeliverableItemData DID
+		JOIN TBL_EIS_DT_Deliverable_Queue DQ on DID.DeliverableQueueID = DQ.DeliverableQueueID  
+		LEFT JOIN TBL_EIS_RPT_PostContribution_GainLoss PCGL on DID.AccountID = PCGL.AccountID AND DATEDIFF(DAY,DQ.DeliverableEndDate,PCGL.ReportDate) = 0 
+		Group By DID.DeliverableItemID
+		UNION
+		SELECT
+		DeliverableItemID,     
+		3 AS RuleID,     
+		'UnitrustDeficitAccountInfo' as Attribute,    
+		ISNULL(UDAI.AccountID,0)  AS ActualValue,
+		''  AS DisplayMessage
+        FROM @DeliverableItemData DID
+		JOIN TBL_EIS_DT_Deliverable_Queue DQ on DID.DeliverableQueueID = DQ.DeliverableQueueID  
+		LEFT JOIN TBL_EIS_RPT_UnitrustDeficitAccountInfo UDAI on DID.AccountID = UDAI.AccountID AND DATEDIFF(DAY,DQ.DeliverableEndDate,UDAI.ReportDate) = 0  
+
+		
+   	END TRY      
+	BEGIN CATCH      
+   		Set @ErrorDesc = ERROR_MESSAGE();      
+		Set @ErrorNumber = ERROR_NUMBER();      
+		Set @val1 = '';      
+		Set @val2 = '';      
+		  
+		exec dbo.spSYS_ErrorHandler @codename = @procname,      
+		@errmsg = @ErrorDesc,       
+		@errnbr = @ErrorNumber,      
+		@val1 = '',       
+		@val1str = 'USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc: Cannot Select.',       
+		@val2 = '',       
+		@val2str = '';      
+	END CATCH      
+	-- End of procedure  -- 
+END
+
+GO
+
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc')
+    BEGIN
+        PRINT 'CREATED USP_EIS_RPT_BR_VE_DR_MissingSpigot_SelProc';
+    END

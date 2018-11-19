@@ -1,0 +1,133 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ValidateGroupAccounts]    Script Date: 07/01/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ValidateGroupAccounts]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ValidateGroupAccounts]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ValidateGroupAccounts]    Script Date: 07/01/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_ValidateGroupAccounts  
+** Short Desc: Get a string of comma separated invalid CustomerAccountNumbers  
+**  
+** Full Description  
+  Get a string of comma separated invalid CustomerAccountNumbers from a XML input 
+**  
+** Sample Call  
+	Declare @status VARCHAR(MAX)  
+	EXEC USP_IE_ValidateGroupAccounts -- parameters  
+		'<GroupAccountsCollection>  
+		<InsertList>  
+		<GroupAccounts StagingID="0" GroupID="0" TaxYear="0" CustomerAccountNumber="JHMKR" AccountType="" CreationDate="9/7/2007 5:07:05 PM" MatureDate="1/1/0001 12:00:00 AM" StatusID="0" UserID="0" />
+		<GroupAccounts StagingID="0" GroupID="0" TaxYear="0" CustomerAccountNumber="ACBAD" AccountType="" CreationDate="9/7/2007 5:07:05 PM" MatureDate="1/1/0001 12:00:00 AM" StatusID="0" UserID="0" />    
+		<GroupAccounts StagingID="0" GroupID="0" TaxYear="0" CustomerAccountNumber="ACBID" AccountType="" CreationDate="9/7/2007 5:07:08 PM" MatureDate="1/1/0001 12:00:00 AM" StatusID="0" UserID="0" />  
+		</InsertList>  
+		<UpdateList>  
+		</UpdateList>  
+		<DeleteList>  
+		</DeleteList>  
+		</GroupAccountsCollection>',  
+		@status OUTPUT  
+	Select @status     
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 07/01/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- -----  
+**  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ValidateGroupAccounts]
+	-- paremeters here  
+	@XMLDATA XML
+	,@return_status VARCHAR(MAX)
+OUTPUT AS
+
+--  Initial Set statements  --  
+--SET NOCOUNT ON;  
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+--  Variable to process XML document  
+DECLARE @idoc INT;
+DECLARE @i_Account INT;
+DECLARE @i_Max_Account INT;
+DECLARE @Error_Account VARCHAR(14);
+--  Temp tables, Cursors, Table Variables  --  
+DECLARE @TBL_Account TABLE (
+	ID INT Identity(1, 1)
+	,CustomerAccountNumber VARCHAR(14)
+	)
+
+--  Variable Data Assignment  --  
+SET @procname = 'USP_IE_ValidateGroupAccounts';
+SET @return_status = '';
+
+-- Body of procedure  --  
+INSERT INTO @TBL_Account (CustomerAccountNumber)
+SELECT CustomerAccountNumber
+FROM (
+	SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+	FROM @XMLDATA.nodes('//GroupAccountsCollection/InsertList/GroupAccounts') AS XMLDATA(item)
+	) AS x
+WHERE x.CustomerAccountNumber NOT IN (
+		SELECT CustomerAccountNumber
+		FROM SYN_IT_AccountMaster
+		)
+
+--Loop through the table to get comma separated CustomerAccountNumber  
+IF EXISTS (
+		SELECT CustomerAccountNumber
+		FROM @TBL_Account
+		)
+BEGIN
+	SET @i_Max_Account = 0;
+	SET @i_Account = 1;
+
+	SELECT @i_Max_Account = COUNT(*)
+	FROM @TBL_Account;
+
+	WHILE @i_Account <= @i_Max_Account
+	BEGIN
+		SELECT @Error_Account = CustomerAccountNumber
+		FROM @TBL_Account
+		WHERE ID = @i_Account;
+
+		IF @i_Account = 1
+			SET @return_status = @Error_Account;
+		ELSE
+			SET @return_status = @return_status + ',' + @Error_Account;
+
+		SET @i_Account = @i_Account + 1;
+	END
+END
+		-- End of procedure  --  

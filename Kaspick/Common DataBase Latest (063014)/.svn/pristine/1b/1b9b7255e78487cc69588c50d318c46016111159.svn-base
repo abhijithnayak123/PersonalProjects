@@ -1,0 +1,167 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTManagementConsoleByIDs'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetBRDTManagementConsoleByIDs;
+
+	PRINT 'DROPPED USP_RP_GetBRDTManagementConsoleByIDs';
+END
+GO
+
+/******************************************************************************                  
+** old Name:	 USP_EIS_BR_DT_ManagementConsoleByIDs_SelProc
+
+** New Name:     USP_RP_GetBRDTManagementConsoleByIDs
+
+** Short Desc: To fetch data for Management Console
+**                  
+** Full Description: To fetch data for Management Console  
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+  EXEC USP_EIS_BR_DT_ManagementConsoleByIDs_SelProc 0,'1,2','0','0','','','0'
+
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Ashvin Mandowara
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 23-Nov-2011
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** Mar-14-2012   Ashvin			ERD changes implemetation.
+** May-10-2012 Ashvin			Adding @DeliverableID.
+** 26-May-2014 Mukesh			Made changes in the table and Sp names to refer new KASPICK DB
+** 06-Jun-2014 Mukesh			SP Name Renamed and Formatted
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTManagementConsoleByIDs] (
+	@DeliverableID BIGINT = 0
+	,@DeliverableQueueIDs VARCHAR(4000) = '0'
+	,@StatusIDs VARCHAR(4000) = '0'
+	,@ClientIDs VARCHAR(4000) = '0'
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	,@ReportOwners BIGINT = 0
+	)
+AS
+BEGIN
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#DT_MC_ITEM]')
+			)
+		DROP TABLE [DBO].[#DT_MC_ITEM]
+
+	CREATE TABLE #DT_MC_ITEM (
+		ITEMID INT IDENTITY(1, 1)
+		,DeliverableQueueID INT
+		,DeliverableName VARCHAR(150)
+		,QueueName VARCHAR(150)
+		,ClientManagerUsers VARCHAR(150)
+		,ClientBriefName VARCHAR(20)
+		,ReportAnalystUsers VARCHAR(150)
+		,AccountType VARCHAR(20)
+		,SendTo VARCHAR(20)
+		,Scheduled INT
+		,Error INT
+		,Generated INT
+		,Published INT
+		,Cancelled INT
+		,WebPublished INT
+		,Printed INT
+		,Reviewed INT
+		,PrintoutMailed INT
+		,OnHold INT
+		,TotalOfReports INT
+		,DropDownIdID INT
+		,OWNER_ROLE VARCHAR(150)
+		,REPORT_OWNER VARCHAR(250)
+		)
+
+	DECLARE @name VARCHAR(50)
+
+	DECLARE db_cursor CURSOR
+	FOR
+	SELECT DeliverableQueueID
+	FROM TBL_DLV_DeliverableQueue
+	WHERE (
+			@DeliverableQueueIDs = '0'
+			OR (CHARINDEX(',' + CONVERT(VARCHAR(10), DeliverableQueueID) + ',', ',' + @DeliverableQueueIDs + ',') > 0)
+			)
+
+	OPEN db_cursor
+
+	FETCH NEXT
+	FROM db_cursor
+	INTO @name
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		EXEC USP_RP_GetBRDTManagementConsole @DeliverableID
+			,@name
+			,@StatusIDs
+			,@ClientIDs
+			,@FromDate
+			,@ToDate
+			,@ReportOwners
+
+		FETCH NEXT
+		FROM db_cursor
+		INTO @name
+	END
+
+	CLOSE db_cursor
+
+	DEALLOCATE db_cursor
+
+	SELECT DeliverableQueueID
+		,DeliverableName
+		,QueueName
+		,ClientManagerUsers
+		,ClientBriefName
+		,ReportAnalystUsers
+		,AccountType
+		,SendTo
+		,Scheduled
+		,Error
+		,Generated
+		,Published
+		,Cancelled
+		,WebPublished
+		,Printed
+		,Reviewed
+		,PrintoutMailed
+		,OnHold
+		,TotalOfReports
+		,DropDownIdID
+	FROM #DT_MC_ITEM
+	ORDER BY DeliverableQueueID
+		,SendTo
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTManagementConsoleByIDs'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetBRDTManagementConsoleByIDs';
+END

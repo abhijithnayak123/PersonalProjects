@@ -1,0 +1,97 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportIndexDdl'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetRptReportIndexDdl;
+
+	PRINT 'DROPPED USP_EX_GetRptReportIndexDdl';
+END
+GO
+
+/******************************************************************************                    
+** Name : USP_EX_GetRptReportIndexDdl
+** Old Name:     USP_EIS_RPT_REPORT_INDEX_DDLSelProc                    
+** Short Desc: To retrieve the indices to fill the Indices Management dropdown in Client Profile Reporting            
+**                    
+** Full Description: To retrieve the indices to fill the Indices Management dropdown in Client Profile Reporting           
+**                            
+** Input Arguments: NONE  
+**       
+** Sample Call                    
+**  EXEC USP_EIS_RPT_REPORT_INDEX_DDLSelProc  
+     
+**           
+** Return values: NONE  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Pankaja             
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 06/03/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 06/11/2009 Saravanan P Muthu Added Log Information and Indentation   
+** 03-Mar-2014 Mallikarjun  EXCREQ 5.4 Modified
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetRptReportIndexDdl]
+AS
+BEGIN
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EX_GetRptReportIndexDdl';
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		SELECT IndexID
+			,IndexBriefName
+		FROM TBL_BR_ReportIndex
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_GetRptReportIndexDdl: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --        
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportIndexDdl'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetRptReportIndexDdl';
+END

@@ -1,0 +1,104 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsFlatFile]    Script Date: 05/21/2013 12:14:02 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsFlatFile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsFlatFile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsFlatFile]    Script Date: 05/21/2013 12:14:02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsFlatFile                      
+** Short Desc: To INSERT the FlatFilenames and corresponding jobid, templateid,exception code
+**                      
+** Full Description: To INSERT the FlatFilenames and corresponding jobid, templateid,exception code       
+**                              
+** Input Arguments:  
+		   @FlatFileName -Flat file Name    
+*          @TemplateCode - TemplateCode of the Corresponding Filename    
+*          @ReportSlNo - Template files generation order
+*          @CreatedBy - Holds User Information who has Inserted      
+*          @ProcessID   - Payment publish Process Log ID 
+**         
+** Sample Call     
+EXEC USP_PP_InsFlatFile '<FlatFileCollection><FlatFile FlatFileName="dkfjsdlkfj" TemplateCode="1" ReportSlNo="1"></FlatFile></FlatFileCollection>', 1,0
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 24-jul-13	Niveditha	Changed for XML Input
+** 09-Sep-13	Saravanan   Added ProcessID input argument to track Payment publish process log information
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsFlatFile] @FlatFileXML XML
+	,@CreatedBy INT, @ProcessID INT
+AS
+SET NOCOUNT ON
+
+BEGIN TRY
+	BEGIN TRANSACTION
+	
+	INSERT INTO dbo.TBL_PP_FlatFile (
+		 ProcessID
+		,FlatFileName
+		,TemplateCode
+		,ReportSLNo
+		)
+	SELECT @ProcessID 
+		,XMLDoc.item.value('@FlatFileName[1]', 'VARCHAR(100)') AS FlatFileName
+		,XMLDoc.item.value('@TemplateCode[1]', 'INT') AS TemplateCode
+		,XMLDoc.item.value('@ReportSlNo[1]', 'INT') AS ReportSlNo
+	FROM @FlatFileXML.nodes('//FlatFileCollection/FlatFile') AS XMLDoc(item)
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

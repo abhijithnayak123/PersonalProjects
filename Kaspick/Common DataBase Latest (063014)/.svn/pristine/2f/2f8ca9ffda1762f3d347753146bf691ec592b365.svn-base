@@ -1,0 +1,85 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetDTDeliverable')
+BEGIN
+    DROP PROCEDURE USP_RP_GetDTDeliverable;
+    PRINT 'DROPPED USP_RP_GetDTDeliverable';
+END
+GO
+
+/******************************************************************************                        
+** Name : USP_RP_GetDTDeliverable                  
+**      
+** Old Name:     USP_EIS_DT_Deliverable_SelProc      
+**
+** Short Desc:       
+**      
+** Full Description:       
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+ EXEC USP_RP_GetDTDeliverable      
+**               
+** Return values: Return Status      
+**                        
+** Standard declarations                        
+**                         
+** Created By: Venugopal    
+**      
+** Company   : Kaspick & Company                        
+** Project   : Deliverable Tool      
+** Created DT: 12-Oct-2011                  
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------                  
+** 17-04-2012 Ashvin   Adding NoofApprovalLevels in the selection      
+   28-Jun-2012 Anand      Added condition for "Track In Reportoire"  
+   13-July-2012 Soorya          Added 'QueueCreationEnabled' in the select list  
+   19-May-2014	Geervani	Made changes in the table names to refer new KASPICK DB
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/      
+CREATE PROCEDURE [dbo].[USP_RP_GetDTDeliverable] 
+AS 
+  BEGIN 
+      DECLARE @QueueCreationEnabled INT 
+
+      SELECT @QueueCreationEnabled = ListItemID 
+      FROM   dbo.VW_EX_ListItem 
+      WHERE  ListTypeName = 'Logical Value' 
+             AND ListItemName = 'Yes' 
+
+      SELECT DlvDel.deliverableid, 
+             DlvDel.deliverablename, 
+             LIQC.ListItemName AS QueueCreationMethod, 
+             DelProc.noofapprovallevels, 
+             ( CASE 
+                 WHEN DlvDel.queuecreationenabled = @QueueCreationEnabled THEN 1 
+                 ELSE 0 
+               END )             AS QueueCreationEnabled 
+      FROM   TBL_DLV_Deliverable DlvDel 
+             INNER JOIN TBL_DLV_DeliverableType DelTyp 
+                     ON DelTyp.deliverabletypeid = DlvDel.deliverabletypeid 
+             INNER JOIN TBL_DLV_DeliverableProcess DelProc 
+                     ON DelProc.deliverableprocessid = DlvDel.deliverableprocessid 
+             INNER JOIN TBL_ListItem LIQC 
+                     ON LIQC.ListItemID = DelProc.queuecreationmethodid 
+      WHERE  DelTyp.deliverabletypename IN ( 'Report', 'Report Package' ) 
+             AND DlvDel.isactive = 1 
+      ORDER  BY DlvDel.deliverablename ASC 
+  END 
+  
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetDTDeliverable')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetDTDeliverable';
+    END

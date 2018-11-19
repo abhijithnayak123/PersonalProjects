@@ -1,0 +1,89 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportGetTerminationFactor'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportGetTerminationFactor
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportGetTerminationFactor                      
+** Short Desc:  
+**                      
+** Full Description:  
+**                              
+** Input Arguments: @TaxYear INT
+	,@MatureDate DATETIME
+	,@FinalPaymentType INT
+	,@MatureReason INT
+** Sample Call     
+        
+ SELECT [dbo].[Fn_ReportGetTerminationFactor](2013,'12/31/2012',0,3)   
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportGetTerminationFactor] (
+	@TaxYear INT
+	,@MatureDate DATETIME
+	,@FinalPaymentType INT
+	,@MatureReason INT
+	)
+RETURNS FLOAT
+AS
+BEGIN
+	DECLARE @ReturnValue FLOAT
+	DECLARE @EndDate DATETIME
+
+	IF @MatureDate IS NULL
+		SET @ReturnValue = 1
+	ELSE
+		IF year(@MatureDate) <> @TaxYear
+			SET @ReturnValue = 1
+		ELSE
+			IF @FinalPaymentType = 1
+				SET @ReturnValue = 1 - dbo.Fn_ReportGetDateProrate(@MatureDate)
+			ELSE
+			BEGIN
+				BEGIN
+					IF @MatureReason = 2
+						OR @MatureReason = 3
+						SET @EndDate = dateadd(day, 1, @MatureDate) --Include final day  
+					ELSE
+						IF @MatureReason = 1
+							SET @EndDate = @MatureDate --death, Exclude final day  
+						ELSE
+							SET @EndDate = @MatureDate --Default(exclude final day)  
+				END
+
+				IF year(@EndDate) <> year(@MatureDate)
+					SET @ReturnValue = 1
+				ELSE
+					SET @ReturnValue = 1 - dbo.Fn_ReportGetDateProrate(@EndDate)
+			END
+
+	RETURN @ReturnValue
+END

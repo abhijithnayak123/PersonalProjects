@@ -1,0 +1,90 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'Fn_SplitStrSBAddr'
+		)
+BEGIN
+	DROP FUNCTION Fn_SplitStrSBAddr
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_SplitStrSBAddr                      
+** Short Desc: To split the source bank address
+**                      
+** Full Description: To split the source bank address based on the position specified
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+ select dbo.Fn_SplitStrSBAddr('test',6)
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha    
+** Company   : Kaspick & Company                      
+** Project   : BackOfficeIntegration
+** Created DT: 04-OCT-2012                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 18/01/2012  Niveditha ET #9999  logic to compute xyz is added
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_SplitStrSBAddr] (
+	@SBAADDRESS VARCHAR(250)
+	,@POSITION INT
+	)
+RETURNS VARCHAR(80)
+AS
+BEGIN
+	--DECLARE   @PAYORADDRESS VARCHAR(250)  
+	DECLARE @I1 INT
+	DECLARE @I2 INT
+	DECLARE @CR CHAR(1)
+	DECLARE @SBA1 VARCHAR(80)
+	DECLARE @SBA2 VARCHAR(80)
+	DECLARE @TMPVALUE VARCHAR(80)
+
+	SET @SBAADDRESS = @SBAADDRESS
+	SET @CR = CHAR(10)
+
+	SELECT @I1 = CHARINDEX(@cr, @SBAADDRESS + @cr)
+		,@SBA1 = SUBSTRING(@SBAADDRESS + @cr, 1, @I1 - 1)
+		,@I2 = CASE 
+			WHEN COALESCE(@I1, 0) = 0
+				THEN 0
+			ELSE COALESCE(CHARINDEX(@cr, @SBAADDRESS + @cr, @I1 + 1), DATALENGTH(@SBAADDRESS + @cr))
+			END
+		,@SBA2 = CASE 
+			WHEN @I2 = 0
+				THEN NULL
+			ELSE SUBSTRING(@SBAADDRESS + @cr, @I1 + 1, @I2 - @I1 - 1)
+			END
+
+	SET @TMPVALUE = ''
+
+	IF @POSITION = 1
+	BEGIN
+		SET @TMPVALUE = @SBA1
+	END
+
+	IF @POSITION = 2
+	BEGIN
+		SET @TMPVALUE = @SBA2
+	END
+
+	-- SELECT  (CASE WHEN @POSITION=1 THEN @TMPVALUE= @ACCOUNTNAME1 ELSE @TMPVALUE= @ACCOUNTNAME2 END )  
+	RETURN @TMPVALUE
+END
+

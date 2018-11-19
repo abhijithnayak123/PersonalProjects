@@ -1,0 +1,123 @@
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdInvestComment'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdInvestComment;
+
+	PRINT 'DROPPED USP_EX_UpdInvestComment';
+END
+GO
+
+/******************************************************************************          
+** New Name : USP_EX_UpdInvestComment  
+** Old Name   :   USP_EIS_EX_INVESTMENT_COMMENT_Insert    
+** Short Desc : Updates an Investment Comments record    
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC USP_EIS_EX_INVESTMENT_COMMENT_Insert 12, 'AdventID', "Investment Comments',     
+             125, '2010-10-14 10:25:18.231',    
+   -- parameters          
+**          
+** Return values: None          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By :  Prabin Varm     
+** Company  :  Kaspick & Company          
+** Project  :  Enfuego3B    
+** Created DT :  Oct/13/2010          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** 3-Apr-2014   Yugandhar   EXCREQ 7.4  
+** 23/05/2014 Mallikarjun SP name Renamed and Formatted  
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_UpdInvestComment @InvestmentCommentID INT,
+	@AdventID VARCHAR(8),
+	@InvestmentComment TEXT,
+	@LastModifiedUser INT,
+	@LastModifiedDate DATETIME
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		--  Initial Set statements  --        
+		SET NOCOUNT ON;
+		SET LOCK_TIMEOUT 30000;-- 30 seconds        
+			--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;    
+
+		DECLARE @InvCommentID INT;
+
+		UPDATE TBL_INV_InvestmentComment
+		SET CustomerAccountNumber = @AdventID,
+			[InvestmentComment] = @InvestmentComment,
+			ModifiedBy = @LastModifiedUser,
+			ModifiedDate = @LastModifiedDate
+		WHERE [InvestmentCommentID] = @InvestmentCommentID
+
+		SELECT @InvCommentID = MAX(InvestmentCommentID)
+		FROM TBL_INV_InvestmentComment
+		WHERE CustomerAccountNumber = @AdventID
+
+		IF (@InvCommentID = @InvestmentCommentID)
+		BEGIN
+			UPDATE TBL_INV_AccountProfile
+			SET InvestmentComment = @InvestmentComment
+			WHERE CustomerAccountNumber = @AdventID
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_UpdInvestComment';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage,
+				-- Message text.
+				@ErrorSeverity,
+				-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdInvestComment'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_UpdInvestComment';
+END
+

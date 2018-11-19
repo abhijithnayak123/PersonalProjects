@@ -1,0 +1,169 @@
+--WARNING! ERRORS ENCOUNTERED DURING SQL PARSING! 
+--WARNING! ERRORS ENCOUNTERED DURING SQL PARSING! 
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsProfilePfa'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_InsProfilePfa;
+
+	PRINT 'DROPPED USP_EX_InsProfilePfa';
+END
+GO
+
+/**************************************************************************        
+* Procedure Name : USP_EX_InsProfilePfa  
+* Old Procedure Name :USP_EIS_EX_PROFILE_PFA_InsProc     9,'',1995,'Alliance',0,'','ProgramPFAUpdate.aspx', 'Form Due',100038  ,244  
+* Description  : To Insert PFA Details in  TBL_EIS_EX_PROFILE_PFA        
+* Input Parameter : @CGA_SETUP_ID,@FORM_DUE,@FILING_STATUS_TYPE_ID,@ENTITY_TYPE,        
+*     : @ID,@REQUIRED_LATER_DATE,@PAGENAME,@FIELDNAME,@USER_ID        
+*        
+* Modification Log  : Indentation                                                     
+*                                    
+* Date         Modified By  Description                                                    
+*-------------------------------------------------------------------------        
+* 24-Oct-06    Venugopal B  Created           
+* 2-Nov-06     Saravanan PM  Modified          
+* 18-May-06    Venugopal B  Delete_Flag is removed   
+* 21-Apr-2014  Sanath       Modified        
+* 23/05/2014 Mallikarjun  SP Name Renamed and Formatted    
+****************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_InsProfilePfa] --12,0,299,'Program',200018,'11/30/2006','ProgramPFAUpdate.aspx','Form Due',30,0     
+	(
+	@CGA_SETUP_ID INT
+	,@FORM_DUE DATETIME
+	,@FILING_STATUS_TYPE_ID INT
+	,@ENTITY_TYPE VARCHAR(30)
+	,@ID VARCHAR(15)
+	,@REQUIRED_LATER_DATE DATETIME
+	,@PAGENAME VARCHAR(100)
+	,@FIELDNAME VARCHAR(100)
+	,@USER_ID INT
+	,@NEW_PFA_ID INT OUTPUT
+	)
+AS
+DECLARE @PFA_ID INT
+	,@DELETEFLAG BIT
+	,@ENTITY_TYPE_ID INT
+	,@CLIENTID VARCHAR(15)
+	,@PROGRAMID VARCHAR(15)
+	,@ACCOUNTID VARCHAR(15)
+	,@DISPLAY_NAME VARCHAR(50)
+DECLARE @STATUSFLAG BIT
+DECLARE @LOCAL_TABLE_NAME VARCHAR(100)
+DECLARE @LOCAL_FIELD_NAME VARCHAR(100)
+
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		SET @NEW_PFA_ID = 0
+
+		EXEC USP_EX_GetLISTITEMID @LIST_TYPE_NAME = 'ENTITY'
+			,@LIST_ITEM_NAME = @ENTITY_TYPE
+			,@LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT
+
+		SET @CLIENTID = NULL
+		SET @PROGRAMID = NULL
+		SET @ACCOUNTID = NULL
+
+		IF @ENTITY_TYPE = 'Manager'
+		BEGIN
+			SET @CLIENTID = @ID
+			SET @DISPLAY_NAME = 'Client - PFA'
+				--SET @LOCAL_TABLE_NAME = 'SYN_IT_AccountMangerCodes'      
+				-- SET @LOCAL_FIELD_NAME = 'ManagerCode'      
+		END
+		ELSE IF @ENTITY_TYPE = 'Alliance'
+		BEGIN
+			SET @PROGRAMID = @ID
+			SET @DISPLAY_NAME = 'Program - PFA'
+				--SET @LOCAL_TABLE_NAME = 'SYN_IT_AllianceNumber'      
+				--SET @LOCAL_FIELD_NAME = 'AllianceNumber'     
+		END
+		ELSE IF @ENTITY_TYPE = 'Account'
+		BEGIN
+			SET @ACCOUNTID = @ID
+			SET @DISPLAY_NAME = 'Account - PFA'
+				--SET @LOCAL_TABLE_NAME = 'SYN_IT_AccountMaster'      
+				--SET @LOCAL_FIELD_NAME = 'CustomerAccountNumber'        
+		END
+
+		BEGIN
+			DECLARE @NEWID INT
+
+			SELECT @NEWID = MAX(PFA_ID) + 1
+			FROM TBL_BR_ProfilePFA
+
+			INSERT INTO TBL_BR_ProfilePFA (
+				PFA_ID
+				,CGA_SETUP_ID
+				,FORM_DUE_DATE
+				,FILING_STATUS_TYPE_ID
+				,ENTITY_TYPE_ID
+				,ManagerCode
+				,AllianceNumber
+				,CustomerAccountNumber
+				,MODIFIED_DATE
+				,MODIFIED_USER_ID
+				,CREATED_DATE
+				,CREATED_USER_ID
+				)
+			VALUES (
+				@NEWID
+				,@CGA_SETUP_ID
+				,@FORM_DUE
+				,@FILING_STATUS_TYPE_ID
+				,@ENTITY_TYPE_ID
+				,@CLIENTID
+				,@PROGRAMID
+				,@ACCOUNTID
+				,GETDATE()
+				,@USER_ID
+				,GETDATE()
+				,@USER_ID
+				)
+
+			SELECT @NEW_PFA_ID = @NEWID
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_InsProfilePfa';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+			
+	 RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );       
+		RETURN (- 1)      		
+	END CATCH
+		
+END 
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsProfilePfa'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_InsProfilePfa';
+END

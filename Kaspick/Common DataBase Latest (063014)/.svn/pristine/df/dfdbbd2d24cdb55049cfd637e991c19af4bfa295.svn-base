@@ -1,0 +1,177 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetListItemProfileReportingDDL')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetListItemProfileReportingDDL;
+        PRINT 'DROPPED USP_EX_GetListItemProfileReportingDDL';
+    END
+GO
+
+
+
+
+  
+  
+/******************************************************************************            
+** New Name : USP_EX_GetListItemProfileReportingDDL  
+** Old Name:     USP_EIS_EX_LIST_ITEM_PROFILE_REPORTING_DDLSelProc             
+** Short Desc: Put in Short Description            
+**            
+** Full Description            
+**                    
+**            
+** Sample Call            
+        EXEC USP_EIS_EX_LIST_ITEM_PROFILE_REPORTING_DDLSelProc           
+    @ENTITY_TYPE = 'CLIENT'      
+**      
+** Return values: NONE            
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By: Saravanan P Muthu         
+** Company   : Kaspick & Company            
+** Project   : Excelsior - Beneficiray Report            
+** Created DT: 06/22/2009            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+** 26-Sep-2013 Alok              Stanford Enhancements - Added logic for retrieving values for     
+         List Type 'Display Payments on Report'  
+** 03-Apr-2014   Mallikarjun  EXCREQ 5.4        
+** 22-MAY-2014 Mallikarjun EXCREQ     SP Name Renamed and Formatted              
+*******************************************************************************            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/   
+  
+            
+CREATE PROCEDURE [dbo].[USP_EX_GetListItemProfileReportingDDL]   
+(  
+ @ENTITY_TYPE VARCHAR(100)  
+)    
+AS    
+             
+BEGIN    
+ --1 Report Category      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Report Category')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --2 Report Schedule      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Report Schedule')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --3 Logical Value      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Logical Value')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --4 Retirement/Perpetual      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Retirement/Perpetual')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --5 CTS Version      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('CTS Version')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --6 PV Rpt      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('PV Rpt')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --7 Client Logo FileType      
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Client Logo FileType')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ IF (UPPER(@ENTITY_TYPE) = 'MANAGER')    
+ BEGIN    
+  --8 Custom label      
+  SELECT ListItemID DDVALUE    
+   ,ListItemName DDTEXT    
+  FROM TBL_ListItem LstItm    
+  INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+  WHERE LOWER(ListTypeName) = LOWER('Custom label')    
+  ORDER BY DISPLAYSEQUENCE    
+    
+  --9 TARP Production Cycle      
+  SELECT ListItemID DDVALUE    
+   ,ListItemName DDTEXT    
+  FROM TBL_ListItem LstItm    
+  INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+  WHERE LOWER(ListTypeName) = LOWER('TARP Production Cycle')    
+  ORDER BY DISPLAYSEQUENCE    
+    
+  --10 TARP Calendar      
+  SELECT ListItemID DDVALUE    
+   ,ListItemName DDTEXT    
+  FROM TBL_ListItem LstItm    
+  INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+  WHERE LOWER(ListTypeName) = LOWER('TARP Calendar')    
+  ORDER BY DISPLAYSEQUENCE    
+    
+  --11 CTS Client Versions      
+  SELECT ListItemID DDVALUE    
+   ,ListItemName DDTEXT    
+  FROM TBL_ListItem LstItm    
+  INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+  WHERE LOWER(ListTypeName) = LOWER('CTS Client Versions')    
+  ORDER BY DISPLAYSEQUENCE    
+ END    
+    
+ --12 Send To          
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Send To')    
+ ORDER BY DISPLAYSEQUENCE    
+    
+ --13 Display Payments on Report          
+ SELECT ListItemID DDVALUE    
+  ,ListItemName DDTEXT    
+ FROM TBL_ListItem LstItm    
+ INNER JOIN TBL_ListType LstTyp ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID    
+ WHERE LOWER(ListTypeName) = LOWER('Display Payments on Report')    
+ ORDER BY DISPLAYSEQUENCE    
+END    
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetListItemProfileReportingDDL') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetListItemProfileReportingDDL';
+	END

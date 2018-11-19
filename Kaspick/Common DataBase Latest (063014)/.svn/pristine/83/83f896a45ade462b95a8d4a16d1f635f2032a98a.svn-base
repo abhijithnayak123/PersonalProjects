@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleProjectedCashPayout]    Script Date: 07/11/2013 09:22:21 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetActivityConsoleProjectedCashPayout]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_PP_GetActivityConsoleProjectedCashPayout]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleProjectedCashPayout]    Script Date: 07/11/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetActivityConsoleProjectedCashPayout                      
+** Short Desc: To retrieve Annual estimated payout 
+**                      
+** Full Description:  To retrieve Annual estimated payout for a particular Customer Account Number in an TaxYear          
+**        
+**                              
+** Input Arguments:  
+		@TaxYear				INT,    
+		@CustomerAccountNumber	VARCHAR(14),    
+ 
+**         
+** Sample Call     
+        
+	Declare @ret Float      
+	execute USP_PP_GetActivityConsoleProjectedCashPayout 2007,'7772152',@ret output
+	select @ret 
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 11-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+
+CREATE PROCEDURE [dbo].[USP_PP_GetActivityConsoleProjectedCashPayout]     
+		@TaxYear				INT,    
+		@CustomerAccountNumber	VARCHAR(14),  
+		@ReturnStatus			Money OUTPUT      
+AS       
+      
+   	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds     
+      
+   
+-- Body of procedure  --      
+BEGIN      
+    
+   
+	SELECT @ReturnStatus			= EstAnnualPayout 
+		FROM TBL_PP_AnnualAccountPayoutInfo 
+	WHERE	PayoutYear				= @TaxYear 
+	AND		CustomerAccountNumber	= @CustomerAccountNumber
+  
+END 
+                  

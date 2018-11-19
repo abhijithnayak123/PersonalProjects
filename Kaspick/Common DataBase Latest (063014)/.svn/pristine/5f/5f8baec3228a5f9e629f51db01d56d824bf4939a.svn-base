@@ -1,0 +1,156 @@
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR]    Script Date: 07/08/2014 11:59:34 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR]    Script Date: 07/08/2014 11:59:34 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/********************************************************************************************                                            
+* PROCEDURE NAME  : [DBO].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR]                                             
+* PURPOSE         : Displays the accounts FIRSTTAXYEAR_LASTTAXYEAR.                    
+*                                                           
+*                                            
+* INPUT PARAMETER :  @TAXYEAR INT, @CLIENT,@CLIENTBRIEFNAME varchar(20),@ADVENT_ID varchar(8)      
+*      EXEC USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR 2013, 'AM' ,''                                                                  
+* MODIFICATION LOG                                                                                         
+*                                                                        
+* DATE            MODIFIED BY  DESCRIPTION                                                                                        
+*---------------------------------------------------------------------------------                                            
+* <02-06-08>        Rajeshp     
+*07/08/2014         Salih      Modifed data sources with the synonyms   
+********************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR] (
+	@TAXYEAR INT
+	,@CLIENTBRIEFNAME VARCHAR(20)
+	,@ADVENT_ID VARCHAR(8)
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	BEGIN TRY
+		BEGIN
+			IF (
+					@CLIENTBRIEFNAME = ''
+					AND @ADVENT_ID = ''
+					)
+			BEGIN
+				SELECT DISTINCT Clnt.BRIEFNAME
+					,ADVENTID
+					,DefGiftAct.TAXNAME AS [TAX Name ]
+					,DefGiftAct.TAXID AS SSN
+					,FIRSTTAXYEAR AS [FIRST TAX YEAR]
+					,LASTTAXYEAR AS [LAST TAX YEAR]
+				FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EP_Program Prgm
+					ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EP_Client Clnt
+					ON Clnt.CLIENTID = Prgm.CLIENTID
+				WHERE FIRSTTAXYEAR <= @TAXYEAR
+					AND (
+						LASTTAXYEAR IS NULL
+						OR LASTTAXYEAR >= @TAXYEAR
+						)
+				ORDER BY ADVENTID
+			END
+			ELSE
+				IF (
+						@CLIENTBRIEFNAME <> ''
+						AND @ADVENT_ID = ''
+						)
+				BEGIN
+					SELECT DISTINCT Clnt.BRIEFNAME
+						,ADVENTID
+						,DefGiftAct.TAXNAME AS [TAX Name ]
+						,DefGiftAct.TAXID AS SSN
+						,FIRSTTAXYEAR AS [FIRST TAX YEAR]
+						,LASTTAXYEAR AS [LAST TAX YEAR]
+					FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+					INNER JOIN SYN_EP_Program Prgm
+						ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+					INNER JOIN SYN_EP_Client Clnt
+						ON Clnt.CLIENTID = Prgm.CLIENTID
+					WHERE Clnt.BRIEFNAME LIKE @CLIENTBRIEFNAME + '%'
+						AND FIRSTTAXYEAR <= @TAXYEAR
+						AND (
+							LASTTAXYEAR IS NULL
+							OR LASTTAXYEAR >= @TAXYEAR
+							)
+					ORDER BY ADVENTID
+				END
+				ELSE
+					IF (
+							@CLIENTBRIEFNAME = ''
+							AND @ADVENT_ID <> ''
+							)
+					BEGIN
+						SELECT DISTINCT Clnt.BRIEFNAME
+							,ADVENTID
+							,DefGiftAct.TAXNAME AS [TAX Name ]
+							,DefGiftAct.TAXID AS SSN
+							,FIRSTTAXYEAR AS [FIRST TAX YEAR]
+							,LASTTAXYEAR AS [LAST TAX YEAR]
+						FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+						INNER JOIN SYN_EP_Program Prgm
+							ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+						INNER JOIN SYN_EP_Client Clnt
+							ON Clnt.CLIENTID = Prgm.CLIENTID
+						WHERE ADVENTID LIKE @ADVENT_ID + '%'
+							AND FIRSTTAXYEAR <= @TAXYEAR
+							AND (
+								LASTTAXYEAR IS NULL
+								OR LASTTAXYEAR >= @TAXYEAR
+								)
+						ORDER BY ADVENTID
+					END
+					ELSE
+						IF (
+								@CLIENTBRIEFNAME <> ''
+								AND @ADVENT_ID <> ''
+								)
+						BEGIN
+							SELECT DISTINCT Clnt.BRIEFNAME
+								,ADVENTID
+								,DefGiftAct.TAXNAME AS [TAX Name ]
+								,DefGiftAct.TAXID AS SSN
+								,FIRSTTAXYEAR AS [FIRST TAX YEAR]
+								,LASTTAXYEAR AS [LAST TAX YEAR]
+							FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+							INNER JOIN SYN_EP_Program Prgm
+								ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+							INNER JOIN SYN_EP_Client Clnt
+								ON Clnt.CLIENTID = Prgm.CLIENTID
+							WHERE ADVENTID LIKE @ADVENT_ID + '%'
+								AND Clnt.BRIEFNAME LIKE @CLIENTBRIEFNAME + '%'
+								AND FIRSTTAXYEAR <= @TAXYEAR
+								AND (
+									LASTTAXYEAR IS NULL
+									OR LASTTAXYEAR >= @TAXYEAR
+									)
+							ORDER BY ADVENTID
+						END
+		END
+	END TRY
+
+	BEGIN CATCH
+		BEGIN
+			PRINT 'USP_EIS_IRS_REP_FIRSTTAXYEAR_LASTTAXYEAR#: ' + CAST(@@ERROR AS VARCHAR(100))
+		END
+	END CATCH
+END
+GO
+
+

@@ -1,0 +1,79 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EX_GetRptFASB_CalulationMethodOverride')
+BEGIN
+    DROP PROCEDURE USP_EX_GetRptFASB_CalulationMethodOverride;
+    PRINT 'DROPPED USP_EX_GetRptFASB_CalulationMethodOverride';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+/************************************r******************************************                  
+** Name:     USP_EX_GetRptFASB_CalulationMethodOverride                  
+** Short Desc: To fetch the InstanceID related records from the table TBL_BR_FASBCalculationMethodOverride. 
+**                  
+** Full Description: 
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+		USP_EX_GetRptFASB_CalulationMethodOverride 6
+**									
+** Return values:
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Gaurav Nahar
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - FASB               
+** Created DT: 08/08/2014                
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- ----,----            
+**
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/   
+CREATE PROCEDURE [dbo].[USP_EX_GetRptFASB_CalulationMethodOverride]
+( 
+	@FASB_InstanceID Int 
+)   
+AS  
+BEGIN  
+
+	SELECT DISTINCT
+		FASB_InstanceID,
+		LTRIM(RTRIM(OverrideCalculationMethod)) AS OverrideCalculationMethod,
+		VAT.ACCOUNTTYPE,
+		LTRIM(RTRIM(CustomerAccountNumber)) AS CustomerAccountNumber
+	FROM  
+		TBL_BR_FASBCalculationMethodOverride TFCO
+	LEFT OUTER JOIN 	
+		VW_EX_Account VAT
+	ON
+		TFCO.CustomerAccountNumber=VAT.ADVENTID
+	WHERE 
+		FASB_InstanceID=@FASB_InstanceID	
+		
+		
+	
+END  
+GO
+	IF EXISTS (SELECT *
+		   FROM   sysobjects 
+		   WHERE  type = 'P'
+				  AND name = 'USP_EX_GetRptFASB_CalulationMethodOverride')
+	BEGIN
+		PRINT 'CREATED USP_EX_GetRptFASB_CalulationMethodOverride';
+	END
+  

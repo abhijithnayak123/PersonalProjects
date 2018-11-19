@@ -1,0 +1,254 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentComparison]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentComparison]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentComparison]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentComparison]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentComparison                      
+** Short Desc: Procedure to create payment comparison report 
+**                      
+** Full Description: Procedure to create payment comparison report 
+**      
+**                              
+** Input Arguments:   	@ManagerCode CHAR(4)
+**	,@FromDate DATETIME
+**	,@ToDate DATETIME
+**	,@PaymentType VARCHAR(20)         
+** Sample Call     
+       
+ EXEC USP_PP_ReportGetPaymentComparison 'ACL','09/16/2012','10/16/2014','ACH'
+ 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 07-01-14     Salih              Implementation for the staffrole change 
+***08-18-14		Niveditha		   Fixed the Client Manager rolecode
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentComparison] (
+	@ManagerCode CHAR(4)
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	,@PaymentType VARCHAR(20)
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#PaymentComparison]') IS NOT NULL
+		DROP TABLE [#PaymentComparison]
+
+	CREATE TABLE #PaymentComparison (
+		CustomerAccountNumber VARCHAR(14)
+		,ManagerCode CHAR(4)
+		,AccountType VARCHAR(20)
+		,PaymentTo VARCHAR(50)
+		,LastPayDate DATETIME
+		,LastPayAmount MONEY
+		,NextPayAmount MONEY
+		,[Difference] VARCHAR(20)
+		,NextPayDate DATETIME
+		,AssignedCM VARCHAR(30)
+		,AssignedTA VARCHAR(30)
+		,PaymentId INT
+		,ContactID INT NULL
+		,ContactRoleCode INT NULL
+		,PaymentType VARCHAR(20)
+		)
+
+	IF @PaymentTYPE = 'Check & Splitcheck'
+		SET @PaymentType = 'Check'
+
+	INSERT INTO #PaymentComparison (
+		CustomerAccountNumber
+		,ManagerCode
+		,AccountType
+		,PaymentTo
+		,LastPayDate
+		,LastPayAmount
+		,NextPayAmount
+		,[Difference]
+		,NextPayDate
+		,AssignedCM
+		,AssignedTA
+		,PaymentId
+		,ContactID
+		,ContactRoleCode
+		,PaymentType
+		)
+	SELECT DISTINCT AccPaySch.CustomerAccountNumber AS AdventID
+		,AccMstr.ManagerCode AS BriefName
+		,AccMstr.AccountTypeCode AS [Trust Type]
+		,CntMstr.ContactName AS PaymentName
+		,BenPymnt.PaymentDate AS LastPayDate
+		,BenPymnt.PaymentAmount AS LastPayAmount
+		,BenPaySch.ScheduledAmount AS NextPayAmount
+		,0.0 AS [Difference]
+		,BenPaySch.PaymentDate AS NextPayDate
+		,'' AS AssignedCM
+		,'' AS AssignedTA
+		,BenPaySch.PaymentID
+		,BenPaySch.ContactID
+		,BenPaySch.ContactRoleCode
+		,CntPmtMth.PaymentType AS PaymentMethod
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPaySch
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccPaySch
+		ON BenPaySch.APScheduleID = AccPaySch.APScheduleID
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = AccPaySch.CustomerAccountNumber
+	INNER JOIN (
+		SELECT row_number() OVER (
+				PARTITION BY CustomerAccountNumber
+				,ContactID
+				,ContactRoleCode ORDER BY PaymentDate DESC
+				) AS Rownum
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,PaymentAmount
+			,PaymentDate
+		FROM TBL_PP_BeneficiaryPayment
+		WHERE VoidDate IS NULL
+		) BenPymnt
+		ON BenPymnt.CustomerAccountNumber = AccPaySch.CustomerAccountNumber
+			AND BenPymnt.ContactID = BenPaySch.ContactID
+			AND BenPymnt.ContactRoleCode = BenPaySch.ContactRoleCode
+			AND Rownum = 1
+	LEFT OUTER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+		ON BeneDist.BeneficiaryDistributionID = BenPaySch.BeneficiaryDistributionID
+	LEFT OUTER JOIN SYN_IT_ContactPaymentMethods CntPmtMth
+		ON BeneDist.PayeePaymentMethodID = CntPmtMth.ID
+	LEFT OUTER JOIN SYN_IT_ContactMaster CntMstr
+		ON CntMstr.ContactID = BenPaySch.ContactID
+	WHERE (
+			(
+				(BenPaySch.PaymentDate) BETWEEN @FromDate
+					AND @ToDate
+				)
+			AND (
+				(BenPaySch.PaymentID) IS NULL
+				OR (BenPaySch.PaymentID) = 0
+				)
+			AND ((AccMstr.ManagerCode) = @ManagerCode)
+			--AND ((CntPmtMth.PaymentType) LIKE '%' + @PaymentMethod + '%')
+			AND ((CntPmtMth.PaymentType) = @PaymentType)
+			)
+	ORDER BY AccMstr.ManagerCode
+		,AccPaySch.CustomerAccountNumber
+
+	UPDATE #PaymentComparison
+	SET AssignedCM = (
+			-- 07-01-14 -Salih : Implementation for the staffrole change 
+			SELECT KUsr.FirstName
+			FROM TBL_KS_User KUsr
+			INNER JOIN SYN_IT_SubContactRoles SubCntRol
+				ON SubCntRol.SubContactID = KUsr.InnotrustContactID
+					AND SubCntRol.ContactRoleCode = 2 -- Client Manager
+			INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+				ON AccMgrCod.ContactID = SubCntRol.ContactID
+					AND AccMgrCod.ManagerCode = @ManagerCode
+			)
+
+	UPDATE #PaymentComparison
+	SET AssignedTA = (
+			-- 07-01-14 -Salih : Implementation for the staffrole change 
+			SELECT FirstName
+			FROM (
+				SELECT KUsr.FirstName AS FirstName
+					,row_number() OVER (
+						ORDER BY KUsr.LastLoginDateTime DESC
+						) AS Rwnm
+				FROM TBL_KS_User KUsr
+				INNER JOIN SYN_IT_SubContactRoles SubCntRol
+					ON SubCntRol.SubContactID = KUsr.InnotrustContactID
+						AND SubCntRol.ContactRoleCode = 510 -- 'Trust Administrator'
+				INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+					ON AccMgrCod.ContactID = SubCntRol.ContactID
+						AND AccMgrCod.ManagerCode = @ManagerCode
+				) Usr
+			WHERE Usr.Rwnm = 1
+			)
+
+	UPDATE #PaymentComparison
+	SET [Difference] = (
+			CASE 
+				WHEN [CustomerAccountNumber] IS NOT NULL
+					THEN (
+							CASE 
+								WHEN LastPayAmount IS NOT NULL
+									THEN cast(([NextPayAmount] - [LastPayAmount]) AS VARCHAR)
+								ELSE 'N/A'
+								END
+							)
+				ELSE ''
+				END
+			)
+
+	SELECT CustomerAccountNumber AS AdventID
+		,ManagerCode AS ClientBriefName
+		,AccountType AS TrustType
+		,PaymentTo
+		,(
+			CASE 
+				WHEN LastPayDate IS NULL
+					THEN 'Not Found'
+				ELSE convert(VARCHAR, LastPayDate, 101)
+				END
+			) AS LastPayDate
+		,(
+			CASE 
+				WHEN LastPayAmount IS NULL
+					THEN 'Not Found'
+				ELSE convert(VARCHAR, LastPayAmount)
+				END
+			) AS LastPayAmount
+		,NextPayAmount
+		,[Difference]
+		,convert(VARCHAR, NextPayDate, 101) AS NextPayDate
+		,AssignedCM
+		,AssignedTA
+		,PaymentId
+		,ContactID
+		,ContactRoleCode
+		,PaymentType AS paymentmethod
+	FROM #PaymentComparison
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#PaymentComparison]') IS NOT NULL
+		DROP TABLE [#PaymentComparison]
+
+	SET NOCOUNT OFF;
+END

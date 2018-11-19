@@ -1,0 +1,316 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_EstimateOverrideSaveSTGAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_EstimateOverrideSaveSTGAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_EstimateOverrideSaveSTGAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_EstimateOverrideSaveSTGAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_EstimateOverrideSaveSTGAccount    
+** Short Desc:     
+**    
+** Full Description : 
+**            
+**    
+** Sample Call        
+        exec dbo.USP_IE_EstimateOverrideSaveSTGAccount   
+ @XMLDATA='<EstimateStagingCollection><InsertList></InsertList><UpdateList>
+ <EstimateStaging StagingID="10280" GroupID="39" AdventID="301y271" AccountName="DFA TaxName" AccountType="PIF" AccountID="300105" RunDate="1/1/0001 12:00:00 AM" StatusID="0" Unitru
+stPercentage="0" UserID="0" UserName="" ImportDate="1/1/0001 12:00:00 AM" DiagnosticError="True" Ex_InvestmentType="" Ex_FlipProvision="0" Ex_ExpectedFlipDate="1/1/0001 12:00:00 AM" Ex_TrustLifeExpectancy="0" Ex_CurrentYearIncomeTarget="0" Ex_ValuationPri
+orYear1="0" Ex_ValuationPriorYear2="0" Ex_ValuationPriorYear3="0" Ex_Valuation="0" Ex_ValuationImportDate="1/1/0001 12:00:00 AM" Ex_OverPayment="2" Ex_UnitrustAmount="0" Ex_CumulativeDeficiency="0" Ex_InvestmentAllocationYield="0" Ex_NewGiftsAndAdditions=
+"0" Ex_Q1_Q4PaymentsPriorYear1="0" Ex_Q1_Q4PaymentsPriorYear2="0" Ex_Q1_Q4PaymentsPriorYear3="0" Ex_Q5PaymentsPriorYear1="0" Ex_Q5PaymentsPriorYear2="0" Ex_Q5PaymentsPriorYear3="0" Ex_TotalPaymentsPriorYear1="0" Ex_TotalPaymentsPriorYear2="0" Ex_TotalPaym
+entsPriorYear3="0" Ex_TrustYieldPriorYear1="0" Ex_TrustYieldPriorYear2="0" Ex_TrustYieldPriorYear3="0" Ex_ClientIEComment="Updated Fields" Ex_MasterObjectiveName="" Ex_ScheduledPaymentAmount="0" Ex_FlipTriggerDate="1/1/0001 12:00:00 AM" Ax_YTDOtherEx="0" 
+Ax_PriorYearAccruedIncome="0" Ax_ReClassIncome="0" Ax_ActualSGD="0" Ax_FMVOnStartDate="0" Ax_FMVOnRunDate="0" Ax_GrossIncomeEstimate="0" Ax_GrossIncomeYieldOnStartDate="0" Ax_GrossIncomeYieldOnRunDate="0" Ax_NetIncomeYieldOnStartDate="0" Ax_AnnIMFee_Incom
+e="0" Ax_AnnTAFee_Income="0" Ax_AnnTrusteeFee_Income="0" Ax_TMCAnnualChg_Income="0" Ax_EstimatedSGD="0" Ca_InvAllocNetYieldVar="0" Ca_NewNetIncomeEstimate="0" Ca_NetIncomeEstimateUsedForPmt="0" Ca_PmtYield="0" Ca_NetPriorYearQ1_Q4Var="0" Ca_NetPriorYearTo
+talVar="0" Ca_NetMidYearVar="0" EstimatedOtherExpenses="0" CurrentYearAccruedIncome="0" ActualSTGLTG="0" AssetAmortAccret="0" Ex_IncomeSensitiveYN="True" IncomeOverrideStatus="UPDATED"/></UpdateList><DeleteList></DeleteList></EstimateStagingCollection>', 
+ 
+ @XMLHISTORYDATA='<HistoryCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></HistoryCollection>',  
+ @XMLDATA_CV='<ImportStagingCollection><InsertList><ImportStaging StagingID="2438"  UserID="200017"  UserName="gnazim_test"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ImportStagingCollection>',  
+ @CalcYieldsOnly=0,@return_status=''  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/26/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_EstimateOverrideSaveSTGAccount] @XMLDATA XML
+	,@XMLHISTORYDATA XML
+	,@XMLDATA_CV XML
+	,@CalcYieldsOnly INT
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --        
+	DECLARE @TBLUpdateStaging TABLE (
+		StagingID INT NULL
+		,CustomerAccountNumber varchar(14) NULL
+		,Ax_ReClassIncome MONEY NULL
+		,PP_OverPayment MONEY NULL
+		,IT_AnnIMFee_Income MONEY NULL
+		,IT_AnnTAFee_Income MONEY NULL
+		,IT_AnnTrusteeFee_Income MONEY NULL
+		--,IT_YTDIMFee_Income MONEY NULL
+		--,IT_YTDTAFee_Income MONEY NULL 
+		--,IT_YTDTrusteeFee_Income MONEY NULL
+		--,IT_ProjectedIMFee_Income MONEY NULL
+		--,IT_ProjectedTAFee_Income MONEY NULL
+		--,IT_ProjectedTrusteeFee_Income MONEY NULL
+		,Ax_TMCAnnualChg_Income MONEY NULL
+		,Ax_YTDOtherEx MONEY NULL
+		,EstimatedOtherExpenses MONEY NULL
+		,Ax_PriorYearAccruedIncome MONEY NULL
+		,CurrentYearAccruedIncome MONEY NULL
+		,AssetAmortAccret MONEY NULL
+		,Ax_ActualSGD MONEY NULL
+		,Ax_EstimatedSGD MONEY NULL
+		,ActualSTGLTG MONEY NULL
+		,Ca_NewNetIncomeEstimate MONEY NULL
+		,Ca_NetIncomeEstimateUsedForPmt MONEY NULL
+		,IE_CurrentYearIncomeTarget MONEY NULL
+		,IncomeOverrideStatus VARCHAR(4000) NULL
+		);
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		BEGIN TRAN
+
+		INSERT INTO @TBLUpdateStaging
+		SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,XmlInput.Staging.value('@Ax_ReClassIncome[1]', 'money') AS Ax_ReClassIncome
+			,XmlInput.Staging.value('@PP_OverPayment[1]', 'money') AS PP_OverPayment
+			,XmlInput.Staging.value('@Ax_AnnIMFee_Income[1]', 'money') AS IT_AnnIMFee_Income
+			,XmlInput.Staging.value('@Ax_AnnTAFee_Income[1]', 'money') AS IT_AnnTAFee_Income
+			,XmlInput.Staging.value('@Ax_AnnTrusteeFee_Income[1]', 'money') AS IT_AnnTrusteeFee_Income
+			,XmlInput.Staging.value('@Ax_TMCAnnualChg_Income[1]', 'money') AS Ax_TMCAnnualChg_Income
+			,XmlInput.Staging.value('@Ax_YTDOtherEx[1]', 'money') AS Ax_YTDOtherEx
+			,XmlInput.Staging.value('@EstimatedOtherExpenses[1]', 'money') AS EstimatedOtherExpenses
+			,XmlInput.Staging.value('@Ax_PriorYearAccruedIncome[1]', 'money') AS Ax_PriorYearAccruedIncome
+			,XmlInput.Staging.value('@CurrentYearAccruedIncome[1]', 'money') AS CurrentYearAccruedIncome
+			,XmlInput.Staging.value('@AssetAmortAccret[1]', 'money') AS AssetAmortAccret
+			,XmlInput.Staging.value('@Ax_ActualSGD[1]', 'money') AS Ax_ActualSGD
+			,XmlInput.Staging.value('@Ax_EstimatedSGD[1]', 'money') AS Ax_EstimatedSGD
+			,XmlInput.Staging.value('@ActualSTGLTG[1]', 'money') AS ActualSTGLTG
+			,XmlInput.Staging.value('@Ca_NewNetIncomeEstimate[1]', 'money') AS Ca_NewNetIncomeEstimate
+			,XmlInput.Staging.value('@Ca_NetIncomeEstimateUsedForPmt[1]', 'money') AS Ca_NetIncomeEstimateUsedForPmt
+			,XmlInput.Staging.value('@IE_CurrentYearIncomeTarget[1]', 'money') AS IE_CurrentYearIncomeTarget
+			,XmlInput.Staging.value('@IncomeOverrideStatus[1]', 'varchar(4000)') AS IncomeOverrideStatus
+		FROM @XMLDATA.nodes('//EstimateStagingCollection/UpdateList/EstimateStaging') AS XmlInput(Staging)
+
+		DECLARE @StagingID INT;
+		DECLARE @CustomerAccountNumber varchar(14);
+		DECLARE @Ax_ReClassIncome MONEY;
+		DECLARE @PP_OverPayment MONEY;
+		DECLARE @IT_AnnIMFee_Income MONEY;
+		DECLARE @IT_AnnTAFee_Income MONEY;
+		DECLARE @IT_AnnTrusteeFee_Income MONEY;
+		DECLARE @Ax_TMCAnnualChg_Income MONEY;
+		DECLARE @Ax_YTDOtherEx MONEY;
+		DECLARE @EstimatedOtherExpenses MONEY;
+		DECLARE @Ax_PriorYearAccruedIncome MONEY;
+		DECLARE @CurrentYearAccruedIncome MONEY;
+		DECLARE @AssetAmortAccret MONEY;
+		DECLARE @Ax_ActualSGD MONEY;
+		DECLARE @Ax_EstimatedSGD MONEY;
+		DECLARE @ActualSTGLTG MONEY;
+		DECLARE @Ca_NewNetIncomeEstimate MONEY;
+		DECLARE @Ca_NetIncomeEstimateUsedForPmt MONEY;
+		DECLARE @IE_CurrentYearIncomeTarget MONEY;
+		DECLARE @IncomeOverrideStatus VARCHAR(4000);
+
+		SELECT @StagingID = StagingID
+			,@CustomerAccountNumber = CustomerAccountNumber
+			,@Ax_ReClassIncome = Ax_ReClassIncome
+			,@PP_OverPayment = PP_OverPayment
+			,@IT_AnnIMFee_Income = IT_AnnIMFee_Income
+			,@IT_AnnTAFee_Income = IT_AnnTAFee_Income
+			,@IT_AnnTrusteeFee_Income = IT_AnnTrusteeFee_Income
+			,@Ax_TMCAnnualChg_Income = Ax_TMCAnnualChg_Income
+			,@Ax_YTDOtherEx = Ax_YTDOtherEx
+			,@EstimatedOtherExpenses = EstimatedOtherExpenses
+			,@Ax_PriorYearAccruedIncome = Ax_PriorYearAccruedIncome
+			,@CurrentYearAccruedIncome = CurrentYearAccruedIncome
+			,@AssetAmortAccret = AssetAmortAccret
+			,@Ax_ActualSGD = Ax_ActualSGD
+			,@Ax_EstimatedSGD = Ax_EstimatedSGD
+			,@ActualSTGLTG = ActualSTGLTG
+			,@Ca_NewNetIncomeEstimate = Ca_NewNetIncomeEstimate
+			,@Ca_NetIncomeEstimateUsedForPmt = Ca_NetIncomeEstimateUsedForPmt
+			,@IE_CurrentYearIncomeTarget = IE_CurrentYearIncomeTarget
+			,@IncomeOverrideStatus = IncomeOverrideStatus
+		FROM @TBLUpdateStaging
+
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_ReClassIncome = CASE 
+				WHEN @Ax_ReClassIncome <> - 1
+					THEN @Ax_ReClassIncome
+				ELSE Ax_ReClassIncome
+				END
+			,PP_OverPayment = CASE 
+				WHEN @PP_OverPayment <> - 1
+					THEN @PP_OverPayment
+				ELSE PP_OverPayment
+				END
+			,IT_AnnIMFee_Income = CASE 
+				WHEN @IT_AnnIMFee_Income <> - 1
+					THEN @IT_AnnIMFee_Income
+				ELSE IT_AnnIMFee_Income
+				END
+			,IT_AnnTAFee_Income = CASE 
+				WHEN @IT_AnnTAFee_Income <> - 1
+					THEN @IT_AnnTAFee_Income
+				ELSE IT_AnnTAFee_Income
+				END
+			,IT_AnnTrusteeFee_Income = CASE 
+				WHEN @IT_AnnTrusteeFee_Income <> - 1
+					THEN @IT_AnnTrusteeFee_Income
+				ELSE IT_AnnTrusteeFee_Income
+				END
+			,Ax_TMCAnnualChg_Income = CASE 
+				WHEN @Ax_TMCAnnualChg_Income <> - 1
+					THEN @Ax_TMCAnnualChg_Income
+				ELSE Ax_TMCAnnualChg_Income
+				END
+			,Ax_YTDOtherEx = CASE 
+				WHEN @Ax_YTDOtherEx <> - 1
+					THEN @Ax_YTDOtherEx
+				ELSE Ax_YTDOtherEx
+				END
+			,EstimatedOtherExpenses = CASE 
+				WHEN @EstimatedOtherExpenses <> - 1
+					THEN @EstimatedOtherExpenses
+				ELSE EstimatedOtherExpenses
+				END
+			,Ax_PriorYearAccruedIncome = CASE 
+				WHEN @Ax_PriorYearAccruedIncome <> - 1
+					THEN @Ax_PriorYearAccruedIncome
+				ELSE Ax_PriorYearAccruedIncome
+				END
+			,CurrentYearAccruedIncome = CASE 
+				WHEN @CurrentYearAccruedIncome <> - 1
+					THEN @CurrentYearAccruedIncome
+				ELSE CurrentYearAccruedIncome
+				END
+			,AssetAmortAccret = CASE 
+				WHEN @AssetAmortAccret <> - 1
+					THEN @AssetAmortAccret
+				ELSE AssetAmortAccret
+				END
+			,Ax_ActualSGD = CASE 
+				WHEN @Ax_ActualSGD <> - 1
+					THEN @Ax_ActualSGD
+				ELSE Ax_ActualSGD
+				END
+			,Ax_EstimatedSGD = CASE 
+				WHEN @Ax_EstimatedSGD <> - 1
+					THEN @Ax_EstimatedSGD
+				ELSE Ax_EstimatedSGD
+				END
+			,ActualSTGLTG = CASE 
+				WHEN @ActualSTGLTG <> - 1
+					THEN @ActualSTGLTG
+				ELSE ActualSTGLTG
+				END
+			,Ca_NewNetIncomeEstimate = CASE 
+				WHEN @Ca_NewNetIncomeEstimate <> - 1
+					THEN @Ca_NewNetIncomeEstimate
+				ELSE Ca_NewNetIncomeEstimate
+				END
+			,Ca_NetIncomeEstimateUsedForPmt = CASE 
+				WHEN @Ca_NetIncomeEstimateUsedForPmt <> - 1
+					THEN @Ca_NetIncomeEstimateUsedForPmt
+				ELSE Ca_NetIncomeEstimateUsedForPmt
+				END
+			,IE_CurrentYearIncomeTarget = CASE 
+				WHEN @IE_CurrentYearIncomeTarget <> - 1
+					THEN @IE_CurrentYearIncomeTarget
+				ELSE IE_CurrentYearIncomeTarget
+				END
+			,IncomeOverrideStatus = CASE 
+				WHEN LEN(LTRIM(RTRIM(@IncomeOverrideStatus))) > 0
+					THEN @IncomeOverrideStatus
+				ELSE IncomeOverrideStatus
+				END
+		WHERE StagingID = @StagingID
+
+		--Logging History data        
+			EXEC USP_IE_ReviewSaveHistoryDetail @ParentScreen = 'Estimate Review Override'
+				,@XMLDATA = @XMLHISTORYDATA
+
+		--End logging to History Table  
+		-- Calculating Net Income    
+		IF (@CalcYieldsOnly = 0)
+		  EXEC USP_IE_ReviewCalcNetIncome @XMLDATA_CV
+		    ELSE
+			   IF (@CalcYieldsOnly = 1)
+			    	EXEC USP_IE_ReviewCalcNetIncomeYield @XMLDATA_CV
+			   ELSE
+			   IF (@CalcYieldsOnly = 2)
+					EXEC USP_IE_ReviewCalcNetIncomeYieldForPayment @XMLDATA_CV
+		--END
+
+		------END UPDATING DATABASE  
+		--Estimate validations    
+		EXEC USP_IE_ReviewSaveDiagnosticResult @XMLDATA_CV
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

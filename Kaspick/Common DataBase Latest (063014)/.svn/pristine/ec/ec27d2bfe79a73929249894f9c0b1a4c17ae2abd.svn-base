@@ -1,0 +1,638 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveDeliverable'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveDeliverable;
+
+	PRINT 'DROPPED USP_EX_SaveDeliverable ';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** New Name   :   USP_EX_SaveDeliverable
+** Old Name   :   USP_EIS_DLV_Deliverable_Save_Proc        
+**  
+** Short Desc : Update the Deliverable Settings after validation or insert new deliverable  
+**        
+** Full Description        
+**        
+** Update the Deliverable Settings after validation or insert new deliverable  
+**  
+** Sample Call   
+ EXEC USP_EX_SaveDeliverable    
+**        
+** Return values: NONE        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+** Created By :  Niveditha  
+** Company  :  Kaspick & Company        
+** Project  :  Deliverable Tool       
+** Created DT :  May/05/2011        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:     Author:  Bug #  Description:        Rvwd        
+** --------  -------- ------ ------------------------------------------ -------  
+** Aug-08-2011 Chaithra Madappa   Changes for Website Phase 2 - Reportiore Queue Creation  
+** Feb-13-2012 Anand   - Reportoir owner role changes  
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+** Apr-05-2012 Ashvin   Adding Values for Owner, Approver 1 and Approver 2 for DT-Sprint Plan 2  
+** Jun-26-2012 Anand   Adding Values for QueueCreationEnabled for DT-Sprint Plan 4 
+** Apr-04-2014 Sanath   Req EXCREQ3.1 Excelsior Prime project 
+ ** 23-May-2014  Sanath   Sp name renamed as per Kaspick naming convention standard 
+  
+*******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_SaveDeliverable (
+	@DeliverableXML XML
+	,@intDeliverableID INT
+	,@DeliverableTypeID INT
+	,@DeliverableCategoryListID INT
+	,@DeliverableName VARCHAR(4000)
+	,@DeliverableDisplayName VARCHAR(4000)
+	,@DeliverableClientDescription VARCHAR(4000)
+	,@DeliverableInternalDescription VARCHAR(4000)
+	,@IncludeClientReportMatrix BIT
+	,@DeliverableProcessID INT
+	,@RootFolderPath VARCHAR(4000)
+	,@FileNameConvention VARCHAR(4000)
+	,@UploadToWebsite INT
+	,@UploadToWebsiteClientDescription VARCHAR(5)
+	,@DeliverableLevel INT
+	,@Parent_DeliverableID BIGINT
+	,@EmailGroupingID INT
+	,@USER_ID INT
+	,@AccountRequired INT
+	,@ContactRequired INT
+	,@ExpiryYears INT
+	,@ExpiryMonths INT
+	,@ExpiryDays INT
+	,@AllowExpirationDateOverride INT
+	,@MaximumFileSize INT
+	,@UploadEmailTemplateID INT
+	,@ReplaceEmailTemplateID INT
+	,@MVDDeliverableID BIGINT
+	,@IsActive BIT
+	,@WebsiteDestinationID BIGINT
+	,@DeliverableID INT OUTPUT
+	,@client_param VARCHAR(1000) OUTPUT
+	,@ReportLevelID INT
+	,@QueueFilter VARCHAR(50)
+	,@OwnerRoleId INT
+	,@OwnerId INT
+	,@Approver1RoleId INT
+	,@Approver1Id INT
+	,@Approver2RoleId INT
+	,@Approver2Id INT
+	,@QueueCreationEnabled INT
+	)
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		DECLARE @PrimaryMethodID BIGINT;
+		DECLARE @ParentID BIGINT;
+		DECLARE @DelTypeID INT;
+
+		SELECT @DelTypeID = DeliverableTypeID
+		FROM TBL_DLV_DeliverableType
+		WHERE DeliverableTypeName = 'Report in a Package'
+
+		-- existing deliverable  
+		IF @intDeliverableID > 0
+		BEGIN
+			SELECT @DeliverableCategoryListID = DeliverableCategoryListID
+			FROM TBL_DLV_Deliverable Delv
+			INNER JOIN TBL_LISTITEM LstItm ON LstItm.LISTITEMID = Delv.DeliverableCategoryListID
+			WHERE Delv.DeliverableID = @Parent_DeliverableID
+
+			UPDATE TBL_DLV_Deliverable
+			SET Parent_DeliverableID = @Parent_DeliverableID
+			WHERE DeliverableID = @intDeliverableID
+
+			SELECT @ParentID = Parent_DeliverableID
+			FROM TBL_DLV_Deliverable
+			WHERE DeliverableID = @intDeliverableID
+
+			IF (@ParentID IS NOT NULL)
+			BEGIN
+				SELECT @IsActive = IsActive
+				FROM TBL_DLV_Deliverable
+				WHERE DeliverableID = @ParentID
+			END
+			ELSE
+			BEGIN
+				UPDATE TBL_DLV_Deliverable
+				SET IsActive = @IsActive
+				WHERE Parent_DeliverableID = @intDeliverableID
+			END
+
+			UPDATE TBL_DLV_Deliverable
+			SET DeliverableTypeID = @DeliverableTypeID
+				,DeliverableCategoryListID = @DeliverableCategoryListID
+				,DeliverableName = @DeliverableName
+				,DeliverableDisplayName = @DeliverableDisplayName
+				,DeliverableManagerCodeDescription = @DeliverableClientDescription
+				,DeliverableInternalDescription = @DeliverableInternalDescription
+				,IncludeManagerCodeReportMatrix = @IncludeClientReportMatrix
+				,DeliverableProcessID = @DeliverableProcessID
+				,RootFolderPath = @RootFolderPath
+				,FileNameConvention = @FileNameConvention
+				,UploadToWebsite = @UploadToWebsite
+				,DeliverableLevel = @DeliverableLevel
+				,Parent_DeliverableID = @Parent_DeliverableID
+				,EmailGroupingID = @EmailGroupingID
+				,IsActive = @IsActive
+				,ModifiedDate = GETDATE()
+				,ModifiedUserID = @USER_ID
+				,ReportLevelID = @ReportLevelID
+				,QueueFilter = @QueueFilter
+				,OwnerRoleId = @OwnerRoleId
+				,OwnerId = @OwnerId
+				,Approver1RoleId = @Approver1RoleId
+				,Approver1Id = @Approver1Id
+				,Approver2RoleId = @Approver2RoleId
+				,Approver2Id = @Approver2Id
+				,QueueCreationEnabled = @QueueCreationEnabled
+			WHERE DeliverableID = @intDeliverableID
+
+			UPDATE TBL_DLV_Deliverable
+			SET DeliverableCategoryListID = @DeliverableCategoryListID
+			WHERE Parent_DeliverableID = @intDeliverableID
+
+			SET @DeliverableID = @intDeliverableID
+
+			IF EXISTS (
+					SELECT ServiceOfferingID
+					FROM TBL_DLV_DeliverableServiceOffering
+					WHERE DeliverableID = @intDeliverableID
+					)
+			BEGIN
+				DELETE
+				FROM TBL_DLV_DeliverableServiceOffering
+				WHERE DeliverableID = @intDeliverableID
+
+				INSERT INTO TBL_DLV_DeliverableServiceOffering (
+					DeliverableID
+					,ServiceOfferingID
+					)
+				SELECT @intDeliverableID
+					,TempTable.ServiceOfferingColumns.value('@ServiceOfferingID[1]', 'bigint')
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/ServiceOffering') AS TempTable(ServiceOfferingColumns)
+			END
+
+			IF (@DelTypeID != @DeliverableTypeID) -- if not 'Report in a Package'  
+			BEGIN
+				DELETE
+				FROM TBL_DLV_DeliverableMethod
+				WHERE DeliverableID = @intDeliverableID
+
+				INSERT INTO TBL_DLV_DeliverableMethod
+				SELECT @intDeliverableID AS DeliverableID
+					,TempTable.DeliverableMethodColumns.value('@DeliverableMethodID[1]', 'bigint') AS DeliveryMethodID
+					,SequenceNo = (
+						SELECT DeliverySequence
+						FROM TBL_DLV_DeliveryMethod
+						WHERE DeliveryMethodID = TempTable.DeliverableMethodColumns.value('@DeliverableMethodID[1]', 'bigint')
+						)
+					,0 AS IsPrimary
+					,GETDATE() AS CreatedDate
+					,@USER_ID AS CreatedUserID
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/DeliverableMethod') AS TempTable(DeliverableMethodColumns)
+
+				SELECT @PrimaryMethodID = TempTable.DeliverableMethodColumns.value('@PrimaryDeliverableMethodID[1]', 'bigint')
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/PrimaryDeliverableMethod') AS TempTable(DeliverableMethodColumns)
+
+				UPDATE TBL_DLV_DeliverableMethod
+				SET IsPrimary = 1
+				WHERE DeliverableID = @intDeliverableID
+					AND DeliveryMethodID = @PrimaryMethodID
+			END
+
+			BEGIN
+				DELETE
+				FROM TBL_DLV_DeliverableYearType
+				WHERE DeliverableID = @intDeliverableID
+					AND YearTypeID NOT IN (
+						SELECT TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint') AS col
+						FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/YearType') AS TempTable(YearTypeColumns)
+						)
+
+				INSERT INTO TBL_DLV_DeliverableYearType (
+					YearTypeID
+					,DeliverableID
+					,OtherYearTypeDescription
+					,CreatedDate
+					,CreatedUserID
+					)
+				SELECT TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint') AS col
+					,@intDeliverableID
+					,TempTable.YearTypeColumns.value('@OtherYearTypeDescription[1]', 'Varchar(50)')
+					,GETDATE()
+					,@USER_ID
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/YearType') AS TempTable(YearTypeColumns)
+				WHERE (TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint')) NOT IN (
+						SELECT DeliverableYearTypeID
+						FROM TBL_DLV_ManagerCodeDeliverableYearType MgrCodDelvYerTyp
+						INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrCodDelv ON MgrCodDelv.ManagerCodeDeliverableID = MgrCodDelvYerTyp.ManagerCodeDeliverableID
+						WHERE MgrCodDelv.DeliverableID = @intDeliverableID
+						)
+					AND TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint') NOT IN (
+						SELECT YearTypeID
+						FROM TBL_DLV_DeliverableYearType
+						WHERE DeliverableID = @intDeliverableID
+						)
+
+				UPDATE TBL_DLV_DeliverableYearType
+				SET OtherYearTypeDescription = TempTable.YearTypeColumns.value('@OtherYearTypeDescription[1]', 'Varchar(50)')
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/YearType') AS TempTable(YearTypeColumns)
+				WHERE (TempTable.YearTypeColumns.value('@OtherYearTypeDescription[1]', 'Varchar(50)')) != ''
+					AND DeliverableID = @intDeliverableID
+					AND YearTypeID = TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint')
+
+				DELETE
+				FROM TBL_DLV_DeliverableFrequency
+				WHERE DeliverableID = @intDeliverableID
+					AND FrequencyID NOT IN (
+						SELECT TempTable.YearTypeColumns.value('@FrequencyID[1]', 'bigint') AS col
+						FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/Frequency') AS TempTable(YearTypeColumns)
+						)
+
+				INSERT INTO TBL_DLV_DeliverableFrequency (
+					FrequencyID
+					,DeliverableID
+					,OtherFrequencyDescription
+					,CreatedDate
+					,CreatedUserID
+					)
+				SELECT TempTable.YearTypeColumns.value('@FrequencyID[1]', 'bigint') AS col
+					,@intDeliverableID
+					,TempTable.YearTypeColumns.value('@OtherFrequencyDescription[1]', 'Varchar(50)')
+					,GETDATE()
+					,@USER_ID
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/Frequency') AS TempTable(YearTypeColumns)
+				WHERE (TempTable.YearTypeColumns.value('@FrequencyID[1]', 'bigint')) NOT IN (
+						SELECT DeliverableFrequencyID
+						FROM TBL_DLV_ManagerCodeDeliverableFrequency MgrCodDelvFreq
+						INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrCodDelv ON MgrCodDelv.ManagerCodeDeliverableID = MgrCodDelvFreq.ManagerCodeDeliverableID
+						WHERE MgrCodDelv.DeliverableID = @intDeliverableID
+						)
+					AND TempTable.YearTypeColumns.value('@FrequencyID[1]', 'bigint') NOT IN (
+						SELECT FrequencyID
+						FROM TBL_DLV_DeliverableFrequency
+						WHERE DeliverableID = @intDeliverableID
+						)
+			END
+
+			UPDATE TBL_DLV_DeliverableFrequency
+			SET OtherFrequencyDescription = TempTable.YearTypeColumns.value('@OtherFrequencyDescription[1]', 'Varchar(50)')
+			FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/Frequency') AS TempTable(YearTypeColumns)
+			WHERE (TempTable.YearTypeColumns.value('@OtherFrequencyDescription[1]', 'Varchar(50)')) != ''
+				AND DeliverableID = @intDeliverableID
+				AND FrequencyID = TempTable.YearTypeColumns.value('@FrequencyID[1]', 'bigint')
+
+			IF (@UploadToWebsiteClientDescription = 'Yes')
+			BEGIN
+				DELETE
+				FROM TBL_DLV_DeliverableWebsiteOption
+				WHERE DeliverableID = @DeliverableID
+
+				INSERT INTO TBL_DLV_DeliverableWebsiteOption (
+					DeliverableID
+					,AccountRequired
+					,MVDDeliverableID
+					,ContactRequired
+					,ExpiryYears
+					,ExpiryMonths
+					,ExpiryDays
+					,AllowExpirationDateOverride
+					,MaximumFileSize
+					,UploadEmailTemplateID
+					,ReplaceEmailTemplateID
+					,WebsiteDestinationID
+					,CreatedDate
+					,CreatedUserID
+					,ModifiedDate
+					,ModifiedUserID
+					,DeletedUserID
+					)
+				VALUES (
+					@DeliverableID
+					,@AccountRequired
+					,@MVDDeliverableID
+					,@ContactRequired
+					,@ExpiryYears
+					,@ExpiryMonths
+					,@ExpiryDays
+					,@AllowExpirationDateOverride
+					,@MaximumFileSize
+					,@UploadEmailTemplateID
+					,@ReplaceEmailTemplateID
+					,@WebsiteDestinationID
+					,GETDATE()
+					,@USER_ID
+					,GETDATE()
+					,@USER_ID
+					,NULL
+					)
+			END
+			ELSE IF EXISTS (
+					SELECT DeliverableID
+					FROM TBL_DLV_DeliverableWebsiteOption
+					WHERE DeliverableID = @intDeliverableID
+					)
+			BEGIN
+				DELETE
+				FROM TBL_DLV_DeliverableWebsiteOption
+				WHERE DeliverableID = @intDeliverableID
+			END
+		END
+		ELSE
+		BEGIN
+			-- new deliverable  
+			SELECT @DeliverableCategoryListID = DeliverableCategoryListID
+			FROM TBL_DLV_Deliverable Delv
+			INNER JOIN TBL_LISTITEM LstItm ON LstItm.LISTITEMID = Delv.DeliverableCategoryListID
+			WHERE Delv.DeliverableID = @Parent_DeliverableID
+
+			INSERT INTO TBL_DLV_Deliverable (
+				DeliverableTypeID
+				,DeliverableCategoryListID
+				,DeliverableName
+				,DeliverableDisplayName
+				,DeliverableManagerCodeDescription
+				,DeliverableInternalDescription
+				,IncludeManagerCodeReportMatrix
+				,DeliverableProcessID
+				,RootFolderPath
+				,FileNameConvention
+				,UploadToWebsite
+				,DeliverableLevel
+				,Parent_DeliverableID
+				,EmailGroupingID
+				,IsActive
+				,SettingsLinkCode
+				,CreatedDate
+				,CreatedUserID
+				,ModifiedDate
+				,ModifiedUserID
+				,DeletedUserID
+				,ReportLevelID
+				,QueueFilter
+				,OwnerRoleId
+				,OwnerId
+				,Approver1RoleId
+				,Approver1Id
+				,Approver2RoleId
+				,Approver2Id
+				,QueueCreationEnabled
+				)
+			VALUES (
+				@DeliverableTypeID
+				,@DeliverableCategoryListID
+				,@DeliverableName
+				,@DeliverableDisplayName
+				,@DeliverableClientDescription
+				,@DeliverableInternalDescription
+				,@IncludeClientReportMatrix
+				,@DeliverableProcessID
+				,@RootFolderPath
+				,@FileNameConvention
+				,@UploadToWebsite
+				,@DeliverableLevel
+				,@Parent_DeliverableID
+				,@EmailGroupingID
+				,@IsActive
+				,NULL
+				,GETDATE()
+				,@USER_ID
+				,GETDATE()
+				,@USER_ID
+				,NULL
+				,@ReportLevelID
+				,@QueueFilter
+				,@OwnerRoleId
+				,@OwnerId
+				,@Approver1RoleId
+				,@Approver1Id
+				,@Approver2RoleId
+				,@Approver2Id
+				,@QueueCreationEnabled
+				)
+
+			SET @DeliverableID = IDENT_CURRENT('TBL_DLV_Deliverable')
+
+			INSERT INTO TBL_DLV_DeliverableServiceOffering (
+				DeliverableID
+				,ServiceOfferingID
+				)
+			SELECT @DeliverableID
+				,TempTable.ServiceOfferingColumns.value('@ServiceOfferingID[1]', 'bigint')
+			FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/ServiceOffering') AS TempTable(ServiceOfferingColumns)
+
+			INSERT INTO TBL_DLV_DeliverableYearType (
+				YearTypeID
+				,DeliverableID
+				,OtherYearTypeDescription
+				,CreatedDate
+				,CreatedUserID
+				)
+			SELECT TempTable.YearTypeColumns.value('@YearTypeID[1]', 'bigint')
+				,@DeliverableID
+				,TempTable.YearTypeColumns.value('@OtherYearTypeDescription[1]', 'Varchar(50)')
+				,GETDATE()
+				,@USER_ID
+			FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/YearType') AS TempTable(YearTypeColumns)
+
+			--  
+			INSERT INTO TBL_DLV_DeliverableFrequency (
+				FrequencyID
+				,DeliverableID
+				,OtherFrequencyDescription
+				,CreatedDate
+				,CreatedUserID
+				)
+			SELECT TempTable.FrequencyColumns.value('@FrequencyID[1]', 'bigint')
+				,@DeliverableID
+				,TempTable.FrequencyColumns.value('@OtherFrequencyDescription[1]', 'Varchar(25)')
+				,GETDATE()
+				,@USER_ID
+			FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/Frequency') AS TempTable(FrequencyColumns)
+
+			IF (@DelTypeID != @DeliverableTypeID) -- if not 'Report in a Package'  
+			BEGIN
+				INSERT INTO TBL_DLV_DeliverableMethod
+				SELECT @DeliverableID AS DeliverableID
+					,TempTable.DeliverableMethodColumns.value('@DeliverableMethodID[1]', 'bigint') AS DeliveryMethodID
+					,SequenceNo = (
+						SELECT DeliverySequence
+						FROM TBL_DLV_DeliveryMethod
+						WHERE DeliveryMethodID = TempTable.DeliverableMethodColumns.value('@DeliverableMethodID[1]', 'bigint')
+						)
+					,0 AS IsPrimary
+					,GETDATE() AS CreatedDate
+					,@USER_ID AS CreatedUserID
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/DeliverableMethod') AS TempTable(DeliverableMethodColumns)
+
+				SELECT @PrimaryMethodID = TempTable.DeliverableMethodColumns.value('@PrimaryDeliverableMethodID[1]', 'bigint')
+				FROM @DeliverableXML.nodes('/ReportPackageCollection/InsertList/PrimaryDeliverableMethod') AS TempTable(DeliverableMethodColumns)
+
+				UPDATE TBL_DLV_DeliverableMethod
+				SET IsPrimary = 1
+				WHERE DeliverableID = @DeliverableID
+					AND DeliveryMethodID = @PrimaryMethodID
+			END
+
+			IF (@UploadToWebsiteClientDescription = 'Yes')
+			BEGIN
+				INSERT INTO TBL_DLV_DeliverableWebsiteOption (
+					DeliverableID
+					,AccountRequired
+					,MVDDeliverableID
+					,ContactRequired
+					,ExpiryYears
+					,ExpiryMonths
+					,ExpiryDays
+					,AllowExpirationDateOverride
+					,MaximumFileSize
+					,UploadEmailTemplateID
+					,ReplaceEmailTemplateID
+					,WebsiteDestinationID
+					,CreatedDate
+					,CreatedUserID
+					,ModifiedDate
+					,ModifiedUserID
+					,DeletedUserID
+					)
+				VALUES (
+					@DeliverableID
+					,@AccountRequired
+					,@MVDDeliverableID
+					,@ContactRequired
+					,@ExpiryYears
+					,@ExpiryMonths
+					,@ExpiryDays
+					,@AllowExpirationDateOverride
+					,@MaximumFileSize
+					,@UploadEmailTemplateID
+					,@ReplaceEmailTemplateID
+					,@WebsiteDestinationID
+					,GETDATE()
+					,@USER_ID
+					,GETDATE()
+					,@USER_ID
+					,NULL
+					)
+			END
+
+			IF NOT EXISTS (
+					SELECT 1
+					FROM TBL_DLV_DeliverableTypeAttribute
+					WHERE DeliverableID = @DeliverableID
+						AND AttributePromptName = 'Notes'
+					)
+			BEGIN
+				INSERT INTO [TBL_DLV_DeliverableTypeAttribute] (
+					[DeliverableID]
+					,[AttributeSequenceNo]
+					,[AttributePromptName]
+					,[DataType]
+					,[AttibuteLongName]
+					,[Description]
+					,[CreatedDate]
+					,[CreatedUserID]
+					)
+				VALUES (
+					@DeliverableID
+					,1
+					,'Notes'
+					,'Varchar'
+					,'Notes'
+					,'Notes'
+					,GETDATE()
+					,1
+					)
+			END
+
+			IF NOT EXISTS (
+					SELECT 1
+					FROM TBL_DLV_DeliverableTypeAttribute
+					WHERE DeliverableID = @DeliverableID
+						AND AttributePromptName = 'Hold'
+					)
+			BEGIN
+				INSERT INTO [TBL_DLV_DeliverableTypeAttribute] (
+					[DeliverableID]
+					,[AttributeSequenceNo]
+					,[AttributePromptName]
+					,[DataType]
+					,[AttibuteLongName]
+					,[Description]
+					,[CreatedDate]
+					,[CreatedUserID]
+					)
+				VALUES (
+					@DeliverableID
+					,2
+					,'Hold'
+					,'bit'
+					,'Hold'
+					,'Hold'
+					,GETDATE()
+					,1
+					)
+			END
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_SaveDeliverable';
+
+		DECLARE @ErrorNumber INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE()
+			,@ErrorNumber = ERROR_NUMBER();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveDeliverable'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveDeliverable ';
+END

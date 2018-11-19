@@ -1,0 +1,124 @@
+
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetPolicydimensionValue')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetPolicydimensionValue;
+        PRINT 'DROPPED USP_EX_GetPolicydimensionValue';
+    END
+GO
+
+
+
+   
+   
+   
+            
+/******************************************************************************                  
+** New Name : USP_EX_GetPolicydimensionValue  
+** Old Name:     USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                   
+** Short Desc: Common SP tobe used for fetching the PolicyValue for a             
+**    particular Dimension.            
+** Full Description: Common SP tobe used for fetching the PolicyValue            
+**     for a particular Dimension.            
+**            
+                @ENTITYID : OWNERID value for which the POLICYITEM tobe searched.            
+    @ENTITYTYPE: POLICYLEVEL value for which the POLICYITEM tobe searched.            
+    @LIST_TYPE_NAME: Equivalent LIST_TYPE_NAME for POLICYDIMENSION's FULLNAME.            
+    @DATATYPE: DATETYPE of a dimension tobe searched.            
+    @DIMENSIONID: DIMENSIONID of a dimension tobe searched.            
+                  
+** Sample Call                  
+        EXEC USP_EX_GetPolicydimensionValue                    
+**             
+** Return values: NONE                  
+**            
+**             
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: VShivhare                  
+** Company   : Kaspick & Company                  
+** Project   : Excelsior                  
+** Created DT: 05/23/2007                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+** 2-Apr-2014   Yugandhar  EXCREQ5.4 ModIfied               
+** 22-MAY-2014 Mallikarjun EXCREQ 5.4    SP Name Renamed and Formatted  
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/                  
+CREATE PROCEDURE USP_EX_GetPolicydimensionValue                  
+(                  
+ @ENTITYID VARCHAR(15),                  
+ @ENTITYTYPE VARCHAR(20),                  
+ @LIST_TYPE_NAME VARCHAR(100),                  
+ @DATATYPE VARCHAR(20),                  
+ @DIMENSIONID INT,                  
+ @VALUE VARCHAR(100) OUTPUT,      
+ @NUMERIC_VALUE FLOAT = 0 OUTPUT                  
+)                  
+AS                  
+BEGIN                  
+BEGIN TRY                
+                
+ DECLARE @TEMP VARCHAR(20),@LEVELID INT                  
+                   
+ SELECT @LEVELID=POLICYLEVEL FROM TBL_PolicyLevel WHERE LEVELNAME =@ENTITYTYPE                  
+                   
+ IF(@DATATYPE='DATE')                  
+ BEGIN                  
+  SELECT @VALUE=CAST(DATEVALUE AS VARCHAR(100)) FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=@DIMENSIONID AND OWNERID =@ENTITYID AND POLICYLEVEL=@LEVELID                  
+ END                  
+ ELSE IF(@DATATYPE='NUMERIC')                  
+ BEGIN                
+  SELECT @NUMERIC_VALUE= NUMERICVALUE FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=@DIMENSIONID AND OWNERID =@ENTITYID AND POLICYLEVEL=@LEVELID                   
+ END                  
+ ELSE IF(@DATATYPE='LIST')                  
+ BEGIN                  
+  SELECT @TEMP=PlcDrpDwn.DROPDOWNTEXT                   
+  FROM TBL_PolicyItem PlcItm   
+  INNER JOIN TBL_PolicyDropDown PlcDrpDwn ON PlcItm.POLICYDROPDOWNID=PlcDrpDwn.POLICYDROPDOWNID                  
+  WHERE PlcItm.POLICYDIMENSIONID=@DIMENSIONID AND OWNERID =@ENTITYID AND POLICYLEVEL=@LEVELID                  
+  SELECT @VALUE=CAST(LISTITEMID AS VARCHAR(100))                  
+  FROM VW_EX_ListItem       
+  WHERE LISTTYPENAME=@LIST_TYPE_NAME AND IVANVALUE=@TEMP                  
+ END            
+ ELSE IF(@DATATYPE='LOGICAL')                 
+ BEGIN             
+  SELECT @TEMP= CAST(LOGICALVALUE AS VARCHAR(100))            
+  FROM TBL_PolicyItem              
+  WHERE POLICYDIMENSIONID=@DIMENSIONID AND OWNERID =@ENTITYID AND POLICYLEVEL=@LEVELID                  
+  SELECT @VALUE=CAST(LISTITEMID AS VARCHAR(100))                  
+  FROM VW_EX_ListItem                   
+  WHERE LISTTYPENAME=@LIST_TYPE_NAME AND IVANVALUE=@TEMP                  
+END           
+ELSE IF(@DATATYPE='TEXT')          
+BEGIN        
+  SELECT @VALUE=TEXTVALUE FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=@DIMENSIONID AND OWNERID =@ENTITYID AND POLICYLEVEL=@LEVELID        
+END           
+PRINT @VALUE        
+END TRY          
+              
+BEGIN CATCH                
+ RAISERROR  1000091 'USP_EX_GetPolicydimensionValue: Cannot select'                
+ RETURN (-1)                
+END CATCH                 
+END   
+  
+  
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetPolicydimensionValue') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetPolicydimensionValue';
+	END

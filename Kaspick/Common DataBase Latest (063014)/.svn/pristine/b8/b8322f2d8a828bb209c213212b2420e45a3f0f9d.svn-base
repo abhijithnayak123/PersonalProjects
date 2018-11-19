@@ -1,0 +1,181 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveRptPifProjection'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveRptPifProjection;
+
+	PRINT 'DROPPED USP_EX_SaveRptPifProjection';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/**********************************************************************************************                    
+** Name : USP_EX_SaveRptPifProjection 
+** Old Name:     USP_EIS_RPT_PIF_PROJECTION_InsUpdProc                    
+** Short Desc: To retrieve PIF Projection of an Account for a specific year  
+**                    
+** Full Description: To retrieve PIF Projection of an Account  for a specific year  
+**                            
+** Input Arguments: @Account_ID, @OldYear, @NewYear, @ExpectedIncome, @UserID  
+**       
+** Sample Call                    
+**  Declare   @outputvalue int  
+USP_EX_SaveRptPifProjection 'ACPIF1',2013,2013,0.3447612,100260,1  --@outputvalue = @outputvalue OUTPUT
+
+  EXEC USP_EIS_RPT_PIF_PROJECTION_InsUpdProc   
+  @Account_ID = 301543,   
+  @OldYear = 2012,   
+  @NewYear = 2012,   
+  @ExpectedIncome = 23.2323,   
+  @UserID=1,   
+  @outputvalue = @outputvalue OUTPUT  
+  SELECT @outputvalue as N'@outputvalue'  
+**           
+** Return values: @OutputValue  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Madhuri  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 06/17/2009                    
+**                                
+**********************************************************************************************              
+**       Change History                    
+**********************************************************************************************              
+** Date:    Author:   Bug #   Description:                           Rvwd              
+** --------  -------- ------    -----------  ---------------------------   --------              
+** 06/15/2009 Madhuri V       Created   
+** 04/22/2014  Sanath        ExcelsiorPrime project Req no EXCREQ7.4
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*********************************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*********************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveRptPifProjection] (
+	@Account_ID VARCHAR(15)
+	,@OldYear INT
+	,@NewYear INT
+	,@ExpectedIncome DECIMAL(18, 10)
+	,@UserID INT
+	,@OutputValue INT OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EX_SaveRptPifProjection';
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		-- Validating the updated year value already exists in the database  
+		IF NOT EXISTS (
+				SELECT Year
+				FROM TBL_BR_PIFProjection
+				WHERE year = isnull(@oldyear, 0)
+				)
+			SET @oldyear = NULL
+
+		IF isnull(@OldYear, 0) <> isnull(@NewYear, 0)
+			AND EXISTS (
+				SELECT year
+				FROM TBL_BR_PIFProjection
+				WHERE year = isnull(@newyear, 0)
+					AND CustomerAccountNumber = @Account_ID
+				)
+			SET @OutputValue = - 1
+		ELSE
+		BEGIN
+			IF (@OldYear IS NULL) --and not exists (select year from TBL_EIS_RPT_PIF_PROJECTION where year = isnull(@newyear,0) and accountid = @Account_ID)   
+			BEGIN
+				INSERT INTO TBL_BR_PIFProjection (
+					CustomerAccountNumber
+					,Year
+					,ExpectedIncome
+					,MODIFIED_DATE
+					,MODIFIED_USER_ID
+					,CREATED_DATE
+					,CREATED_USER_ID
+					,DELETED_USER_ID
+					)
+				VALUES (
+					@Account_ID
+					,@NewYear
+					,@ExpectedIncome
+					,getdate()
+					,@UserID
+					,getdate()
+					,@UserID
+					,NULL
+					)
+
+				SET @OutputValue = 1
+			END
+			ELSE
+			BEGIN
+				IF (@OldYear IS NOT NULL)
+					AND (@NewYear IS NOT NULL) --and (@OldYear = @NewYear  OR  @OLDYEAR <>  
+				BEGIN
+					UPDATE TBL_BR_PIFProjection
+					SET Year = @NewYear
+						,ExpectedIncome = @ExpectedIncome
+						,MODIFIED_DATE = getdate()
+						,MODIFIED_USER_ID = @UserID
+					WHERE CustomerAccountNumber = @Account_ID
+						AND Year = @OldYear
+
+					SET @OutputValue = 1
+				END
+			END
+		END
+
+
+		COMMIT TRANSACTION
+
+		RETURN @OutputValue
+		
+	END TRY
+
+	BEGIN CATCH
+	   ROLLBACK TRANSACTION
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveRptPifProjection: Cannot Ins/Upd.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveRptPifProjection'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveRptPifProjection';
+END

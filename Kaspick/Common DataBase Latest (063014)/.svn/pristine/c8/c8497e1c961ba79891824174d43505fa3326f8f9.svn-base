@@ -1,0 +1,166 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************      
+** Name:     USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR      
+** Short Desc:  Displays the accounts FIRSTK1YEAR_LASTK1YEAR.   
+**      
+** Full Description      
+**        Displays the accounts FIRSTK1YEAR_LASTK1YEAR      
+**      
+** Sample Call       
+**     EXEC USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR 2008, 'SM' ,'' 
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Asit Kar      
+** Company   : Ciber offshore      
+** Project   : BOI Reports & Queries     
+** Created DT: 05/08/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** <mm/dd/yyyy>      
+*******************************************************************************      
+** Copyright (Clnt) 2014, Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR] (
+	@TAXYEAR INT
+	,@CLIENTBRIEFNAME VARCHAR(20)
+	,@ADVENT_ID VARCHAR(8)
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	BEGIN TRY
+		BEGIN
+			IF (
+					@CLIENTBRIEFNAME = ''
+					AND @ADVENT_ID = ''
+					)
+			BEGIN
+				SELECT DISTINCT Clnt.BRIEFNAME
+					,ADVENTID
+					,TrstPrtcpt.TAXNAME AS [Beneficiary Name ]
+					,TrstPrtcpt.TAXID AS SSN
+					,FIRSTK1YEAR AS [FIRST K1 TAXYEAR]
+					,LASTK1YEAR AS [LAST K1 TAXYEAR]
+				FROM SYN_EPS_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EPS_Program Prgm ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EPS_Beneficiary Bene ON DefGiftAct.ACCOUNTID = Bene.ACCOUNTID
+				INNER JOIN SYN_EPS_TRUSTPARTICIPANT TrstPrtcpt ON Bene.PARTICIPANTID = TrstPrtcpt.PARTICIPANTID
+				INNER JOIN SYN_EPS_Client Clnt ON Clnt.CLIENTID = Prgm.CLIENTID
+				WHERE FIRSTK1YEAR <= @TAXYEAR
+					AND (
+						LASTK1YEAR IS NULL
+						OR LASTK1YEAR >= @TAXYEAR
+						)
+				ORDER BY ADVENTID
+			END
+			ELSE IF (
+					@CLIENTBRIEFNAME <> ''
+					AND @ADVENT_ID = ''
+					)
+			BEGIN
+				SELECT DISTINCT Clnt.BRIEFNAME
+					,ADVENTID
+					,TrstPrtcpt.TAXNAME AS [Beneficiary Name ]
+					,TrstPrtcpt.TAXID AS SSN
+					,isnull(FIRSTK1YEAR, 0) AS [FIRST K1 TAXYEAR]
+					,isnull(LASTK1YEAR, 0) AS [LAST K1 TAXYEAR]
+				FROM SYN_EPS_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EPS_Program Prgm ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EPS_Beneficiary Bene ON DefGiftAct.ACCOUNTID = Bene.ACCOUNTID
+				INNER JOIN SYN_EPS_TRUSTPARTICIPANT TrstPrtcpt ON Bene.PARTICIPANTID = TrstPrtcpt.PARTICIPANTID
+				INNER JOIN SYN_EPS_Client Clnt ON Clnt.CLIENTID = Prgm.CLIENTID
+				WHERE Clnt.BRIEFNAME LIKE @CLIENTBRIEFNAME + '%'
+					AND FIRSTK1YEAR <= @TAXYEAR
+					AND (
+						LASTK1YEAR IS NULL
+						OR LASTK1YEAR >= @TAXYEAR
+						)
+				ORDER BY ADVENTID
+			END
+			ELSE IF (
+					@CLIENTBRIEFNAME = ''
+					AND @ADVENT_ID <> ''
+					)
+			BEGIN
+				SELECT DISTINCT Clnt.BRIEFNAME
+					,ADVENTID
+					,TrstPrtcpt.TAXNAME AS [Beneficiary Name ]
+					,TrstPrtcpt.TAXID AS SSN
+					,isnull(FIRSTK1YEAR, 0) AS [FIRST K1 TAXYEAR]
+					,isnull(LASTK1YEAR, 0) AS [LAST K1 TAXYEAR]
+				FROM SYN_EPS_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EPS_Program Prgm ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EPS_Beneficiary Bene ON DefGiftAct.ACCOUNTID = Bene.ACCOUNTID
+				INNER JOIN SYN_EPS_TRUSTPARTICIPANT TrstPrtcpt ON Bene.PARTICIPANTID = TrstPrtcpt.PARTICIPANTID
+				INNER JOIN SYN_EPS_Client Clnt ON Clnt.CLIENTID = Prgm.CLIENTID
+				WHERE ADVENTID LIKE @ADVENT_ID + '%'
+					AND FIRSTK1YEAR <= @TAXYEAR
+					AND (
+						LASTK1YEAR IS NULL
+						OR LASTK1YEAR >= @TAXYEAR
+						)
+				ORDER BY ADVENTID
+			END
+			ELSE IF (
+					@CLIENTBRIEFNAME <> ''
+					AND @ADVENT_ID <> ''
+					)
+			BEGIN
+				SELECT DISTINCT Clnt.BRIEFNAME
+					,ADVENTID
+					,TrstPrtcpt.TAXNAME AS [Beneficiary Name ]
+					,TrstPrtcpt.TAXID AS SSN
+					,isnull(FIRSTK1YEAR, 0) AS [FIRST K1 TAXYEAR]
+					,isnull(LASTK1YEAR, 0) AS [LAST K1 TAXYEAR]
+				FROM SYN_EPS_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EPS_Program Prgm ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EPS_Beneficiary Bene ON DefGiftAct.ACCOUNTID = Bene.ACCOUNTID
+				INNER JOIN SYN_EPS_TRUSTPARTICIPANT TrstPrtcpt ON Bene.PARTICIPANTID = TrstPrtcpt.PARTICIPANTID
+				INNER JOIN SYN_EPS_Client Clnt ON Clnt.CLIENTID = Prgm.CLIENTID
+				WHERE ADVENTID LIKE @ADVENT_ID + '%'
+					AND Clnt.BRIEFNAME LIKE @CLIENTBRIEFNAME + '%'
+					AND FIRSTK1YEAR <= @TAXYEAR
+					AND (
+						LASTK1YEAR IS NULL
+						OR LASTK1YEAR >= @TAXYEAR
+						)
+				ORDER BY ADVENTID
+			END
+		END
+	END TRY
+
+	BEGIN CATCH
+		BEGIN
+			PRINT 'USP_EIS_IRS_REP_FIRSTK1YEAR_LASTK1YEAR#: ' + CAST(@@ERROR AS VARCHAR(100))
+		END
+	END CATCH
+END
+GO
+
+

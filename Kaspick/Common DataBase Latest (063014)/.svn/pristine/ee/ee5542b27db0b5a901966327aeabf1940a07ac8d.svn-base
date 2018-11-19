@@ -1,0 +1,392 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineResult]    Script Date: 08/06/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveValidationEngineResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveValidationEngineResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineResult]    Script Date: 08/06/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SaveValidationEngineResult                      
+**
+** Short Desc: To save/Update ValidationResult data
+**                      
+** Full Description:  To save/Update ValidationResult data depending on input data          
+**        
+**                              
+** Input Arguments:
+		@XMLData	XML,    
+		@Type		Bit = 1,  
+		@UserID		INT = 1  
+
+**         
+** Sample Call     
+
+	DECLARE @ret varchar(10)    
+	EXEC USP_PP_SaveValidationEngineResult   -- parameters    
+		'<ValidationResultsCollection>
+		<InsertList>
+		<ValidationResults ErrorDetails="Two business days must elapse between input of new ACH data and posting of payment; allows time for moneylink data to be sent to Schwab"  
+		PaymentScheduleID="669366"  PaymentType="BeneficiaryPayment"  RuleID="88"  ValidationResultID="0"  />
+		</InsertList>
+		<UpdateList></UpdateList>
+		<DeleteList></DeleteList>
+		</ValidationResultsCollection>',
+		0,100110,1,@ret output    
+		SELECT @ret
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 6-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:        
+** 6/1/2014  Anand		           Modified the procedure for retaining validation result in case of validation run for posted paymants. 
+** 6/6/2014  Anand		           Added distict in temp table.   
+** 6/20/2014 Anand                 Modified for removing duplicate records for posted payments ET#16321
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveValidationEngineResult] @XMLData XML
+	,@Type BIT = 1
+	,@UserID INT = 1 --In case of auto validation user id shall be one 
+	,@IsPosted BIT = 0
+	,@ReturnStatus INT
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+-- Temporary table dropping
+IF OBJECT_ID('tempdb..[#TmpValidationResult]') IS NOT NULL
+	DROP TABLE [#TmpValidationResult]
+
+IF OBJECT_ID('tempdb..[#TmpValResultRunDt]') IS NOT NULL
+	DROP TABLE [#TmpValResultRunDt]
+
+IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+	DROP TABLE [#TmpData]
+
+IF OBJECT_ID('tempdb..[#TmpTransactionRuleData]') IS NOT NULL
+	DROP TABLE [#TmpTransactionRuleData]
+
+IF OBJECT_ID('tempdb..[#TmpPostedPaymentData]') IS NOT NULL
+	DROP TABLE [#TmpPostedPaymentData]
+
+--  Variable Declarations  --    
+DECLARE @LastRunDate DATETIME
+DECLARE @RuleID INT
+
+CREATE TABLE #TmpValidationResult (
+	PaymentScheduleID VARCHAR(14)
+	,RuleID INT
+	,IsAcknowledged BIT
+	,RunDate DATETIME
+	,PaymentType VARCHAR(50)
+	)
+
+CREATE TABLE #TmpValResultRunDt (
+	PaymentScheduleID VARCHAR(14)
+	,RuleID INT
+	,PaymentType VARCHAR(50)
+	,RunDate DATETIME
+	)
+
+CREATE TABLE #TmpData (
+	ScheduleID VARCHAR(14)
+	,PaymentType VARCHAR(50)
+	)
+
+CREATE TABLE #TmpTransactionRuleData (
+	ScheduleID VARCHAR(14)
+	,RuleID INT
+	,PaymentType VARCHAR(50)
+	,ErrorDetails VARCHAR(500)
+	)
+
+CREATE TABLE #TmpPostedPaymentData (
+	ScheduleID VARCHAR(14)
+	,PaymentType VARCHAR(50)
+	,RuleID INT
+	)
+
+SELECT @RuleID = RuleID
+FROM TBL_PP_ValidationRule
+WHERE RuleName = 'Transaction ID not received'
+	AND RuleCategory = 'Beneficiary payment'
+
+--  Variable Data Assignment  --    
+SET @ReturnStatus = 0;
+
+-- Body of procedure  --    
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	IF @Type = 1
+	BEGIN
+		UPDATE TBL_PP_ValidationResult
+		SET STATUS = 'I'
+			,UserID = @UserID
+		WHERE STATUS = 'A'
+	END
+	ELSE
+	BEGIN
+		CREATE TABLE #TmpResult (
+			ScheduleID VARCHAR(14)
+			,PaymentType VARCHAR(50)
+			)
+
+		---Insert data into temp table		
+		INSERT INTO #TmpResult
+		SELECT x.item.value('@PaymentScheduleID[1]', 'Varchar(14)') AS PaymentScheduleID
+			,x.item.value('@PaymentType[1]', 'varchar(50)') AS PaymentType
+		FROM @XMLDATA.nodes('//ValidationResultsCollection/InsertList/ValidationResults') AS x(item)
+
+		--If manual validation results with pass for some scheduleid's and those id's  
+		--still exist in validation results table, their status should be changed to inactive.  
+		--Insert Data into Temp table
+		INSERT INTO #TmpResult
+		SELECT x.item.value('@PaymentScheduleID[1]', 'Varchar(14)') AS PaymentScheduleID
+			,x.item.value('@PaymentType[1]', 'varchar(50)') AS PaymentType
+		FROM @XMLDATA.nodes('//ValidationResultsCollection/DeleteList/ValidationResults') AS x(item)
+
+		---Changing status to InActive  
+		UPDATE TBL_PP_ValidationResult
+		SET STATUS = 'I'
+			,UserID = @UserID
+		FROM TBL_PP_ValidationResult ValResult
+		JOIN #TmpResult TmpRslt ON ValResult.PaymentScheduleID = TmpRslt.ScheduleID
+			AND ValResult.PaymentType = TmpRslt.PaymentType
+		WHERE STATUS = 'A'
+	END
+
+	---Inserting input data into TBL_PP_ValidationResult 
+	INSERT INTO TBL_PP_ValidationResult (
+		PaymentScheduleID
+		,RuleID
+		,PaymentType
+		,ErrorDetails
+		,IsAcknowledged
+		,STATUS
+		,RunDate
+		,UserID
+		)
+	SELECT XMLDATA.item.value('@PaymentScheduleID[1]', 'Varchar(14)') AS PaymentScheduleID
+		,XMLDATA.item.value('@RuleID[1]', 'INT') AS RuleID
+		,XMLDATA.item.value('@PaymentType[1]', 'varchar(50)') AS PaymentType
+		,XMLDATA.item.value('@ErrorDetails[1]', 'VARCHAR(500)') AS Errored
+		,0
+		,'A'
+		,getdate()
+		,@UserID
+	FROM @XMLDATA.nodes('//ValidationResultsCollection/InsertList/ValidationResults') AS XMLDATA(item)
+
+	-- Retaining validation results in case of validation engine runs second time for posted paymants.
+	IF @IsPosted = 1
+	BEGIN
+		--inserting scheduled payments into temp table 		
+		INSERT INTO #TmpData
+		SELECT DISTINCT x.item.value('@PaymentScheduleID[1]', 'Varchar(14)') AS PaymentScheduleID
+			,x.item.value('@PaymentType[1]', 'varchar(50)') AS PaymentType
+		FROM @XMLDATA.nodes('//ValidationResultsCollection/InsertList/ValidationResults') AS x(item)
+
+		--inserting posting rule validation error details into temp table	
+		INSERT INTO #TmpTransactionRuleData
+		SELECT ValResults.PaymentScheduleID
+			,ValResults.RuleID
+			,ValResults.PaymentType
+			,ValResults.ErrorDetails
+		FROM TBL_PP_ValidationResult ValResults
+		INNER JOIN #TmpData TempResult ON ValResults.PaymentScheduleID = TempResult.ScheduleID
+			AND ValResults.PaymentType = TempResult.PaymentType
+		WHERE UserID = @UserID
+			AND RuleID = @RuleID
+
+		-- Inserting records in validation result table 		
+		INSERT INTO TBL_PP_ValidationResult (
+			PaymentScheduleID
+			,RuleID
+			,PaymentType
+			,ErrorDetails
+			,IsAcknowledged
+			,STATUS
+			,RunDate
+			,UserID
+			)
+		SELECT ScheduleID
+			,RuleID
+			,PaymentType
+			,ErrorDetails
+			,0
+			,'A'
+			,getdate()
+			,@UserID
+		FROM #TmpTransactionRuleData
+		
+-- Inserting posted payment records in temp table 	
+		INSERT INTO #TmpPostedPaymentData (
+			ScheduleID
+			,PaymentType
+			,RuleID			
+			)
+		SELECT ValResults.PaymentScheduleID
+			,ValResults.PaymentType
+			,ValResults.RuleID		
+		FROM TBL_PP_ValidationResult ValResults
+		INNER JOIN #TmpData TempResult ON ValResults.PaymentScheduleID = TempResult.ScheduleID
+			AND ValResults.PaymentType = TempResult.PaymentType
+		WHERE UserID = @UserID
+			AND Status = 'Posted'	
+
+		---Changing status to InActive  for already posted payments in first cycle of validation.
+		UPDATE TBL_PP_ValidationResult
+		SET STATUS = 'I'			
+		FROM TBL_PP_ValidationResult ValResult
+		INNER JOIN #TmpPostedPaymentData TmpRslt ON ValResult.PaymentScheduleID = TmpRslt.ScheduleID
+			AND ValResult.RuleID = TmpRslt.RuleID
+			AND ValResult.PaymentType = TmpRslt.PaymentType		
+		WHERE STATUS = 'A'
+			AND UserID = @UserID
+	END
+
+	-- End of "Retaining validation results in case of validation engine runs second time for posted paymants".
+	-- Updating the IsAcknowledged column to the value from the row for   
+	-- the same paymentschedule id and for the same rule   
+	-- in the last run of the validation engine for this paymentscheduleid  
+	-- Since all previous rows are updated to a status of 'I', we can use the max(RunDate)  
+	-- from these inactive records to get the last run date for a given payment schedule  
+	--In following updation Userid updation is not considered,  
+	--because this is updation of isacknowledged field by reading   
+	--previous value of isacknowledged filed for same record.  
+	--First Insert IsAcknowledge into temp table
+	--INSERT INTO #TmpValidationResult (
+	--	PaymentScheduleID
+	--	,RuleID
+	--	,IsAcknowledged
+	--	,RunDate
+	--	,PaymentType
+	--	)
+	--SELECT ValRslt1.PaymentScheduleID
+	--	,ValRslt1.RuleID
+	--	,ValRslt1.IsAcknowledged
+	--	,ValRslt1.RunDate
+	--	,ValRslt1.PaymentType
+	--FROM TBL_PP_ValidationResult ValRslt1
+	--WHERE ValRslt1.STATUS = 'I'
+	--	AND RunDate = (
+	--		SELECT Max(RunDate)
+	--		FROM TBL_PP_ValidationResult ValRslt2
+	--		WHERE ValRslt2.PaymentScheduleID = ValRslt1.PaymentScheduleID
+	--			AND ValRslt2.RuleID = ValRslt1.RuleID
+	--			AND ValRslt2.PaymentType = ValRslt1.PaymentType
+	--			AND ValRslt2.STATUS = 'I'
+	--)
+	INSERT INTO #TmpValResultRunDt
+	SELECT PaymentScheduleID
+		,RuleID
+		,PaymentType
+		,Max(RunDate)
+	FROM TBL_PP_ValidationResult ValRslt2
+	WHERE STATUS = 'I'
+	GROUP BY PaymentScheduleID
+		,RuleID
+		,PaymentType
+
+	INSERT INTO #TmpValidationResult (
+		PaymentScheduleID
+		,RuleID
+		,IsAcknowledged
+		,RunDate
+		,PaymentType
+		)
+	SELECT ValRslt1.PaymentScheduleID
+		,ValRslt1.RuleID
+		,ValRslt1.IsAcknowledged
+		,ValRslt1.RunDate
+		,ValRslt1.PaymentType
+	FROM TBL_PP_ValidationResult ValRslt1
+	INNER JOIN #TmpValResultRunDt RunDt ON RunDt.PaymentScheduleID = ValRslt1.PaymentScheduleID
+		AND RunDt.RuleID = ValRslt1.RuleID
+		AND RunDt.PaymentType = ValRslt1.PaymentType
+		AND ValRslt1.RunDate = RunDt.RunDate
+		AND ValRslt1.STATUS = 'I'
+
+	---Updating field IsAcknowledged in TBL_PP_ValidationResult
+	UPDATE TBL_PP_ValidationResult
+	SET IsAcknowledged = TmpValResult.IsAcknowledged
+	FROM TBL_PP_ValidationResult ValResult
+	INNER JOIN #TmpValidationResult TmpValResult ON ValResult.PaymentScheduleID = TmpValResult.PaymentScheduleID
+		AND ValResult.RuleID = TmpValResult.RuleID
+		AND ValResult.PaymentType = TmpValResult.PaymentType
+		AND STATUS = 'A'
+
+	--Remove the records with status 'I'. These records are not shown up in application.  
+	--The records are deleted after the IsAcknowledge flag value is carried fwd.  
+	--New results are stored in the table.  
+	DELETE
+	FROM TBL_PP_ValidationResult
+	WHERE STATUS = 'I'
+
+	COMMIT TRANSACTION;
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpValidationResult]') IS NOT NULL
+		DROP TABLE [#TmpValidationResult]
+
+	IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+		DROP TABLE [#TmpData]
+
+	IF OBJECT_ID('tempdb..[#TmpTransactionRuleData]') IS NOT NULL
+		DROP TABLE [#TmpTransactionRuleData]
+
+	IF OBJECT_ID('tempdb..[#TmpPostedPaymentData]') IS NOT NULL
+		DROP TABLE [#TmpPostedPaymentData]
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

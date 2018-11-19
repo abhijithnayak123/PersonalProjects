@@ -1,0 +1,156 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTrustAssetValuationDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTrustAssetValuationDetail;
+
+	PRINT 'DROPPED USP_EX_GetTrustAssetValuationDetail';
+END
+GO
+
+/******************************************************************************  
+** Name:     [USP_EX_GetTrustAssetValuationDetail]  
+** Old Name : sp_wft_get_Trust_Asset_Valuation_Detail
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate trust asset valuation details  
+**  
+** Sample Call  
+ [USP_EX_GetTrustAssetValuationDetail]  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Ciber  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-April-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 28-May-2014  Mallikarjun         TrustAssetValue Request type for TAG 
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetTrustAssetValuationDetail]  
+(  
+ @Guid varchar(255)  
+)    
+AS   
+SELECT [trust_asset_valuation_id]  
+      ,[form_id]  
+      ,[guid]  
+      ,[is_revised_submission]  
+      ,[revision_date]  
+      ,[submitted_by]  
+      ,[notification_date]  
+      ,[ManagerCode]  
+      ,[ManagerCodeName]  
+      ,[CustomerAccountNumber]  
+      ,[account_name]  
+      ,[account_type]  
+      ,[reason_for_submission]  
+      ,[comments]  
+      ,[gift_restriction]  
+      ,[asset_delivery_arrival]  
+      ,[expected_asset_arrival_date]  
+      ,[gift_date]  
+      ,[asset_type4]  
+      ,[asset_type3]  
+      ,[asset_type2]  
+      ,[asset_type1]  
+      ,[ticker_symbol4]  
+      ,[ticker_symbol3]  
+      ,[ticker_symbol2]  
+      ,[ticker_symbol1]  
+      ,[price_source4]  
+      ,[price_source3]  
+      ,[price_source2]  
+      ,[price_source1]  
+      ,[number_of_share4]  
+      ,[number_of_share3]  
+      ,[number_of_share2]  
+      ,[number_of_share1]  
+      ,[high_price4]  
+      ,[high_price3]  
+      ,[high_price2]  
+      ,[high_price1]  
+      ,[donors_date_of_acquisition4]  
+      ,[donors_date_of_acquisition3]  
+      ,[donors_date_of_acquisition2]  
+      ,[donors_date_of_acquisition1]  
+      ,[low_price4]  
+      ,[low_price3]  
+      ,[low_price2]  
+      ,[low_price1]  
+      ,[long_term_holding4]  
+      ,[long_term_holding3]  
+      ,[long_term_holding2]  
+      ,[long_term_holding1]  
+      ,[average_price4]  
+      ,[average_price3]  
+      ,[average_price2]  
+      ,[average_price1]  
+      ,[donors_cost_basis4]  
+      ,[donors_cost_basis3]  
+      ,[donors_cost_basis2]  
+      ,[donors_cost_basis1]  
+      ,[asset_value4]  
+      ,[asset_value3]  
+      ,[asset_value2]  
+      ,[asset_value1]  
+      ,[delivery_method4]  
+      ,[delivery_method3]  
+      ,[delivery_method2]  
+      ,[delivery_method1]  
+      ,[asset_description4]  
+      ,[asset_description3]  
+      ,[asset_description2]  
+      ,[asset_description1]  
+      ,[hidden_asset_restore1]  
+      ,[hidden_asset_restore2]  
+      ,[hidden_asset_restore3]  
+      ,[hidden_asset_restore4]  
+      ,[total_gift_value]  
+      ,[total_cost_basis]  
+      ,[value_of_additional_gifted_assets]  
+      ,[trust_administrator]  
+      ,[client_manager]  
+      ,[pxy_useremail]  
+      ,[org_useremail]  
+      ,[org_username]  
+      ,[pxy_username]  
+      ,[org_userid]  
+      ,[pxy_userid]  
+      ,[modified]  
+      ,[modified_by]  
+      ,[team_folder_name]  
+      ,[fax_broker_confirm_trade]  
+      ,[fax_asset_appraisal]  
+      ,[fax_investment_directive]  
+  FROM [dbo].[TBL_WFT_TrustAssetValuation]  
+WHERE GUID = @Guid
+
+GO
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTrustAssetValuationDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTrustAssetValuationDetail';
+END

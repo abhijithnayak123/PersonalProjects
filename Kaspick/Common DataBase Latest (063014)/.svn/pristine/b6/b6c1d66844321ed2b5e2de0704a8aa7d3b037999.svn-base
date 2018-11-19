@@ -1,0 +1,69 @@
+IF EXISTS (	SELECT	*
+			FROM sysobjects
+			WHERE type = 'FN' AND name = 'FN_EIS_RetrieveFrequency') 
+		BEGIN
+			DROP FUNCTION FN_EIS_RetrieveFrequency;
+			PRINT 'DROPPED FUNCTION FN_EIS_RetrieveFrequency';
+		END
+		
+GO
+
+/******************************************************************************  
+** Function Name:  FN_EIS_RetrieveFrequency  
+** Description:  to retrieve frequency based on listitemid  
+**  
+**      
+** Created By: Niveditha  
+** Company   : Kaspick & Company  
+** Project   : Benereporting - Deliverable Tracker  
+** Created DT: 05/18/2011  
+**  
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date/Version  Author:  Bug #  Description:  
+** --------   -------- -------------------------------------------  
+** 05/18/2011  Niveditha  to retrieve frequency based on listitemid  
+*******************************************************************************  
+** Copyright (C) 2011 Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  select * from dbo.FN_EIS_RetrieveFrequency(621)  
+*******************************************************************************/   
+  
+  
+CREATE FUNCTION FN_EIS_RetrieveFrequency(@list_item_id int)  
+returns varchar(1)  
+as  
+  
+begin   
+  
+declare @listname varchar(100)  
+declare @freq varchar(1)  
+  
+select @listname = list_item_name from tbl_eis_list_item where list_type_id in   
+(select list_type_id from tbl_eis_list_type where LIST_TYPE_NAME ='Frequency')  
+and list_item_id = @list_item_id  
+  
+if @listname = 'Annual'   
+set @freq='A'  
+else if @listname = 'Monthly'   
+set @freq='M'  
+else if @listname = 'Quarterly'   
+set @freq='Q'  
+else if @listname = 'Semiannual'   
+set @freq='S'  
+  
+return @freq  
+  
+end  
+  
+  GO
+        
+SET NOCOUNT OFF;
+
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'FN'
+			AND name = 'FN_EIS_RetrieveFrequency') 
+	BEGIN
+			PRINT 'CREATED FUNCTION FN_EIS_RetrieveFrequency';
+	END   

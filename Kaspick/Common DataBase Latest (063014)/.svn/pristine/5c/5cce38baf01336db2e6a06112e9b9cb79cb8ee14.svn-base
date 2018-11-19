@@ -1,0 +1,355 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetPaymentDates]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetPaymentDates]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetPaymentDates]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetPaymentDates]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_GetPaymentDates    
+** Short Desc:     
+**    
+** Full Description    
+**        gets payment dates   
+**    
+** Sample Call    
+        EXEC USP_IE_GetPaymentDates '1/1/2014'  
+**    
+** Return values:     
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/02/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**     
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetPaymentDates] @RunDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	/*Updated for all security types - insert bi-annual ('fmus', 'gmus', 'fhus', 'pnus') payments */
+	SELECT [Type]
+		,[Symbol]
+		,DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate)
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency IN (
+			1
+			,2
+			,4
+			)
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN MONTH(MaturityDateNextPaymentDate) > 6
+				THEN DATEADD(MONTH, - 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			ELSE DATEADD(MONTH, 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 2
+	
+	UNION ALL
+	
+	/*Updated for all security types - insert quarterly ('fmus', 'gmus', 'fhus', 'pnus') payments */
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN MONTH(MaturityDateNextPaymentDate) > 6
+				THEN DATEADD(MONTH, - 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			ELSE DATEADD(MONTH, 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 4
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN MONTH(MaturityDateNextPaymentDate) > 6
+				THEN DATEADD(MONTH, - 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			ELSE DATEADD(MONTH, 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 4
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN MONTH(MaturityDateNextPaymentDate) <= 3
+				THEN DATEADD(MONTH, 9, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			WHEN MONTH(MaturityDateNextPaymentDate) > 3
+				AND MONTH(MaturityDateNextPaymentDate) <= 6
+				THEN DATEADD(MONTH, - 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			WHEN MONTH(MaturityDateNextPaymentDate) > 6
+				AND MONTH(MaturityDateNextPaymentDate) <= 9
+				THEN DATEADD(MONTH, 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			ELSE DATEADD(MONTH, - 9, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 4
+	
+	UNION ALL
+	
+	/*Updated for all security types - insert monthly ('fmus', 'gmus', 'fhus', 'pnus') payments */
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 1, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 1, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 2, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 2, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 3, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 4, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 4, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 5, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 5, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 6, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 7, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 7, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 8, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 8, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 9, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 9, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 10, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 10, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 11, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 11, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+	
+	UNION ALL
+	
+	SELECT [Type]
+		,[Symbol]
+		,CASE 
+			WHEN [Type] IN (
+					'pbus'
+					,'mhus'
+					,'mgus'
+					,'mius'
+					,'mjus'
+					,'mfus'
+					)
+				THEN DATEADD(MONTH, 1, DATEADD(DAY, - DAY(MaturityDateNextPaymentDate), DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 12, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))))
+			ELSE DATEADD(MONTH, - MONTH(MaturityDateNextPaymentDate) + 12, DATEADD(YEAR, (YEAR(@RunDate) - YEAR(MaturityDateNextPaymentDate)), MaturityDateNextPaymentDate))
+			END
+	FROM TBL_IE_Stg_Securities
+	WHERE PaymentFrequencyCouponFrequency = 12
+
+	SET NOCOUNT OFF;
+END
+	-- End of procedure  --

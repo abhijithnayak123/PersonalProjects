@@ -1,0 +1,76 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPGCalcPaymentBatch]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPGCalcPaymentBatch]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPGCalcPaymentBatch]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPGCalcPaymentBatch]    Script Date: 10/23/2013 16:44:44 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+  
+/******************************************************************************    
+** Name:     USP_PP_GetPGCalcPaymentBatch    
+** Short Desc: Procedure to get all the PG Calc batch info    
+**    
+** Full Description    
+**        Procedure to get all the PG Calc batch info    
+**    
+** Sample Call    
+        EXEC USP_PP_GetPGCalcPaymentBatch      
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Bandish Gupta  
+** Company   : Kaspick & Company  
+** Project   : BackOffice Integration  
+** Created DT: 02-Sep-2013  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** <mm/dd/yyyy>    
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_PP_GetPGCalcPaymentBatch]  
+ -- parameters here    
+AS  
+BEGIN  
+ --  Initial Set statements  --    
+ SET NOCOUNT ON;  
+ SET LOCK_TIMEOUT 30000;  
+ 
+  
+ --  Variable Declarations  --    
+ --counters    
+ --select PaymentBatch,SourceFile,Description from TBL_PP_PGCalcPaymentBatch    
+ SELECT PaymentBatch  
+  ,SourceFile  
+  ,Description  
+ FROM TBL_PP_PGCalcPaymentBatch  
+ ORDER BY LoadDate DESC  
+  
+ SET NOCOUNT OFF  
+END  
+ -- End of procedure  --    
+GO
+
+

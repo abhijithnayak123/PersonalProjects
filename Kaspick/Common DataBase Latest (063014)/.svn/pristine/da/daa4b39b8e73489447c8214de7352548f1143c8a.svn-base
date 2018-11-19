@@ -1,0 +1,106 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal]    Script Date: 10/09/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal                      
+** Short Desc:  To get Beneficiary Payment Method
+**                      
+** Full Description:   To get Beneficiary Payment Method for Journal           
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto
+
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal  1      
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 09-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/                  
+                  
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMethodForJournal]                  
+-- paremeters here                                
+@UserID INT,
+@Type Bit =1--auto
+
+AS                                
+	BEGIN TRY        
+        
+		--  Initial Set statements  --        
+		SET NOCOUNT ON;        
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds  
+		
+		
+		---Declare Variable
+		DECLARE @RuleID INT  
+		                
+		---Assigning value to Variable
+		SELECT @RuleID = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Beneficiary Journal Payment'
+			AND RuleCategory = 'Beneficiary payment'                   
+
+
+               
+                  
+		SELECT                     
+		PaymentType,                  
+		ScheduleID,                   
+		@RuleID AS RuleID,                     
+		'PaymentMethod' as Attribute,                  
+		(CASE         
+		WHEN PaymentMethod = 'Journal' THEN 'Journal'        
+		ELSE 'none'         
+		END) AS ActualValue                    
+		FROM                                     
+		TBL_PP_STG_InnoTrustValidationEngineInput         
+		WHERE PaymentType in ('Beneficiarypayment','PGCalcImport') 
+		AND UserId = @UserID                       
+                  
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH 
+
+SET NOCOUNT OFF;

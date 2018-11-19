@@ -1,0 +1,172 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGOPayment]    Script Date: 08/26/2014 22:11:55 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentByGOPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentByGOPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGOPayment]    Script Date: 09/01/2014 13:59:57 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+/******************************************************************************    
+** Name:  USP_KCo_PaymentByGOPayment  
+** Short Desc: Generate report for the sum of payment in terms of startdate, enddate and tax year  
+**    
+** Full Description    
+**       Generate report for the sum of payment information in terms of startdate, enddate and tax year 
+**    
+** Sample Call    
+EXEC USP_KCo_PaymentByGOPayment 'ACL',1,1,'2010-10-10 00:00:00.000','2014-04-04 00:00:00.000', '2011'
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries    
+** Created DT: 21-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 8/26/2014	Dipti				Added Additional parameter as per requirements
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentByGOPayment] @ManagerCode AS CHAR(4) = NULL
+	,@ExcludePIF AS BIT
+	,@ExcludeGAP AS BIT
+	,@BeginDate AS DATE
+	,@EndDate AS DATE
+	,@TaxYear AS INT
+	,@CustomAccountNumber AS VARCHAR(14) = NULL
+	,@AccountType AS VARCHAR(4) = NULL
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF OBJECT_ID('tempdb..#tmpPaymntInfo') IS NOT NULL
+		DROP TABLE #tmpPaymntInfo
+
+	SELECT DISTINCT AccMas.ManagerCode
+		,AccMas.CustomerAccountNumber
+		,BenPymnt.ContactID
+		,PaymentAmount
+		--,CASE 
+		--	WHEN @excludePIF = 1
+		--		AND AccMas.AccountTypeCode = 'PIF'
+		--		THEN 0
+		--	ELSE - 1
+		--	END AS 'noPIF'
+		--,CASE 
+		--	WHEN @excludeGAP = 1
+		--		AND (
+		--			AccMas.AccountTypeCode = 'GAP'
+		--			OR AccMas.AccountTypeCode = 'GAPR'
+		--			OR AccMas.AccountTypeCode = 'GAPP'
+		--			)
+		--		THEN 0
+		--	ELSE - 1
+		--	END AS 'noGAP'
+		,BenPymnt.PaymentDate
+	INTO #tmpPaymntInfo
+	FROM TBL_PP_Beneficiarypayment BenPymnt
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = BenPymnt.CustomerAccountNumber
+	WHERE (
+			@ManagerCode IS NULL
+			OR (
+				@ManagerCode IS NOT NULL
+				AND AccMas.ManagerCode = @ManagerCode
+				)
+			)
+		AND (
+			@CustomAccountNumber IS NULL
+			OR (
+				@CustomAccountNumber IS NOT NULL
+				AND AccMas.CustomerAccountNumber = @CustomAccountNumber
+				)
+			)
+		AND (
+			@AccountType IS NULL
+			OR (
+				@AccountType IS NOT NULL
+				AND @AccountType <> 'All' AND AccMas.AccountTypeCode = @AccountType
+				)
+				OR
+				(
+					@AccountType IS NOT NULL AND  @AccountType = 'All'
+				)
+			)
+		AND CASE 
+			WHEN @ExcludePIF = 1
+				AND AccMas.AccountTypeCode = 'PIF'
+				THEN 0
+			ELSE - 1
+			END = - 1
+		AND CASE 
+			WHEN @ExcludeGAP = 1
+				AND (
+					AccMas.AccountTypeCode = 'GAP'
+					OR AccMas.AccountTypeCode = 'GAPR'
+					OR AccMas.AccountTypeCode = 'GAPP'
+					)
+				THEN 0
+			ELSE - 1
+			END = - 1
+		AND (
+			BenPymnt.PaymentDate >= @BeginDate
+			AND BenPymnt.PaymentDate <= @EndDate
+			)
+		AND BenPymnt.VoidDate IS NULL
+		AND BenPymnt.TaxYear = @TaxYear
+
+	SELECT ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+		,PaymentAmount
+	FROM #tmpPaymntInfo
+	ORDER BY ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+
+	--SELECT ManagerCode
+	--	,SUM(PaymentAmount) AS SumOfPaymentAmount
+	--	,noPIF
+	--	,noGAP
+	--FROM #tmpPaymntInfo
+	--GROUP BY ManagerCode
+	--	,noPIF
+	--	,noGAP
+	--HAVING noPIF = - 1
+	--	AND noGAP = - 1
+	--ORDER BY ManagerCode
+
+	SET NOCOUNT OFF;
+END
+
+GO
+

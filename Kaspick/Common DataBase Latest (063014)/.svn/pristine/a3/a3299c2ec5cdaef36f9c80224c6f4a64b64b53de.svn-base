@@ -1,0 +1,224 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveResolutions]    Script Date: 06/26/2014 16:03:17 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_SaveResolutions]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_SaveResolutions]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveResolutions]    Script Date: 06/26/2014 16:03:17 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_SaveResolutions      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**      
+** Sample Call 
+	DECLARE  @XMLDATA XML,@TradeBlotterGenerated bit, @ErrorDesc VARCHAR(8000) 
+
+	SET @XMLDATA =	'<DataImport RunDate="06/26/2014"  RunID="922"><MissingSymbols></MissingSymbols> <Transactions>  <TransactionData   TransactionID="2933078" PortfolioCode="smpifb" Tran.Code="lo" TradeDate="3/7/2014 12:00:00 AM" TradeAmount="565.9" CustodianCode="CS" RecordVersion="0x00000000012772C2"  Comment="WIRED FUNDS OUT WIRED FUNDS DISBURSED" CheckNumber="" ResolutionUser="100372" PaymentID="1199302" Resolution="ManualMatch" Data="smpifb\tlo\t\tcaus\tCSica\t03072014\t\t\t\t\t\t\t\t\t\t\t\t565.9\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t18\t\t\tn\ty\t\t\t\t\t\t\t\t\t\t\t\t\t"  /> <TransactionData   TransactionID="2933077" PortfolioCode="smpifb" Tran.Code="lo" TradeDate="3/7/2014 12:00:00 AM" TradeAmount="1473.15" CustodianCode="CS" RecordVersion="0x00000000012772C1"  Comment="WIRED FUNDS OUT WIRED FUNDS DISBURSED" CheckNumber="" ResolutionUser="100372" PaymentID="1199301" Resolution="ManualMatch" Data="smpifb\tlo\t\tcaus\tCSica\t03072014\t\t\t\t\t\t\t\t\t\t\t\t1473.15\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t18\t\t\tn\ty\t\t\t\t\t\t\t\t\t\t\t\t\t"  /> </Transactions> </DataImport>'
+
+	EXEC USP_OP_SaveResolutions @XMLDATA,0,1, @ErrorDesc output
+
+	select @ErrorDesc 
+
+** Return values: NONE      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana     
+** Created DT :		
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** July/9/2009                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_SaveResolutions] (
+	@XMLDATA XML
+	,@TradeBlotterGenerated BIT
+	,@ReturnStatus INT OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRAN
+
+		--fetch RunID from input XML
+		DECLARE @RunID INT
+
+		SELECT @RunID = XMLDATA.item.value('@RunID[1]', 'int')
+		FROM @XMLDATA.nodes('//DataImport') AS XMLDATA(item)
+
+		--end fetch RunID from input XML
+		--update missing security symbols in TBL_OP_CustodialDataImportMissingSymbol table
+		INSERT INTO TBL_OP_CustodialDataImportMissingSymbol (
+			RunID
+			,MissingSecuritySymbol
+			,CorrectedSecuritySymbol
+			,CorrectedUserID
+			,MissingStatus
+			)
+		SELECT @RunID
+			,XMLDATA.item.value('@MissingSecuritySymbol[1]', 'varchar(25)') AS MissingSecuritySymbol
+			,XMLDATA.item.value('@CorrectedSecuritySymbol[1]', 'varchar(25)') AS CorrectedSecuritySymbol
+			,XMLDATA.item.value('@CorrectedUser[1]', 'int') AS CorrectedUser
+			,
+			--XMLDATA.item.value('@Status[1]', 'varchar(100)') AS Status  
+			msymb.StatusID
+		FROM @XMLDATA.nodes('//DataImport/MissingSymbols/MissingSymbol') AS XMLDATA(item)
+		INNER JOIN TBL_OP_MissingSymbolStatus msymb ON XMLDATA.item.value('@Status[1]', 'varchar(100)') = msymb.StatusName
+		WHERE XMLDATA.item.value('@MissingSecuritySymbol[1]', 'varchar(25)') NOT IN (
+				SELECT MissingSecuritySymbol
+				FROM TBL_OP_CustodialDataImportMissingSymbol
+				WHERE RunID = @RunID
+				)
+
+		UPDATE TBL_OP_CustodialDataImportMissingSymbol
+		SET CorrectedSecuritySymbol = TEMP.CorrectedSecuritySymbol
+			,CorrectedUserID = TEMP.CorrectedUser
+			,MissingStatus = TEMP.StatusID
+		FROM TBL_OP_CustodialDataImportMissingSymbol msymb
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@MissingSecuritySymbol[1]', 'varchar(25)') AS MissingSecuritySymbol
+				,XMLDATA.item.value('@CorrectedSecuritySymbol[1]', 'varchar(25)') AS CorrectedSecuritySymbol
+				,XMLDATA.item.value('@CorrectedUser[1]', 'int') AS CorrectedUser
+				,msymb.StatusID
+			FROM @XMLDATA.nodes('//DataImport/MissingSymbols/MissingSymbol') AS XMLDATA(item)
+			INNER JOIN TBL_OP_MissingSymbolStatus msymb ON XMLDATA.item.value('@Status[1]', 'varchar(100)') = msymb.StatusName
+			) TEMP ON msymb.MissingSecuritySymbol = TEMP.MissingSecuritySymbol
+			AND msymb.RunID = @RunID
+
+		--end update missing security symbols in TBL_OP_CustodialDataImportMissingSymbol table 
+		--Update transaction data
+		--case 1. record version matches and payment ID = 0
+		UPDATE TBL_OP_CustodialDataImportTransactionToResolve
+		SET IsResolved = 1
+			,TransactionComment = TEMP.TransactionComments
+			,ResolutionComments = TEMP.Resolution
+			,ResolutionUserID = TEMP.ResolutionUser
+			,PaymentID = 0
+			,TransactionData = TEMP.TransactionData
+		FROM TBL_OP_CustodialDataImportTransactionToResolve trx
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@Resolution[1]', 'varchar(1000)') AS Resolution
+				,XMLDATA.item.value('@TransactionID[1]', 'int') AS TransactionID
+				,XMLDATA.item.value('@ResolutionUser[1]', 'int') AS ResolutionUser
+				,XMLDATA.item.value('@Comment[1]', 'varchar(70)') AS TransactionComments
+				,XMLDATA.item.value('@RecordVersion[1]', 'varchar(max)') AS RecordVersion
+				,XMLDATA.item.value('@Data[1]', 'nvarchar(max)') AS TransactionData
+			FROM @XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item)
+			WHERE XMLDATA.item.value('@PaymentID[1]', 'int') = 0
+			) TEMP ON trx.TransactionID = TEMP.TransactionID
+			AND sys.fn_varbintohexsubstring(1, trx.recordversion, 1, 0) = TEMP.RecordVersion
+
+		--case 2.  record version matches and payment ID != 0
+		UPDATE TBL_OP_CustodialDataImportTransactionToResolve
+		SET IsResolved = 1
+			,ResolutionComments = TEMP.Resolution
+			,ResolutionUserID = TEMP.ResolutionUser
+			,TransactionComment = TEMP.TransactionComments
+			,PaymentID = TEMP.PaymentID
+			,ExpenseCode = ec.AXYS_ExpenseCode
+			,ChargeType = P.ChargeType
+			,PaymentDate = P.PaymentDate
+			,PayeeName = P.PayeeName
+			,TaxYear = P.TaxYear
+			,TaxYearAware = ISNULL(ec.TaxYearAware, 0)
+			,ToReview = ISNULL(ec.ToReview, 0)
+		FROM TBL_OP_CustodialDataImportTransactionToResolve trx
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@Resolution[1]', 'varchar(1000)') AS Resolution
+				,XMLDATA.item.value('@TransactionID[1]', 'int') AS TransactionID
+				,XMLDATA.item.value('@ResolutionUser[1]', 'int') AS ResolutionUser
+				,XMLDATA.item.value('@Comment[1]', 'varchar(70)') AS TransactionComments
+				,XMLDATA.item.value('@PaymentID[1]', 'int') AS PaymentID
+				,XMLDATA.item.value('@RecordVersion[1]', 'varchar(max)') AS RecordVersion
+			FROM @XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item)
+			WHERE XMLDATA.item.value('@PaymentID[1]', 'int') != 0
+			) TEMP ON trx.TransactionID = TEMP.TransactionID
+			AND sys.fn_varbintohexsubstring(1, trx.recordversion, 1, 0) = TEMP.RecordVersion
+		INNER JOIN dbo.TBL_PP_BeneficiaryPayment p ON p.paymentId = TEMP.PaymentID
+		LEFT OUTER JOIN dbo.TBL_OP_ExpenseCode ec ON p.TaxCode = ec.InnoTrust_TaxCode
+
+		--UPDATE Payment SET   
+		--	cleardate = temp.TradeDate,  
+		--	ClearMethod = 'M'  
+		--FROM Payment P  
+		--INNER JOIN 
+		--(		
+		--	SELECT			
+		--		XMLDATA.item.value('@PaymentID[1]', 'int') AS PaymentID,
+		--		XMLDATA.item.value('@TradeDate[1]', 'datetime') AS TradeDate
+		--	FROM   
+		--		@XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item) 
+		--	WHERE 
+		--		XMLDATA.item.value('@PaymentID[1]', 'int') != 0
+		--)temp ON p.PaymentID=temp.PaymentID  
+		--UPDATE TBL_PP_Payment_Supplement SET   
+		--	MODIFIED_DATE =  GETDATE(),  
+		--	MODIFIED_USER_ID = temp.ResolutionUser  
+		--FROM   
+		--TBL_PP_Payment_Supplement  P  
+		--INNER JOIN 
+		--(		
+		--	SELECT			
+		--		XMLDATA.item.value('@PaymentID[1]', 'int') AS PaymentID,
+		--		XMLDATA.item.value('@ResolutionUser[1]', 'int') AS ResolutionUser
+		--	FROM   
+		--		@XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item) 
+		--	WHERE 
+		--		XMLDATA.item.value('@PaymentID[1]', 'int') != 0
+		--)temp ON p.PaymentID=temp.PaymentID  
+		--End Update transaction data
+		UPDATE TBL_OP_DataImport
+		SET TradeBlottersGenerated = @TradeBlotterGenerated
+
+		EXEC USP_OP_GetDataImportByRunID @RunID
+
+		--return transaction data where record version did not match
+		SELECT *
+		FROM TBL_OP_CustodialDataImportTransactionToResolve trx
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@TransactionID[1]', 'int') AS TransactionID
+				,XMLDATA.item.value('@RecordVersion[1]', 'varchar(max)') AS RecordVersion
+			FROM @XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item)
+			) TEMP ON trx.TransactionID = TEMP.TransactionID
+			AND sys.fn_varbintohexsubstring(1, trx.recordversion, 1, 0) != TEMP.RecordVersion
+
+		--end return transaction data where record version did not match
+		SET @ReturnStatus = 0
+
+		COMMIT TRAN;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRAN;
+
+		SET @ReturnStatus = - 1
+		SET @ErrorDesc = ERROR_MESSAGE()
+	END CATCH
+END
+GO
+
+

@@ -1,0 +1,120 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GiftsInRange]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GiftsInRange]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GiftsInRange]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GiftsInRange]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GiftsInRange                      
+** Short Desc: BeneficiaryDomicileException
+**                      
+** Full Description: BeneficiaryDomicileException
+**      
+**                              
+** Input Arguments:   	
+**	
+**	        
+** Sample Call     
+    
+ EXEC dbo.USP_PP_GiftsInRange 'KCO'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 2-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GiftsInRange] (@ClientName AS CHAR(4))
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT DISTINCT AccMstr.CustomerAccountNUmber
+		,ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, '') AS FullName
+		,AccMstr.TrustAccountNumber AS BriefName
+		,AccMstr.AccountTypeCode
+		,Gft.GiftDate
+		,Gft.giftID
+		,GftAsst.DeliverMethod
+		,GftAsst.DeliverDate
+		,GftAsst.Description
+		,GftAsst.AssetType
+		,GftAsst.MarketValue
+		,GftAsst.CostBasis
+		,AccMstr.AllianceNUmber
+		,AccMstr.ManagerCode
+		,@ClientName AS ClientName
+		,Gft.Comments
+		,Gft.IsInitialGift
+		,Gft.IsTestamentary
+		,CASE 
+			WHEN isInitialGift = - 1
+				AND istestamentary = 1
+				THEN 'Testamentary Funding'
+			ELSE (
+					CASE 
+						WHEN isInitialGift = - 1
+							AND istestamentary = 0
+							THEN 'Initial Funding'
+						ELSE (
+								CASE 
+									WHEN isInitialGift = 0
+										THEN 'Addition'
+									END
+								)
+						END
+					)
+			END AS InitialAdd
+	FROM SYN_IT_AccountMaster AccMstr
+	INNER JOIN KaspickDB_Lookup..TBL_Lookup_Account LkpAccnt
+		ON LkpAccnt.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	INNER JOIN ExcelsiorProfileStageDB..GIFT Gft
+		ON LkpAccnt.AccountID = Gft.AccountID
+	INNER JOIN ExcelsiorProfileStageDB..GIFTASSET GftAsst
+		ON Gft.GiftID = GftAsst.GiftID
+	WHERE (
+			(
+				(Gft.GiftDate) >= '01/01/2014'
+				AND (Gft.GiftDate) <= '03/31/2014 '
+				)
+			AND (AccMstr.ManagerCode = 'KQ') ----AND ((PROGRAM.ClientID) = 100046)
+			)
+	ORDER BY AccMstr.CustomerAccountNUmber
+		,Gft.GiftDate
+		,Gft.GiftID;
+
+	SET NOCOUNT OFF;
+END
+
+

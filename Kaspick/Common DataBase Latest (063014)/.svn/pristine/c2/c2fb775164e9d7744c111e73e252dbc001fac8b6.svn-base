@@ -1,0 +1,78 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_TrustValuationInformation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_TrustValuationInformation]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_TrustValuationInformation  
+** Short Desc: Trust Valuation information from Paragon  
+**    
+** Full Description    
+** Trust Valuation information from Paragon  
+**    
+** Sample Call    
+        EXEC USP_KCo_TrustValuationInformation 'JH', 2013  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries    
+** Created DT: 03-28-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_TrustValuationInformation] @ManagerCode AS CHAR(4)
+	,@PayoutYear AS INT
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT AccMas.CustomerAccountNumber AS 'Advent ID'
+		,AccMas.TrustAccountNumber AS 'Client Account Code1'
+		,UDFAccMas.UDFAMColumn042 AS 'Client Account Code2'
+		,SUBSTRING(AccMas.TaxIDNumber, 1, 2) + '-' + SUBSTRING(AccMas.TaxIDNumber, 3, 7) AS 'Tax ID'
+		,AccMas.AccountTypeCode AS 'Account Type'
+		,AnlActPayoutIn.PayoutYear AS 'Payout Year'
+		,CAST(ROUND(AnlActPayoutIn.Valuation, 2) AS DECIMAL(16, 2)) AS 'Valuation'
+		,CAST(ROUND(CAST((CTAcc.PayoutPercentage / 100) * AnlActPayoutIn.Valuation AS MONEY), 2) AS DECIMAL(16, 2)) AS 'Unitrust Amount'
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+		ON UDFAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	INNER JOIN TBL_PP_AnnualAccountPayoutInfo AnlActPayoutIn
+		ON AnlActPayoutIn.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_IT_CTAccountDetails CTAcc
+		ON CTAcc.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	WHERE (AccMas.ManagerCode = @ManagerCode)
+		AND AnlActPayoutIn.PayoutYear = @PayoutYear
+	ORDER BY AccMas.CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

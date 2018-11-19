@@ -1,0 +1,108 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPaymentSummaryFromGiftwrapGAP]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetPaymentSummaryFromGiftwrapGAP]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetPaymentSummaryFromGiftwrapGAP]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPaymentSummaryFromGiftwrapGAP]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetPaymentSummaryFromGiftwrapGAP                      
+** Short Desc: A data extract from GiftWrap, which gives paymets in Giftwrap application   
+**  for given date.
+** Full Description: A data extract from GiftWrap, which gives paymets in Giftwrap application   
+**  for given date.
+**                              
+** Input Arguments:   		@XMLCustomerAccountNumber XML
+**	,@AsOfDate DATETIME
+** Sample Call     
+
+ EXEC dbo.USP_PV_GetPaymentSummaryFromGiftwrapGAP   
+  @AsOfDate = '09/30/2009'
+  ,@XMLCustomerAccountNumber = '<ManagerCodeParametersCollection>  
+      <InsertList>  
+      <CustomerAccountNumberItem CustomerAccountNumber="ARGAP" />  
+      <CustomerAccountNumberItem CustomerAccountNumber="BRGAP" />  
+      <CustomerAccountNumberItem CustomerAccountNumber="BWGAP" />  
+      </InsertList>  
+      </ManagerCodeParametersCollection>'
+    
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetPaymentSummaryFromGiftwrapGAP] (
+	@AsOfDate DATETIME
+	,@XMLCustomerAccountNumber XML
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	DECLARE @GiftTypeID INT
+
+	SELECT @GiftTypeID = GiftTypeID
+	FROM SYN_GW_TBLGiftType
+	WHERE Short = 'CGA'
+
+	SELECT Org.OrgID AS OrgID
+		,ISNULL(Org.OrgAccount1, '') AS OrgAccount1
+		,Org.OrgNickname AS OrgNickName
+		,Org.OrgName
+		,Payment.PaymentDate AS PaymentDate
+		,Payment.PaymentAmount AS PaymentAmount
+		,Payment.PaymentID AS PaymentID
+	FROM SYN_GW_TBLGift Gift
+	INNER JOIN SYN_GW_TBLOrganization Org
+		ON Gift.OrgID = Org.OrgID
+	INNER JOIN SYN_GW_TBLPayment Payment
+		ON Payment.GiftID = Gift.GiftID
+			-- Added below code to handle voided payments  
+			AND VoidOrStopDate IS NULL
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS orgaccount1
+		FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.orgaccount1 = ltrim(rtrim(Org.orgaccount1))
+	WHERE Gift.OrgID != 0
+		AND Payment.PaymentDate <= @AsOfDate
+		AND Payment.PaymentDate >= @AsOfDate
+		AND Gift.GiftTypeID = @GiftTypeID
+	ORDER BY Org.OrgAccount1
+		,Payment.PaymentDate
+		,Gift.GiftId
+
+	SET NOCOUNT OFF;
+END

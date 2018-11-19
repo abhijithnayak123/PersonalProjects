@@ -1,0 +1,71 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserApplication]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetUserApplication]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetUserApplication]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserApplication]    Script Date: 05/10/2013 14:33:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_KS_GetUserApplication                      
+** Short Desc	:	To get the applications list assigned to an User
+**                  
+**                      
+** Full Description: To get the applications list assigned to an User 
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+	 EXEC [USP_KS_GetUserApplication] 1
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetUserApplication]
+	-- paremeters here    
+	@UserID INT
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+-- Body of procedure  --    
+SELECT AppMaster.ApplicationID
+	,ApplicationName
+FROM TBL_KS_Application AppMaster
+INNER JOIN TBL_KS_UserApplication UserApp ON UserApp.ApplicationID = AppMaster.ApplicationID
+	AND UserID = @UserID
+
+SET NOCOUNT OFF;
+	-- End of procedure  --    

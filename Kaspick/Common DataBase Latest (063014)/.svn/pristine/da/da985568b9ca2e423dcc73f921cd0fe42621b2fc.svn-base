@@ -1,0 +1,244 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_SaveGroup]    Script Date: 06/30/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_SaveGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_SaveGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_SaveGroup]    Script Date: 06/30/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_SaveGroup    
+** Short Desc: Save changes made to group(s) from GUI    
+**    
+** Full Description    
+**        accepts a XML document. XML contains new group details/deleted group details    
+**    
+** Sample Call    
+  
+Declare @ret_status int    
+EXEC USP_IE_SaveGroup  -- parameters    
+ '<GroupsCollection>  
+      <InsertList>  
+            <Group GroupID="0"  GroupName="BOITestGroup"  TaxYear="2014"  IsOfficial="False"    
+                        Description="TestGroupDescription"  IsDeleted="False"  UserID="1"    
+                        CreatedDate="7/3/2014 12:00:00 AM"  ModifiedDate="7/3/2014 12:00:00 AM"    
+                        Universe="0"    
+                        ManagerCode="SM"    
+                        AccountType="END"  />  
+      </InsertList>  
+      <UpdateList>  
+      </UpdateList>  
+      <DeleteList>  
+      </DeleteList>  
+</GroupCollection>  
+ ',   @ret_status OUTPUT    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 06/30/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_SaveGroup]
+	-- paremeters here    
+	@XMLDATA XML
+	,@return_status VARCHAR(20)
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+--  Variables for Loop    
+DECLARE @Cnt_Group INT;
+DECLARE @Max_Groups INT;
+--  Temp tables, Cursors, Table Variables  --    
+DECLARE @TBL_Group TABLE (
+	ID INT IDENTITY(1, 1)
+	,GroupID INT NULL
+	,GroupName VARCHAR(50) NULL
+	,TaxYear SMALLINT NULL
+	,IsOfficial BIT NULL
+	,Description VARCHAR(175) NULL
+	,UserID INT NULL
+	,Universe BIT NULL
+	,ManagerCode VARCHAR(max) NULL
+	,AccountType VARCHAR(max) NULL
+	);
+DECLARE @TBL_Delete_Group TABLE (
+	ID INT IDENTITY(1, 1)
+	,GroupID INT
+	);
+DECLARE @GroupName VARCHAR(50)
+	,@TaxYear SMALLINT
+	,@IsOfficial BIT
+	,@Description VARCHAR(175)
+	,@IsDeleted BIT
+	,@UserID INT
+	,@Universe BIT
+	,@ManagerCode VARCHAR(max)
+	,@AccountType VARCHAR(max)
+DECLARE @New_GroupID INT;
+DECLARE @Group_status INT;
+DECLARE @FlipDate DATETIME;
+
+--  Variable Data Assignment  --    
+SET @Cnt_Group = 1;
+SET @Max_Groups = 0;
+SET @return_status = '';
+
+-- Body of procedure  --    
+BEGIN TRY
+	--  Transactions    
+	BEGIN TRANSACTION
+
+	--Logic for Create new Group     
+	INSERT INTO @TBL_Group (
+		GroupName
+		,TaxYear
+		,IsOfficial
+		,Description
+		,UserID
+		,Universe
+		,ManagerCode
+		,AccountType
+		)
+	SELECT XMLDATA.item.value('@GroupName[1]', 'Varchar(50)') AS GroupName
+		,XMLDATA.item.value('@TaxYear[1]', 'Smallint') AS TaxYear
+		,XMLDATA.item.value('@IsOfficial[1]', 'bit') AS IsOfficial
+		,XMLDATA.item.value('@Description[1]', 'varchar(175)') AS Description
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+		,XMLDATA.item.value('@Universe[1]', 'bit') AS Universe
+		,XMLDATA.item.value('@ManagerCode[1]', 'varchar(max)') AS ManagerCode
+		,XMLDATA.item.value('@AccountType[1]', 'varchar(max)') AS AccountType
+	FROM @XMLDATA.nodes('//GroupCollection/InsertList/Group') AS XMLDATA(item)
+
+	IF EXISTS (
+			SELECT ID
+			FROM @TBL_Group
+			)
+	BEGIN
+		-- The code for loop is commented as we can craete one group ata time    
+		-- SELECT @Max_Groups = COUNT(*) FROM @TBL_Group    
+		-- WHILE @Cnt_Group <= @Max_Groups    
+		-- BEGIN     
+		SELECT @GroupName = GroupName
+			,@TaxYear = TaxYear
+			,@IsOfficial = IsOfficial
+			,@Description = Description
+			,@UserID = UserID
+			,@Universe = Universe
+			,@ManagerCode = ManagerCode
+			,@AccountType = AccountType
+		FROM @TBL_Group
+		WHERE ID = @Cnt_Group
+
+		SET @FlipDate = CAST('01/01/' + CAST(@TaxYear AS VARCHAR) AS DATETIME)
+
+		--Call appropriate sp to create a group    
+		IF @IsOfficial = 1
+		BEGIN
+			EXEC USP_IE_CreateOfficialGroup @groupName = @GroupName
+				,@taxYear = @TaxYear
+				,@description = @Description
+				,@appflipdate = @FlipDate
+				,@userID = @UserID
+				,@groupID = @New_GroupID OUTPUT
+		END
+		ELSE
+		BEGIN
+			EXEC USP_IE_CreateAdhocGroup @groupName = @GroupName
+				,@taxYear = @TaxYear
+				,@description = @Description
+				,@appflipdate = @FlipDate
+				,@userID = @UserID
+				,@Universe = @Universe
+				,@ManagerCode = @ManagerCode
+				,@AccountType = @AccountType
+				,@groupID = @New_GroupID OUTPUT
+		END
+
+		IF @New_GroupID = 0
+		BEGIN
+			SET @return_status = '-1';
+
+			--Interprete this value for displaying error message in GUI.    
+			--since no accounts fetch from Excelsiro Group is not created    
+			PRINT 'cannot create group as no acounts fetched'
+		END
+		ELSE
+		BEGIN
+			SET @return_status = cast(@New_GroupID AS VARCHAR);
+		END
+				--  SET @Cnt_Group = @Cnt_Group + 1    
+				-- END    
+	END
+
+	--Logic for Deleting a group    
+	--Validation for not allowing to delete a offcial group is coded in GUI.    
+	INSERT INTO @TBL_Delete_Group (GroupID)
+	SELECT XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+	FROM @XMLDATA.nodes('//GroupCollection/DeleteList/Group') AS XMLDATA(item)
+
+	-- SELECT GroupID FROM OPENXML (@idoc, @DELETEXPATH, 2) WITH (GroupID int)    
+	IF EXISTS (
+			SELECT ID
+			FROM @TBL_Delete_Group
+			)
+	BEGIN
+		UPDATE TBL_IE_STG_Estimate
+		SET IsDeleted = 1
+			,ModifiedDate = GetDate()
+		WHERE GroupId IN (
+				SELECT GroupID
+				FROM @TBL_Delete_Group
+				)
+
+		UPDATE TBL_IE_GROUP
+		SET IsDeleted = 1
+			,ModifiedDate = GetDate()
+		WHERE GroupId IN (
+				SELECT GroupID
+				FROM @TBL_Delete_Group
+				)
+	END
+
+	COMMIT TRANSACTION;
+		--SET NOCOUNT OFF;  
+END TRY
+
+BEGIN CATCH
+	SET @return_status = '-1';
+
+	EXEC USP_IE_RethrowError;
+
+	ROLLBACK TRANSACTION;
+END CATCH;
+	-- End of procedure  -- 

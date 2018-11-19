@@ -1,0 +1,111 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryAllianceAddress]    Script Date: 10/17/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryAllianceAddress]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryAllianceAddress]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryAllianceAddress]    Script Date: 10/17/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryAllianceAddress                      
+** Short Desc: To Check Alliance Address 
+**                      
+** Full Description:  To Check Alliance Address for payment Type Beneficiarypayment & PGCalcImport        
+**        
+**                              
+** Input Arguments: 
+	@UserID	INT,
+	@Type Bit =1--auto 
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryAllianceAddress  1      
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/     
+                
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryAllianceAddress]                  
+-- paremeters here                                
+@UserID INT,
+@Type Bit =1--auto 
+
+AS                                
+	BEGIN TRY        
+        
+		--  Initial Set statements  --        
+		SET NOCOUNT ON;        
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds  
+		
+		
+		---Declare Variable
+		DECLARE @RuleID INT  
+		                
+		---Assigning value to Variable
+		SELECT @RuleID = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Missing Alliance address'
+			AND RuleCategory = 'Beneficiary payment' 
+			
+			
+	
+  
+		SELECT PaymentType
+			,ScheduleID
+			,@RuleID AS RuleID
+			,'MissingAllianceAddress' AS Attribute
+			,(
+				CASE 
+					WHEN ISNull(AllianceAddress, '') = ''
+						THEN 'none'
+					ELSE 'exist'
+					END
+				) AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput
+		WHERE PaymentType IN (
+				'Beneficiarypayment'
+				,'PGCalcImport'
+				)
+			AND UserId = @UserID
+  
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH   
+  
+SET NOCOUNT OFF;  
+  

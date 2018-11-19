@@ -1,0 +1,114 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsTENANT'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsTENANT;
+
+	PRINT 'DROPPED USP_BR_FASB_InsTENANT';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************          
+** Name		  : USP_BR_FASB_InsTENANT
+** Old Name   : USP_EIS_RPT_FASB_TENANT_InsProc
+** Short Desc : To insert data into staging table.
+**          
+** Full Description          
+**              
+**          
+** Return values: NONE          
+**   
+** Sample Call
+**    
+** EXEC USP_BR_FASB_InsTENANT 1121,'FASB' ,getdate(),getdate(),100001        
+**           
+** Created By : Basavaraj Elalli     
+** Company  :  Kaspick & Company          
+** Project  :  FASB          
+** Created DT :  Aug/09/2012          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**  Aug/09/2012    Basu Elalli           Created  
+    Oct/18/2012	   Ganapati				 Added additional parameters
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/     
+
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsTENANT]
+(
+	@FASB_ClientID int,
+	@ReportPurpose varchar(50),
+	@AsOfDate datetime,
+	@Sel_ClientID varchar(1000),
+	@MarketValueDate datetime,
+	@CreatedUserID int,
+	@MortalityTable varchar(100),
+	@RateOfReturn decimal(6,2)
+)
+AS
+BEGIN
+
+	DELETE FROM TBL_BR_STG_FASBNote;
+	DELETE FROM TBL_BR_STG_FASBAddress;
+	DELETE FROM TBL_BR_STG_FASBPerson;
+	DELETE FROM TBL_BR_STG_FASBPersonGiftMap;
+	DELETE FROM TBL_BR_STG_FASBGiftDetail;
+	DELETE FROM TBL_BR_STG_FASBAnnuityPool;
+	DELETE FROM TBL_BR_STG_FASBGift;
+	DELETE FROM TBL_BR_STG_FASBPIF;
+	DELETE FROM TBL_BR_STG_FASBOrganization;
+	DELETE FROM TBL_BR_STG_FASBTenant;
+	DELETE FROM TBL_BR_STG_FASBManagerProfile
+	  
+	DECLARE @MT INT
+	SELECT
+		@MT = ListItemID
+	FROM
+		TBL_ListItem
+	WHERE
+		ListItemName = @MortalityTable
+	AND
+		ListTypeID = (SELECT ListTypeID FROM TBL_ListType WHERE ListTypeName = 'Mortality Table')
+		
+	EXEC USP_BR_FASB_STG_ClientProfiles	
+		@Sel_ClientID 
+		,@MarketValueDate 
+		,@ReportPurpose 
+		,@MT 
+		,@RateOfReturn 
+
+	INSERT INTO TBL_BR_STG_FASBTenant
+	(
+		TenantID
+		, FASBClientID
+		, TenantName
+		, TenantNickname
+		, CreatedDate
+		, CreatedUserID
+	) 
+	VALUES
+	(
+		1
+		, @FASB_ClientID
+		,@ReportPurpose + REPLACE(CONVERT(VARCHAR(10),@AsOfDate, 101), '/', '')
+		,@ReportPurpose +  REPLACE(CONVERT(VARCHAR(10), @AsOfDate, 101), '/', '')
+		,GETDATE()
+		,@CreatedUserID
+	)
+END
+GO
+SET ANSI_NULLS OFF
+GO
+SET QUOTED_IDENTIFIER OFF
+GO

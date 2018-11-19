@@ -1,0 +1,469 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdActivityConsoleCommentMemo]    Script Date: 07/15/2013 14:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_UpdActivityConsoleCommentMemo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_UpdActivityConsoleCommentMemo]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdActivityConsoleCommentMemo]    Script Date: 07/15/2013 14:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_UpdActivityConsoleCommentMemo                      
+** Short Desc: To update Comment/Memo field
+**                      
+** Full Description:   To update  Comment/Memo field in  TBL_PP_BeneficiaryPayoutSchedule/TBL_PP_PGCalcPaymentDataMerged/TBL_PP_BeneficiaryPayment
+					   as per the input condition       
+**        
+**                              
+** Input Arguments:
+	 @ScheduleXml	Xml,    
+	 @CommentMemo	VARCHAR(1000),  
+	 @FieldType		VARCHAR(20),  
+	 @RecordCount	INT,   
+
+**         
+** Sample Call              
+ DECLARE @r INT   
+ EXEC USP_PP_UpdActivityConsoleCommentMemo    
+			'<ActivityConsolePaymentCollection><InsertList><ActivityConsolePayment ScheduleID="691487"  UserID="100336"  Condition=""  PaymentID="0"  PGCalcPaymentID="0"  PaymentDate="3/31/2014 12:00:00 AM"  RecordVersion="0x00000000001097F4"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ActivityConsolePaymentCollection>'  
+,'NoYesNo','Comment',1 ,@r output  
+SELECT @r
+
+ DECLARE @r INT   
+ EXEC USP_PP_UpdActivityConsoleCommentMemo    
+			'<ActivityConsolePaymentsCollection><InsertList></InsertList><UpdateList>
+			<ActivityConsolePayments ScheduleID="0" UserID="300009"  Condition=""  PaymentID=""  MergedPGCalcPaymentID="253"  RecordVersion="0x0000000000783DDB"  />
+			<ActivityConsolePayments ScheduleID="0" UserID="300009"  Condition=""  PaymentID=""  MergedPGCalcPaymentID="254"  RecordVersion="0x0000000000783DDC"  />
+			</UpdateList><DeleteList></DeleteList></ActivityConsolePaymentsCollection>'  
+,'NEOLD','Comment',2 ,@r output  
+SELECT @r
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 31-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 5/18/2014	Saravanan			Updated XML Nodes name
+***5/22/2014		Saravanan			Fixed Review comments
+** 6/3/2014	  Saravanan				Added Set No count off statement
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_UpdActivityConsoleCommentMemo] @ScheduleXml XML
+	,@CommentMemo VARCHAR(1000)
+	,@FieldType VARCHAR(20)
+	,@RecordCount INT
+	,@Returnstatus INT
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds 
+	--  Variable Data Assignment  --      
+SET @Returnstatus = 0;
+
+-- Body of procedure  --      
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	CREATE TABLE #XmlInfo (
+		ID INT IDENTITY(1, 1)
+		,ScheduleID INT
+		,UserID INT
+		,PaymentID INT
+		,MergedPGCalcPaymentID INT
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table		
+	INSERT INTO #XmlInfo (
+		ScheduleID
+		,UserID
+		,PaymentID
+		,MergedPGCalcPaymentID
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		,XMLDATA.item.value('@UserID[1]', 'INT') AS UserID
+		,XMLDATA.item.value('@PaymentID[1]', 'INT') AS PaymentID
+		,XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'INT') AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @ScheduleXml.nodes('//ActivityConsolePaymentCollection/InsertList/ActivityConsolePayment') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #XmlInfo
+	SET ReturnStatus = - 2
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpXml.ScheduleID
+	WHERE TmpXml.PaymentID = 0
+		AND CONVERT(VARCHAR(20), CAST(BenPay.RecordVersion AS VARBINARY(8)), 1) <> TmpXml.RecordVersion
+
+	UPDATE #XmlInfo
+	SET ReturnStatus = - 2
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PgCalc
+		ON PgCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+	WHERE TmpXml.PaymentID = 0
+		AND TmpXml.MergedPGCalcPaymentID <> 0
+		AND CONVERT(VARCHAR(20), CAST(PgCalc.RecordVersion AS VARBINARY(8)), 1) <> TmpXml.RecordVersion
+
+	UPDATE #XmlInfo
+	SET ReturnStatus = - 2
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpXml.PaymentID
+			AND TmpXml.PaymentID <> 0
+	WHERE CONVERT(VARCHAR(20), CAST(BenPmnt.RecordVersion AS VARBINARY(8)), 1) <> TmpXml.RecordVersion
+
+	--- Set ReturnStatus to -2 even if a single record is found with dirty write
+	IF EXISTS (
+			SELECT 1
+			FROM #XmlInfo
+			WHERE ReturnStatus = - 2
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+
+	IF @ReturnStatus <> - 2
+	BEGIN
+		IF @FieldType = 'Comment'
+		BEGIN
+			--UPDATE Single-Beneficary-Comment for Unposted  
+			UPDATE TBL_PP_BeneficiaryPayoutSchedule
+			SET Comments = CASE 
+					WHEN @RecordCount = 1
+						THEN @CommentMemo
+					ELSE LEFT(ISNULL(@CommentMemo, '') + ISNULL(BenPay.Comments, ''), 1000)
+					END
+				,ModifiedDate = getdate()
+				,ModifiedBy = TmpXml.UserID
+			FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+			INNER JOIN #XmlInfo TmpXml
+				ON BenPay.BPScheduleID = TmpXml.ScheduleID
+			WHERE TmpXml.PaymentID = 0
+
+			--- Audit log for PGcalc  
+			--- Insert audit log for PGcalc  
+			INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+				AuditUserId
+				,AuditDatetime
+				,AuditType
+				,AuditDetails
+				,MergedPGCalcPaymentID
+				,ManagerCode
+				,PaymentBatch
+				,CustomerAccountNumber
+				,PersonCode
+				,PayeeName
+				,PaymentAmount
+				,PaymentDate
+				,SeparateCheck
+				,Account1
+				,Account2
+				,GiftDate
+				,PIFUnits
+				,PIFValue
+				,PIFIncome
+				,TaxWithholding
+				,PaymentID
+				,EPD
+				,Taxyear
+				,STATUS
+				,ContactID
+				,ContactRoleCode
+				,InstructionID
+				,beneficiaryDistributionID
+				,PeriodEndDate
+				,Memo
+				,Comment
+				,ModifiedDate
+				,ModifiedBy
+				,CreatedDate
+				,CreatedBy
+				,MatchType
+				,GiftWrapPaymentReviewDate
+				,GiftWrapPaymentReviewedBy
+				,DeletedUserId
+				)
+			SELECT TmpXml.UserID
+				,GETDATE()
+				,'U'
+				,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,PGCalc.MergedPGCalcPaymentID
+				,PGCalc.ManagerCode
+				,PGCalc.PaymentBatch
+				,PGCalc.CustomerAccountNumber
+				,PGCalc.PersonCode
+				,PGCalc.PayeeName
+				,PGCalc.PaymentAmount
+				,PGCalc.PaymentDate
+				,PGCalc.SeparateCheck
+				,PGCalc.Account1
+				,PGCalc.Account2
+				,PGCalc.GiftDate
+				,PGCalc.PIFUnits
+				,PGCalc.PIFValue
+				,PGCalc.PIFIncome
+				,PGCalc.TaxWithholding
+				,PGCalc.PaymentID
+				,PGCalc.EPD
+				,PGCalc.Taxyear
+				,PGCalc.STATUS
+				,PGCalc.ContactID
+				,PGCalc.ContactRoleCode
+				,PGCalc.InstructionID
+				,PGCalc.beneficiaryDistributionID
+				,PGCalc.PeriodEndDate
+				,PGCalc.Memo
+				,PGCalc.Comment
+				,PGCalc.ModifiedDate
+				,PGCalc.ModifiedBy
+				,PGCalc.CreatedDate
+				,PGCalc.CreatedBy
+				,PGCalc.MatchType
+				,PGCalc.GiftWrapPaymentReviewDate
+				,PGCalc.GiftWrapPaymentReviewedBy
+				,TmpXml.UserID
+			FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+			INNER JOIN #XmlInfo TmpXml
+				ON PGCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+			WHERE TmpXml.PaymentID = 0
+
+			----end of pgcalc audit log
+			----UPDATE PGCalc-Comment for Unposted  
+			UPDATE TBL_PP_PGCalcPaymentDataMerged
+			SET Comment = CASE 
+					WHEN @RecordCount = 1
+						THEN @CommentMemo
+					ELSE LEFT(ISNULL(@CommentMemo, '') + ISNULL(PGCalc.Comment, ''), 1000)
+					END
+				,ModifiedDate = getdate()
+				,ModifiedBy = TmpXml.UserID
+			FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+			INNER JOIN #XmlInfo TmpXml
+				ON PGCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+			WHERE TmpXml.PaymentID = 0
+
+			----UPDATE Comment for Posted Payment  
+			UPDATE TBL_PP_BeneficiaryPayment
+			SET Comment = CASE 
+					WHEN @RecordCount = 1
+						THEN @CommentMemo
+					ELSE LEFT(ISNULL(@CommentMemo, '') + ISNULL(BenPmnt.Comment, ''), 1000)
+					END
+				,ModifiedDate = getdate()
+				,ModifiedBy = TmpXml.UserID
+			FROM TBL_PP_BeneficiaryPayment BenPmnt
+			INNER JOIN #XmlInfo TmpXml
+				ON BenPmnt.PaymentID = TmpXml.PaymentID
+		END
+		ELSE
+			IF @FieldType = 'Memo'
+			BEGIN
+				----UPDATE Single-Beneficary-Comment for Unposted  
+				UPDATE TBL_PP_BeneficiaryPayoutSchedule
+				SET Memo = @CommentMemo
+					,ModifiedDate = getdate()
+					,ModifiedBy = TmpXml.UserID
+				FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+				INNER JOIN #XmlInfo TmpXml
+					ON BenPay.BPScheduleID = TmpXml.ScheduleID
+				WHERE TmpXml.PaymentID = 0
+
+				--- Insert audit log for PGcalc  
+				INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+					AuditUserId
+					,AuditDatetime
+					,AuditType
+					,AuditDetails
+					,MergedPGCalcPaymentID
+					,ManagerCode
+					,PaymentBatch
+					,CustomerAccountNumber
+					,PersonCode
+					,PayeeName
+					,PaymentAmount
+					,PaymentDate
+					,SeparateCheck
+					,Account1
+					,Account2
+					,GiftDate
+					,PIFUnits
+					,PIFValue
+					,PIFIncome
+					,TaxWithholding
+					,PaymentID
+					,EPD
+					,Taxyear
+					,STATUS
+					,ContactID
+					,ContactRoleCode
+					,InstructionID
+					,beneficiaryDistributionID
+					,PeriodEndDate
+					,Memo
+					,Comment
+					,ModifiedDate
+					,ModifiedBy
+					,CreatedDate
+					,CreatedBy
+					,MatchType
+					,GiftWrapPaymentReviewDate
+					,GiftWrapPaymentReviewedBy
+					,DeletedUserId
+					)
+				SELECT TmpXml.UserID
+					,GETDATE()
+					,'U'
+					,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+					,PGCalc.MergedPGCalcPaymentID
+					,PGCalc.ManagerCode
+					,PGCalc.PaymentBatch
+					,PGCalc.CustomerAccountNumber
+					,PGCalc.PersonCode
+					,PGCalc.PayeeName
+					,PGCalc.PaymentAmount
+					,PGCalc.PaymentDate
+					,PGCalc.SeparateCheck
+					,PGCalc.Account1
+					,PGCalc.Account2
+					,PGCalc.GiftDate
+					,PGCalc.PIFUnits
+					,PGCalc.PIFValue
+					,PGCalc.PIFIncome
+					,PGCalc.TaxWithholding
+					,PGCalc.PaymentID
+					,PGCalc.EPD
+					,PGCalc.Taxyear
+					,PGCalc.STATUS
+					,PGCalc.ContactID
+					,PGCalc.ContactRoleCode
+					,PGCalc.InstructionID
+					,PGCalc.beneficiaryDistributionID
+					,PGCalc.PeriodEndDate
+					,PGCalc.Memo
+					,PGCalc.Comment
+					,PGCalc.ModifiedDate
+					,PGCalc.ModifiedBy
+					,PGCalc.CreatedDate
+					,PGCalc.CreatedBy
+					,PGCalc.MatchType
+					,PGCalc.GiftWrapPaymentReviewDate
+					,PGCalc.GiftWrapPaymentReviewedBy
+					,TmpXml.UserID
+				FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+				INNER JOIN #XmlInfo TmpXml
+					ON PGCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+				WHERE TmpXml.PaymentID = 0
+
+				-----end audit log 
+				-----UPDATE PGCalc-Comment for Unposted  
+				UPDATE TBL_PP_PGCalcPaymentDataMerged
+				SET Memo = @CommentMemo
+					,ModifiedDate = getdate()
+					,ModifiedBy = TmpXml.UserID
+				FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+				INNER JOIN #XmlInfo TmpXml
+					ON PGCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+				WHERE TmpXml.PaymentID = 0
+			END
+	END
+
+	SELECT TmpXml.ScheduleID
+		,TmpXml.PaymentID
+		,TmpXml.MergedPGCalcPaymentID
+		,NULL AS RecordVersion
+		,TmpXml.ReturnStatus
+	FROM #XmlInfo TmpXml
+	WHERE ReturnStatus = - 2
+	
+	UNION ALL
+	
+	SELECT TmpXml.ScheduleID
+		,TmpXml.PaymentID
+		,TmpXml.MergedPGCalcPaymentID
+		,BenPay.RecordVersion
+		,TmpXml.ReturnStatus
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpXml.ScheduleID
+	WHERE TmpXml.PaymentID = 0
+		AND ReturnStatus <> - 2
+	
+	UNION ALL
+	
+	SELECT TmpXml.ScheduleID
+		,TmpXml.PaymentID
+		,TmpXml.MergedPGCalcPaymentID
+		,PGCalc.RecordVersion
+		,TmpXml.ReturnStatus
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+		ON PGCalc.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentID
+	WHERE TmpXml.PaymentID = 0
+		AND ReturnStatus <> - 2
+	
+	UNION ALL
+	
+	SELECT TmpXml.ScheduleID
+		,TmpXml.PaymentID
+		,TmpXml.MergedPGCalcPaymentID
+		,BenPmnt.RecordVersion
+		,TmpXml.ReturnStatus
+	FROM #XmlInfo TmpXml
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpXml.PaymentID
+	WHERE ReturnStatus <> - 2
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+SET NOCOUNT OFF;

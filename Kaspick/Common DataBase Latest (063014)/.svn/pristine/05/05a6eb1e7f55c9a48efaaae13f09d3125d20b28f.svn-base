@@ -1,0 +1,57 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminCgasetupDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetSysadminCgasetupDetail;
+
+	PRINT 'DROPPED PROCEDURE USP_EX_GetSysadminCgasetupDetail';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/**************************************************************************  
+* New Procedure Name  : USP_EX_GetSysadminCgasetupDetail
+* Old Procedure Name  : USP_EIS_EX_SYSADMIN_CGASETUP_DTLSelProc  
+* Description     :  
+* Modification Log:   
+*                              
+* Date         Modified By  Description                                              
+*-------------------------------------------------------------------------  
+* 02-Feb-07    Venugopal.B  Created    
+* 09-Apr-14   Sanath    Excelsior Prime project for req EXCREQ3.1  
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+****************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetSysadminCgasetupDetail] (@CGASETUPID INT)
+AS
+BEGIN
+	SELECT SETUP_ID
+		,STATE_TYPE_ID
+		,CGATYPE_TYPE_ID
+		,RESERVE_TYPE_ID
+		,ANNUAL_FORM_TYPE_ID
+		,DAYS_FORM_DUE_AFTER_FY_OR_CY
+		,ANNUAL_REPORTING_FORM_RULE
+		,SUBMIT_FINANCIAL_STATEMENT_TYPE_ID
+		,ANNUAL_FINANCIAL_STATEMENT_TYPE_ID
+		,DAYS_STATEMENT_DUE_AFTER_FY_OR_CY
+		,ANNUAL_FINANCIAL_STATEMENT_RULE
+		,WEBSITE_ADDRESS
+	FROM TBL_BR_CGASetup
+	WHERE SETUP_ID = @CGASETUPID
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminCgasetupDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetSysadminCgasetupDetail';
+END

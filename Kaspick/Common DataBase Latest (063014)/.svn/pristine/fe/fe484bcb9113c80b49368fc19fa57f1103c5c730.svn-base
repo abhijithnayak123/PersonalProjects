@@ -1,0 +1,74 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_GetReportDetail]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_GetReportDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_GetReportDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_GetReportDetail]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_KCo_GetReportDetail                      
+   Short Desc: Retrieves the active report list details and attributes.    
+**      
+** Full Description : Retrieves the active report list details and attributes.      
+    
+**      
+** Sample Call      
+        EXEC USP_KCo_GetReportDetail     
+**      
+** Return values: NONE      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Aashay Thodar 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Aug-14                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_GetReportDetail]
+AS
+BEGIN
+	SELECT RListDet.ReportID
+		,RListDet.Catagory
+		,RListDet.ApplicationID
+		,RListDet.NAME
+		,RListDet.Description
+		,RListDet.SPName
+		,RListDet.IsActive
+		,RListDet.ReportDisplaySeq
+		,RListDet.CreatedDate
+		,RListAtt.AttributeID
+		,RListAtt.Attribute
+		,RListAtt.Description AS ADescription
+		,RListAtt.CONTROL
+		,RListAtt.Datatype
+		,RListAtt.FixedValue
+	FROM TBL_KCo_ReportListDetail RListDet
+	LEFT OUTER JOIN [TBL_KCo_ReportListAttribute] RListAtt
+		ON RListDet.ReportID = RListAtt.ReportID
+	WHERE RListDet.IsActive = 1
+	ORDER BY RListDet.NAME
+END

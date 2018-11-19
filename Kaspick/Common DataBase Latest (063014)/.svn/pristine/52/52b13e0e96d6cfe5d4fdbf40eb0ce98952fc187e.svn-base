@@ -1,0 +1,154 @@
+/****** Object:  StoredProcedure [dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule]    Script Date: 04/14/2014 17:59:53 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+BEGIN
+	DROP PROCEDURE [dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule]
+
+	PRINT 'Procedure USP_EML_GetEmailTemplateRuleEngineTemplateRule Dropped.'
+END
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule]    Script Date: 04/14/2014 17:59:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:     USP_EML_GetEmailTemplateRuleEngineTemplateRule                  
+** Short Desc: Get the active EmailTemplateRules associated to a set of RequestID and TemplateRuleID. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**	
+	USP_EML_GetEmailTemplateRuleEngineTemplateRule '<root><templateRule><ID>10</ID><param1>3063</param1><param2>16</param2><param3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>1</ID><param1>1</param1><param2>1</param2><param3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>27</ID><param1>3065</param1><param2>35</param2><param3></param3><param4></param4><param5></param5></templateRule></root>'
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Soorya
+** Company   : Kaspick & Company                  
+** Project   : EmailRuleEngine                  
+** Created DT: 04/19/2010                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** <MM/DD/YYYY>
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule] (@TemplateXML XML)
+AS
+--  Initial Set statements  --      
+--SET NOCOUNT ON;      
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+--  Variable Declarations  --  
+
+--  Temp tables, Cursors, Table Variables  --
+DECLARE @XmlRequestInfo TABLE (
+	ID INT IDENTITY(1, 1)
+	,email_template_rule_id INT
+	,request_id INT
+	,email_rule_id INT
+	,footer VARCHAR(MAX)
+	)
+
+-- Body of procedure  --
+BEGIN TRY
+	INSERT INTO @XmlRequestInfo (
+		email_template_rule_id
+		,request_id
+		,email_rule_id
+		,footer
+		)
+	SELECT req.value('ID[1]', 'int') AS email_template_rule_id
+		,req.value('param1[1]', 'int') AS reuest_id
+		,req.value('param2[1]', 'int') AS email_rule_id
+		,ISNULL(ET.body, '') AS footer
+	FROM @TemplateXML.nodes('//templateRule') AS a(req)
+	INNER JOIN TBL_EML_EmailTemplateRule ETR ON ETR.[email_template_rule_id] = req.value('ID[1]', 'int')
+	LEFT OUTER JOIN TBL_EML_EmailTemplate ET ON ET.[email_template_id] = ETR.[footer_template_id]
+
+	SELECT RI.request_id
+		,RI.email_rule_id
+		,ETR.[email_template_rule_id]
+		,[email_template_rule_name]
+		,ET.[email_template_id]
+		,[database_name]
+		,[stored_procedure_name]
+		,[email_template_name]
+		,[subject]
+		,[body]
+		,RI.footer AS Footer
+		,[contains_html]
+		,[email_template_rule_attribute_id]
+		,[attribute_name]
+		,[column_name]
+		,[datatype]
+		,[data_mask]
+		,[constant]
+	FROM dbo.TBL_EML_EmailTemplateRule ETR
+	INNER JOIN dbo.TBL_EML_EmailTemplate ET ON ET.[email_template_id] = ETR.[email_template_id]
+	INNER JOIN dbo.TBL_EML_EmailTemplateRuleAttribute ETRA ON ETRA.[email_template_rule_id] = ETR.[email_template_rule_id]
+	INNER JOIN @XmlRequestInfo RI ON RI.[email_template_rule_id] = ETR.[email_template_rule_id]
+	ORDER BY ETR.[email_template_rule_id]
+		,ETR.[email_template_id]
+		,ETRA.[email_template_rule_attribute_id]
+END TRY
+
+BEGIN CATCH
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'Error with USP_EML_GetEmailTemplateRuleEngineTemplateRule Procedure'
+END CATCH
+	-- End of procedure  -- 
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_GetEmailTemplateRuleEngineTemplateRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+BEGIN
+	PRINT 'Procedure USP_EML_GetEmailTemplateRuleEngineTemplateRule Created.'
+END
+GO
+
+

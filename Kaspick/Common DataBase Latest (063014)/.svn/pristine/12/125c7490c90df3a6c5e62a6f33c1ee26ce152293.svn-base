@@ -1,0 +1,142 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount]    Script Date: 10/07/2013 10:08:01 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount]    Script Date: 10/07/2013 10:08:02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount      
+** Short Desc: Get Calcuation Engine Scheduled Benepayment amount     
+**      
+** Full Description      
+**        Get Calcuation Engine Scheduled Benepayment for All,Posted and Unposted Payments
+**      
+** Sample Call      
+EXEC USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount            
+'<CustomerAccountNumberCollection>
+<SelectList>     
+  <CustomerAccountNumberItem CustomerAccountNumber="7775218"/>        
+  <CustomerAccountNumberItem CustomerAccountNumber="7776983"/>   
+  <CustomerAccountNumberItem CustomerAccountNumber="7773869"/>         
+  <CustomerAccountNumberItem CustomerAccountNumber="7772246"/>         
+  <CustomerAccountNumberItem CustomerAccountNumber="7772103"/>         
+  <CustomerAccountNumberItem CustomerAccountNumber="7776207"/>         
+  <CustomerAccountNumberItem CustomerAccountNumber="7772031"/> 
+  <CustomerAccountNumberItem CustomerAccountNumber="VCHOWL"/>               
+</SelectList>
+</CustomerAccountNumberCollection>',1995
+
+      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Mohamed Salih      
+** Company   : Kaspick & Company      
+** Project   : Back Office Integration - Paragon      
+** Created DT: 10/07/2013      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** <mm/dd/yyyy>      
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetCalcEngineScheduledBeneficiaryPaymentAmount]
+	-- paremeters here      
+	@XMLDATA XML
+	,@TaxYear INT
+AS
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+--  Variable Data Assignment  --   
+IF EXISTS (
+		SELECT *
+		FROM TEMPDB.DBO.SYSOBJECTS
+		WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpPayoutScheduleData')
+		)
+BEGIN
+	DROP TABLE [DBO].[#TmpPayoutScheduleData]
+END
+
+-- Body of procedure  --      
+CREATE TABLE #TmpPayoutScheduleData (
+	CustomerAccountNumber CHAR(14)
+	,TaxYear INT
+	,ScheduledPaymentAmount MONEY DEFAULT(0)
+	,PostedPaymentAmount MONEY DEFAULT(0)
+	,UnpostedPaymentAmount MONEY DEFAULT(0)
+	)
+
+INSERT INTO #TmpPayoutScheduleData (
+	CustomerAccountNumber
+	,TaxYear
+	,ScheduledPaymentAmount
+	,PostedPaymentAmount
+	,UnpostedPaymentAmount
+	)
+SELECT AccountPayoutSchdl.CustomerAccountNumber
+	,AccountPayoutSchdl.TaxYear
+	,ISNULL(SUM(BenePayoutSchdl.ScheduledAmount), 0) AS ScheduledPaymentAmount
+	,sum((
+			CASE 
+				WHEN ISNULL(BenePayoutSchdl.PaymentID, 0) <> 0
+					THEN BenePayoutSchdl.ScheduledAmount
+				ELSE 0
+				END
+			)) AS PostedPaymentAmount
+	,sum((
+			CASE 
+				WHEN (
+						Year(AccountPayoutSchdl.PaymentDate) = AccountPayoutSchdl.TaxYear
+						OR Year(AccountPayoutSchdl.PaymentDate) = AccountPayoutSchdl.TaxYear + 1
+						)
+					AND ISNULL(BenePayoutSchdl.PaymentID, 0) = 0
+					THEN BenePayoutSchdl.ScheduledAmount
+				ELSE 0
+				END
+			)) AS UnpostedPaymentAmount
+FROM TBL_PP_AccountPayoutSchedule AccountPayoutSchdl
+INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenePayoutSchdl ON AccountPayoutSchdl.APScheduleID = BenePayoutSchdl.APScheduleID
+	AND AccountPayoutSchdl.TaxYear = @TaxYear
+INNER JOIN (
+	SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'char(14)') AS CustomerAccountNumber
+	FROM @XMLDATA.nodes('//CustomerAccountNumberCollection/SelectList/CustomerAccountNumberItem') AS XmlInput(Item)
+	) XmlInput ON XmlInput.CustomerAccountNumber = AccountPayoutSchdl.CustomerAccountNumber
+GROUP BY AccountPayoutSchdl.CustomerAccountNumber
+	,AccountPayoutSchdl.TaxYear
+
+SELECT CustomerAccountNumber
+	,TaxYear
+	,SUM(ScheduledPaymentAmount) AS 'AllScheduledPayments'
+	,SUM(PostedPaymentAmount) AS 'PostedScheduledPayments'
+	,SUM(UnpostedPaymentAmount) AS 'UnpostedScheduledPayments'
+FROM #TmpPayoutScheduleData
+GROUP BY CustomerAccountNumber
+	,TaxYear
+
+SET NOCOUNT OFF;
+	-- End of procedure  -- 

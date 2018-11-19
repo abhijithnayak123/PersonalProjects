@@ -1,0 +1,226 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetClientStatus'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetClientStatus;
+
+	PRINT 'DROPPED USP_EX_GetClientStatus';
+END
+GO
+
+/******************************************************************************        
+** New NAME:  USP_EX_GetClientStatus        
+** Old NAME:  USP_EIS_EX_CLIENT_STATUS_SELPROC        
+** SHORT DESC: PROCEDURE TO GET THE STATUS OF A CLIENT        
+**        
+** FULL DESCRIPTION        
+THIS PROCEDURE IS USED TO GET THE STATUS OF A CLIENT.        
+A CLIENT IS ACTIVE ONLY IF ALL MANDATORY FIELDS AND REQUIRED LATER FIELDS ARE ENTERD ELSE ITS IN TRANSITION.        
+IF CLOSED DATE IS ENTERED THEN THE STATE IS INACTIVE        
+**        
+** SAMPLE CALL        
+EXEC USP_EIS_EX_CLIENT_STATUS_SELPROC 1234,0        
+**        
+** RETURN VALUES: INT (STATUS ID OF THE CLIENT)        
+**        
+**        
+** STANDARD DECLARATIONS        
+**       SET LOCK_TIMEOUT         30000   -- 30 SECONDS        
+**         
+** CREATED BY: GANAPATI        
+** COMPANY   : KASPICK & COMPANY        
+** PROJECT   : EXCELSIOR        
+** CREATED DT: 04-03-2007        
+**                    
+*******************************************************************************        
+**       CHANGE HISTORY        
+*******************************************************************************        
+** DATE:        AUTHOR:  BUG #     DESCRIPTION:                           RVWD   
+01-Aug-07  Ganapati   Added Tax check       
+** --------     -------- ------    -------------------------------------- --------        
+** 03-Sep-2009 Saravanan PM  Production Isse Ticket Number: 4081  
+** 8-Apr-2014  Yugandhar  EXCREQ 5.4
+** 22-May-2014  Sanath    Sp name renamed as per Kaspick naming convention standard          
+*******************************************************************************        
+** COPYRIGHT (C) <COPYRIGHTYEAR,,YEAR> KASPICK & COMPANY, ALL RIGHTS RESERVED        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_GetClientStatus (
+	@CLIENTID CHAR(15)
+	,@CLIENT_STATUS_ID INT OUTPUT
+	)
+AS
+BEGIN
+	--  INITIAL SET STATEMENTS        
+	SET NOCOUNT ON;
+
+	---- VARIABLE DECLARATIONS        
+	DECLARE @INACTIVE_ID INT -- STORING INACTIVE ID            
+	DECLARE @TRANSITION_ID INT -- STORING TRANSITION ID            
+	DECLARE @ACTIVE_ID INT -- STORING ACTIVE ID            
+	DECLARE @CTR INT -- MIN COUNT            
+	DECLARE @MAXCTR INT -- MAX COUNT            
+	DECLARE @STATEMENT VARCHAR(400) -- SQL STATEMENT            
+	DECLARE @RECORD_COUNT INT -- USED TO COUNT         
+	DECLARE @COUNT INT
+	---- GENERAL TAB           
+	DECLARE @RATING_ID INT -- CLIENT RATING          
+	DECLARE @CLOSED_DATE DATETIME -- CLIENT CLOSED DATE          
+		--          
+	---- OPERATIONS TAB          
+	DECLARE @SL_MASTER_ID INT
+	DECLARE @STATEMENT_BUNDLING_ID INT
+	DECLARE @DOWNLOAD_ID VARCHAR(50)
+	DECLARE @FA_MASTER_ACCOUNT_NO VARCHAR(50)
+	DECLARE @CD_STATEMENTS_ID INT
+	DECLARE @TEMP_OPERATIONS TABLE (
+		RECORDID INT IDENTITY
+		,SL_MASTER_ID INT
+		,DOWNLOAD_ID VARCHAR(50)
+		,FA_MASTER_ACCOUNT_NO VARCHAR(50)
+		,STATEMENT_BUNDLING_ID INT
+		,CD_STATEMENTS_ID INT
+		)
+
+	--          
+	---- STORE TRANSITION ID AND ACTIVE ID          
+	EXEC USP_EX_GetListItemID 'STATUS'
+		,'ACTIVE'
+		,@ACTIVE_ID OUTPUT -- 58          
+
+	EXEC USP_EX_GetListItemID 'STATUS'
+		,'INACTIVE'
+		,@INACTIVE_ID OUTPUT -- 59           
+
+	EXEC USP_EX_GetListItemID 'STATUS'
+		,'TRANSITION'
+		,@TRANSITION_ID OUTPUT -- 60          
+		--        
+		---- CHECKING GENERAL TAB          
+
+	SELECT @RECORD_COUNT = COUNT(*)
+	FROM SYN_IT_AccountManagerCodes
+	WHERE ManagerCode = @CLIENTID
+
+	IF @RECORD_COUNT = 0 -- CLIENT IS NOT EXISTING          
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = - 1
+
+		RETURN
+	END
+
+	IF @CLOSED_DATE IS NOT NULL
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @INACTIVE_ID
+
+		RETURN
+	END
+
+	IF @RATING_ID IS NULL
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	---- CHECKING ADMINISTRATION TAB          
+	--1. CHK REQ TA 2 THRES        
+	EXEC USP_EX_GetPolicyItemExits @ENTITYID = @CLIENTID
+		,@ENTITYTYPE = 'CLIENT'
+		,@POLICYNAME = 'CHK REQ TA 2 THRES'
+		,@COUNT = @COUNT OUTPUT
+
+	IF (@COUNT = 0)
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	--3. 'KCO VOTE PROXY'       
+	EXEC USP_EX_GetPolicyItemExits @ENTITYID = @CLIENTID
+		,@ENTITYTYPE = 'CLIENT'
+		,@POLICYNAME = 'KCO VOTE PROXY'
+		,@COUNT = @COUNT OUTPUT
+
+	IF (@COUNT = 0)
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	--4. 'INTR OF 1ST BUS DAY'       
+	EXEC USP_EX_GetPolicyItemExits @ENTITYID = @CLIENTID
+		,@ENTITYTYPE = 'CLIENT'
+		,@POLICYNAME = 'INTR OF 1ST BUS DAY'
+		,@COUNT = @COUNT OUTPUT
+
+	IF (@COUNT = 0)
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	----CHECKING FOR OPERATIONS            
+	IF @RECORD_COUNT > 0
+	BEGIN
+		IF @RECORD_COUNT > 0
+		BEGIN
+			SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+			RETURN
+		END
+
+		--SELECT @RECORD_COUNT = COUNT(*) FROM TBL_EIS_EX_PROFILE_OPERATIONS WHERE (CD_STATEMENTS_ID IS NULL OR SCHWAB_DOWNLOAD_ID IS NULL OR STATEMENT_BUNDLING_ID IS NULL) AND (CLIENTID = @CLIENTID)           
+		IF @RECORD_COUNT > 0
+		BEGIN
+			SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+			RETURN
+		END
+	END
+
+	---- CHECKING FOR PAYMENTS           
+	EXEC USP_EX_GetPolicyItemExits @ENTITYID = @CLIENTID
+		,@ENTITYTYPE = 'CLIENT'
+		,@POLICYNAME = 'NET INC PMT RULE'
+		,@COUNT = @COUNT OUTPUT
+
+	IF (@COUNT = 0)
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	--CHECKING FOR TAX  
+	SELECT @RECORD_COUNT = COUNT(*)
+	FROM TBL_BR_ProfileTax
+	WHERE ManagerCode = @CLIENTID
+
+	IF @RECORD_COUNT = 0
+	BEGIN
+		SELECT @CLIENT_STATUS_ID = @TRANSITION_ID
+
+		RETURN
+	END
+
+	---- IF NOT TRANSITION OR CLOSED, THE STATUS IS ACTIVE            
+	SELECT @CLIENT_STATUS_ID = @ACTIVE_ID
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetClientStatus'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetClientStatus';
+END

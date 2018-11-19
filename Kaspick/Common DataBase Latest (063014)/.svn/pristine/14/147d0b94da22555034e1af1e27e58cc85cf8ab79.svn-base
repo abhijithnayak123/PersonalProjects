@@ -1,0 +1,90 @@
+/****** Object:  StoredProcedure [dbo].[UPS_SIT_GetAccountValueonSummary]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[UPS_SIT_GetAccountValueonSummary]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[UPS_SIT_GetAccountValueonSummary]
+GO
+
+/****** Object:  StoredProcedure [dbo].[UPS_SIT_GetAccountValueonSummary]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     UPS_SIT_GetAccountValueonSummary    
+** Short Desc: Get details from AccountValueonStatement table for the given valuationid.    
+**    
+** Full Description : Get details from AccountValueonStatement table for the given valuationid.  
+**            
+**    
+** Sample Call    
+        EXEC UPS_SIT_GetAccountValueonSummary  1,'01/01/2013' -- parameters    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 08/28/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [UPS_SIT_GetAccountValueonSummary] @ValuationID INT
+	,@PeriodEndDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	DECLARE @EndDate DATETIME
+	DECLARE @StartDate DATETIME
+
+	SET @EndDate = @PeriodEndDate
+	SET @StartDate = CAST((STR(YEAR(@EndDate)) + '/' + STR(MONTH(@EndDate)) + '/1') AS DATETIME)
+
+	SELECT AccMas.ExternalCustomerID AS AccountID
+		,Val.AccountType
+		,LTRIM(RTRIM(ISNULL(AccMas.CustomerDescriptionLine1, '') + '' + ISNULL(AccMas.CustomerDescriptionLine2, '') + '' + ISNULL(AccMas.CustomerDescriptionLine3, '') + '' + ISNULL(AccMas.CustomerDescriptionLine4, ''))) AS AccountFullName
+		,Val.ManageCodeName
+		,AccValStm.ValuationID
+		,AccValStm.BeginningAccrual
+		,AccValStm.EndingAccrual
+		,AccValStm.BeginningCost
+		,AccValStm.EndingCost
+		,AccValStm.BeginningCash
+		,AccValStm.EndingCash
+		,AccValStm.BeginningMarket
+		,AccValStm.EndingMarket
+		,@StartDate AS StartDate
+		,@EndDate AS EndDate
+	FROM TBL_SIT_EBRAccountValueOnStatement AccValStm
+	INNER JOIN TBL_PV_Valuation Val
+		ON AccValStm.ValuationID = Val.ValuationID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = Val.CustomerAccountNumber
+	WHERE AccValStm.ValuationID = @ValuationID
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,120 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineYTDPayment]    Script Date: 08/26/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineYTDPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineYTDPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineYTDPayment]    Script Date: 08/26/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetCalcEngineYTDPayment                      
+** Short Desc: To get YTD Payment data
+**                      
+** Full Description:  To get YTD Payment data for all Tax years greater than Input Taxyear 
+**            
+**        
+**                              
+** Input Arguments: 
+	 	@XMLDATA xml,
+	 	@TaxYear INT
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetCalcEngineYTDPayment        
+	'<CustomerAccountNumberCollection>  
+	 <SelectList> 
+		  <CustomerAccountNumberItem CustomerAccountNumber="7770010" />  
+		  <CustomerAccountNumberItem CustomerAccountNumber="7772028" />  
+		  <CustomerAccountNumberItem CustomerAccountNumber="7772043" /> 
+	</SelectList> 
+	</CustomerAccountNumberCollection>',2000
+	
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 26-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**1/9/2014	 Saravanan Muthu		Added Transaction Number and IsBackBuilt fields.			 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetCalcEngineYTDPayment] @XMLDATA XML
+	,@TaxYear INT
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  --    
+	SELECT BenPmnt.PaymentDate
+		,BenPmnt.TransactionNumber
+		,BenPmnt.PaymentAmount
+		,BenPmnt.PayeeName
+		,BenPmnt.VoidDate
+		,BenPmnt.PaymentID
+		,BenPmnt.ClearDate
+		,(
+			CASE 
+				WHEN BenPmnt.PaymentID > 0
+					THEN 'B'
+				ELSE 'O'
+				END
+			) AS PaymentType
+		,'' AS Mode
+		,BenPmnt.TaxYear
+		,BenPmnt.PostDate
+		,BenPmnt.STATUS
+		,(
+			CASE 
+				WHEN CreatedBy = 1
+					THEN 'A'
+				ELSE 'M'
+				END
+			) AS PostMethod
+		,BenPmnt.Memo
+		,BenPmnt.Comment
+		,BenPmnt.ClearMethod
+		,BenPmnt.ReissueAs AS 'ReissueAs'
+		,BenPmnt.IsBackBuilt
+		,BenPmnt.RecordVersion
+	FROM TBL_PP_BeneficiaryPayment BenPmnt
+	INNER JOIN (
+		SELECT x.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+		FROM @XMLDATA.nodes('//CustomerAccountNumberCollection/SelectList/CustomerAccountNumberItem') AS x(Item)
+		) TmpXml
+		ON BenPmnt.CustomerAccountNumber = TmpXml.CustomerAccountNumber
+	WHERE BenPmnt.TaxYear >= @TaxYear
+	ORDER BY BenPmnt.CustomerAccountNumber
+		,BenPmnt.PaymentDate DESC
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+SET NOCOUNT OFF

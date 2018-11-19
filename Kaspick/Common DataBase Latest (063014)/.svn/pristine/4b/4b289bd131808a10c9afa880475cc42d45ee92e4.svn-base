@@ -1,0 +1,164 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentCondition]    Script Date: 07/10/2013 11:42:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SavePaymentCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SavePaymentCondition]
+GO
+
+
+
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentCondition]    Script Date: 07/10/2013 11:42:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SavePaymentCondition                      
+** Short Desc: To insert/update payment conditions table
+**                      
+** Full Description: To insert and update payment conditions for Manager, CustomerAccountNumber, Contact    
+**                              
+** Input Arguments:  
+                
+	@EntityTypeID			INT,    
+	@EntityType				VARCHAR(15),
+	@ManagerCode			VARCHAR(4),
+	@AllianceNumber			VARCHAR(15),
+	@CustomerAccountNumber	VARCHAR(14),
+	@ContactID				INT,   
+	@AccountType			VARCHAR(1000),    
+	@Comments				VARCHAR(1000),    
+	@StatusID				INT,    
+	@UserID					INT 
+ 
+**         
+** Sample Call     
+        
+ EXEC USP_PP_SavePaymentCondition  1021,'Contact','','','GTSMI',234,'A,y,B,NewlyAdded','Warning',2159,10,1
+ EXEC USP_PP_SavePaymentCondition  1021,'Contact','ABC','XYZ','EFG',234,'ABC,NewlyAdded','Warning',2159,10,1
+
+
+**            
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+
+
+CREATE PROCEDURE [dbo].[USP_PP_SavePaymentCondition]            
+(       
+		@EntityTypeID				INT,    
+		@EntityType					VARCHAR(15),
+		@ManagerCode				VARCHAR(4)=Null,
+		@AllianceNumber				VARCHAR(15)=Null,
+		@CustomerAccountNumber		VARCHAR(14)=Null,
+		@ContactID					INT=Null,   
+		@AccountType				VARCHAR(1000),    
+		@Comments					VARCHAR(1000),
+		@ValidationEngineResultType INT,    
+		@StatusID					INT,    
+		@UserID						INT  
+)            
+AS
+    BEGIN 
+   
+   	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+	
+	DECLARE @ContactRoleCode INT
+	
+	----Assigning values to variables
+
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	SET @ContactRoleCode = 21 --'Beneficiary'
+
+    
+-----Check if record exists. If exists Update else Insert new record. 
+	IF EXISTS (SELECT 1 FROM TBL_PP_PaymentCondition 
+				WHERE EntityTypeId						=	@EntityTypeID 
+				AND	  ISNULL(ManagerCode,'')			=	CASE WHEN @EntityType = 'Manager' THEN @ManagerCode 
+																 WHEN @EntityType = 'Account' THEN @ManagerCode
+																 WHEN @EntityType = 'Contact' THEN @ManagerCode ELSE '' END
+				AND   ISNULL(CustomerAccountNumber,'')	=	CASE WHEN @EntityType = 'Account' THEN @CustomerAccountNumber
+																 WHEN @EntityType = 'Contact' THEN @CustomerAccountNumber  ELSE '' END
+				AND   ISNULL(ContactID,'')				=	CASE WHEN @EntityType = 'Contact' THEN @ContactID ELSE '' END)
+
+
+ 
+				UPDATE TBL_PP_PaymentCondition
+				SET     ModifiedDate					= GETDATE(),    
+						ModifiedBy						= @UserID,    
+						AccountType						= @AccountType,    
+						Comments						= @Comments,
+						ValidationEngineResultType		= @ValidationEngineResultType ,   
+						StatusID						= @StatusID
+				WHERE	EntityTypeId					= @EntityTypeID
+				AND	    ISNULL(ManagerCode,'')			= CASE WHEN @EntityType = 'Manager' THEN @ManagerCode 
+															   WHEN @EntityType = 'Account' THEN @ManagerCode 
+															   WHEN @EntityType = 'Contact' THEN @ManagerCode ELSE '' END
+				AND     ISNULL(CustomerAccountNumber,'')= CASE WHEN @EntityType = 'Account' THEN @CustomerAccountNumber
+														  	   WHEN @EntityType = 'Contact' THEN @CustomerAccountNumber  ELSE '' END
+				AND     ISNULL(ContactID,'')			= CASE WHEN @EntityType = 'Contact' THEN @ContactID ELSE '' END
+						
+	ELSE
+				INSERT INTO TBL_PP_PaymentCondition (    
+							EntityTypeId,    
+							ManagerCode,    
+							CustomerAccountNumber,    
+							ContactID, 
+							ContactRoleCode,
+							AccountType,   
+							Comments,    
+							StatusID, 
+							ValidationEngineResultType,   
+							ModifiedDate,
+							ModifiedBy,
+							CreatedDate,
+							CreatedBy)  
+
+							VALUES (    
+							@EntityTypeID,    
+							CASE WHEN @EntityType = 'Manager' THEN @ManagerCode    
+								 WHEN @EntityType = 'Account' THEN @ManagerCode
+								 WHEN @EntityType = 'Contact' THEN @ManagerCode ELSE Null END,
+							CASE WHEN @EntityType = 'Account' THEN @CustomerAccountNumber
+								 WHEN @EntityType = 'Contact' THEN @CustomerAccountNumber  ELSE NULL END,
+							CASE WHEN @EntityType = 'Contact' THEN @ContactID ELSE NULL END,
+							CASE WHEN @EntityType = 'Contact' THEN @ContactRoleCode ELSE NULL END,    
+							@AccountType,    
+							@Comments,    
+							@StatusID, 
+							@ValidationEngineResultType,   
+							GETDATE(),    
+							@UserID,    
+							GETDATE(),    
+							@UserID);     
+
+END 

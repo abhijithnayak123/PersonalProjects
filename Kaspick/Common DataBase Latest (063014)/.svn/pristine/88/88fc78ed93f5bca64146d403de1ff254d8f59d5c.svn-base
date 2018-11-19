@@ -1,0 +1,166 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.triggers
+		WHERE object_id = OBJECT_ID(N'[dbo].[TRG_TR_AudTradeSubmission]')
+		)
+	DROP TRIGGER [dbo].[TRG_TR_AudTradeSubmission]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name: 	TRG_TR_AudTradeSubmission
+** Table Name:		TradeSubmission
+** Action			Insert, Update, Delete
+**
+** Description: 	Writes data changes to the audit table
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+**
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE TRIGGER [dbo].[TRG_TR_AudTradeSubmission] ON [dbo].[TBL_TR_TradeSubmission]
+AFTER INSERT
+	,UPDATE
+	,DELETE
+AS
+--  Variable Declarations  --
+DECLARE @trgname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @SubmissionID INT;
+-- Variables used for error handling - uncomment if needed
+DECLARE @val1 VARCHAR(30);
+
+--Declare @val2						varchar(30);
+--  Variable Data Assignment  --
+SET @trgname = 'TRG_TR_AudTradeSubmission';
+
+--	Body of trigger  --
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the row is a Delete and rowcount from Deleted > 0 and Inserted > 0 or Inserted <> 0, 
+-- then get the data from the Deleted table for recording the old values in the audit table.
+BEGIN TRY
+	IF (
+			SELECT count(*)
+			FROM Deleted
+			) > 0
+		AND (
+			SELECT count(*)
+			FROM Inserted
+			) > 0
+	BEGIN
+		INSERT INTO TBL_TR_AUDIT_TradeSubmission (
+			AUDITUSERID
+			,AUDITDATETIME
+			,AUDITFLAG
+			,AUDITTABLE
+			,AUDITDETAIL
+			,SubmissionID
+			,SubmissionType
+			,SubmissionFile
+			,SubmissionDate
+			,SubmissionUserID
+			,DELETEDUSERID
+			)
+		SELECT SubmissionUserID
+			,getdate()
+			,'U'
+			,'TBL_TR_TradeSubmission'
+			,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+			,D.SubmissionID
+			,D.SubmissionType
+			,D.SubmissionFile
+			,D.SubmissionDate
+			,D.SubmissionUserID
+			,NULL
+		FROM Deleted D
+	END
+	ELSE
+		IF (
+				SELECT count(*)
+				FROM Inserted
+				) > 0
+		BEGIN
+			INSERT INTO TBL_TR_AUDIT_TradeSubmission (
+				AUDITUSERID
+				,AUDITDATETIME
+				,AUDITFLAG
+				,AUDITTABLE
+				,AUDITDETAIL
+				,SubmissionID
+				,SubmissionType
+				,SubmissionFile
+				,SubmissionDate
+				,SubmissionUserID
+				,DELETEDUSERID
+				)
+			SELECT SubmissionUserID
+				,getdate()
+				,'I'
+				,'TBL_TR_TradeSubmission'
+				,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,I.SubmissionID
+				,I.SubmissionType
+				,I.SubmissionFile
+				,I.SubmissionDate
+				,I.SubmissionUserID
+				,NULL
+			FROM Inserted I
+		END
+		ELSE
+			IF (
+					SELECT count(*)
+					FROM Deleted
+					) > 0
+			BEGIN
+				INSERT INTO TBL_TR_AUDIT_TradeSubmission (
+					AUDITUSERID
+					,AUDITDATETIME
+					,AUDITFLAG
+					,AUDITTABLE
+					,AUDITDETAIL
+					,SubmissionID
+					,SubmissionType
+					,SubmissionFile
+					,SubmissionDate
+					,SubmissionUserID
+					,DELETEDUSERID
+					)
+				SELECT SubmissionUserID
+					,getdate()
+					,'D'
+					,'TBL_TR_TradeSubmission'
+					,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+					,D.SubmissionID
+					,D.SubmissionType
+					,D.SubmissionFile
+					,D.SubmissionDate
+					,D.SubmissionUserID
+					,NULL
+				FROM Deleted D
+			END
+END TRY
+
+BEGIN CATCH
+	SET @errmsg = ERROR_MESSAGE();
+	SET @errnbr = ERROR_NUMBER();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+GO
+
+

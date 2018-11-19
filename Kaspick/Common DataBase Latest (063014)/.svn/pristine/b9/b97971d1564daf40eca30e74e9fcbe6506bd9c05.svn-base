@@ -1,0 +1,113 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetManagerAccountInfo]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetManagerAccountInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetManagerAccountInfo]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetManagerAccountInfo]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetManagerAccountInfo                      
+** Short Desc: Get Manager and Account details 
+**                      
+** Full Description: Get Manager and Account details  for PIF/ other accounts
+**      
+**                              
+** Input Arguments:   @CustomerAccountNumber VARCHAR(14)
+** Sample Call     
+EXEC USP_PV_GetManagerAccountInfo 'ACGAP'	-- FOR OTHERS
+EXEC USP_PV_GetManagerAccountInfo ''		-- FOR PIF
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 04/01/2014 Ashvin				Renamed HasGiftsExclusion to HasGiftExclusion and GiftsExclusionComments to GiftExclusionComment
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetManagerAccountInfo] (@CustomerAccountNumber VARCHAR(14))
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT 0 AS ParameterID
+		,AccMastr.CustomerAccountNumber
+		,AccMastr.AccountTypeCode AS AccountType
+		,AccMastr.ManagerCode
+		,NULL AS ManagerCodeDescription
+		,ContMstr.ContactName AS ManagerCodeName
+		,AccMastr.CustomerAccountNumber AS GiftWrapAccount
+		,'' AS GroupID
+		,0 AS HasGiftExclusion
+		,'' AS GiftExclusionComment
+		,0 AS ExcludeAccruedInterest
+		,0 AS ExcludeIncomeCash
+		,CASE 
+			WHEN UDFAMColumn044 = 'GW'
+				THEN 'Giftwrap'
+			WHEN UDFAMColumn044 = 'SA'
+				THEN 'Sub-Accounting'
+			ELSE UDFAMColumn044
+			END AS AccountingRoutine
+		,IsSubAccountingSystemFIMS
+	FROM SYN_IT_AccountMaster AccMastr
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCode
+		ON AccMastr.ManagerCode = AccMgrCode.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster ContMstr
+		ON ContMstr.ContactID = AccMgrCode.ContactID
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMstr
+		ON AccMastr.CustomerAccountNumber = UDFAccMstr.CustomerAccountNumber_Key
+	LEFT OUTER JOIN TBL_PV_ManagerCodeParameter MgrCodeParam
+		ON AccMastr.CustomerAccountNumber = MgrCodeParam.CustomerAccountNumber
+	WHERE (
+			(
+				ISNULL(@CustomerAccountNumber, '') = ''
+				AND AccMastr.AccountTypeCode = 'PIF'
+				)
+			OR (
+				AccMastr.CustomerAccountNumber = @CustomerAccountNumber
+				AND ISNULL(@CustomerAccountNumber, '') <> ''
+				)
+			AND AccountType IN (
+				'GAP'
+				,'GAPR'
+				,'GAPP'
+				,'DAF'
+				,'END'
+				,'ENDQ'
+				,'ENDT'
+				,'DDF'
+				,'ENDQ'
+				)
+			)
+
+	SET NOCOUNT ON;
+END

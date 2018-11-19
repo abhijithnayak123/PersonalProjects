@@ -1,0 +1,273 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_Beneficiary]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_Beneficiary]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_Beneficiary
+* File Name		  : USP_Lookup_Beneficiary.SQL      
+* Description     : This SP loads the newly added Beneficiary into the Beneficiary Lookup Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  07/22/2014	Veera			Enhancement	InnoTrust unique Key columns are getting duplicates
+*								BeneficiaryDistributionID, PaidForContactID and K1Beneficiary columns are added
+*								in InnoTrust db9.0 version timeline
+*******************************************************************************************************************/
+
+CREATE PROCEDURE USP_Lookup_Beneficiary(@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(100) ='TBL_Lookup_Beneficiary'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+						
+		--1.Inserting "Contingent Bene" records	
+		INSERT INTO TBL_Lookup_Beneficiary(ContactID,CustomerAccountNumber,RoleCode,PaidForContactID,BeneficiaryDistributionID,K1BeneficiaryID,ParticipantID,AccountID)
+		SELECT		DISTINCT
+					 CAR.ContactID
+					,CAR.CustomerAccountNumber
+					,CAR.ContactRoleCode
+					
+					,CAR.ContactID AS PaidForContactID	
+					,NULL AS BeneficiaryDistributionID						
+					,NULL K1BeneficiaryID
+					
+					,TP.ParticipantID
+					,ALP.AccountID	
+					
+		FROM		dbo.SYN_IT_ContactAccountRoles CAR
+		
+		INNER JOIN	dbo.SYN_IT_AccountMaster A 
+					ON	A.CustomerAccountNumber=CAR.CustomerAccountNumber
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC 
+					ON	CAR.ContactRoleCode = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_AccountManagerCodes AM 
+					ON	AM.ManagerCode=a.ManagerCode	
+		
+		INNER JOIN	dbo.TBL_Lookup_TrustParticipant TP
+					ON CAR.ContactID = TP.ContactID				
+		
+		INNER JOIN	dbo.TBL_Lookup_Account ALP
+					ON CAR.CustomerAccountNumber = ALP.CustomerAccountNumber	
+						
+		LEFT JOIN	dbo.TBL_Lookup_Beneficiary  LP
+					ON 	CAR.ContactID = LP.ContactID
+					AND	CAR.CustomerAccountNumber = LP.CustomerAccountNumber
+					AND	CAR.ContactRoleCode	= LP.RoleCode						
+		
+		WHERE		CRC.ID IN (21,37) --ContactRoleCodeDesc IN ('Beneficiary','Contingent Beneficiary') 
+		AND			LP.ContactID IS NULL	
+
+
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded [Beneficiary  n Contingent Beneficiary] - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+	
+		
+		set @RowCount=null	
+	
+	--2.Records are deleted which are gone out from BeneficiaryDistributions table and are in TBL_Lookup_Beneficiary
+		set @RowCount=null
+					
+		DELETE		LP
+		OUTPUT		 Deleted.ContactID
+					,Deleted.CustomerAccountNumber
+					,Deleted.RoleCode
+					
+					,Deleted.PaidForContactID
+					,Deleted.BeneficiaryDistributionID
+					
+					,Deleted.BeneficiaryID
+					,Deleted.K1BeneficiaryID
+					
+					,Deleted.ParticipantID
+					,Deleted.AccountID
+					,GETDATE() 
+					
+		INTO		TBL_Lookup_Beneficiary_DeletedRecord(ContactID ,CustomerAccountNumber ,RoleCode, PaidForContactID, BeneficiaryDistributionID, BeneficiaryID, K1BeneficiaryID, ParticipantID, AccountID, DeletedDate)
+		FROM		dbo.TBL_Lookup_Beneficiary	LP
+		INNER JOIN	dbo.SYN_IT_ContactAccountRoles	CAR 
+					ON 	LP.ContactID = CAR.ContactID
+					AND	LP.CustomerAccountNumber = CAR.CustomerAccountNumber
+					AND	LP.RoleCode	= CAR.ContactRoleCode			
+		
+		LEFT JOIN  (SELECT DISTINCT b.PayeeID,b.ContactID AS PaidForContactID,ri.CustomerAccountNumber,10 as RoleCode 
+						FROM SYN_IT_RemittanceInstructions ri
+						JOIN SYN_IT_BeneficiaryDistributions b ON ri.InstructionID = b.InstructionID
+						JOIN SYN_IT_ContactPaymentMethods cpm  ON b.PayeePaymentMethodID=cpm.ID AND b.PayeeID=cpm.ContactID  
+						WHERE b.PayeeID!=b.ContactID
+					) bds
+					ON 	LP.ContactID = bds.PayeeID
+					AND isnull(LP.PaidForContactID,0) = isnull(bds.PaidForContactID,0) --Which is "ContactID" in BeneficiaryDistributions Table					
+					AND LP.CustomerAccountNumber = bds.CustomerAccountNumber
+					AND	LP.RoleCode	= bds.RoleCode
+					
+		WHERE		CAR.ContactRoleCode = 10
+		AND			LP.PaidForContactID IS NOT NULL --BeneDistribution record was existing but not now - CHECKING
+		AND			bds.PayeeID IS NULL
+	
+		--Records gone out from BeneficiaryDistributions table 
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - Physical Delete of Proxy (based on BeneficiaryDistributions) in - ' + @TableName  
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+	
+	--3.K1BeneID
+	  --Getting the BeneID of PaidForContactID and 21 is a Priority over 37 when both (21/37) are existing in lookup						 	
+	  SELECT ContactID, CustomerAccountNumber, PaidForContactID, BeneficiaryID, RoleCode,
+	  Dense_Rank() OVER(PARTITION BY ContactID,CustomerAccountNumber,PaidForContactID ORDER BY  RoleCode,BeneficiaryID) as DenseRank
+	  INTO #K1Bene
+	  FROM dbo.TBL_Lookup_Beneficiary 
+	  WHERE RoleCode in( 21,37) AND ContactID=PaidForContactID
+	
+	--4.Inserting the "Proxy Bene" records
+		INSERT INTO TBL_Lookup_Beneficiary(ContactID,CustomerAccountNumber,RoleCode,PaidForContactID,BeneficiaryDistributionID,K1BeneficiaryID,ParticipantID,AccountID)
+		SELECT		DISTINCT
+					 CAR.ContactID ContactID
+					,CAR.CustomerAccountNumber  
+					,CAR.ContactRoleCode 
+					
+					,bds.PaidForContactID	
+					,null AS BeneficiaryDistributionID	
+					,LPK1Bene.BeneficiaryID as K1BeneficiaryID
+					
+					,TP.ParticipantID ParticipantID
+					,ALP.AccountID	 AccountID
+	
+		FROM		dbo.SYN_IT_ContactAccountRoles CAR
+		
+		INNER JOIN	dbo.SYN_IT_AccountMaster A 
+					ON	A.CustomerAccountNumber=CAR.CustomerAccountNumber
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC 
+					ON	CAR.ContactRoleCode = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_AccountManagerCodes AM 
+					ON	AM.ManagerCode=a.ManagerCode	
+		
+		INNER JOIN	dbo.TBL_Lookup_TrustParticipant TP
+					ON CAR.ContactID = TP.ContactID				
+		
+		INNER JOIN	dbo.TBL_Lookup_Account ALP
+					ON CAR.CustomerAccountNumber = ALP.CustomerAccountNumber	
+					
+		LEFT JOIN  (SELECT DISTINCT b.PayeeID,b.ContactID AS PaidForContactID,ri.CustomerAccountNumber,10 as RoleCode 
+						FROM SYN_IT_RemittanceInstructions ri
+						JOIN SYN_IT_BeneficiaryDistributions b ON ri.InstructionID = b.InstructionID
+						JOIN SYN_IT_ContactPaymentMethods cpm  ON b.PayeePaymentMethodID=cpm.ID AND b.PayeeID=cpm.ContactID  
+						WHERE b.PayeeID!=b.ContactID
+					) bds
+					ON 	CAR.ContactID = bds.PayeeID
+					AND CAR.ContactID <> bds.PaidForContactID --Which is "ContactID" in BeneficiaryDistributions Table					
+					AND CAR.CustomerAccountNumber = bds.CustomerAccountNumber
+					AND	CAR.ContactRoleCode	= bds.RoleCode
+		
+		LEFT JOIN	dbo.TBL_Lookup_Beneficiary  LP
+					ON 	CAR.ContactID = LP.ContactID					
+					AND	CAR.CustomerAccountNumber = LP.CustomerAccountNumber					
+					AND	CAR.ContactRoleCode	= LP.RoleCode 					
+					AND ISNULL(lp.PaidForContactID,0)=ISNULL(bds.PaidForContactID,0)
+										
+		LEFT JOIN	(SELECT * FROM #K1Bene WHERE  DenseRank=1) as LPK1Bene
+					 ON 	LPK1Bene.ContactID			   = bds.PaidForContactID
+					 AND	LPK1Bene.PaidForContactID	   = bds.PaidForContactID
+					 AND	LPK1Bene.CustomerAccountNumber = bds.CustomerAccountNumber
+					
+		WHERE		CRC.ID = 10 --ContactRoleCodeDesc IN ('Proxy Beneficiary') --359
+		AND			LP.ContactID IS NULL
+
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded [Proxy Recipient:10]- ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+		
+		--RELEASING IT FROM STORAGE
+		DROP TABLE #K1Bene
+		
+		--5.TBL_Lookup_Beneficiary_DeletedRecord
+		--  Records gone out of ContactAccountRoles table
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_Beneficiary_BDS_DeletedRecord'
+		
+		DELETE		LP
+		OUTPUT		 Deleted.ContactID
+					,Deleted.CustomerAccountNumber
+					,Deleted.RoleCode
+					
+					,Deleted.PaidForContactID
+					,Deleted.BeneficiaryDistributionID
+					
+					,Deleted.BeneficiaryID
+					,Deleted.K1BeneficiaryID
+					
+					,Deleted.ParticipantID
+					,Deleted.AccountID
+					,GETDATE() 
+					
+		INTO		TBL_Lookup_Beneficiary_DeletedRecord(ContactID ,CustomerAccountNumber ,RoleCode, PaidForContactID, BeneficiaryDistributionID, BeneficiaryID, K1BeneficiaryID, ParticipantID, AccountID, DeletedDate)
+		FROM		dbo.TBL_Lookup_Beneficiary	LP
+		LEFT JOIN	dbo.SYN_IT_ContactAccountRoles	T 
+					ON 	LP.ContactID = T.ContactID
+					AND	LP.CustomerAccountNumber = T.CustomerAccountNumber
+					AND	LP.RoleCode	= T.ContactRoleCode			
+		WHERE		T.ContactID IS NULL
+		
+			SET @RowCount=@@RowCount
+			SET @LogMessage = 'Incremental data loaded - Physical Delete (based on ContactAccountRoles) in - ' + @TableName 
+			EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+					
+
+
+		--6.TBL_Lookup_Beneficiary -- When Proxy Bene records having PaidContactID = NULL and PaidContactID=Value for the same combination
+		--							then we will delete the ProxyBene record with PaidContactID=NULL
+		;WITH cte
+		 AS (	SELECT  CustomerAccountNumber,ContactID,RoleCode,PaidForContactID
+						,ROW_NUMBER() OVER (PARTITION BY CustomerAccountNumber,ContactID,RoleCode
+											ORDER BY PaidForContactID DESC) RowNumber
+				FROM   TBL_Lookup_Beneficiary
+				WHERE  RoleCode=10
+			 )
+		DELETE  FROM cte			
+		WHERE   RowNumber > 1 	
+		AND		PaidForContactID IS NULL --dont remove this statement
+
+			--Records gone out from BeneficiaryDistributions table
+			SET @RowCount=@@RowCount
+			SET @LogMessage = 'Incremental data loaded - Physical Delete of Proxy record with PaidForContactID IS NULL when other records has value for PaidForContactID  in - ' + @TableName  
+			EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message()
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error' , @RunID
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

@@ -1,0 +1,83 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsLog'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsLog;
+
+	PRINT 'DROPPED USP_BR_FASB_InsLog';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/**********************************************************************************************                    
+** Name:     [USP_BR_FASB_InsLog]
+** Old Name: [USP_EIS_RPT_FASB_LOG_InsProc]
+** Short Desc: To Insert the status of FASB report generationinto log.
+**                    
+** Full Description: To Insert the status of FASB report generationinto log. 
+   
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  EXEC [USP_BR_FASB_InsLog]     
+**           
+** Return values: NONE  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Ganapati  
+** Company   : Kaspick & Company                    
+** Project   : FASB                    
+** Created DT: 22/08/2012                    
+**                                
+**********************************************************************************************              
+**       Change History                    
+**********************************************************************************************              
+** Date:		Author:   Bug #		Description:                        Rvwd              
+** --------		-------- ------		---------------------------------	--------                 
+** 07/29/2014	Srikanth R			Created for BOI
+*********************************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*********************************************************************************************/  
+
+CREATE procedure [dbo].[USP_BR_FASB_InsLog]
+(
+	@LevelDesc varchar(500),
+	@ErrorDesc varchar(max),
+	@StartTime datetime,
+	@EndTime datetime,
+	@Status varchar(25)
+)
+AS
+BEGIN
+	DECLARE @ProcessID INT
+	SELECT @ProcessID = MAX(RecordID) FROM TBL_BR_AUDIT_FASB
+	INSERT INTO TBL_BR_FASBProcessLog
+	(
+		ProcessID,
+		LevelDesc,
+		ErrorDesc,
+		StartTime,
+		EndTime,
+		[Status]
+	)
+	Values
+	(
+		@ProcessID,
+		@LevelDesc,
+		@ErrorDesc,
+		@StartTime,
+		@EndTime,
+		@Status
+	)
+END

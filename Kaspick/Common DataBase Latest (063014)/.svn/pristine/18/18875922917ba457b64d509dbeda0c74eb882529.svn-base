@@ -1,0 +1,878 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestList'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftRequestList;
+
+	PRINT 'DROPPED USP_EX_GetWftRequestList';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name : USP_EX_GetWftRequestList
+** Old Name:     sp_wft_request_list      
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the list for webform requests loaded via website.      
+**      
+** Sample Call      
+   [sp_wft_request_list] null,null,null,null,562,1758,300008,0,50000,null,null,100,null      
+   [sp_wft_request_list]      
+	@clientid = '100022,100034',      
+	@accounttypeid = '0',      
+	@request_status_id = '0',      
+	@formid = '0',      
+	@client_view_id = 562,      
+	@request_view_id =1758,
+	@userid =300008,
+	@startrow  = 0,
+	@endrow    = 50000,
+	@sortcolumnname = null,
+	@SortOrder = null,
+	@requestid = null,
+	@requestflowstatusid ='0',
+	@Priority =null,
+	@requestFromDate = '30/09/2009',
+	@requestToDate = '01/09/2009'
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Abhishek Chadha      
+** Company   : Kaspick & Company      
+** Project   : Excelsior      
+** Created DT: 7/22/2009      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 11/16/2009 Abhishek   modified to add Flow status & request ID as part of the search      
+** 08/22/2012 Manjiri    modified for GAD reorg special project  
+** 01/22/2013 Ashvin     modified for TAG changes (SP 116) special project  
+** 03/22/2013 Niveditha	 Performance fix - Removed char index filter. 
+						 Included inner join with temporary tables for mutlivalued variables
+** 04/10/2013 Pramod	Removed Paging View from inner join						 
+** 20-3-2014  Abhijith   EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftRequestList]
+	--NULL,1969,1966,100048,1,18,'submitted_datetime','DESC',NULL,NULL,NULL,NULL,NULL 
+	@clientXML XML = NULL
+	,@accountTypeXML XML = NULL
+	,@requestStatusXML XML = NULL
+	,@formXML XML = NULL
+	,@client_view_id INT
+	,@request_view_id INT
+	,@userid INT
+	,@startrow INT = NULL
+	,@endrow INT = NULL
+	,@sortcolumnname VARCHAR(100) = NULL
+	,@SortOrder VARCHAR(5) = NULL
+	,@requestXML XML = NULL
+	,@requestFlowStatusXML XML = NULL
+	,@Priority BIT = NULL
+	,@requestFromDate DATETIME = NULL
+	,@requestToDate DATETIME = NULL
+AS
+BEGIN
+	--Disabling Parameter Sniffing  
+	DECLARE @LocalclientXML XML = NULL
+		,@LocalaccountTypeXML XML = NULL
+		,@LocalrequestStatusXML XML = NULL
+		,@LocalformXML XML = NULL
+		,@Localclient_view_id INT
+		,@Localrequest_view_id INT
+		,@Localuserid INT
+		,@Localstartrow INT = NULL
+		,@Localendrow INT = NULL
+		,@Localsortcolumnname VARCHAR(100) = NULL
+		,@LocalSortOrder VARCHAR(5) = NULL
+		,@LocalrequestXML XML = NULL
+		,@LocalrequestFlowStatusXML XML = NULL
+		,@LocalPriority BIT = NULL
+		,@LocalrequestFromDate DATETIME = NULL
+		,@LocalrequestToDate DATETIME = NULL
+
+	SET @LocalclientXML = @clientXML
+	SET @LocalaccountTypeXML = @accountTypeXML
+	SET @LocalrequestStatusXML = @requestStatusXML
+	SET @LocalformXML = @formXML
+	SET @Localclient_view_id = @client_view_id
+	SET @Localrequest_view_id = @request_view_id
+	SET @Localuserid = @userid
+	SET @Localstartrow = @startrow
+	SET @Localendrow = @endrow
+	SET @Localsortcolumnname = @sortcolumnname
+	SET @LocalSortOrder = @SortOrder
+	SET @LocalrequestXML = @requestXML
+	SET @LocalrequestFlowStatusXML = @requestFlowStatusXML
+	SET @LocalPriority = @Priority
+	SET @LocalrequestFromDate = @requestFromDate
+	SET @LocalrequestToDate = @requestToDate
+
+	--  Variable Declarations  --            
+	DECLARE @totalpagecount INT;
+	DECLARE @client_view_name VARCHAR(100)
+	DECLARE @request_view_name VARCHAR(100)
+	--  Temp tables, Cursors, Table Variables  --            
+	DECLARE @clientlist TABLE (clientid CHAR(4))
+	DECLARE @request_filtered TABLE (
+		Request_id INT
+		,guid VARCHAR(255)
+		,FormID INT
+		,form_abbrev VARCHAR(15)
+		,ClientID CHAR(4)
+		,---DataType Changed from INT.
+		BRIEFNAME VARCHAR(20)
+		,AccountID CHAR(14)
+		,--DataType Changed from INT.
+		ADVENTID CHAR(14)
+		,--DataType Changed from VARCHAR(8).
+		accounttype VARCHAR(20)
+		,ParticipantID INT
+		,ParticipantName VARCHAR(74)
+		,submitted_employee_id INT
+		,SubmittedBy VARCHAR(74)
+		,im_authorization_type VARCHAR(20)
+		,ta_authorization_type VARCHAR(20)
+		,is_authorized BIT
+		,submitted_datetime DATETIME
+		,request_status_id INT
+		,status_user_name VARCHAR(50)
+		,requestStatus VARCHAR(100)
+		,status_datetime DATETIME
+		,form_flow_id1 INT
+		,flow_status_id1 INT
+		,flow_status_abbrev1 VARCHAR(8)
+		,flow_status_user_name1 VARCHAR(50)
+		,flow_status_datetime1 DATETIME
+		,form_flow_id2 INT
+		,flow_status_id2 INT
+		,flow_status_abbrev2 VARCHAR(8)
+		,flow_status_user_name2 VARCHAR(50)
+		,flow_status_datetime2 DATETIME
+		,form_flow_id3 INT
+		,flow_status_id3 INT
+		,flow_status_abbrev3 VARCHAR(8)
+		,flow_status_user_name3 VARCHAR(50)
+		,flow_status_datetime3 DATETIME
+		,flow_status_comment1 VARCHAR(2000)
+		,flow_status_comment2 VARCHAR(2000)
+		,flow_status_comment3 VARCHAR(2000)
+		,
+		--Excelsior4: 03/31/10 Offshore        
+		priority_flag BIT
+		)
+
+	EXEC USP_EX_GetListItemName @LIST_ITEM_ID = @Localrequest_view_id
+		,@LIST_ITEM_NAME = @request_view_name OUTPUT
+
+	EXEC USP_EX_GetListItemName @LIST_ITEM_ID = @Localclient_view_id
+		,@LIST_ITEM_NAME = @client_view_name OUTPUT
+
+	IF @LocalclientXML IS NOT NULL
+	BEGIN
+		INSERT INTO @clientlist
+		SELECT x.Staging.value('@TAGClientID', 'CHAR(4)') AS ClientID
+		FROM @LocalclientXML.nodes('//TAGClientCollection/TAGClient') AS x(Staging)
+	END
+	ELSE
+	BEGIN
+		IF (@client_view_name = 'My Primary Clients') --559 My Clients          
+		BEGIN
+			INSERT INTO @clientlist
+			SELECT DISTINCT ManagerCode
+			FROM SYN_IT_AccountManagerCodes
+		END
+		ELSE IF (@client_view_name = 'My Backup Clients') --561 My Back-ups          
+		BEGIN
+			INSERT INTO @clientlist
+			SELECT DISTINCT ManagerCode
+			FROM SYN_IT_AccountManagerCodes
+		END
+		ELSE IF (@client_view_name = 'All Clients') --562 All Clients          
+		BEGIN
+			INSERT INTO @clientlist
+			SELECT DISTINCT ManagerCode
+			FROM SYN_IT_AccountManagerCodes
+		END
+	END
+
+	IF (@request_view_name = 'My Requests')
+	BEGIN
+		INSERT INTO @request_filtered
+		SELECT DISTINCT WftRqst.Request_id
+			,WftRqst.guid
+			,WftRqst.FormID
+			,WftFCExt.form_abbrev
+			,WftRqst.ManagerCode
+			,AccMgrCds.ManagerCode AS BRIEFNAME
+			,WftRqst.CustomerAccountNumber AS AccountID
+			,AccMstr.CustomerAccountNumber AS ADVENTID
+			,AccMstr.AccountTypeCode AS accounttype
+			,WftRqst.ContactID AS ParticipantID
+			,CASE 
+				WHEN (
+						WftRqst.FormID = 154
+						OR WftRqst.FormID = 128
+						)
+					THEN WftRqst.ContactName
+				ELSE rtrim(ltrim(isnull(TpConMstr.PrimaryFirstName, '') + ' ' + isnull(TpConMstr.PrimaryMiddleInitial, '') + ' ' + isnull(TpConMstr.PrimaryLastName, '')))
+				END AS ParticipantName
+			,WftRqst.submitted_employee_id
+			,rtrim(ltrim(isnull(ConMstr.PrimaryFirstName, '') + ' ' + isnull(ConMstr.PrimaryMiddleInitial, '') + ' ' + isnull(ConMstr.PrimaryLastName, ''))) AS SubmittedBy
+			,isnull(WftRqst.im_authorization_type, 'NONE') AS im_authorization_type
+			,isnull(WftRqst.ta_authorization_type, 'NONE') AS ta_authorization_type
+			,WftRqst.is_authorized
+			,WftRqst.submitted_datetime
+			,WftRqst.request_status_id
+			,KsUsr.LoginName AS status_user_name
+			,LstItm.ListItemName AS requestStatus
+			,WftRqst.status_datetime
+			,FLOW1.form_flow_id AS form_flow_id1
+			,FLOW1.flow_status_id AS flow_status_id1
+			,FLOW1.flow_status_abbrev AS flow_status_abbrev1
+			,FLOW1.login_name AS flow_status_user_name1
+			,FLOW1.flow_status_datetime AS flow_status_datetime2
+			,FLOW2.form_flow_id AS form_flow_id2
+			,FLOW2.flow_status_id AS flow_status_id2
+			,FLOW2.flow_status_abbrev AS flow_status_abbrev2
+			,FLOW2.login_name AS flow_status_user_name2
+			,FLOW2.flow_status_datetime AS flow_status_datetime2
+			,FLOW3.form_flow_id AS form_flow_id3
+			,FLOW3.flow_status_id AS flow_status_id3
+			,FLOW3.flow_status_abbrev AS flow_status_abbrev3
+			,FLOW3.login_name AS flow_status_user_name3
+			,FLOW3.flow_status_datetime AS flow_status_datetime3
+			,FLOW1.flow_status_comment AS flow_status_comment1
+			,FLOW2.flow_status_comment AS flow_status_comment2
+			,FLOW3.flow_status_comment AS flow_status_comment3
+			,WftRqst.priority_flag
+		FROM TBL_WFT_Request WftRqst
+		INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+		INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftRqstFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+		INNER JOIN TBL_WFT_ProcessingTeamUser WftprocTmUsr ON WftprocTmUsr.processing_team_id = WftFrmFlwStg.processing_team_id
+		INNER JOIN TBL_KS_User usr ON usr.userid = WftprocTmUsr.user_id
+		LEFT JOIN SYN_IT_AccountMaster AccMstr ON WftRqst.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+		LEFT JOIN SYN_IT_AccountManagerCodes AccMgrCds ON WftRqst.ManagerCode = AccMgrCds.ManagerCode
+		INNER JOIN @clientlist cl ON cl.clientid = WftRqst.ManagerCode
+		LEFT JOIN SYN_IT_ContactMaster TpConMstr ON WftRqst.ContactID = TpConMstr.ContactID
+		LEFT JOIN SYN_IT_ContactMaster ConMstr ON WftRqst.ContactID = ConMstr.ContactID
+		LEFT JOIN TBL_WFT_ML_FrmCtrlExtn WftFCExt ON WftRqst.formid = WftFCExt.formid
+		INNER JOIN TBL_ListItem LstItm ON WftRqst.request_status_id = LstItm.ListItemID
+		LEFT JOIN TBL_KS_User KsUsr ON WftRqst.status_user_id = KsUsr.UserID
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.LoginName AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 1
+			) FLOW1 ON WftRqst.Request_id = FLOW1.Request_id
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.LoginName AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 2
+			) FLOW2 ON WftRqst.Request_id = FLOW2.Request_id
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.LoginName AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 3
+			) FLOW3 ON WftRqst.Request_id = FLOW3.Request_id
+		WHERE (
+				@LocalaccountTypeXML IS NULL
+				OR (
+					@LocalaccountTypeXML IS NOT NULL
+					AND AccMstr.AccountTypeCode IN (
+						SELECT x.Staging.value('@TAGAccountTypeID', 'CHAR(4)') AS LISTITEMID
+						FROM @LocalaccountTypeXML.nodes('//TAGAccountTypeCollection/TAGAccountType') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalrequestStatusXML IS NULL
+				OR (
+					@LocalrequestStatusXML IS NOT NULL
+					AND WftRqst.request_status_id IN (
+						SELECT x.Staging.value('@TAGRequestStatusID', 'INT') AS RequestStatusID
+						FROM @LocalrequestStatusXML.nodes('//TAGRequestStatusCollection/TAGRequestStatus') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalformXML IS NULL
+				OR (
+					@LocalformXML IS NOT NULL
+					AND WftRqst.FormID IN (
+						SELECT x.Staging.value('@TAGFormID', 'INT') AS FormID
+						FROM @LocalformXML.nodes('//TAGFormCollection/TAGForm') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalrequestXML IS NULL
+				OR (
+					@LocalrequestXML IS NOT NULL
+					AND WftRqst.request_id IN (
+						SELECT x.Staging.value('@TAGRequestID', 'INT') AS TAGRequestID
+						FROM @LocalrequestXML.nodes('//TAGRequestCollection/TAGRequest') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalrequestFlowStatusXML IS NULL
+				OR (
+					(
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW1.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					OR (
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW2.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					OR (
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW3.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					)
+				)
+			AND (
+				@LocalPriority IS NULL
+				OR (
+					@LocalPriority IS NOT NULL
+					AND isnull(WftRqst.priority_flag, 0) = @LocalPriority
+					)
+				)
+			AND (
+				@LocalrequestFromDate IS NULL
+				OR (
+					@LocalrequestFromDate IS NOT NULL
+					AND DATEDIFF(D, @LocalrequestFromDate, WftRqst.submitted_datetime) >= 0
+					)
+				)
+			AND (
+				@LocalrequestToDate IS NULL
+				OR (
+					@LocalrequestToDate IS NOT NULL
+					AND DATEDIFF(D, @LocalrequestToDate, WftRqst.submitted_datetime) <= 0
+					)
+				)
+			AND usr.USERID = @Localuserid
+	END
+	ELSE
+	BEGIN
+		INSERT INTO @request_filtered
+		SELECT WftRqst.Request_id
+			,WftRqst.guid
+			,WftRqst.FormID
+			,WftFCExt.form_abbrev
+			,WftRqst.ManagerCode
+			,AccMgrCds.ManagerCode AS BRIEFNAME
+			,WftRqst.CustomerAccountNumber AS AccountID
+			,AccMstr.CustomerAccountNumber AS ADVENTID
+			,AccMstr.AccountTypeCode AS accounttype
+			,WftRqst.ContactID AS ParticipantID
+			,CASE 
+				WHEN (
+						WftRqst.FormID = 154
+						OR WftRqst.FormID = 128
+						)
+					THEN WftRqst.ContactName
+				ELSE rtrim(ltrim(isnull(TpConMstr.PrimaryFirstName, '') + ' ' + isnull(TpConMstr.PrimaryMiddleInitial, '') + ' ' + isnull(TpConMstr.PrimaryLastName, '')))
+				END AS ParticipantName
+			,WftRqst.submitted_employee_id
+			,rtrim(ltrim(isnull(ConMstr.PrimaryFirstName, '') + ' ' + isnull(ConMstr.PrimaryMiddleInitial, '') + ' ' + isnull(ConMstr.PrimaryLastName, ''))) AS SubmittedBy
+			,isnull(WftRqst.im_authorization_type, 'NONE') AS im_authorization_type
+			,isnull(WftRqst.ta_authorization_type, 'NONE') AS ta_authorization_type
+			,WftRqst.is_authorized
+			,WftRqst.submitted_datetime
+			,WftRqst.request_status_id
+			,KsUsr.LoginName AS status_user_name
+			,LstItm.ListItemName AS requestStatus
+			,WftRqst.status_datetime
+			,FLOW1.form_flow_id AS form_flow_id1
+			,FLOW1.flow_status_id AS flow_status_id1
+			,FLOW1.flow_status_abbrev AS flow_status_abbrev1
+			,FLOW1.login_name AS flow_status_user_name1
+			,FLOW1.flow_status_datetime AS flow_status_datetime2
+			,FLOW2.form_flow_id AS form_flow_id2
+			,FLOW2.flow_status_id AS flow_status_id2
+			,FLOW2.flow_status_abbrev AS flow_status_abbrev2
+			,FLOW2.login_name AS flow_status_user_name2
+			,FLOW2.flow_status_datetime AS flow_status_datetime2
+			,FLOW3.form_flow_id AS form_flow_id3
+			,FLOW3.flow_status_id AS flow_status_id3
+			,FLOW3.flow_status_abbrev AS flow_status_abbrev3
+			,FLOW3.login_name AS flow_status_user_name3
+			,FLOW3.flow_status_datetime AS flow_status_datetime3
+			,FLOW1.flow_status_comment AS flow_status_comment1
+			,FLOW2.flow_status_comment AS flow_status_comment2
+			,FLOW3.flow_status_comment AS flow_status_comment3
+			,WftRqst.priority_flag
+		FROM TBL_WFT_Request WftRqst
+		LEFT JOIN SYN_IT_AccountMaster AccMstr ON WftRqst.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+		LEFT JOIN SYN_IT_AccountManagerCodes AccMgrCds ON WftRqst.ManagerCode = AccMgrCds.ManagerCode
+		INNER JOIN @clientlist cl ON cl.clientid = WftRqst.ManagerCode
+		LEFT JOIN SYN_IT_ContactMaster TpConMstr ON WftRqst.ContactID = TpConMstr.ContactID
+		LEFT JOIN SYN_IT_ContactMaster ConMstr ON WftRqst.ContactID = ConMstr.ContactID
+		LEFT JOIN TBL_WFT_ML_FrmCtrlExtn WftFCExt ON WftRqst.formid = WftFCExt.formid
+		INNER JOIN TBL_ListItem LstItm ON WftRqst.request_status_id = LstItm.ListItemID
+		LEFT JOIN TBL_KS_User KsUsr ON WftRqst.status_user_id = KsUsr.UserID
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.loginname AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 1
+			) FLOW1 ON WftRqst.Request_id = FLOW1.Request_id
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.LoginName AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 2
+			) FLOW2 ON WftRqst.Request_id = FLOW2.Request_id
+		LEFT JOIN (
+			SELECT DISTINCT WftRqst.formid
+				,WftRqst.Request_id
+				,WftFlw.flow_name
+				,WftFrmFlwStg.processing_team_id
+				,WftFrmFlw.form_flow_id
+				,WftFrmFlw.flow_number
+				,WftFrmFlw.flow_id
+				,WftFlwSts.flow_status_id
+				,flow_status_abbrev
+				,flow_status_datetime
+				,flow_status_user_id
+				,KsUsr.LoginName AS login_name
+				,flow_status_comment
+			FROM TBL_WFT_Request WftRqst
+			INNER JOIN TBL_WFT_ML_FrmCtrl MLFrmCtrl ON WftRqst.formid = MLFrmCtrl.formid
+			INNER JOIN TBL_WFT_ML_FrmCtrlExtn MLFrmCtrlExt ON MLFrmCtrl.formid = MLFrmCtrlExt.formid
+			INNER JOIN TBL_WFT_FormFlow WftFrmFlw ON WftRqst.Formid = WftFrmFlw.formid
+			INNER JOIN TBL_WFT_Flow WftFlw ON WftFrmFlw.flow_id = WftFlw.flow_id
+			INNER JOIN TBL_WFT_FormFlowStage WftFrmFlwStg ON WftFrmFlw.form_flow_id = WftFrmFlwStg.form_flow_id
+			INNER JOIN TBL_WFT_FlowStatus WftFlwSts ON WftFrmFlwStg.flow_status_id = WftFlwSts.flow_status_id
+			INNER JOIN TBL_WFT_RequestFlow WftRqstFlw ON WftRqst.request_id = WftRqstFlw.request_id
+				AND WftFrmFlwStg.form_flow_id = WftRqstFlw.form_flow_id
+				AND WftFrmFlwStg.flow_status_id = WftRqstFlw.flow_status_id
+			LEFT JOIN TBL_KS_User KsUsr ON WftRqstFlw.flow_status_user_id = KsUsr.UserID
+			WHERE WftFrmFlw.flow_id = 3
+			) FLOW3 ON WftRqst.Request_id = FLOW3.Request_id
+		WHERE (
+				@LocalaccountTypeXML IS NULL
+				OR (
+					@LocalaccountTypeXML IS NOT NULL
+					AND AccMstr.AccountTypeCode IN (
+						SELECT x.Staging.value('@TAGAccountTypeID', 'VARCHAR(50)') AS LISTITEMID
+						FROM @LocalaccountTypeXML.nodes('//TAGAccountTypeCollection/TAGAccountType') AS x(Staging)
+						)
+					--)
+					--)
+					)
+				)
+			AND (
+				@LocalrequestStatusXML IS NULL
+				OR (
+					@LocalrequestStatusXML IS NOT NULL
+					AND WftRqst.request_status_id IN (
+						SELECT x.Staging.value('@TAGRequestStatusID', 'INT') AS RequestStatusID
+						FROM @LocalrequestStatusXML.nodes('//TAGRequestStatusCollection/TAGRequestStatus') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalformXML IS NULL
+				OR (
+					@LocalformXML IS NOT NULL
+					AND WftRqst.FormID IN (
+						SELECT x.Staging.value('@TAGFormID', 'INT') AS FormID
+						FROM @LocalformXML.nodes('//TAGFormCollection/TAGForm') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalrequestXML IS NULL
+				OR (
+					@LocalrequestXML IS NOT NULL
+					AND WftRqst.request_id IN (
+						SELECT x.Staging.value('@TAGRequestID', 'INT') AS TAGRequestID
+						FROM @LocalrequestXML.nodes('//TAGRequestCollection/TAGRequest') AS x(Staging)
+						)
+					)
+				)
+			AND (
+				@LocalrequestFlowStatusXML IS NULL
+				OR (
+					(
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW1.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					OR (
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW2.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					OR (
+						@LocalrequestFlowStatusXML IS NOT NULL
+						AND FLOW3.flow_status_id IN (
+							SELECT x.Staging.value('@TAGRequestFlowStatusID', 'INT') AS TAGRequestFlowStatusID
+							FROM @LocalrequestFlowStatusXML.nodes('//TAGRequestFlowStatusCollection/TAGRequestFlowStatus') AS x(Staging)
+							)
+						)
+					)
+				)
+			AND (
+				@LocalPriority IS NULL
+				OR (
+					@LocalPriority IS NOT NULL
+					AND isnull(WftRqst.priority_flag, 0) = @LocalPriority
+					)
+				)
+			AND (
+				@LocalrequestFromDate IS NULL
+				OR (
+					@LocalrequestFromDate IS NOT NULL
+					AND DATEDIFF(D, @LocalrequestFromDate, WftRqst.submitted_datetime) >= 0
+					)
+				)
+			AND (
+				@LocalrequestToDate IS NULL
+				OR (
+					@LocalrequestToDate IS NOT NULL
+					AND DATEDIFF(D, @LocalrequestToDate, WftRqst.submitted_datetime) <= 0
+					)
+				)
+	END
+
+	SELECT @totalpagecount = count(*)
+	FROM @request_filtered
+
+	SELECT Request_id
+		,guid
+		,FormID
+		,form_abbrev
+		,ClientID
+		,BRIEFNAME
+		,AccountID
+		,ADVENTID
+		,accounttype
+		,ParticipantID
+		,ParticipantName
+		,submitted_employee_id
+		,SubmittedBy
+		,im_authorization_type
+		,ta_authorization_type
+		,is_authorized
+		,submitted_datetime
+		,request_status_id
+		,status_user_name
+		,requestStatus
+		,status_datetime
+		,form_flow_id1
+		,flow_status_id1
+		,flow_status_abbrev1
+		,flow_status_user_name1
+		,flow_status_datetime1
+		,form_flow_id2
+		,flow_status_id2
+		,flow_status_abbrev2
+		,flow_status_user_name2
+		,flow_status_datetime2
+		,form_flow_id3
+		,flow_status_id3
+		,flow_status_abbrev3
+		,flow_status_user_name3
+		,flow_status_datetime3
+		,flow_status_comment1
+		,flow_status_comment2
+		,flow_status_comment3
+		,priority_flag
+		,isnull(@totalpagecount, 0) AS TotalPageCount
+	FROM (
+		SELECT *
+			,row_number() OVER (
+				ORDER BY CASE 
+						WHEN @Localsortcolumnname = 'Request_id'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, Request_id)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'Request_id'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, Request_id)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'BRIEFNAME'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, BRIEFNAME)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'BRIEFNAME'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, BRIEFNAME)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'ADVENTID'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, ADVENTID)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'ADVENTID'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, ADVENTID)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'accounttype'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, accounttype)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'accounttype'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, accounttype)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'ParticipantName'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, ParticipantName)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'ParticipantName'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, ParticipantName)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'form_abbrev'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, form_abbrev)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'form_abbrev'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, form_abbrev)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'submitted_datetime'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, submitted_datetime)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'submitted_datetime'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, submitted_datetime)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'is_authorized'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, is_authorized)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'is_authorized'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, is_authorized)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'requestStatus'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, requestStatus)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'requestStatus'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, requestStatus)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev1'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev1)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev1'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev1)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev2'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev2)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev2'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev2)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev3'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev3)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'flow_status_abbrev3'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, flow_status_abbrev3)
+						END ASC
+					,CASE 
+						WHEN @Localsortcolumnname = 'priority_flag'
+							AND @LocalSortOrder = 'DESC'
+							THEN convert(SQL_VARIANT, priority_flag)
+						END DESC
+					,CASE 
+						WHEN @Localsortcolumnname = 'priority_flag'
+							AND @LocalSortOrder = 'ASC'
+							THEN convert(SQL_VARIANT, priority_flag)
+						END ASC
+				) AS RowNumber
+		FROM @request_filtered
+		) AS request_universe
+	WHERE RowNumber >= @Localstartrow
+		AND RowNumber <= @Localendrow
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestList'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftRequestList';
+END

@@ -1,0 +1,99 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftInvestmentDirectiveDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftInvestmentDirectiveDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftInvestmentDirectiveDetail';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftInvestmentDirectiveDetail
+** Old Name:  [sp_wft_get_Investment_Directive_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate Investment Directive Change detail
+**
+** Sample Call
+	[sp_wft_get_Investment_Directive_detail]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Tanuj Gupta
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	08-March-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 22-Mar-2014  Abhijith  EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftInvestmentDirectiveDetail] (@Guid VARCHAR(255))
+AS
+BEGIN
+	SELECT InvstDirctv.[submitted_date] AS RequestDate
+		,InvstDirctv.[submitted_by] AS RequestSubmittedBy
+		,InvstDirctv.[im_authorization_level] AS SubmittedIMLevel
+		,InvstDirctv.[is_second_signature_required] AS SecondSignatureRequired
+		,InvstDirctv.[pxy_username] AS WebRequestProxiedBy
+		,InvstDirctv.[trustee_name] AS TrusteeName
+		,InvstDirctv.[account_name] AS TrusAccountName
+		,InvstDirctv.[CustomerAccountNumber] AS AdventID
+		,InvstDirctv.[account_type] AS AccountType
+		,InvstDirctv.[payout_rate_annuity_amount] AS AnnuityAmount
+		,InvstDirctv.[reason_for_submission] AS ReasonForSubmission
+		,InvstDirctv.[comments] AS Comment
+		,InvstDirctv.[current_investment_objective] AS CurrentInvestmentObjective
+		,InvstDirctv.[is_investment_per_policy]
+		,InvstDirctv.[per_policy_investment_objective]
+		,InvstDirctv.[is_trade_per_policy]
+		,InvstDirctv.[trading_policy_new_trust_sell]
+		,InvstDirctv.[trading_policy_new_trust_invest]
+		,InvstDirctv.[trading_policy_additions_invest]
+		,InvstDirctv.[trading_policy_additions_sell]
+		,InvstDirctv.[is_invest_or_trade_by_exception] AS InvestOrTradeByException
+		,InvstDirctv.[is_non_policy_investment_objective]
+		,InvstDirctv.[non_policy_investment_objective_name]
+		,InvstDirctv.[is_non_policy_trading_instructions]
+		,InvstDirctv.[hold_donated_assets]
+		,InvstDirctv.[has_other_special_instructions]
+		,InvstDirctv.[special_instructions] AS SpecialInstruction
+		,InvstDirctv.[relationship_manager] AS RelationShipManager
+		,InvstDirctv.[client_manager] AS ClientAccountManager
+		,InvstDirctv.[trader] AS Trader
+		,InvstDirctv.[non_policy_investment_objective_name]
+		,AccMstr.CustomerAccountNumber AS AccountNumber
+	FROM [TBL_WFT_InvestmentDirective] AS InvstDirctv
+	LEFT JOIN SYN_IT_AccountMaster AS AccMstr ON InvstDirctv.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	WHERE InvstDirctv.Guid = @Guid
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftInvestmentDirectiveDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftInvestmentDirectiveDetail';
+END

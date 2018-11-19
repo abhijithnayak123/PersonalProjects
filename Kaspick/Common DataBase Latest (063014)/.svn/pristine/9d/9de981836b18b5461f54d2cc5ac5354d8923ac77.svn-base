@@ -1,0 +1,131 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc')
+    BEGIN
+        DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc;
+        PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc';
+    END
+GO
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc                    
+** Short Desc: Retrieves value of AnnuityAmount for deliverable items.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  BeneficiaryID="645"  ClientEmployeeID="0"  Cli
+entID="1"  DeliverableItemID="3"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="27"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="104456"  BeneficiaryID="119953"  ClientEmployeeID="0"  ClientID="100089"  DeliverableIte
+mID="2352"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="120019"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="100511"  BeneficiaryID="100848"  ClientEmployeeID="0"  ClientID="100019"  DeliverableItemID="1682"  Delive
+rableQueueID="1"  DonorID="0"  TrustparticipantID="100346"    
+DeliverableFrequency="A"  /></SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc  
+    @XMLDeliverableItems  
+   
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/14/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 09/07/2009  Venugopal Updated to check Transition, Active accounts.  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc]        
+ -- paremeters here        
+ @XMLDeliverableItems xml  
+AS        
+ --  Initial Set statements  --        
+ --SET NOCOUNT ON;        
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+ --  Variable Declarations  --        
+ Declare @procname    varchar(60);        
+ Declare @errmsg     varchar(1000);        
+ Declare @errnbr     int;   
+   
+    -- Variables used for error handling - uncomment if needed        
+ Declare @val1      varchar(30);        
+ Declare @val2      varchar(30);        
+  
+ --  Temp tables, Cursors, Table Variables  --        
+ Declare @DeliverableItemData Table  
+ (      
+   DeliverableItemID int,  
+    AccountID int  
+ );  
+ --  Variable Data Assignment  --        
+ Set @procname = 'USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc';        
+  
+ -- Body of procedure  --        
+ BEGIN TRY        
+  INSERT INTO @DeliverableItemData      
+  SELECT        
+   XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID,      
+   XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID  
+  FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)  
+  JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')    
+  WHERE VA.ACCOUNT_TYPE <> 'PIF' AND VA.ACCOUNT_STATUS <> 'Inactive'         
+  
+        SELECT  
+  DeliverableItemID,       
+  26 AS RuleID,       
+  'AnnuityAmount' as Attribute,      
+  ISNULL(DGA.AnnuityAmount,-1) AS ActualValue,  
+  (CASE WHEN (ISNULL(DGA.AnnuityAmount,-1) = -1) THEN 'Null' ELSE CAST(DGA.AnnuityAmount AS VARCHAR) END) as DisplayMessage    
+        FROM @DeliverableItemData DID  
+  JOIN DEFERREDGIFTACCOUNT DGA ON DID.ACCOUNTID = DGA.ACCOUNTID  
+  JOIN TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DGAS ON  DGA.ACCOUNTID = DGAS.ACCOUNTID  
+  JOIN V_EIS_LIST_ITEMS VLI ON DGAS.CALCULATION_METHOD_ID = VLI.LIST_ITEM_ID  
+  WHERE VLI.LIST_ITEM_NAME = 'Fixed'     
+    
+    END TRY        
+ BEGIN CATCH        
+     Set @errmsg = ERROR_MESSAGE();        
+  Set @errnbr = ERROR_NUMBER();        
+  Set @val1 = '';        
+  Set @val2 = '';        
+      
+  exec dbo.spSYS_ErrorHandler @codename = @procname,        
+  @errmsg = @errmsg,         
+  @errnbr = @errnbr,        
+  @val1 = '',         
+  @val1str = 'USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc: Cannot Select.',         
+  @val2 = '',         
+  @val2str = '';        
+ END CATCH        
+ -- End of procedure  --   
+  
+  
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EIS_RPT_BR_VE_DQ_InvalidAnnuityAmount_SelProc';
+	END
+

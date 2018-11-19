@@ -1,0 +1,61 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportGetDaysInYear'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportGetDaysInYear
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportGetDaysInYear                      
+** Short Desc:  
+**                      
+** Full Description:  
+**                              
+** Input Arguments: @Year 
+**         
+** Sample Call     
+        
+ SELECT [dbo].[Fn_ReportGetDaysInYear](2013)   
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportGetDaysInYear] (@Year INT)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @ReturnValue INT
+	DECLARE @startDate DATETIME
+	DECLARE @endDate DATETIME
+
+	SET @startDate = cast('01/01/' + cast(@Year AS VARCHAR) AS DATETIME)
+	SET @endDate = cast('12/31/' + cast(@Year AS VARCHAR) AS DATETIME)
+	SET @ReturnValue = datediff(day, @startDate, @endDate) + 1
+
+	RETURN @ReturnValue
+END
+

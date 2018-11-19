@@ -1,0 +1,103 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber]    Script Date: 10/03/2013 16:22:25 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber]    Script Date: 10/03/2013 16:22:25 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name:     USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber          
+** Short Desc: The sp gets payment's Account DDANumber         
+**          
+** Full Description : The sp gets payment's Account DDANumber. This procedure uses Innotrust response data from table TBL_PP_STG_InnoTrustValidationEngineInput for validation.      
+**             
+** Input Parameter
+** @UserID INT,
+** @Type Bit =1--auto       
+** Sample Call          
+          
+EXEC USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber  1          
+              
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By: Salih Mohammed          
+** Company   : Kaspick & Company          
+** Project   : Back Office Integration - Paragon    
+** Created DT: 04-Oct-2013
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+   26-may-14   Salih    Splitcheck implementation changes, AdviceFlag check modified from 1 to -4     
+   30-may-14   Anand	Removed FixedOrPercentageFlag condition from join
+*******************************************************************************          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentMissingDDANumber] @UserID INT
+	,@Type BIT = 1 --auto
+AS
+--  Initial Set statements  --          
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds       
+
+--  Variable Declarations  --          
+DECLARE @RuleId INT
+
+-- Body of procedure  --          
+SELECT @RuleId = RuleId
+FROM TBL_PP_ValidationRule
+WHERE rulename = 'Missing DDA#'
+
+SELECT PaymentType
+	,ScheduleId
+	,@RuleId AS 'RuleId'
+	,'DDAccount' AS Attribute
+	,(
+		CASE 
+			WHEN PaymentMethod = 'CHECK'
+				OR (
+					-- 26-may-2014	Salih :  Splitcheck implementation changes, AdviceFlag check modified from 1 to -4 
+					PaymentMethod = 'CHECK'
+					AND AdviceFlag = - 4
+					)
+				THEN CASE 
+						WHEN ISNULL(DDANumber, '') = ''
+							THEN 'none'
+						ELSE DDANumber
+						END
+			ELSE '1'
+			END
+		) AS ActualValue
+FROM TBL_PP_STG_InnoTrustValidationEngineInput STGData
+INNER JOIN SYN_IT_BeneficiaryDistributions BenDist
+	ON BenDist.BeneficiaryDistributionID = STGData.DistributionID
+WHERE UserId = @UserID
+	AND PaymentType IN (
+		'Beneficiarypayment'
+		,'PGCalcImport'
+		)
+	AND AccountActive = 1
+GO
+
+

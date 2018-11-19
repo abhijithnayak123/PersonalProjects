@@ -1,0 +1,136 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_DonorBeneAddress]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_DonorBeneAddress]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name:  USP_KCo_DonorBeneAddress      
+** Short Desc:       
+**        
+** Full Description        
+      
+**        
+** Sample Call        
+       EXEC USP_KCo_DonorBeneAddress  'ACL','ACPIF1'     
+       EXEC USP_KCo_DonorBeneAddress  'ACL','All'    
+	   EXEC USP_KCo_DonorBeneAddress  'ACL','ACPIF1KU'     
+**        
+** Return values: NONE        
+**        USP_KCo_DonorBeneInformation
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By: Asit Kar        
+** Company   : Kaspick & Company        
+** Project   : BOI: Reports & Queries       
+** Created DT: 23-04-2014        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 
+*******************************************************************************        
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_DonorBeneAddress]
+	-- paremeters here              
+	@ManagerCode AS VARCHAR(20)
+	,@IncludeDeceasedContacts AS VARCHAR(8)
+AS
+SELECT DISTINCT AccMas.ManagerCode
+	,AccMas.CustomerAccountNumber
+	,AccMas.CustomerShortName AS [Account Name]
+	,AccMas.AccountTypeCode AS [Account Type]
+	,ContRolCds.ContactRoleCodeDesc AS [Contact Type]
+	,ContMas.ContactId
+	,ContMas.PrimaryPrefix AS [Salutation]
+	,LTRIM(RTRIM((
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ContMas.PrimaryLastName)), '') = '')
+						THEN ''
+					ELSE (ContMas.PrimaryLastName + ' ')
+					END
+				) + (
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ContMas.PrimaryFirstName)), '') = '')
+						THEN ''
+					ELSE (ContMas.PrimaryFirstName + ' ')
+					END
+				) + ISNULL(ContMas.PrimaryMiddleInitial, ''))) AS [Contact Name]
+	,ContMas.PrimaryLastName AS [Last Name]
+	,ContMas.PrimaryFirstName AS [First Name]
+	,ContMas.PrimaryMiddleInitial AS [Middle Initials]
+	,ContMas.SSN
+	,'' AS [Payment Name]
+	,ContMas.TaxNameLine1 + '' + ContMas.TaxNameLine2 AS [Tax Name]
+	,ContMas.DateOfBirth AS [BirthDate]
+	,ContMas.DateOfDeath AS [Expire Date]
+	,ContMas.DomicileStateCode [Domicile Code]
+	,ContAdd.AddressType AS [Address Type]
+	,[Address Block] = dbo.Fn_GetFormattedAddress(ContAdd.ContactID)
+	,[Address 1] = ContAdd.Address1
+	,[Address 2] = ContAdd.Address2
+	,[Address 3] = ContAdd.Address3
+	--,[Mail Stop] = A.MailStop
+	,City = ContAdd.City
+	,STATE = ContAdd.STATE
+	,[Zip Code] = CAST(ContAdd.ZipCode AS VARCHAR(50))
+	,Country = ContAdd.CountryCode
+	,[From date] = ContAdd.FromDate
+	,[To date] = ContAdd.ToDate
+	,AAPI.FMV
+	,AAPI.Valuation
+	,AccProf.ObjectiveCode AS [Objective Code]
+FROM SYN_IT_ContactMaster AS ContMas
+INNER JOIN SYN_IT_ContactAccountRoles ContAcntRol ON ContAcntRol.Contactid = ContMas.ContactId
+	AND ContAcntRol.CONTACTROLECODE IN (
+		10
+		,21
+		,37
+		,24
+		) -- Donor and beneficiary
+INNER JOIN SYN_IT_ContactRoleCodes ContRolCds ON ContRolCds.ID = ContAcntRol.ContactRoleCode
+INNER JOIN SYN_IT_AccountMaster AccMas ON AccMas.CustomerAccountNumber = ContAcntRol.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_SubContactRoles AS SubConRol ON ContMas.ContactId = SubConRol.ContactId
+	AND SubConRol.ContactRoleCode = 205
+INNER JOIN SYN_IT_ContactAccountRoles TTD ON TTD.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	AND TTD.ContactRoleCode = 24
+INNER JOIN SYN_IT_UDF_AccountMaster AS UAccMas ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+INNER JOIN SYN_IT_AllianceNumbers AS AllNum ON AllNum.AllianceNumber = AccMas.AllianceNumber
+INNER JOIN SYN_IT_AccountManagerCodes AS AccMgrCd ON AccMgrCd.ManagerCode = AccMas.ManagerCode
+INNER JOIN SYN_IT_ContactAddresses AS ContAdd ON ContMas.ContactId = ContAdd.ContactId
+LEFT JOIN TBL_PP_AnnualAccountPayoutInfo AAPI ON AccMas.CustomerAccountNumber = AAPI.CustomerAccountNumber
+	AND AAPI.PayoutYear = YEAR(GETDATE())
+LEFT JOIN TBL_INV_AccountProfile AccProf ON AccMas.CustomerAccountNumber = AccProf.CustomerAccountNumber
+WHERE (AccMas.ManagerCode = @ManagerCode)
+	AND (
+		ISNULL(ContMas.DateOfDeath, '01/01/1900') = (
+			CASE 
+				WHEN @IncludeDeceasedContacts = 'Yes'
+					THEN ISNULL(ContMas.DateOfDeath, '01/01/1900')
+				ELSE '01/01/1900'
+				END
+			)
+		)
+ORDER BY ContMas.PrimaryLastName
+	,AccMas.CustomerAccountNumber
+GO
+
+

@@ -1,0 +1,314 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_CreateAdhocGroup]    Script Date: 06/30/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_CreateAdhocGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_CreateAdhocGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_CreateAdhocGroup]    Script Date: 06/30/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_CreateAdhocGroup  
+** Short Desc: Query for creating an adhoc group  
+**  
+** Full Description  
+**      Stored procedures creates a record in TBL_IE_Group table. Accounts are   
+  retrieved from DeferredGiftAccount table based on filter conditions  
+  specified in GUI. @Universe i/p parameter controls whether to enforce  
+  universe query criteria or not. @clientID filters accounts for   
+  selected client. @AccoutnType filters accounts for selected.    
+  Accounts are inserted in TBL_IE_STG_Estimate table.  
+  
+  This sp creates Adhoc type of group.  
+**  
+** Sample Call  
+	DECLARE @new_grpid int  
+	EXEC USP_IE_CreateAdhocGroup   
+		@groupName ='2014 Adhoc Income Projections 1',  
+		@taxYear =2014,  
+		@description = '2014 Adhoc Income Projections',  
+		@appflipdate ='01/01/2014',  
+		@userID  = 1,  
+		@Universe =1,  
+		@ManagerCode ="0", -- "TMC,CB",  
+		@AccountType ="All", --"ASST,PR69,NIMU",  
+		@groupID =@new_grpid OUTPUT  
+	SELECT @new_grpid  
+  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 06/30/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_CreateAdhocGroup]
+	-- paremeters here  
+	@groupName VARCHAR(50)
+	,@taxYear SMALLINT
+	,@description VARCHAR(175) = NULL
+	,@appflipdate DATETIME
+	,@userID INT = NULL
+	,@Universe BIT
+	,@ManagerCode VARCHAR(max)
+	,@AccountType VARCHAR(max)
+	,@groupID INT
+OUTPUT AS
+
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @StatusID INT;
+-- Variables used for error handling - uncomment if needed  
+DECLARE @S VARCHAR(max)
+	,@Split CHAR(1)
+	,@ManagerCodeXML XML
+	,@AccountTypeXML XML
+
+--  Temp tables, Cursors, Table Variables  --  
+CREATE TABLE #Unv_Accounts (
+	CustomerAccountNumber VARCHAR(14)
+	,AccountType VARCHAR(4)
+	,CreationDate DATETIME
+	,MatureDate DATETIME
+	,AccountTaxName VARCHAR(100)
+	,UnitrustPercentage FLOAT
+	,ManagerCode CHAR(4)
+	,ObjectiveCode VARCHAR(30)
+	,MasterObjectiveName VARCHAR(40)
+	);
+
+DECLARE @ManagerCodeList TABLE (ManagerCode CHAR(20))
+DECLARE @AccountTypeList TABLE (AccountType CHAR(20))
+
+--  Variable Data Assignment  --  
+SET @procname = 'USP_IE_CreateAdhocGroup';
+SET @groupID = 0;
+SET @Split = ','
+
+SELECT @ManagerCodeXML = CONVERT(XML, '<ManagerCodeList><ManagerCode>' + REPLACE(@ManagerCode, @Split, '</ManagerCode><ManagerCode>') + '</ManagerCode></ManagerCodeList>')
+
+SELECT @AccountTypeXML = CONVERT(XML, '<AccountTypeList><AccountType>' + REPLACE(@AccountType, @Split, '</AccountType><AccountType>') + '</AccountType></AccountTypeList>')
+
+SELECT @StatusID = StatusID
+FROM TBL_IE_STATUS
+WHERE STATUS = 'New';
+
+-- Body of procedure  --  
+INSERT INTO @ManagerCodeList
+SELECT ManagerCode = T.ManagerCode.value('.', 'varchar(4)')
+FROM @ManagerCodeXML.nodes('/ManagerCodeList/ManagerCode') T(ManagerCode)
+
+INSERT INTO @AccountTypeList
+SELECT AccountType = T.AccountType.value('.', 'varchar(4)')
+FROM @AccountTypeXML.nodes('/AccountTypeList/AccountType') T(AccountType)
+
+-- If Universe Check Box is checked  
+IF @Universe = 1
+BEGIN
+	INSERT INTO #Unv_Accounts
+	EXEC USP_IE_GetUniverseOfAccounts @taxYear
+
+	--create a group record  
+	INSERT INTO [dbo].[TBL_IE_Group] (
+		[CreatedDate]
+		,[Description]
+		,[GroupName]
+		,[IsDeleted]
+		,[IsOfficial]
+		,[ModifiedDate]
+		,[TaxYear]
+		,[UserID]
+		)
+	VALUES (
+		GETDATE()
+		,@description
+		,@groupName
+		,0
+		,0
+		,GETDATE()
+		,@taxYear
+		,@userID
+		)
+
+	SET @groupID = IDENT_CURRENT('TBL_IE_Group')
+
+	INSERT INTO TBL_IE_STG_Estimate (
+		GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,ManagerCode
+		,AccountName
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,EP_MasterObjectiveName
+		,IsDeleted
+		,UserID
+		,CreatedDate
+		,ModifiedDate
+		)
+	SELECT @groupID
+		,@taxYear
+		,CustomerAccountNumber
+		,UAcc.ManagerCode
+		,AccountTaxName
+		,UAcc.AccountType
+		,CreationDate
+		,MatureDate
+		,@StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,MasterObjectiveName
+		,0
+		,@userID
+		,GETDATE() AS CreatedDate
+		,GETDATE() AS ModifiedDate
+	FROM #Unv_Accounts UAcc
+	LEFT OUTER JOIN @ManagerCodeList MgrCode ON MgrCode.ManagerCode = UAcc.ManagerCode
+	LEFT OUTER JOIN @AccountTypeList AccType ON AccType.AccountType = UAcc.AccountType
+	WHERE 1 = 1
+		AND UAcc.ManagerCode IN (
+			CASE 
+				WHEN ISNULL(@ManagerCode, '0') <> '0'
+					THEN MgrCode.ManagerCode
+				ELSE UAcc.ManagerCode
+				END
+			)
+		AND UAcc.AccountType IN (
+			CASE 
+				WHEN ISNULL(@AccountType, 'All') <> 'All'
+					THEN AccType.AccountType
+				ELSE UAcc.AccountType
+				END
+			)
+	ORDER BY CustomerAccountNumber ASC
+END
+ELSE
+BEGIN
+	--create a group record  
+	INSERT INTO [dbo].[TBL_IE_Group] (
+		[CreatedDate]
+		,[Description]
+		,[GroupName]
+		,[IsDeleted]
+		,[IsOfficial]
+		,[ModifiedDate]
+		,[TaxYear]
+		,[UserID]
+		)
+	VALUES (
+		GETDATE()
+		,@description
+		,@groupName
+		,0
+		,0
+		,GETDATE()
+		,@taxYear
+		,@userID
+		)
+
+	SET @groupID = IDENT_CURRENT('TBL_IE_Group')
+
+	INSERT INTO TBL_IE_STG_Estimate (
+		GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,AccMas.ManagerCode
+		,AccountName
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,EP_MasterObjectiveName
+		,IsDeleted
+		,UserID
+		,CreatedDate
+		,ModifiedDate
+		)
+	SELECT @groupID
+		,@taxYear
+		,AccMas.CustomerAccountNumber
+		,AccMas.ManagerCode
+		,(
+			CASE 
+				WHEN ISNULL(UAccMas.UDFAMColumn046, '') = ''
+					THEN AccMas.CustomerDescriptionLine1
+				ELSE UAccMas.UDFAMColumn046
+				END
+			) AS AccountName
+		,AccMas.AccountTypeCode AS AccountType
+		,AccMas.DateOpened AS CreationDate
+		,UAccMas.UDFAMColumn030 AS MatureDate
+		,@StatusID
+		,ISNULL(AccDet.PayoutPercentage, 0) AS UnitrustPercentage
+		,AccProf.ObjectiveCode
+		,InvObj.MasterObjectiveName
+		,0
+		,@userID
+		,GETDATE()
+		,GETDATE()
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_UDF_AccountMaster UAccMas ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_IT_CTAccountDetails AccDet ON AccDet.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN TBL_INV_AccountProfile AccProf ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective InvObj ON InvObj.ObjectiveCode = AccProf.ObjectiveCode
+	LEFT OUTER JOIN @ManagerCodeList MgrCode ON MgrCode.ManagerCode = AccMas.ManagerCode
+	LEFT OUTER JOIN @AccountTypeList AccType ON AccType.AccountType = AccMas.AccountTypeCode
+	WHERE AccMas.ClosedFlag <> - 1
+		AND AccMas.ActiveFlag = - 1
+		AND AccMas.ManagerCode IN (
+			CASE 
+				WHEN ISNULL(@ManagerCode, '0') <> '0'
+					THEN MgrCode.ManagerCode
+				ELSE AccMas.ManagerCode
+				END
+			)
+		AND AccMas.AccountTypeCode IN (
+			CASE 
+				WHEN ISNULL(@AccountType, 'All') <> 'All'
+					THEN AccType.AccountType
+				ELSE AccMas.AccountTypeCode
+				END
+			)
+	ORDER BY AccMas.CustomerAccountNumber ASC
+
+	DROP TABLE #Unv_Accounts
+END
+		-- End of procedure  --  

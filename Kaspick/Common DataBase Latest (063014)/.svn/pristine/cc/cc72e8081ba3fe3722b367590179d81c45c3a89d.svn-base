@@ -1,0 +1,433 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfAllocationDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveEnfAllocationDetails;
+
+	PRINT 'DROPPED USP_EX_SaveEnfAllocationDetails';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************              
+** New Name:      USP_EX_SaveEnfAllocationDetails
+** Old  Name:     <USP_EIS_ENF_ALLOCATION_DETAILS_InsUpdProc>              
+** Short Desc: Put in Short Description              
+**              
+** Full Description              
+**        More detailed description if necessary              
+**              
+** Sample Call              
+EXEC <USP_EIS_ENF_ALLOCATION_DETAILS_InsUpdProc>  -- parameters              
+**              
+** Return values: NONE              
+**              
+**              
+** Standard declarations              
+**       SET NOCOUNT             ON              
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds              
+**               
+** Created By: Saravanan             
+** Company   : Kaspick & Company              
+** Project   : Excelsior              
+** Created DT:               
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+  18-Feb-2010	Tanuj	Enhancement	Adding @StrategicAllocationID,@BRCommentID
+** 22-Mar-2014 Yugandhar  Modified   EXCREQ 3.1
+** 23-May-2014  Sanath   Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveEnfAllocationDetails] (
+	@ObjectiveCode VARCHAR(100)
+	,@ObjectiveName VARCHAR(100)
+	,@ObjectiveDescription VARCHAR(100)
+	,@ExpectedYield FLOAT
+	,@ExpectedAppreciation FLOAT
+	,@InvestmentNumber FLOAT
+	,@MasterObjectiveName VARCHAR(100)
+	,@MABenchmarkID INT
+	,@TradBenchmarkID INT
+	,@DecisionComments VARCHAR(MAX)
+	,@UserID INT
+	,@AssetFund XML
+	,@StrategicAllocationID INT
+	,@BRCommentID INT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --          
+	SET @ProcName = 'USP_EX_SaveEnfAllocationDetails';
+
+	-- Body of procedure  --          
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		DECLARE @DecisionCommentsID BIGINT
+			,@TypeID BIGINT
+			,@PREV_@PortfoliioCodeID INT
+			,@HistoricMABenchMarkID INT
+			,@HistoricTradBenchMarkID INT
+		DECLARE @TargetAllocation TABLE (
+			AssetClassName VARCHAR(25)
+			,CashBalanceCode VARCHAR(4)
+			,ClassRank INT
+			,TargetPercent FLOAT
+			,DefaultAssetClass VARCHAR(25) NULL
+			,FLAG VARCHAR(1) DEFAULT 'I'
+			)
+		DECLARE @TargetFundAllocation TABLE (
+			SecuritySymbol VARCHAR(50)
+			,CashBalanceCode VARCHAR(4)
+			,FundWeight FLOAT
+			,FundRank INT
+			,TargetFundPercent FLOAT
+			,FLAG VARCHAR(1) DEFAULT 'I'
+			)
+
+		SET @PREV_@PortfoliioCodeID = (
+				SELECT BRCommentID
+				FROM TBL_INV_InvestmentObjective
+				WHERE ObjectiveCode = @ObjectiveCode
+				)
+
+		SELECT @MasterObjectiveName = MO.MasterObjectiveCode
+		FROM TBL_INV_StrategicAllocation SA
+		INNER JOIN TBL_INV_MasterObjective MO ON MO.MasterObjectiveID = SA.MasterObjectiveID
+		WHERE SA.StrategicAllocationID = @StrategicAllocationID
+
+		SELECT @HistoricMABenchMarkID = HistoricBenchMarkID
+		FROM TBL_INV_BenchMark
+		WHERE BenchMarkID = @MABenchmarkID
+
+		SELECT @HistoricTradBenchMarkID = HistoricBenchMarkID
+		FROM TBL_INV_BenchMark
+		WHERE BenchMarkID = @TradBenchmarkID
+
+		IF EXISTS (
+				SELECT ObjectiveCode
+				FROM TBL_INV_InvestmentObjective
+				WHERE ObjectiveCode = @ObjectiveCode
+				)
+		BEGIN
+			UPDATE TBL_INV_InvestmentObjective
+			SET ObjectiveName = @ObjectiveName
+				,ObjectiveDescription = @ObjectiveDescription
+				,ExpectedYield = @ExpectedYield
+				,ExpectedAppreciation = @ExpectedAppreciation
+				,InvestmentNumber = @InvestmentNumber
+				,MasterObjectiveName = @MasterObjectiveName
+				,MABenchmarkID = @HistoricMABenchMarkID
+				,TradBenchmarkID = @HistoricTradBenchMarkID
+				,StrategicAllocationID = @StrategicAllocationID
+				,BRCommentID = @BRCommentID
+			WHERE ObjectiveCode = @ObjectiveCode
+		END
+		ELSE
+		BEGIN
+			INSERT INTO TBL_INV_InvestmentObjective (
+				ObjectiveCode
+				,ObjectiveName
+				,ObjectiveDescription
+				,ExpectedYield
+				,ExpectedAppreciation
+				,InvestmentNumber
+				,MasterObjectiveName
+				,MABenchmarkID
+				,TradBenchmarkID
+				,IsActive
+				,StrategicAllocationID
+				,BRCommentID
+				)
+			VALUES (
+				@ObjectiveCode
+				,@ObjectiveName
+				,@ObjectiveDescription
+				,@ExpectedYield
+				,@ExpectedAppreciation
+				,@InvestmentNumber
+				,@MasterObjectiveName
+				,@HistoricMABenchMarkID
+				,@HistoricTradBenchMarkID
+				,1
+				,@StrategicAllocationID
+				,@BRCommentID
+				)
+		END
+
+		DELETE
+		FROM TBL_INV_TacticalAllocationBenchMark
+		WHERE ObjectiveCode = @ObjectiveCode
+
+		IF ISNULL(@MABenchmarkID, - 1) <> - 1
+		BEGIN
+			INSERT INTO [TBL_INV_TacticalAllocationBenchMark] (
+				[ObjectiveCode]
+				,[BenchMarkID]
+				,[ModifiedBy]
+				,[ModifiedDate]
+				)
+			VALUES (
+				@ObjectiveCode
+				,@MABenchmarkID
+				,@UserID
+				,GetDate()
+				)
+		END
+
+		IF ISNULL(@TradBenchmarkID, - 1) <> - 1
+		BEGIN
+			INSERT INTO [TBL_INV_TacticalAllocationBenchMark] (
+				[ObjectiveCode]
+				,[BenchMarkID]
+				,[ModifiedBy]
+				,[ModifiedDate]
+				)
+			VALUES (
+				@ObjectiveCode
+				,@TradBenchmarkID
+				,@UserID
+				,GetDate()
+				)
+		END
+
+		-- Update Associated Account for BeneComment  
+		IF (@PREV_@PortfoliioCodeID <> @BRCommentID)
+		BEGIN
+			UPDATE TBL_BR_CommentLinkage
+			SET CommentID = @BRCommentID
+			WHERE CustomerAccountNumber IN (
+					SELECT CustomerAccountNumber
+					FROM TBL_INV_AccountProfile
+					WHERE ObjectiveCode = @ObjectiveCode
+					)
+				AND CommentID = @PREV_@PortfoliioCodeID
+		END
+
+		--To Insert Decision Comments    
+		IF (@DecisionComments IS NOT NULL)
+		BEGIN
+			SELECT @TypeID = TypeID
+			FROM TBL_INV_DecisionCommentType
+			WHERE TypeName = 'Objective'
+
+			INSERT INTO TBL_INV_DecisionComment (
+				Comment
+				,OriginType
+				,DecisionDate
+				,CommentUser
+				)
+			VALUES (
+				@DecisionComments
+				,@TypeID
+				,GETDATE()
+				,@UserID
+				)
+
+			SET @DecisionCommentsID = IDENT_CURRENT('TBL_INV_DecisionComment')
+
+			INSERT INTO TBL_INV_DecisionCommentTypeLink (
+				DecisionCommentID
+				,DecisionTypeValue
+				,TypeID
+				)
+			VALUES (
+				@DecisionCommentsID
+				,@ObjectiveCode
+				,@TypeID
+				)
+
+			SELECT @TypeID = TypeID
+			FROM TBL_INV_DecisionCommentType
+			WHERE TypeName = 'Account'
+
+			INSERT INTO TBL_INV_DecisionCommentTypeLink (
+				DecisionCommentID
+				,DecisionTypeValue
+				,TypeID
+				)
+			SELECT @DecisionCommentsID
+				,CustomerAccountNumber
+				,@TypeID
+			FROM TBL_INV_AccountProfile
+			WHERE objectiveCode = @ObjectiveCode
+		END
+
+		--Target Allocation    
+		INSERT INTO @TargetAllocation (
+			AssetClassName
+			,CashBalanceCode
+			,ClassRank
+			,TargetPercent
+			,DefaultAssetClass
+			)
+		SELECT XMLDATA.ID.value('AssetClassName[1]', 'VARCHAR(25)') AS AssetClassName
+			,'High' AS CashBalanceCode
+			,XMLDATA.ID.value('ClassRank[1]', 'INT') AS ClassRank
+			,XMLDATA.ID.value('TargetPercent[1]', 'FLOAT') AS TargetPercent
+			,XMLDATA.ID.value('DefaultAssetClass[1]', 'VARCHAR(25)') AS DefaultAssetClass
+		FROM @AssetFund.nodes('/AssetFund/TargetAllocation') AS XMLDATA(ID)
+
+		UPDATE @TargetAllocation
+		SET FLAG = 'U'
+		WHERE AssetClassName IN (
+				SELECT AssetClassName
+				FROM TBL_INV_TargetAllocation
+				WHERE ObjectiveCode = @ObjectiveCode
+					AND CashBalanceCode = 'High'
+				)
+
+		--Delete Target Allocation    
+		DELETE
+		FROM TBL_INV_TargetAllocation
+		WHERE AssetClassName NOT IN (
+				SELECT AssetClassName
+				FROM @TargetAllocation
+				)
+			AND ObjectiveCode = @ObjectiveCode
+			AND CashBalanceCode = 'High'
+
+		--Update Target Allocation    
+		UPDATE TBL_INV_TargetAllocation
+		SET ClassRank = TEMP.ClassRank
+			,TargetPercent = TEMP.TargetPercent
+			,DefaultAssetClass = TEMP.DefaultAssetClass
+		FROM TBL_INV_TargetAllocation TrgtAlcn
+		INNER JOIN @TargetAllocation TEMP ON TEMP.AssetClassName = TrgtAlcn.AssetClassName
+		WHERE TrgtAlcn.ObjectiveCode = @ObjectiveCode
+			AND TrgtAlcn.CashBalanceCode = 'High'
+			AND TEMP.FLAG = 'U'
+
+		--Insert Target Allocation    
+		INSERT INTO TBL_INV_TargetAllocation (
+			ObjectiveCode
+			,AssetClassName
+			,CashBalanceCode
+			,ClassRank
+			,TargetPercent
+			,DefaultAssetClass
+			)
+		SELECT @ObjectiveCode
+			,AssetClassName
+			,CashBalanceCode
+			,ClassRank
+			,TargetPercent
+			,DefaultAssetClass
+		FROM @TargetAllocation
+		WHERE FLAG = 'I'
+
+		--Target Fund Allocation into Temp Table    
+		INSERT INTO @TargetFundAllocation (
+			SecuritySymbol
+			,CashBalanceCode
+			,FundWeight
+			,FundRank
+			,TargetFundPercent
+			)
+		SELECT XMLDATA.ID.value('SecuritySymbol[1]', 'VARCHAR(25)') AS SecuritySymbol
+			,'High' AS CashBalanceCode
+			,XMLDATA.ID.value('FundWeight[1]', 'FLOAT') AS FundWeight
+			,XMLDATA.ID.value('FundRank[1]', 'INT') AS FundRank
+			,XMLDATA.ID.value('FundPercent[1]', 'FLOAT') AS TargetFundPercent
+		FROM @AssetFund.nodes('/AssetFund/TargetFundAllocation') AS XMLDATA(ID)
+
+		--Update Flag Value in Temp Table    
+		UPDATE @TargetFundAllocation
+		SET FLAG = 'U'
+		WHERE SecuritySymbol IN (
+				SELECT SecuritySymbol
+				FROM TBL_INV_TargetFundAllocation
+				WHERE ObjectiveCode = @ObjectiveCode
+					AND CashBalanceCode = 'High'
+				)
+
+		--Delete Target Fund Allocation Table    
+		DELETE
+		FROM TBL_INV_TargetFundAllocation
+		WHERE SecuritySymbol NOT IN (
+				SELECT SecuritySymbol
+				FROM @TargetFundAllocation
+				)
+			AND ObjectiveCode = @ObjectiveCode
+			AND CashBalanceCode = 'High'
+
+		--Update Target Fund Allocation Table    
+		UPDATE TBL_INV_TargetFundAllocation
+		SET FundWeight = TEMP.FundWeight
+			,FundRank = TEMP.FundRank
+			,TargetFundPercent = TEMP.TargetFundPercent
+		FROM TBL_INV_TargetFundAllocation TrgtFndAlcn
+		INNER JOIN @TargetFundAllocation TEMP ON TEMP.SecuritySymbol = TrgtFndAlcn.SecuritySymbol
+		WHERE TrgtFndAlcn.ObjectiveCode = @ObjectiveCode
+			AND TrgtFndAlcn.CashBalanceCode = 'High'
+			AND TEMP.FLAG = 'U'
+
+		--Insert Target Fund Allocation Table    
+		INSERT INTO TBL_INV_TargetFundAllocation (
+			ObjectiveCode
+			,SecuritySymbol
+			,CashBalanceCode
+			,FundWeight
+			,FundRank
+			,TargetFundPercent
+			)
+		SELECT @ObjectiveCode
+			,SecuritySymbol
+			,CashBalanceCode
+			,FundWeight
+			,FundRank
+			,TargetFundPercent
+		FROM @TargetFundAllocation
+		WHERE FLAG = 'I'
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveEnfAllocationDetails: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --          
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfAllocationDetails'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveEnfAllocationDetails';
+END

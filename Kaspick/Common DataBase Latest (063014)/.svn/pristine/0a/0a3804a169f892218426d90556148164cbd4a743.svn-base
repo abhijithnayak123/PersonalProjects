@@ -1,0 +1,317 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveHistoryDetail]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewSaveHistoryDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewSaveHistoryDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveHistoryDetail]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewSaveHistoryDetail    
+** Short Desc:   Posts the clientiecomment from the various parent screens.
+**    
+** Full Description : Posts the clientiecomment from the various parent screens.
+**            
+**    
+** Sample Call    
+ --Client Comment     
+    EXEC USP_IE_ReviewSaveHistoryDetail     -- parameters    
+  @ParentScreen = 'Client Comment',    
+  @XMLDATA = '<IE_ClientCommentCollection>    
+   <UpdateList>    
+    <IE_ClientComment StagingID="1" EP_ClientIEComment="change in comment" GroupID="1" CustomerAccountNumber="7770010" RunDate="01/01/2007" UserID="1"/>    
+   </UpdateList>    
+  </IE_ClientCommentCollection>'    
+    
+--Override Security Income    
+    EXEC USP_IE_ReviewSaveHistoryDetail     -- parameters    
+  @ParentScreen = 'Detail View Security Income Override',    
+  @XMLDATA = '<OverrideSecurityIncomeCollection>    
+   <UpdateList>    
+    <OverrideSecurityIncome StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" Old_Income="200" New_Income="500" Comments="" UserID="1"/>    
+   </UpdateList>    
+  </OverrideSecurityIncomeCollection>'    
+    
+--Detail view Add asset     
+    EXEC USP_IE_ReviewSaveHistoryDetail     -- parameters    
+  @ParentScreen = 'Detail View Security Income Add Asset',    
+  @XMLDATA = '<SecurityIncomeDetailCollection>    
+   <InsertList>    
+    <SecurityIncomeDetail StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007"  ImportDate="01/01/2007" SecuritySymbol="PNIF" Quantity="10" DividendRate ="0.1" Income="20" UserID="1"/>    
+   </InsertList>    
+  </SecurityIncomeDetailCollection>'    
+    
+--estimate review    
+    EXEC USP_IE_ReviewSaveHistoryDetail     -- parameters    
+  @ParentScreen = 'Estimate Review Approve',    
+  @XMLDATA = '<ApproveEstimateReviewCollection>    
+   <UpdateList>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Reclassified Income" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Prior Year Overpayment" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Annual IM Fee" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Annual TA Fee" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Annual Trustee Fee" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="TMC Annual Service Charge to Income" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="YTD Other Expenses" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Estimated Other Expenses" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Prior Year Accrued Income" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Current Year Accrued Income" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Asset Amortization, Accretion, Paydown" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Actual SGD" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Estimated SGD" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Actual STG/LTG" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="New Net Income Estimate" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Net Income Estimate Used for Payment" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+    <ApproveEstimateReview StagingID="1" GroupID="1" CustomerAccountNumber="JHMUR" RunDate="01/01/2007" ChangedField="Current Year Income Target" Old_Value="1" New_Value="2" Comments="Change Data" UserID="1"/>    
+   </UpdateList>    
+  </ApproveEstimateReviewCollection>'    
+    
+--Estimate Review Override'        
+      EXEC USP_IE_ReviewSaveHistoryDetail     -- parameters      
+  @ParentScreen = 'Estimate Review Override',      
+  @XMLDATA = '<HistoryCollection>      
+   <InsertList>      
+    <History GroupID="39"  CustomerAccountNumber="301y271"  RunDate="11/14/2007 4:39:28 PM"  ChangedField="Reclassified Income"  CurrentValue="222"  PreviousValue="111"  CreatedDate="1/1/0001 12:00:00 AM"  UserName=""  Comments=""  UserID="1"  />      
+   </InsertList>      
+  </HistoryCollection>'    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewSaveHistoryDetail] @ParentScreen VARCHAR(50)
+	,@XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	-- Body of procedure  --    
+	IF @ParentScreen = 'Client Comment'
+	BEGIN
+		INSERT INTO TBL_IE_History (
+			GroupID
+			,CustomerAccountNumber
+			,RunDate
+			,ChangedField
+			,PreviousValue
+			,CurrentValue
+			,Comments
+			,UserID
+			,UserName
+			,CreatedDate
+			)
+		SELECT NewData.GroupID
+			,NewData.CustomerAccountNumber
+			,NewData.RunDate
+			,'Client Comment' AS ChangedField
+			,STGEst.EP_ClientIEComment AS PreviousValue
+			,NewData.EP_ClientIEComment AS CurrentValue
+			,NULL AS Comments
+			,NewData.UserID
+			,LOWER(LoginName) AS UserName
+			,GETDATE() AS CreatedDate
+		FROM (
+			SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+				,XmlInput.Staging.value('@EP_ClientIEComment[1]', 'varchar(4000)') AS EP_ClientIEComment
+				,XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+				,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+				,XmlInput.Staging.value('@RunDate[1]', 'Datetime') AS RunDate
+				,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+			FROM @XMLDATA.nodes('//IE_ClientCommentCollection/UpdateList/IE_ClientComment') AS XmlInput(Staging)
+			) NewData
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON NewData.StagingID = STGEst.StagingID
+		INNER JOIN TBL_KS_User Usr
+			ON NewData.UserID = Usr.UserID
+	END
+	ELSE
+		IF @ParentScreen = 'Detail View Security Income Override'
+		BEGIN
+			INSERT INTO TBL_IE_History (
+				GroupID
+				,CustomerAccountNumber
+				,RunDate
+				,ChangedField
+				,PreviousValue
+				,CurrentValue
+				,Comments
+				,UserID
+				,UserName
+				,CreatedDate
+				)
+			SELECT NewData.GroupID
+				,NewData.CustomerAccountNumber
+				,NewData.RunDate
+				,NewData.ChangedField
+				,NewData.PreviousValue
+				,NewData.CurrentValue
+				,NewData.Comments
+				,NewData.UserID
+				,LOWER(Usr.LoginName) AS UserName
+				,GETDATE() AS CreatedDate
+			FROM (
+				SELECT XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+					,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+					,XmlInput.Staging.value('@RunDate[1]', 'Datetime') AS RunDate
+					,XmlInput.Staging.value('@ChangedField[1]', 'varchar(50)') AS ChangedField
+					,XmlInput.Staging.value('@PreviousValue[1]', 'float') AS PreviousValue
+					,XmlInput.Staging.value('@CurrentValue[1]', 'float') AS CurrentValue
+					,XmlInput.Staging.value('@Comments[1]', 'varchar(4000)') AS Comments
+					,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+				FROM @XMLDATA.nodes('//HistoryCollection/InsertList/History') AS XmlInput(Staging)
+				) NewData
+			INNER JOIN TBL_KS_User Usr
+				ON NewData.UserID = Usr.UserID
+		END
+		ELSE
+			IF @ParentScreen = 'Detail View Security Income Add Asset'
+			BEGIN
+				INSERT INTO TBL_IE_History (
+					GroupID
+					,CustomerAccountNumber
+					,RunDate
+					,ChangedField
+					,PreviousValue
+					,CurrentValue
+					,Comments
+					,UserID
+					,UserName
+					,CreatedDate
+					)
+				SELECT NewData.GroupID
+					,NewData.CustomerAccountNumber
+					,NewData.RunDate
+					,'Detail View Add Asset' AS ChangedField
+					,NULL AS PreviousValue
+					,NewData.SecuritySymbol + '-' + CAST(NewData.Income AS VARCHAR) AS CurrentValue
+					,NULL AS Comments
+					,NewData.UserID
+					,LOWER(LoginName) AS UserName
+					,GETDATE() AS CreatedDate
+				FROM (
+					SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+						,XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+						,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+						,XmlInput.Staging.value('@RunDate[1]', 'Datetime') AS RunDate
+						,XmlInput.Staging.value('@SecuritySymbol[1]', 'varchar(50)') AS SecuritySymbol
+						,XmlInput.Staging.value('@Income[1]', 'float') AS Income
+						,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+					FROM @XMLDATA.nodes('//SecurityIncomeDetailCollection/InsertList/SecurityIncomeDetail') AS XmlInput(Staging)
+					) NewData
+				INNER JOIN TBL_KS_User Usr
+					ON NewData.UserID = Usr.UserID
+			END
+			ELSE
+				IF @ParentScreen = 'Estimate Review Approve'
+				BEGIN
+					INSERT INTO TBL_IE_History (
+						GroupID
+						,CustomerAccountNumber
+						,RunDate
+						,ChangedField
+						,PreviousValue
+						,CurrentValue
+						,Comments
+						,UserID
+						,UserName
+						,CreatedDate
+						)
+					SELECT NewData.GroupID
+						,NewData.CustomerAccountNumber
+						,NewData.RunDate
+						,NewData.ChangedField
+						,CAST(NewData.Old_Value AS VARCHAR) AS PreviousValue
+						,CAST(NewData.New_Value AS VARCHAR) AS CurrentValue
+						,NewData.Comments
+						,NewData.UserID
+						,LOWER(LoginName) AS UserName
+						,GETDATE() AS CreatedDate
+					FROM (
+						SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+							,XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+							,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+							,XmlInput.Staging.value('@RunDate[1]', 'Datetime') AS RunDate
+							,XmlInput.Staging.value('@ChangedField[1]', 'varchar(50)') AS ChangedField
+							,XmlInput.Staging.value('@Old_Value[1]', 'float') AS Old_Value
+							,XmlInput.Staging.value('@New_Value[1]', 'float') AS New_Value
+							,XmlInput.Staging.value('@Comments[1]', 'varchar(4000)') AS Comments
+							,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+						FROM @XMLDATA.nodes('//ApproveEstimateReviewCollection/UpdateList/ApproveEstimateReview') AS XmlInput(Staging)
+						) NewData
+					INNER JOIN TBL_KS_User Usr
+						ON NewData.UserID = Usr.UserID
+				END
+				ELSE
+					IF @ParentScreen = 'Estimate Review Override'
+					BEGIN
+						INSERT INTO TBL_IE_History (
+							GroupID
+							,CustomerAccountNumber
+							,RunDate
+							,ChangedField
+							,PreviousValue
+							,CurrentValue
+							,Comments
+							,UserID
+							,UserName
+							,CreatedDate
+							)
+						SELECT NewData.GroupID
+							,NewData.CustomerAccountNumber
+							,NewData.RunDate
+							,NewData.ChangedField
+							,NewData.PreviousValue
+							,NewData.CurrentValue
+							,NewData.Comments
+							,NewData.UserID
+							,LOWER(LoginName) AS UserName
+							,GETDATE() AS CreatedDate
+						FROM (
+							SELECT XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+								,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+								,XmlInput.Staging.value('@RunDate[1]', 'Datetime') AS RunDate
+								,XmlInput.Staging.value('@ChangedField[1]', 'varchar(50)') AS ChangedField
+								,XmlInput.Staging.value('@PreviousValue[1]', 'float') AS PreviousValue
+								,XmlInput.Staging.value('@CurrentValue[1]', 'float') AS CurrentValue
+								,XmlInput.Staging.value('@Comments[1]', 'varchar(4000)') AS Comments
+								,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+							FROM @XMLDATA.nodes('//HistoryCollection/InsertList/History') AS XmlInput(Staging)
+							) NewData
+						INNER JOIN TBL_KS_User Usr
+							ON NewData.UserID = Usr.UserID
+					END
+
+	SET NOCOUNT OFF;
+END

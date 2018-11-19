@@ -1,0 +1,78 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetListItemID'
+		)
+BEGIN
+	DROP FUNCTION FN_GetListItemID;
+
+	PRINT 'DROPPED FUNCTION FN_GetListItemID';
+END
+GO
+
+/******************************************************************************    
+** Name:    FN_GetListItemID  
+** Short Desc: To get Item Name  
+**    
+** Full Description: To get Item Name based on the item_id passed as parameter  
+**          
+**    
+** Sample Call    
+  FN_GetListItemID  
+**    
+** Return values: LIST_ITEM_ID  
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Abhijith  
+** Company   : Opteamix    
+** Project   : ExcelsiorPrime   
+** Created DT: 7-Apr-2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE FUNCTION FN_GetListItemID (
+	@IVAN_VALUE VARCHAR(100)
+	,@LIST_TYPE_NAME VARCHAR(100)
+	)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @LIST_ITEM_ID INT
+
+	SET @LIST_ITEM_ID = 0
+
+	IF (@IVAN_VALUE IS NOT NULL)
+	BEGIN
+		SELECT @LIST_ITEM_ID = LstItm.LISTITEMID
+		FROM TBL_ListType LstTyp
+		INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+		WHERE LstItm.IVANVALUE = @IVAN_VALUE
+			AND LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+	END
+	ELSE
+	BEGIN
+		SELECT @LIST_ITEM_ID = LstItm.LISTITEMID
+		FROM TBL_ListType LstTyp
+		INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+		WHERE LstItm.IVANVALUE IS NULL
+			AND LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+	END
+
+	RETURN @LIST_ITEM_ID
+END
+GO
+
+SET NOCOUNT OFF;

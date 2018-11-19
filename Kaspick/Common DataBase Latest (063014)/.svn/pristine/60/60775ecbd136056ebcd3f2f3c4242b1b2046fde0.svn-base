@@ -1,0 +1,139 @@
+  IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail;
+        PRINT 'DROPPED USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail';
+    END
+    GO
+
+/****************************************************************************** 
+** Name:   USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail
+** Old Name:     [sp_wft_get_Beneficiary_Payment_Info_ExcelsiorLive_detail]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate Address Change details  
+**  
+** Sample Call  
+ [USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail ] '<root><Item ID="DUGAP         " ></Item></root>',9501 
+ [sp_wft_get_Beneficiary_Payment_Info_ExcelsiorLive_detail]'<root><Item ID="102698" ></Item></root>',110656  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 29-May-2014  Sanath               BenePayment form for TAG project  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail]  
+(  
+ @AffectedAccountsXML nvarchar(4000),  
+ @ParticipantID int  
+)    
+AS   
+BEGIN  
+ DECLARE @IDOC INT,  
+   @TRUSTPARTICIPANT_TYPEID INT,  
+   @PAYMENTRULE INT,  
+   @DOMICILECODE VARCHAR(50),  
+      @SPOUSENAME VARCHAR(100),  
+   @EXCEPTIONRULE VARCHAR(5),   
+      @EXCLUSIONRULE VARCHAR(5)  
+  
+ Declare @AffectedAccounts table(ID int identity(1,1),AccountID varchar(14))  
+   
+ --Declare @PaymentAddress table(BeneficiaryID int, AddressDetail varchar(max))  
+  
+ ---load and parse the xml document---          
+ EXEC sp_xml_preparedocument @IDOC OUTPUT, @AffectedAccountsXML          
+  
+ Insert into @AffectedAccounts  
+  SELECT * FROM OPENXML (@idoc, '/root/Item',1)          
+  WITH (ID varchar(14))   
+  
+ Exec USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail  
+  @AffectedAccountsXML,  
+  @ParticipantID,  
+  @DOMICILECODE OUTPUT,  
+  @SPOUSENAME OUTPUT,  
+  @PAYMENTRULE OUTPUT,   
+  @EXCEPTIONRULE OUTPUT,   
+  @EXCLUSIONRULE OUTPUT  
+  
+ --SELECT  @TRUSTPARTICIPANT_TYPEID = TRUSTPARTICIPANT_TYPEID FROM VW_EX_TRUSTPARTICIPANTTYPE WHERE DESCRIPTION = 'TrustParticipant'   
+  
+/*commented as of now as per ET#11935 just to remove teh address infor currently  
+ INSERT INTO @PaymentAddress  
+ SELECT         
+    TT.BeneficiaryID AS ENTITY_ID,  
+ ADDRESS = REPLACE(REPLACE(ISNULL(        
+      ADDRESSTYPE+','+ A.ADDRESS1        
+          + CASE WHEN (LTRIM(RTRIM(A.ADDRESS2))<> '') THEN ', ' + A.ADDRESS2 ELSE '' END        
+          + CASE WHEN (LTRIM(RTRIM(A.ADDRESS3))<> '') THEN ', ' + A.ADDRESS3 ELSE '' END        
+          + CASE WHEN (LTRIM(RTRIM(A.MAILSTOP))<> '') THEN ', ' + A.MAILSTOP ELSE '' END        
+          + CASE WHEN (LTRIM(RTRIM(A.CITY))<> '') THEN ', ' + A.CITY ELSE '' END        
+          + CASE WHEN (LTRIM(RTRIM(A.STATE))<> '') THEN ', ' + A.STATE ELSE '' END    
+    + CASE WHEN (LTRIM(RTRIM(A.COUNTRY))<> '') THEN ', ' + A.COUNTRY ELSE '' END      
+          + CASE WHEN (LTRIM(RTRIM(ISNULL(A.ZIPCODE,'')))='')  THEN ''    
+     WHEN (LTRIM(RTRIM(A.COUNTRY))<> ''and LTRIM(RTRIM(A.COUNTRY)) <>'USA') then  (CASE WHEN (LTRIM(RTRIM(ZIPCODE))<> '')  THEN (' ' + ZIPCODE) ELSE '' END)  
+     WHEN LEN(A.ZIPCODE) <= 5 THEN (' ' + A.ZIPCODE) ELSE (' ' + LEFT(A.ZIPCODE, 5) + '-' + RIGHT(A.ZIPCODE,LEN(A.ZIPCODE)- 5 ))END       
+         ,''),', ,',','),', ,',',')     
+    FROM         
+    ADDRESSLINKAGE AL        
+    INNER JOIN ADDRESS A ON AL.ADDRESSID = A.ADDRESSID          
+    INNER JOIN TBL_EIS_EX_ADDRESS_SUPPLEMENT EAS ON A.ADDRESSID = EAS.ADDRESSID   
+ INNER JOIN TBL_EIS_EX_TRUSTPARTICIPANT_TYPE TT ON TT.ParticipantID = AL.LINKID           
+    WHERE   
+    AL.LINKID = @ParticipantID         
+    AND AL.LINKTYPE = @TRUSTPARTICIPANT_TYPEID        
+    AND A.ADDRESSTYPE = 'PAYMENT'    
+ AND TT.ACCOUNTID in (select AccountID from @AffectedAccounts)   CTSMI PaymentMethod: SPLITCHECK, ,   
+*/  
+  
+ select VwTrstPrtcpnt.CustomerAccountNumber + ' '  + replace(CASE WHEN(ISNULL(ContPymtMethd.PaymentType,'')='CHECK') then 'PaymentMethod: '+ContPymtMethd.PaymentType  
+         WHEN(ISNULL(ContPymtMethd.PaymentType,'')='ACH') then 'PaymentMethod:  '+ ContPymtMethd.PaymentType +', '+ isnull(AbaVerf.BANKNAME,'')+', '+ isnull(AbaVerf.ABANUMBER,'')+','+isnull(ContPymtMethd.CreditAcctNumber,'')+', '+ ContPymtMethd.AccountType  
+         WHEN(ISNULL(ContPymtMethd.PaymentType,'')='SPLITCHECK') then 'PaymentMethod:  '+ ContPymtMethd.PaymentType +', '+ isnull(AbaVerf.BANKNAME,' ')+', '+ isnull(ContPymtMethd.CreditAcctNumber,'')  
+         WHEN(ISNULL(ContPymtMethd.PaymentType,'')='<NONE>' OR ISNULL(ContPymtMethd.PaymentType,'')='NONE') then 'PaymentMethod: NONE'   
+         WHEN(ISNULL(ContPymtMethd.PaymentType,'')='WIRE') then 'PaymentMethod:  '+ ContPymtMethd.PaymentType +', '+ isnull(ContPymtMethd.CreditAcctNumber,'')   
+         ELSE 'PaymentMethod: '+ ContPymtMethd.PaymentType END,', , ','')  
+   AS PAYMENTINFORMATION,   
+   @PAYMENTRULE as PAYMENTRULE,  
+   @EXCEPTIONRULE as EXCEPTIONRULE,  
+   @EXCLUSIONRULE as EXCLUSIONRULE  
+ from VW_EX_TRUSTPARTICIPANTTYPE VwTrstPrtcpnt  
+   inner join SYN_IT_ContactPaymentMethods ContPymtMethd ON ContPymtMethd.ContactID = VwTrstPrtcpnt.BeneficiaryID  
+  -- INNER JOIN TBL_EIS_EX_BENEFICIARY_SUPPLEMENT BFS ON BFS.BENEFICIARYID = BF.BENEFICIARYID             
+   LEFT OUTER JOIN SYN_IT_ABAVerification AbaVerf ON AbaVerf.ABANumber = ContPymtMethd.ABANumberCode           
+  -- LEFT OUTER JOIN TBL_EIS_EX_BANK_SUPPLEMENT BS ON B.BANKID = BS.BANKID      
+   --LEFT OUTER JOIN @PaymentAddress PS ON BF.BENEFICIARYID = PS.BENEFICIARYID      
+ where VwTrstPrtcpnt.ParticipantID = @ParticipantID  
+    and VwTrstPrtcpnt.CustomerAccountNumber in(select AccountID from @AffectedAccounts)  
+END
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail')
+    BEGIN
+       
+        PRINT 'CREATED USP_EX_GetWftBeneficiaryPaymentInfoExcelsiorLiveDetail';
+    END  

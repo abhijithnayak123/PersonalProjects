@@ -1,0 +1,127 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetUniverseOfAccounts]    Script Date: 06/27/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetUniverseOfAccounts]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetUniverseOfAccounts]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetUniverseOfAccounts]    Script Date: 06/27/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_GetUniverseOfAccounts    
+** Short Desc:     
+**    
+** Full Description    
+**        gets accounts satisfying Universe criteria for a given TAXYEAR    
+**    
+** Sample Call    
+        EXEC USP_IE_GetUniverseOfAccounts 2014 -- parameters    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 06/27/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** <mm/dd/yyyy>    
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetUniverseOfAccounts]
+	-- paremeters here    
+	@TAXYear INT = NULL
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+--  Variable Declarations  --    
+DECLARE @procname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @FlipDate DATETIME;
+--  Temp tables, Cursors, Table Variables  --    
+--Store Accouts flipped prior or before 1 jan of given year    
+DECLARE @FlippedAccounts TABLE (CustomerAccountNumber VARCHAR(14))
+--Stores Universe Account ID    
+DECLARE @UniverseAccounts TABLE (CustomerAccountNumber VARCHAR(14))
+
+--  Variable Data Assignment  --    
+SET @procname = 'USP_IE_GetUniverseOfAccounts';
+
+IF ISNULL(@TAXYear, 0) = 0
+	SET @TAXYear = YEAR(GETDATE());
+SET @FlipDate = '01/01/' + CAST(@TAXYear AS VARCHAR)
+
+-- Body of procedure  --   
+INSERT INTO @FlippedAccounts
+SELECT DISTINCT CustomerAccountNumber_Key
+FROM SYN_IT_UDF_AccountMaster
+WHERE UDFAMColumn009 IS NOT NULL
+	AND UDFAMColumn009 <= @FlipDate -- UDFAMColumn007 - AD or ED, UDFAMColumn008 - Expected Flip Date, UDFAMColumn009 - 'Actual Flip Date'
+
+INSERT INTO @UniverseAccounts
+SELECT AccMas.CustomerAccountNumber
+FROM SYN_IT_AccountMaster AccMas
+INNER JOIN SYN_IT_UDF_AccountMaster UAccMas ON AccMas.CustomerAccountNumber = UAccMas.CustomerAccountNumber_Key
+WHERE UAccMas.UDFAMColumn001 = 'Y' -- Requires Income Estimate
+	AND AccMas.ClosedFlag <> - 1 -- Account not closed 
+	AND AccMas.ActiveFlag = - 1 -- Account in Active status
+	AND AccMas.CustomerAccountNumber NOT IN (
+		SELECT CustomerAccountNumber
+		FROM @FlippedAccounts
+		) -- Accounts which are not flipped
+ORDER BY 1
+
+SELECT AccMas.CustomerAccountNumber
+	,AccMas.AccountTypeCode
+	,AccMas.AccountFundedDate
+	,AccMas.DateOpened AS CreationDate
+	,UAccMas.UDFAMColumn030 AS MatureDate
+	,(
+		CASE 
+			WHEN ISNULL(UAccMas.UDFAMColumn046, '') = '' -- TaxName
+				THEN AccMas.CustomerDescriptionLine1 -- FullNAme
+			ELSE UAccMas.UDFAMColumn046 -- TaxName
+			END
+		) AS AccountTaxName
+	,ISNULL(AccDet.PayoutPercentage, 0) AS UnitrustPercentage
+	,AccMas.ManagerCode
+	,AccProf.ObjectiveCode
+	,InvObj.MasterObjectiveName
+FROM SYN_IT_AccountMaster AccMas
+INNER JOIN SYN_IT_UDF_AccountMaster UAccMas ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+INNER JOIN SYN_IT_CTAccountDetails AccDet ON AccDet.CustomerAccountNumber = AccMas.CustomerAccountNumber
+INNER JOIN TBL_INV_AccountProfile AccProf ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+LEFT OUTER JOIN TBL_INV_InvestmentObjective InvObj ON InvObj.ObjectiveCode = AccProf.ObjectiveCode
+WHERE AccMas.CustomerAccountNumber IN (
+		SELECT CustomerAccountNumber
+		FROM @UniverseAccounts
+		)
+ORDER BY AccMas.ManagerCode
+	,AccMas.CustomerAccountNumber
+
+SET NOCOUNT OFF;
+	-- End of procedure  --    

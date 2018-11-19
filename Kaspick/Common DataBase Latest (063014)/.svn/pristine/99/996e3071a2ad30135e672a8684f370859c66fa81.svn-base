@@ -1,0 +1,122 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchPGCALPaymentData]    Script Date: 05/21/2013 14:55:17 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsArchPGCALPaymentData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsArchPGCALPaymentData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchPGCALPaymentData]    Script Date: 05/21/2013 14:55:17 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsArchPGCALPaymentData                      
+** Short Desc: Insert all values into TBL_PP_ARCH_PGCALCPAYMENTDATA from TBL_PP_STG_PGCALCPAYMENTDATA
+**                      
+** Full Description: Insert all values into TBL_PP_ARCH_PGCALCPAYMENTDATA from TBL_PP_STG_PGCALCPAYMENTDATA         
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsArchPGCALPaymentData     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsArchPGCALPaymentData]
+AS
+SET NOCOUNT ON
+
+INSERT INTO TBL_PP_ARCH_PGCalcPaymentData (
+	PGCalcPaymentID
+	,PaymentBatch
+	,CustomerAccountNumber
+	,InstructionID
+	--,beneficiaryDistributionID
+	,PersonCode
+	,PayeeName
+	,PaymentAmount
+	,PaymentDate
+	,SeparateCheck
+	,Account1
+	,Account2
+	,GiftDate
+	,PIFUnits
+	,PIFValue
+	,PIFIncome
+	,TaxWithHolding
+	,PaymentID
+	,ContactID
+	,ContactRoleCode
+	,PeriodEndDate
+	,PaymentStatus
+	,ProcessedByMiddleWare
+	,ProcessedDateMiddleWare
+	,IsPrintedOnCheck
+	,PrintedDate
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+	)
+SELECT PGCalcPaymentID
+	,PaymentBatch
+	,CustomerAccountNumber
+	,InstructionID
+	--,beneficiaryDistributionID
+	,PersonCode
+	,PayeeName
+	,PaymentAmount
+	,PaymentDate
+	,SeparateCheck
+	,Account1
+	,Account2
+	,GiftDate
+	,PIFUnits
+	,PIFValue
+	,PIFIncome
+	,TaxWithHolding
+	,PaymentID
+	,ContactID
+	,ContactRoleCode
+	,PeriodEndDate
+	,'P' AS PaymentStatus
+	,1 AS ProcessedByMiddleWare
+	,CreatedDate AS ProcessedDateMiddleWare
+	,1 AS IsPrintedOnCheck
+	,CreatedDate AS PrintedDate
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+FROM TBL_PP_STG_PGCalcPaymentData

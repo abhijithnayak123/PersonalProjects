@@ -1,0 +1,108 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationInnotrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationInnotrustTransaction]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationInnotrustTransaction]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationInnotrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationInnotrustTransaction                      
+** Short Desc: Get Valuation Innotrust Transactions data for the specified ValuationID & TransactionCode 
+**                      
+** Full Description: Get Valuation Innotrust Transactions data for specified ValuationID & TransactionCode
+**      
+**                              
+** Input Arguments:   @TransactionCode XML
+**	,@TaxCode XML
+**	,@ValuationDate DATETIME
+**	,@CustomerAccountNumber CHAR(14)
+**	,@ValuationID             
+** Sample Call     
+
+EXEC USP_PV_GetValuationInnotrustTransaction  '<TransactionCodeCollection><TransactionCodeItem TransactionCode="ACHDEP"/></TransactionCodeCollection>', '<TaxCodeCollection><TaxCodeItem TaxCode="631"/></TaxCodeCollection>' ,'2/27/2014','ARGAP',2
+**
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 4/9/2014   Saravanan			Added ContactName column from SYN_IT_ContactMaster
+** 4/28/2014  Ashvin 			@TransactionCode and @TaxCode will be comma separated values
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationInnotrustTransaction] (
+	@TransactionCode XML
+	,@TaxCode XML
+	,@ValuationDate DATETIME
+	,@CustomerAccountNumber VARCHAR(14)
+	,@ValuationID INT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Assigning valuationid if it is zero
+	IF @ValuationID = 0
+	BEGIN
+		SELECT TOP 1 @ValuationID = ValuationID
+		FROM TBL_PV_Valuation
+		WHERE ValuationDate = @ValuationDate
+			AND CustomerAccountNumber = @CustomerAccountNumber
+		ORDER BY ValuationID DESC
+	END
+
+	-- Fetching the transaction details
+	SELECT TransactionID
+		,ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,GroupID
+		,TransactionCode
+		,Security
+		,TradeDate
+		,Quantity
+		,TradeAmount
+		,Comment
+		,CntctMstr.ContactName
+	FROM TBL_PV_ValuationInnotrustTransaction ValInnTrns
+	LEFT OUTER JOIN SYN_IT_ContactMaster CntctMstr ON ValInnTrns.ContactID = CntctMstr.ContactID
+	WHERE ValuationID = @ValuationID
+		AND TransactionCode IN (
+			SELECT XMLInput.Item.value('@TransactionCode[1]', 'varchar(14)') AS InnoTrustTransactionCode
+			FROM @TransactionCode.nodes('//TransactionCodeCollection/TransactionCodeItem') AS XMLInput(Item)
+			)
+		AND TaxCode IN (
+			SELECT XMLInput.Item.value('@TaxCode[1]', 'varchar(14)') AS InnoTrustTaxCode
+			FROM @TaxCode.nodes('//TaxCodeCollection/TaxCodeItem') AS XMLInput(Item)
+			)
+	ORDER BY TradeDate
+END

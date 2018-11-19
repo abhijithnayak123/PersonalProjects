@@ -1,0 +1,90 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSeveranceFile]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetSeveranceFile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetSeveranceFile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSeveranceFile]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetSeveranceFile    
+** Short Desc:  Get All Client and PIF Accounts associated to the Client.    
+**    
+** Full Description : Get All Client and PIF Accounts associated to the Client. 
+**            
+**    
+** Sample Call    
+        EXEC USP_SIT_GetSeveranceFile 4622
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetSeveranceFile] @ValuationID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	SELECT Svrnc.OrgName
+		,Svrnc.MarketValue
+		,Svrnc.MarketValueDate
+		,Svrnc.GiftID AS giftKey
+		,Svrnc.OrgNick
+		,Svrnc.DistributedAmount
+		,Svrnc.AccountClosedDate
+		,DataHub.DataHubIdentifier
+		,MgrcdParm.ManagerCode AS OrgShortName
+	FROM TBL_SIT_Severance Svrnc
+	INNER JOIN TBL_PV_Valuation PVal
+		ON Svrnc.ValuationID = PVal.ValuationID
+	INNER JOIN TBL_PV_ManagerCodeParameter MgrcdParm
+		ON MgrcdParm.CustomerAccountNumber = PVal.CustomerAccountNumber
+	INNER JOIN TBL_SIT_GiftDataHubIdentifier DataHub
+		ON Svrnc.GiftID = DataHub.GiftKey
+	WHERE Svrnc.ValuationID = @ValuationID
+		AND 0 = (
+			SELECT COUNT(*)
+			FROM TBL_SIT_Severance Svrnc
+			INNER JOIN TBL_SIT_GiftDataHubIdentifier DataHub
+				ON Svrnc.GiftID = DataHub.GiftKey
+			WHERE (
+					LTRIM(RTRIM(DataHub.DataHubIdentifier)) = ''
+					OR DataHub.DataHubIdentifier IS NULL
+					)
+				AND ValuationID = @ValuationID
+			)
+
+	SET NOCOUNT OFF;
+END

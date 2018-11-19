@@ -1,0 +1,504 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportPaymentFileProcessed]    Script Date: Script Date: 06/03/2013 14:30:13 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportPaymentFileProcessed]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportPaymentFileProcessed]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportPaymentFileProcessed]    Script Date: 06/03/2013 14:30:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_ReportPaymentFileProcessed                      
+** Short Desc: To get processed payments 
+**                      
+** Full Description: To get processed payments
+**                              
+** Input Arguments:  @ManagerFilterXML,@ReportOption,@BeginDate,@EndDate    
+**         
+** Sample Call     
+	EXEC USP_PP_ReportPaymentFileProcessed    
+ '<ManagerFilterSubCollection>
+  <ManagerFilterSub ManagerCode="A1" />
+  <ManagerFilterSub ManagerCode="ACL" />
+  <ManagerFilterSub ManagerCode="AK" />
+  <ManagerFilterSub ManagerCode="AL" />
+  <ManagerFilterSub ManagerCode="AM" />
+  <ManagerFilterSub ManagerCode="AR" />
+  <ManagerFilterSub ManagerCode="AYF" />
+  <ManagerFilterSub ManagerCode="AZ" />
+  <ManagerFilterSub ManagerCode="BE" />
+  <ManagerFilterSub ManagerCode="BG" />
+  <ManagerFilterSub ManagerCode="BK" />
+  <ManagerFilterSub ManagerCode="BR" />
+  <ManagerFilterSub ManagerCode="BT" />
+  <ManagerFilterSub ManagerCode="BW" />
+  <ManagerFilterSub ManagerCode="CAS" />
+  <ManagerFilterSub ManagerCode="CB" />
+  <ManagerFilterSub ManagerCode="CC" />
+  <ManagerFilterSub ManagerCode="CFF" />
+  <ManagerFilterSub ManagerCode="CFM" />
+  <ManagerFilterSub ManagerCode="CG" />
+  <ManagerFilterSub ManagerCode="CH" />
+  <ManagerFilterSub ManagerCode="CM" />
+  <ManagerFilterSub ManagerCode="CO" />
+  <ManagerFilterSub ManagerCode="CPF" />
+  <ManagerFilterSub ManagerCode="CT" />
+  <ManagerFilterSub ManagerCode="CU" />
+  <ManagerFilterSub ManagerCode="CWC" />
+  <ManagerFilterSub ManagerCode="DA" />
+  <ManagerFilterSub ManagerCode="DC" />
+  <ManagerFilterSub ManagerCode="DE" />
+  <ManagerFilterSub ManagerCode="DMO" />
+  <ManagerFilterSub ManagerCode="DP" />
+  <ManagerFilterSub ManagerCode="DU" />
+  <ManagerFilterSub ManagerCode="ED" />
+  <ManagerFilterSub ManagerCode="GA" />
+  <ManagerFilterSub ManagerCode="GC" />
+  <ManagerFilterSub ManagerCode="GL" />
+  <ManagerFilterSub ManagerCode="GS" />
+  <ManagerFilterSub ManagerCode="GT" />
+  <ManagerFilterSub ManagerCode="GU" />
+  <ManagerFilterSub ManagerCode="HC" />
+  <ManagerFilterSub ManagerCode="HI" />
+  <ManagerFilterSub ManagerCode="HL" />
+  <ManagerFilterSub ManagerCode="IS" />
+  <ManagerFilterSub ManagerCode="JD" />
+  <ManagerFilterSub ManagerCode="JH" />
+  <ManagerFilterSub ManagerCode="JT" />
+  <ManagerFilterSub ManagerCode="KC" />
+  <ManagerFilterSub ManagerCode="KQ" />
+  <ManagerFilterSub ManagerCode="KU" />
+  <ManagerFilterSub ManagerCode="LA" />
+  <ManagerFilterSub ManagerCode="LAN" />
+  <ManagerFilterSub ManagerCode="LE" />
+  <ManagerFilterSub ManagerCode="LF" />
+  <ManagerFilterSub ManagerCode="LS" />
+  <ManagerFilterSub ManagerCode="MAC" />
+  <ManagerFilterSub ManagerCode="MB" />
+  <ManagerFilterSub ManagerCode="MC" />
+  <ManagerFilterSub ManagerCode="MH" />
+  <ManagerFilterSub ManagerCode="MIT" />
+  <ManagerFilterSub ManagerCode="ML" />
+  <ManagerFilterSub ManagerCode="MM" />
+  <ManagerFilterSub ManagerCode="MN" />
+  <ManagerFilterSub ManagerCode="MO" />
+  <ManagerFilterSub ManagerCode="MRM" />
+  <ManagerFilterSub ManagerCode="MT" />
+  <ManagerFilterSub ManagerCode="MY" />
+  <ManagerFilterSub ManagerCode="NAF" />
+  <ManagerFilterSub ManagerCode="NC" />
+  <ManagerFilterSub ManagerCode="NCP" />
+  <ManagerFilterSub ManagerCode="NDC" />
+  <ManagerFilterSub ManagerCode="NG" />
+  <ManagerFilterSub ManagerCode="NU" />
+  <ManagerFilterSub ManagerCode="NW" />
+  <ManagerFilterSub ManagerCode="NZB" />
+  <ManagerFilterSub ManagerCode="NZF" />
+  <ManagerFilterSub ManagerCode="OC" />
+  <ManagerFilterSub ManagerCode="OF" />
+  <ManagerFilterSub ManagerCode="OH" />
+  <ManagerFilterSub ManagerCode="OK" />
+  <ManagerFilterSub ManagerCode="OR" />
+  <ManagerFilterSub ManagerCode="OS" />
+  <ManagerFilterSub ManagerCode="OX" />
+  <ManagerFilterSub ManagerCode="PA" />
+  <ManagerFilterSub ManagerCode="PAR" />
+  <ManagerFilterSub ManagerCode="PAV" />
+  <ManagerFilterSub ManagerCode="PBJ" />
+  <ManagerFilterSub ManagerCode="PBS" />
+  <ManagerFilterSub ManagerCode="PCH" />
+  <ManagerFilterSub ManagerCode="PCM" />
+  <ManagerFilterSub ManagerCode="PCR" />
+  <ManagerFilterSub ManagerCode="PCS" />
+  <ManagerFilterSub ManagerCode="PDW" />
+  <ManagerFilterSub ManagerCode="PE" />
+  <ManagerFilterSub ManagerCode="PEE" />
+  <ManagerFilterSub ManagerCode="PF" />
+  <ManagerFilterSub ManagerCode="PGR" />
+  <ManagerFilterSub ManagerCode="PH" />
+  <ManagerFilterSub ManagerCode="PHA" />
+  <ManagerFilterSub ManagerCode="PHD" />
+  <ManagerFilterSub ManagerCode="PHW" />
+  <ManagerFilterSub ManagerCode="PJC" />
+  <ManagerFilterSub ManagerCode="PJCF" />
+  <ManagerFilterSub ManagerCode="PJM" />
+  <ManagerFilterSub ManagerCode="PJR" />
+  <ManagerFilterSub ManagerCode="PK" />
+  <ManagerFilterSub ManagerCode="PKE" />
+  <ManagerFilterSub ManagerCode="PL" />
+  <ManagerFilterSub ManagerCode="PLF" />
+  <ManagerFilterSub ManagerCode="PLM" />
+  <ManagerFilterSub ManagerCode="PMJ" />
+  <ManagerFilterSub ManagerCode="PML" />
+  <ManagerFilterSub ManagerCode="PMM" />
+  <ManagerFilterSub ManagerCode="PMW" />
+  <ManagerFilterSub ManagerCode="POT" />
+  <ManagerFilterSub ManagerCode="POV" />
+  <ManagerFilterSub ManagerCode="PPF" />
+  <ManagerFilterSub ManagerCode="PRJ" />
+  <ManagerFilterSub ManagerCode="PRM" />
+  <ManagerFilterSub ManagerCode="PRS" />
+  <ManagerFilterSub ManagerCode="PS" />
+  <ManagerFilterSub ManagerCode="PSM" />
+  <ManagerFilterSub ManagerCode="PSP" />
+  <ManagerFilterSub ManagerCode="PSR" />
+  <ManagerFilterSub ManagerCode="PTD" />
+  <ManagerFilterSub ManagerCode="PVS" />
+  <ManagerFilterSub ManagerCode="PWB" />
+  <ManagerFilterSub ManagerCode="PWD" />
+  <ManagerFilterSub ManagerCode="PWJ" />
+  <ManagerFilterSub ManagerCode="RC" />
+  <ManagerFilterSub ManagerCode="RF" />
+  <ManagerFilterSub ManagerCode="ROS" />
+  <ManagerFilterSub ManagerCode="RP" />
+  <ManagerFilterSub ManagerCode="RT" />
+  <ManagerFilterSub ManagerCode="RU" />
+  <ManagerFilterSub ManagerCode="SA" />
+  <ManagerFilterSub ManagerCode="SB" />
+  <ManagerFilterSub ManagerCode="SCF" />
+  <ManagerFilterSub ManagerCode="SFS" />
+  <ManagerFilterSub ManagerCode="SL" />
+  <ManagerFilterSub ManagerCode="SM" />
+  <ManagerFilterSub ManagerCode="SOC" />
+  <ManagerFilterSub ManagerCode="SP" />
+  <ManagerFilterSub ManagerCode="SR" />
+  <ManagerFilterSub ManagerCode="STC" />
+  <ManagerFilterSub ManagerCode="SU" />
+  <ManagerFilterSub ManagerCode="TL" />
+  <ManagerFilterSub ManagerCode="TMC" />
+  <ManagerFilterSub ManagerCode="TUF" />
+  <ManagerFilterSub ManagerCode="UA" />
+  <ManagerFilterSub ManagerCode="UC" />
+  <ManagerFilterSub ManagerCode="UF" />
+  <ManagerFilterSub ManagerCode="UM" />
+  <ManagerFilterSub ManagerCode="UN" />
+  <ManagerFilterSub ManagerCode="US" />
+  <ManagerFilterSub ManagerCode="UT" />
+  <ManagerFilterSub ManagerCode="UU" />
+  <ManagerFilterSub ManagerCode="UW" />
+  <ManagerFilterSub ManagerCode="VC" />
+  <ManagerFilterSub ManagerCode="VF" />
+  <ManagerFilterSub ManagerCode="VP" />
+  <ManagerFilterSub ManagerCode="VS" />
+  <ManagerFilterSub ManagerCode="VT" />
+  <ManagerFilterSub ManagerCode="WC" />
+  <ManagerFilterSub ManagerCode="WD" />
+  <ManagerFilterSub ManagerCode="WE" />
+  <ManagerFilterSub ManagerCode="WF" />
+  <ManagerFilterSub ManagerCode="WL" />
+  <ManagerFilterSub ManagerCode="WM" />
+  <ManagerFilterSub ManagerCode="WR" />
+  <ManagerFilterSub ManagerCode="WS" />
+  <ManagerFilterSub ManagerCode="WU" />
+  <ManagerFilterSub ManagerCode="WV" />
+</ManagerFilterSubCollection>'
+,'Manager','01/01/2013','12/31/2013'   
+ EXEC USP_PP_ReportPaymentFileProcessed    
+   '<ManagerFilterSubCollection>    
+    <ManagerFilterSub ManagerCode="ACL" />
+  <ManagerFilterSub ManagerCode="AL" />
+  <ManagerFilterSub ManagerCode="AM" />
+  <ManagerFilterSub ManagerCode="AZ" />
+  <ManagerFilterSub ManagerCode="BE" />
+   </ManagerFilterSubCollection>',    
+    'Manager','01/01/2012','12/31/2012'    
+        
+ EXEC USP_PP_ReportPaymentFileProcessed     
+   '<ManagerFilterSubCollection>    
+    <ManagerFilterSub ManagerCode="ACL" />
+  <ManagerFilterSub ManagerCode="AL" />
+  <ManagerFilterSub ManagerCode="AM" />
+  <ManagerFilterSub ManagerCode="AZ" />
+  <ManagerFilterSub ManagerCode="BE" />  
+   </ManagerFilterSubCollection>',    
+    'Account','01/01/2012','12/31/2012'    
+        
+ EXEC USP_PP_ReportPaymentFileProcessed     
+   '<ManagerFilterSubCollection>    
+    <ManagerFilterSub ManagerCode="ACL" />
+  <ManagerFilterSub ManagerCode="AL" />
+  <ManagerFilterSub ManagerCode="AM" />
+  <ManagerFilterSub ManagerCode="AZ" />
+  <ManagerFilterSub ManagerCode="BE" />
+   </ManagerFilterSubCollection>',    
+    'Account','01/01/2012','12/31/2012'     
+        
+ EXEC USP_PP_ReportPaymentFileProcessed     
+   '<ManagerFilterSubCollection>    
+   <ManagerFilterSub ManagerCode="ACL" />
+  <ManagerFilterSub ManagerCode="AL" />
+  <ManagerFilterSub ManagerCode="AM" />
+  <ManagerFilterSub ManagerCode="AZ" />
+  <ManagerFilterSub ManagerCode="BE" />
+   </ManagerFilterSubCollection>',    
+    'Account','01/01/2012','12/31/2012'    
+	
+**             
+**                      
+**                      
+** Standard declarations                      
+**       
+**                       
+** Created By: Niveditha Narasimha
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 11/10/2013	Saravanan			Added Distinct in Input filter XML  select query
+									Modified ManagerCode & ManagerDescription & AllianceLevel field mapping
+   11/14/2013	Saravanan			Modified Group by functionality accordinglly the report level									
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportPaymentFileProcessed] (
+	@ReportFilterXML XML = ''
+	,@ReportOption AS VARCHAR(100)
+	,@BeginDate AS DATETIME
+	,@EndDate AS DATETIME
+	)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	DECLARE @PolicyLevel INT
+	DECLARE @PolicyDropDownID INT
+	DECLARE @PolicyDimensionID INT
+	--SELECT *
+	--FROM TBL_PolicyDimension
+	--SELECT *
+	--FROM TBL_PolicyDropDown
+	CREATE TABLE #TmpPaymentInput (
+			ManagerCode VARCHAR(4)
+			,ManagerDescription VARCHAR(255)
+			,AllianceNumber VARCHAR(15)
+			,AllianceDescription VARCHAR(255)
+			,CustomerAccountNumber VARCHAR(14)
+			,AccountName VARCHAR(255)
+			,ContactID INT
+			,ContactName VARCHAR(255)
+	)
+	IF @ReportOption = 'Manager'    
+	BEGIN   
+		INSERT INTO #TmpPaymentInput(ManagerCode, ManagerDescription)      
+		SELECT DISTINCT VPI.ManagerCode     
+			,VPI.Managername    
+		FROM @ReportFilterXML.nodes('//ManagerFilterSubCollection/ManagerFilterSub') AS XMLDoc(item)      
+		INNER JOIN SYN_IT_AccountManagerCodes VPI ON XMLDoc.item.value('@ManagerCode[1]', 'varchar(4)')=VPI.ManagerCode
+	END  
+	IF @ReportOption = 'Account'  BEGIN  
+		INSERT INTO #TmpPaymentInput(ManagerCode, ManagerDescription,CustomerAccountNumber,AccountName)
+		SELECT DISTINCT SIA.ManagerCode     
+			,SIAM.Managername    
+			,SIA.CustomerAccountNumber  
+			,SIA.CustomerShortName  
+		FROM @ReportFilterXML.nodes('//ManagerFilterSubCollection/ManagerFilterSub') AS XMLDoc(item)      
+			INNER JOIN SYN_IT_AccountMaster SIA ON   
+				XMLDoc.item.value('@CustomerAccountNumber[1]', 'varchar(14)')=SIA.CustomerAccountNumber  
+			INNER JOIN SYN_IT_AccountManagerCodes SIAM on SIA.ManagerCode=SIAM.ManagerCode
+	END  
+	IF @ReportOption = 'Contact' BEGIN   
+		INSERT INTO #TmpPaymentInput      
+		SELECT DISTINCT VPI.ManagerCode     
+			,VPI.ManagerDescription    
+			,VPI.AllianceNumber     
+			,VPI.AllianceDesc   
+			,VPI.CustomerAccountNumber    
+			,VPI.AccountName    
+			,VPI.ContactID    
+			,VPI.ContactName   
+		FROM @ReportFilterXML.nodes('//ManagerFilterSubCollection/ManagerFilterSub') AS XMLDoc(item)      
+			INNER JOIN VW_IT_ProfileInfo VPI ON    
+					XMLDoc.item.value('@CustomerAccountNumber[1]', 'varchar(14)')=VPI.CustomerAccountNumber  
+					AND   
+					XMLDoc.item.value('@ContactID[1]', 'int')=VPI.ContactID   
+	END  
+
+	IF @ReportOption = 'Manager'
+	BEGIN
+		SELECT @PolicyLevel = PolicyLevel
+		FROM TBL_PolicyLevel
+		WHERE LevelName = 'Manager'
+
+		SELECT @PolicyDimensionID = PolicyDimensionID
+		FROM TBL_PolicyDimension
+		WHERE FullName = 'Payment Logo/Marketing Message'
+
+		SELECT DISTINCT ArchPymtExp.ManagerCode
+			,XMLInput.ManagerDescription
+			,'' AS AllianceNumber
+			,'' AS AllianceDescription
+			,'' AS CustomerAccountNumber
+			,'' AS AccountName
+			,'' AS ContactID
+			,'' AS ContactName
+			,ArchPymtExp.PaymentDate
+			,SUM(ArchPymtExp.PaymentAmount) AS PaymentAmount
+			,COUNT(ArchPymtExp.ExceptionCode) AS NoOfPaymentTrans
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode > 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfExceptionPayments
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode = 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfStandardPayments
+		FROM TBL_PP_ARCH_PaymentExport ArchPymtExp
+		INNER JOIN #TmpPaymentInput XMLInput ON XMLInput.ManagerCode = ArchPymtExp.ManagerCode
+			AND (
+				ArchPymtExp.ProcessedDateMiddleWare BETWEEN @BeginDate
+					AND (@EndDate + ' 23:59:59.999')
+				)
+			AND ArchPymtExp.IsDeleted <> 1
+		LEFT OUTER JOIN TBL_PolicyItem PymtLogoMktMsg ON PymtLogoMktMsg.OwnerID = XMLInput.ManagerCode
+			AND PolicyDimensionID = @PolicyDimensionID
+			AND PolicyLevel = @PolicyLevel
+		INNER JOIN dbo.TBL_PolicyDropDown DropDown ON PymtLogoMktMsg.PolicyDropDownID = DropDown.PolicyDropDownID
+			AND DropDown.PolicyDimensionID = @PolicyDimensionID
+			AND DropDown.DropDownText = 'Manager Level'
+		GROUP BY ArchPymtExp.ManagerCode
+			,ManagerDescription
+			,PaymentDate
+		
+		UNION ALL
+		
+		SELECT DISTINCT ArchPymtExp.ManagerCode AS ManagerCode
+			,XMLInput.ManagerDescription AS ManagerDescription
+			,'' AS AllianceNumber
+			,'' AS AllianceDescription
+			,'' AS CustomerAccountNumber
+			,'' AS AccountName
+			,'' AS ContactID
+			,'' AS ContactName
+			,ArchPymtExp.PaymentDate
+			,SUM(ArchPymtExp.PaymentAmount) AS PaymentAmount
+			,COUNT(ArchPymtExp.ExceptionCode) AS NoOfPaymentTrans
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode > 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfExceptionPayments
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode = 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfStandardPayments
+		FROM TBL_PP_ARCH_PaymentExport ArchPymtExp
+		INNER JOIN #TmpPaymentInput XMLInput ON XMLInput.ManagerCode = ArchPymtExp.ManagerCode
+			AND (
+				ArchPymtExp.ProcessedDateMiddleWare BETWEEN @BeginDate
+					AND (@EndDate + ' 23:59:59.999')
+				)
+			AND ArchPymtExp.IsDeleted <> 1
+		LEFT OUTER JOIN TBL_PolicyItem PymtLogoMktMsg ON PymtLogoMktMsg.OwnerID = XMLInput.ManagerCode
+			AND PolicyDimensionID = @PolicyDimensionID
+			AND PolicyLevel = @PolicyLevel
+		INNER JOIN dbo.TBL_PolicyDropDown DropDown ON PymtLogoMktMsg.PolicyDropDownID = DropDown.PolicyDropDownID
+			AND DropDown.PolicyDimensionID = @PolicyDimensionID
+			AND DropDown.DropDownText = 'Alliance Level'
+		GROUP BY ArchPymtExp.ManagerCode
+			,ManagerDescription
+			,PaymentDate
+	END
+	
+	IF @ReportOption = 'Account'
+	BEGIN
+		SELECT DISTINCT ArchPymtExp.ManagerCode
+			,XMLInput.ManagerDescription
+			,ArchPymtExp.AllianceNumber
+			,XMLInput.AllianceDescription
+			,ArchPymtExp.CustomerAccountNumber
+			,XMLInput.AccountName
+			,'' AS ContactID
+			,'' AS ContactName
+			,ArchPymtExp.PaymentDate
+			,SUM(ArchPymtExp.PaymentAmount) AS PaymentAmount
+			,COUNT(ArchPymtExp.ExceptionCode) AS NoOfPaymentTrans
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode > 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfExceptionPayments
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode = 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfStandardPayments
+		FROM TBL_PP_ARCH_PaymentExport ArchPymtExp
+		INNER JOIN #TmpPaymentInput XMLInput ON XMLInput.CustomerAccountNumber = ArchPymtExp.CustomerAccountNumber
+			AND (
+				ArchPymtExp.ProcessedDateMiddleWare BETWEEN @BeginDate
+					AND (@EndDate + ' 23:59:59.999')
+				)
+			AND ArchPymtExp.IsDeleted <> 1
+		GROUP BY ArchPymtExp.ManagerCode
+			,ManagerDescription
+			,PaymentDate
+			,ArchPymtExp.AllianceNumber
+			,XMLInput.AllianceDescription
+			,ArchPymtExp.CustomerAccountNumber
+			,XMLInput.AccountName
+	END
+	
+	IF @ReportOption = 'Contact'
+	BEGIN	
+		SELECT DISTINCT ArchPymtExp.ManagerCode AS ManagerCode
+			,XMLInput.ManagerDescription AS ManagerDescription
+			,XMLInput.AllianceNumber
+			,XMLInput.AllianceDescription
+			,ArchPymtExp.CustomerAccountNumber
+			,XMLInput.AccountName
+			,ArchPymtExp.ContactID
+			,XMLInput.ContactName
+			,ArchPymtExp.PaymentDate
+			,SUM(ArchPymtExp.PaymentAmount) AS PaymentAmount
+			,COUNT(ArchPymtExp.ExceptionCode) AS NoOfPaymentTrans
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode > 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfExceptionPayments
+			,SUM(CASE 
+					WHEN ArchPymtExp.ExceptionCode = 0
+						THEN 1
+					ELSE 0
+					END) AS NoOfStandardPayments
+		FROM TBL_PP_ARCH_PaymentExport ArchPymtExp
+		INNER JOIN #TmpPaymentInput XMLInput ON XMLInput.CustomerAccountNumber = ArchPymtExp.CustomerAccountNumber
+				AND XMLInput.ContactID = ArchPymtExp.ContactID
+			AND (
+				ArchPymtExp.ProcessedDateMiddleWare BETWEEN @BeginDate
+					AND (@EndDate + ' 23:59:59.999')
+				)
+			AND ArchPymtExp.IsDeleted <> 1
+		GROUP BY ArchPymtExp.ManagerCode
+			,XMLInput.ManagerDescription
+			,PaymentDate
+			,XMLInput.AllianceNumber
+			,XMLInput.AllianceDescription
+			,ArchPymtExp.CustomerAccountNumber
+			,XMLInput.AccountName
+			,ArchPymtExp.ContactID
+			,XMLInput.ContactName
+	END
+
+END

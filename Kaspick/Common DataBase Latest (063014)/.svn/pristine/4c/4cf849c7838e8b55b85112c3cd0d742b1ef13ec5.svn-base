@@ -1,0 +1,132 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllDefaultValuationForGrid]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetAllDefaultValuationForGrid]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetAllDefaultValuationForGrid]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllDefaultValuationForGrid]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetAllDefaultValuationForGrid                      
+** Short Desc: Get audit log detail for specified user
+** Full Description: Get audit log detail for specified user
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_GetAllDefaultValuationForGrid 1, 13600
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Lipika Rout 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetAllDefaultValuationForGrid
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+--  Variable Declarations  --    
+DECLARE @procname VARCHAR(60);
+
+--  Variable Data Assignment  --    
+SET @procname = 'USP_SIT_GetAllDefaultValuationForGrid';
+
+-- Body of procedure  --    
+BEGIN
+	SELECT DISTINCT PV.ValuationID
+		,PV.ValuationDate
+		,PV.CustomerAccountNumber
+		--,PV.CustomerAccountNumber
+		,PV.AccountType
+		,ST.SITStatusID AS NewStatusID
+		,0 AS OldStatusID
+		,ST.StatusName AS NewStatusName
+		,'' AS OldStatusName
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'EBR'), 0) AS EBRFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'NewGift'), 0) AS NewGiftFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Payment'), 0) AS PaymentFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Severance'), 0) AS SeveranceFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'AuditSummary'), 0) AS AuditSummaryFile
+		,(
+			CASE 
+				WHEN IsNull(CP.GroupID, 0) = '0'
+					THEN PV.CustomerAccountNumber
+				ELSE CONVERT(VARCHAR(20), CP.GroupID)
+				END
+			) AS GroupID
+			,CP.IsSubAccountingSystemFIMS
+	FROM TBL_PV_Valuation PV
+	LEFT OUTER JOIN TBL_SIT_InterfaceFileGenerationLog IL ON PV.ValuationID = IL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_FileType FT ON IL.FileTypeID = FT.FileTypeID
+	INNER JOIN TBL_SIT_StatusChangeLog SCL ON SCL.ValuationID = PV.ValuationID
+	INNER JOIN TBL_SIT_Status ST ON ST.SITStatusID = SCL.NewStatusID
+	LEFT OUTER JOIN TBL_PV_ManagerCodeParameter CP ON PV.CustomerAccountNumber = CP.CustomerAccountNumber
+	WHERE ST.SITStatusID IN (
+			SELECT SITStatusID
+			FROM TBL_SIT_Status
+			WHERE StatusName IN ('Approved')
+			)
+		AND PV.AccountType IN (
+			'GAP'
+			,'DAF'
+			,'DDF'
+			,'END'
+			,'ENDQ'
+			,'ENDT'
+			)
+		AND (CONVERT(VARCHAR(10), PV.ValuationDate, 111)) = (CONVERT(VARCHAR(10), GETDATE(), 111))
+		AND PV.CustomerAccountNumber IN (
+			SELECT ownerid
+			FROM TBL_policyitem
+			WHERE policylevel = 300
+				AND PolicyDropDownID = (
+					SELECT PolicyDropDownID
+					FROM TBL_policydropdown
+					WHERE DropDownText = 'Sub-Accounting'
+					)
+				AND PolicyDimensionID = (
+					SELECT PolicyDimensionID
+					FROM TBL_PolicyDimension
+					WHERE FullName = 'Accounting Routine'
+					)
+			)
+		AND SCL.StatusChangeLogID = (
+			SELECT TOP 1 SCL.StatusChangeLogID
+			FROM TBL_SIT_StatusChangeLog SCL
+			WHERE SCL.ValuationID = PV.ValuationID
+			ORDER BY StatusChangeDate DESC
+			)
+	ORDER BY PV.CustomerAccountNumber
+END
+
+SET NOCOUNT OFF;
+
+ 

@@ -1,0 +1,64 @@
+
+IF EXISTS (	SELECT	*
+			FROM sysobjects
+			WHERE type = 'FN' AND name = 'FnEIS_PP_TrustValDate') 
+		BEGIN
+			DROP FUNCTION FnEIS_PP_TrustValDate;
+			PRINT 'DROPPED FUNCTION FnEIS_PP_TrustValDate';
+		END
+		
+GO
+
+-- =============================================  
+-- Author:  Ganapati  
+-- Create date: 2-Mar-2008  
+-- Description:   
+-- =============================================  
+CREATE FUNCTION [dbo].[FnEIS_PP_TrustValDate]  
+(  
+ @AccountId int,   
+ @TaxYear Int  
+)  
+RETURNS datetime  
+AS  
+BEGIN  
+ declare @ReturnDate datetime  
+  
+ declare @iDay int  
+ declare @iMonth int  
+ declare @sFirstOccur varchar(1)  
+ declare @iFreq int  
+ declare @dBegin datetime  
+  
+ SELECT    
+  @iDay = FirstEventDay,  
+  @iMonth = FirstEventMonth,  
+  @sFirstOccur = FirstOccurrence,  
+  @iFreq =AnnualFrequency  
+ FROM   
+  CyclicEvent   
+ WHERE   
+  AccountID = @AccountId AND EventType = 'V'  
+  
+  
+  
+  
+ --    'Use last day of previous year as starting point  
+ set @dBegin = convert(Datetime,'31' + '/' + '12' + '/' + cast((@TaxYear - 1) as varchar),103)  
+  
+ --    'Calculate next date  
+ set @ReturnDate = dbo.FnEIS_PP_CalcNextDate(@dBegin, @iDay, @iMonth, @sFirstOccur, @iFreq)  
+ return @ReturnDate  
+end  
+  
+ GO
+        
+SET NOCOUNT OFF;
+
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'FN'
+			AND name = 'FnEIS_PP_TrustValDate') 
+	BEGIN
+			PRINT 'CREATED FUNCTION FnEIS_PP_TrustValDate';
+	END   

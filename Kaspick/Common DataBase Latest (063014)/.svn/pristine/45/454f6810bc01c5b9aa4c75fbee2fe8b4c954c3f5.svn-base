@@ -1,0 +1,64 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbListItem')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbListItem;
+        PRINT 'DROPPED USP_EX_GetRptFasbListItem';
+    END
+GO
+
+   
+  
+    
+/******************************************************************************     
+** Name :          USP_EX_GetRptFasbListItem   
+** Old Name   :   [USP_EIS_RPT_FASB_ListItem_SelProc]                
+** Short Desc : Gets the list items for  FASB dropdowns      
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC [USP_EIS_RPT_FASB_ListItem_SelProc] 'Calculation Method'               
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Sep/18/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Sep/18/2012   Ganapati           Created   
+**  2-Apr-2014    Yugandhar   EXCREQ5.4 Modified      
+** 23/05/2014  Mallikarjun  SP Name Renamed and Formatted  
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/           
+      
+Create PROCEDURE USP_EX_GetRptFasbListItem      
+@LIST_TYPE_NAME varchar(100)      
+AS         
+select LstItm.LISTITEMID, LstItm.LISTITEMNAME   
+from TBL_ListItem LstItm    
+inner join TBL_ListType LstTyp on LstTyp.ListTypeID = LstItm.ListTypeID    
+where LstTyp.LISTTYPENAME = @LIST_TYPE_NAME    
+order by LstItm.LISTITEMID    
+  
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbListItem') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbListItem';
+	END

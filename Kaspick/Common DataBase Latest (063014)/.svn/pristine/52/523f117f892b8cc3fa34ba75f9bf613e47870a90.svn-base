@@ -1,0 +1,296 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRDTDeliverableInstanceUniverse'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_UpdBRDTDeliverableInstanceUniverse;
+
+	PRINT 'DROPPED USP_RP_UpdBRDTDeliverableInstanceUniverse';
+END
+GO
+
+/******************************************************************************                    
+** Name:     USP_RP_UpdBRDTDeliverableInstanceUniverse
+** Old Name:     USP_EIS_BR_DT_DeliverableInstance_Universe_UpdProc                    
+** Short Desc: To insert Deliverable Items to 'TBL_EIS_DT_Deliverable_Items' table    
+**                    
+** Full Description: To insert Deliverable Items         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+    Declare @SSISPackageMarketValueFile varchar(max);  
+ Declare @SSISPackageMarketValueConfig varchar(max);  
+ set @SSISPackageMarketValueFile = 'D:\SSISPackageMarketValue_devtest\DT_DW_EndingMarketValue.dtsx';  
+ set @SSISPackageMarketValueConfig ='D:\SSISPackageMarketValue_devtest\DT_DW_EndingMarketValue.dtsConfig'  
+    EXEC USP_RP_UpdBRDTDeliverableInstanceUniverse  
+    @SSISPackageMarketValueFile,  
+    @SSISPackageMarketValueConfig,  
+    1,  
+    -1,  
+    ''  
+   
+**           
+** Return values: Return Status  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By:   
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 25-Sep-09               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 02/08/2010   Venu B   ET #11334  Update the Spigot flag in the report universe   
+         when the flag is changed in the Excelsior.  
+** 02/18/2009   Venu ET #11362   New paratmeter @DeliverableEndDate added to invoke USP_EIS_BR_DT_DeliverableItems_InsUpdProc  
+** 09/08/2010   Venu                Modified to update only Beneficiary Reports instances, becuase this sp will be   
+         called from BeneReports Auto Scheduler.   
+** Mar-12-2012  Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012  Ashvin   ERD changes implemetation.  
+** Jul-31-2014	RajeshP Changed for BOI referring to Innotrust tables and new KaspickDB tables
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_UpdBRDTDeliverableInstanceUniverse] (
+	@SSISPath VARCHAR(MAX)
+	,@SSISConfigPath VARCHAR(MAX)
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails and   
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --              
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds              
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;             
+	SET ARITHABORT ON
+
+	--  Variable Declarations  --              
+	DECLARE @procname VARCHAR(60);
+	DECLARE @errmsg VARCHAR(1000);
+	DECLARE @errnbr INT;
+	DECLARE @COUNT INT;
+	DECLARE @I INT;
+	DECLARE @DeliverableQueueID INT;
+	DECLARE @DeliverableID INT;
+	DECLARE @DeliverableFrequency VARCHAR(2);
+	DECLARE @DeliverableEndDate DATETIME;
+	--BEGIN ET #11334  
+	DECLARE @PifDocumentTypeID BIGINT
+	DECLARE @SpigotDocumentTypeID BIGINT
+	DECLARE @DafDocumentTypeID BIGINT
+	DECLARE @AnnualDocumentTypeID BIGINT
+
+	--END ET #11334  
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_RP_UpdBRDTDeliverableInstanceUniverse';
+	SET @ReturnStatus = 0;
+	SET @COUNT = 0;
+
+	-- Body of procedure  --    
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		-- Get 'Ending Market Value' in Table 'TBL_EIS_DT_STG_EndingMarketValue'.  
+		EXEC USP_RP_GetRPTBRSSIS @SSISPath
+			,@SSISConfigPath
+
+		--BEGIN ET #11334  
+		SELECT @PifDocumentTypeID = DocumentTypeID
+		FROM TBL_DLV_DocumentType
+		WHERE DocumentFileType = 'PIF'
+			AND DeliverableID IN (
+				SELECT DeliverableID
+				FROM VW_RP_DTDeliverable
+				WHERE DeliverableName = 'Beneficiary Reports'
+				)
+
+		SELECT @SpigotDocumentTypeID = DocumentTypeID
+		FROM TBL_DLV_DocumentType
+		WHERE DocumentFileType = 'Spigot'
+			AND DeliverableID IN (
+				SELECT DeliverableID
+				FROM VW_RP_DTDeliverable
+				WHERE DeliverableName = 'Beneficiary Reports'
+				)
+
+		SELECT @DafDocumentTypeID = DocumentTypeID
+		FROM TBL_DLV_DocumentType
+		WHERE DocumentFileType = 'DAF'
+			AND DeliverableID IN (
+				SELECT DeliverableID
+				FROM VW_RP_DTDeliverable
+				WHERE DeliverableName = 'Beneficiary Reports'
+				)
+
+		SELECT @AnnualDocumentTypeID = DocumentTypeID
+		FROM TBL_DLV_DocumentType
+		WHERE DocumentFileType = 'Annual'
+			AND DeliverableID IN (
+				SELECT DeliverableID
+				FROM VW_RP_DTDeliverable
+				WHERE DeliverableName = 'Beneficiary Reports'
+				)
+
+		UPDATE TBL_DLV_DeliverableItemDocument
+		SET DocumentTypeID = (
+				CASE 
+					WHEN AM.accounttypecode = 'PIF'
+						THEN @PifDocumentTypeID
+					WHEN UDFAccMstr.UDFAMColumn039 = 'Y'
+						THEN @SpigotDocumentTypeID
+					WHEN AM.accounttypecode = 'DAF'
+						THEN @DafDocumentTypeID
+					ELSE @AnnualDocumentTypeID
+					END
+				)
+		FROM TBL_DLV_DeliverableItemDocument DID
+		INNER JOIN TBL_DLV_DeliverableItem DI ON DID.DeliverableItemID = DI.DeliverableItemID
+		INNER JOIN dbo.SYN_IT_AccountMaster AM ON AM.CustomerAccountNumber = DI.CustomerAccountNumber
+		INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMstr ON UDFAccMstr.CustomerAccountNumber_key = AM.CustomerAccountNumber
+		INNER JOIN TBL_DLV_DeliverableQueue DQ ON DI.DeliverableQueueID = DQ.DeliverableQueueID
+		INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID
+		INNER JOIN TBL_DLV_Deliverable DD ON DD.DeliverableID = DQ.DeliverableID
+		INNER JOIN TBL_DLV_DeliverableMethod DM ON IMS.DeliveryMethodID = DM.DeliveryMethodID
+			AND DQ.DeliverableID = DM.DeliverableID
+			AND DM.IsPrimary = 1
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+			AND DIS.DeliverableProcessID = DD.DeliverableProcessID
+		INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID
+		INNER JOIN VW_RP_DTDeliverable DT ON DQ.DeliverableID = DT.DeliverableID
+		WHERE DIS.StatusName IN (
+				'scheduled'
+				,'Error'
+				)
+			AND QS.StatusName = 'Open'
+			AND DT.DeliverableFrequency = 'A'
+			AND DID.DocumentTypeID <> (
+				CASE 
+					WHEN AM.accounttypecode = 'PIF'
+						THEN @PifDocumentTypeID
+					WHEN UDFAccMstr.UDFAMColumn039 = 'Y'
+						THEN @SpigotDocumentTypeID
+					WHEN AM.accounttypecode = 'DAF'
+						THEN @DafDocumentTypeID
+					ELSE @AnnualDocumentTypeID
+					END
+				)
+			AND DT.DeliverableName = 'Beneficiary Reports'
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_DELIVERABLE_QUEUE]')
+				)
+			DROP TABLE [DBO].[#TEMP_DELIVERABLE_QUEUE]
+
+		CREATE TABLE #TEMP_DELIVERABLE_QUEUE (
+			QueueID INT IDENTITY(1, 1)
+			,DeliverableQueueID BIGINT NULL
+			,DeliverableID BIGINT NULL
+			,QueueStatusID BIGINT NULL
+			,GenerationMethod CHAR(1) NULL
+			,DeliverableQueueBriefName VARCHAR(50) NULL
+			,DeliverableQueueName VARCHAR(100) NULL
+			,DeliverableStartDate DATETIME NULL
+			,DeliverableEndDate DATETIME NULL
+			,DeliverableQueueYear INT NULL
+			,ModifiedDate DATETIME NULL
+			,ModifiedUserID INT NULL
+			,CreatedDate DATETIME NULL
+			,CreatedUserID INT NULL
+			)
+
+		INSERT INTO #TEMP_DELIVERABLE_QUEUE
+		SELECT DQ.DeliverableQueueID
+			,DQ.DeliverableID
+			,DQ.QueueStatusID
+			,DQ.GenerationMethod
+			,DQ.DeliverableQueueBriefName
+			,DQ.DeliverableQueueName
+			,DQ.DeliverableStartDate
+			,DQ.DeliverableEndDate
+			,DQ.DeliverableQueueYear
+			,DQ.ModifiedDate
+			,DQ.ModifiedUserID
+			,DQ.CreatedDate
+			,DQ.CreatedUserID
+		FROM dbo.TBL_DLV_DeliverableQueue DQ
+		INNER JOIN TBL_DLV_QueueStatus DS ON DQ.QueueStatusID = DS.QueueStatusID
+		INNER JOIN VW_RP_DTDeliverable DT ON DQ.DeliverableID = DT.DeliverableID
+		WHERE DS.StatusName = 'Open'
+			AND DT.DeliverableName = 'Beneficiary Reports'
+
+		SELECT @COUNT = COUNT(*)
+		FROM #TEMP_DELIVERABLE_QUEUE
+
+		SET @I = 1
+
+		BEGIN
+			IF (@COUNT > 0)
+			BEGIN
+				WHILE (@COUNT >= @I)
+				BEGIN
+					SELECT @DeliverableQueueID = DeliverableQueueID
+						,@DeliverableID = DeliverableID
+						,@DeliverableEndDate = DeliverableEndDate
+					FROM #TEMP_DELIVERABLE_QUEUE
+					WHERE QueueID = @I
+
+					SELECT @DeliverableFrequency = DeliverableFrequency
+					FROM VW_RP_DTDeliverable
+					WHERE DeliverableID = @DeliverableID
+
+					EXEC USP_RP_SaveBRDTDeliverableItems @DeliverableQueueID
+						,@DeliverableID
+						,@DeliverableFrequency
+						,@DeliverableEndDate
+						,@UserID
+						,@ReturnStatus
+						,@ErrorDesc
+
+					SET @I = @I + 1;
+				END
+			END
+		END
+
+		IF (@@ERROR > 0)
+		BEGIN
+			ROLLBACK TRANSACTION
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+		SET @Errnbr = ERROR_NUMBER();
+
+		ROLLBACK TRANSACTION;
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRDTDeliverableInstanceUniverse'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_UpdBRDTDeliverableInstanceUniverse';
+END

@@ -1,0 +1,71 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAllAccountTypes]    Script Date: 07/01/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetAllAccountTypes]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetAllAccountTypes]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAllAccountTypes]    Script Date: 07/01/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_GetAllAccountTypes  
+** Short Desc:   
+**  
+** Full Description  
+**        Get all account types from InnoTrust  
+**  
+** Sample Call  
+        EXEC USP_IE_GetAllAccountTypes  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 07/01/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE dbo.USP_IE_GetAllAccountTypes
+	-- paremeters here  
+AS
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+
+--  Variable Data Assignment  --  
+SET @procname = 'USP_IE_GetAllAccountTypes';
+
+-- Body of procedure  --  
+SELECT DISTINCT AccountTypeCode AS AccountType
+FROM SYN_IT_AccountMaster
+ORDER BY 1
+
+SET NOCOUNT OFF;
+	-- End of procedure  --  

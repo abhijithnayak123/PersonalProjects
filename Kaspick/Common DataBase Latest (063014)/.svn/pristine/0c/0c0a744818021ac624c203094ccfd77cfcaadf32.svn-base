@@ -1,0 +1,76 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetNAListID'
+		)
+BEGIN
+	DROP FUNCTION FN_GetNAListID;
+
+	PRINT 'DROPPED FUNCTION FN_GetNAListID';
+END
+GO
+
+/******************************************************************************    
+** Name:    FN_GetNAListID  
+** Short Desc: To get Item Name  
+**    
+** Full Description: To get Item ID based on Ivan Value   
+**          
+**    
+** Sample Call    
+  FN_GetNAListID  
+**    
+** Return values:  
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Abhijith   
+** Company   : Opteamix    
+** Project   : ExcelsiorPrime   
+** Created DT: 7-Apr-2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**    
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE FUNCTION FN_GetNAListID (
+	@ITEM_NA BIT
+	,@IVAN_VALUE VARCHAR(100)
+	,@LIST_TYPE_NAME VARCHAR(100)
+	)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @LIST_ITEM_ID INT;
+
+	IF (@ITEM_NA = 0)
+	BEGIN
+		IF (@IVAN_VALUE IS NOT NULL) --Not Required Later  
+		BEGIN
+			SET @LIST_ITEM_ID = dbo.FN_GetListItemID(@IVAN_VALUE, @LIST_TYPE_NAME)
+		END
+		ELSE --Required Later  
+		BEGIN
+			SET @LIST_ITEM_ID = 0
+		END
+	END
+	ELSE
+	BEGIN
+		SET @LIST_ITEM_ID = dbo.FN_GetListItemID(@IVAN_VALUE, @LIST_TYPE_NAME)
+	END
+
+	RETURN @LIST_ITEM_ID
+END
+GO
+
+SET NOCOUNT OFF;

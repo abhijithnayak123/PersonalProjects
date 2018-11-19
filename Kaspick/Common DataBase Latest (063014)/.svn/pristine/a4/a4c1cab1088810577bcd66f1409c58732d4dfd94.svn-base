@@ -1,0 +1,83 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type IN ('FN', 'TF')
+			AND NAME = 'fn_SPLITSTRINGTOROWS'
+		)
+BEGIN
+	DROP FUNCTION fn_SPLITSTRINGTOROWS
+
+	PRINT 'DROPPED fn_SPLITSTRINGTOROWS'
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************      
+** Name : fn_SPLITSTRINGTOROWS
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the data for populating the data in the search controls of historical gifts page.
+**      
+** Sample Call      
+   SELECT dbo.fn_SPLITSTRINGTOROWS('1234.10')
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 09/05/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[fn_SPLITSTRINGTOROWS] (
+	@SPLIT_STRING VARCHAR(8000),
+	@SPLIT_DELIM	CHAR(1) 
+)
+RETURNS @ret_SPLIT_VALUES TABLE (
+   SPLIT_VALUE varchar(1000))
+/*Returns a result set that lists all the VALUES IN THE STRING SEPEARATED BY GIVEN DELIMITER.*/
+AS
+BEGIN
+	DECLARE @TEMP_TAB TABLE(
+		SL_NO	SMALLINT IDENTITY(1,1) PRIMARY KEY, 
+		SPLIT_VALUE VARCHAR(1000))
+   
+	DECLARE @CTR1 SMALLINT
+	DECLARE @CTR2 SMALLINT
+	DECLARE @SUBSTR VARCHAR(1000)
+	DECLARE @LEN SMALLINT
+	SET @CTR1 = 1
+	
+	WHILE @CTR1 <=  LEN(@SPLIT_STRING) BEGIN
+		SET @CTR2 = CHARINDEX(@SPLIT_DELIM, @SPLIT_STRING, @CTR1)
+		IF @CTR2 = 0 SET @CTR2 = LEN(@SPLIT_STRING) + 1
+		SET @LEN = @CTR2 - @CTR1 
+		SET @SUBSTR = SUBSTRING(@SPLIT_STRING, @CTR1, @LEN)
+		INSERT INTO @TEMP_TAB (SPLIT_VALUE) VALUES (@SUBSTR )
+		SET @CTR1 = @CTR2 + 1
+		
+	END
+   INSERT @ret_SPLIT_VALUES
+   SELECT SPLIT_VALUE 
+   FROM @TEMP_TAB ORDER BY SL_NO
+   RETURN
+END
+GO

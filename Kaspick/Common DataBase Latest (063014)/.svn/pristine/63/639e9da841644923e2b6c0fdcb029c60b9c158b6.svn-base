@@ -1,0 +1,109 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineAnnualAccountPayoutInfo]    Script Date: 08/23/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineAnnualAccountPayoutInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineAnnualAccountPayoutInfo]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineAnnualAccountPayoutInfo]    Script Date: 08/23/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                          
+** Name   : USP_PP_GetCalcEngineAnnualAccountPayoutInfo                          
+** Short Desc: To get AnnualAccountPayout data    
+**                          
+** Full Description:  This stored proc gets data from AnnualAccountPayoutInfo table. Executes on XML.      
+**                
+**            
+**                                  
+** Input Arguments:     
+   @XMLDATA xml,    
+   @TaxYear INT    
+    
+**             
+** Sample Call         
+    
+EXEC USP_PP_GetCalcEngineAnnualAccountPayoutInfo          
+'<CustomerAccountNumberCollection>
+<SelectList>
+   <CustomerAccountNumberItem CustomerAccountNumber="ACADW" />
+</SelectList>
+</CustomerAccountNumberCollection>',2013  
+  
+                      
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Debajyoti kalita       
+** Company   : Kaspick & Company                          
+** Project   : BackOffice Integration                          
+** Created DT: 23-Aug-13                     
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:      Author:  Bug #     Description:                               
+** --------  --------  ------    --------------------------------------     
+** 02/20/2014  Salih			 Q5 Valuation- Outstanding BenPayments changes    
+** 03/03/2014  Salih             Modification for passing of parameter FMVAsOfDate as a XML instead of seperate field
+** 03/10/2014  Salih             Added FMVAsOfDate column in the return list
+** 09/03/2014  Saravanan		  Implemented Valuation CR #16798 
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE dbo.[USP_PP_GetCalcEngineAnnualAccountPayoutInfo] @XMLDATA XML
+	,@TaxYear INT
+AS
+BEGIN TRY
+	--  Initial Set statements  --          
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+	-- Body of procedure  --   
+	---Return data    
+	SELECT AccntPayout.CustomerAccountNumber
+		,AccntPayout.PayoutYear
+		,AccntPayout.Valuation
+		,AccntPayout.ProratedGiftValuation
+		,AccntPayout.Yield
+		,AccntPayout.IncomeFees
+		,AccntPayout.EstAnnualPayout
+		,AccntPayout.EstMethod
+		,AccntPayout.YTDPayment
+		,AccntPayout.PrevOverPayment
+		,AccntPayout.Deficit
+		,AccntPayout.YTDNetIncome
+		,AccntPayout.FMV
+		-- 03/10/2014  Salih :  Added FMVAsOfDate column in the return list
+		,AccntPayout.FMVAsOfDate
+		,ISNULL(AccntPayout.EarlyTradedPayment, 0) AS EarlyTradedPayment
+		,ISNULL(AccntPayout.LateTradedPayment,0) AS LateTradedPayment
+		,AccntPayout.OutstandingBenPayments
+		,AccntPayout.OtherValuationAdjustment
+		,AccntPayout.PaymentStagingID
+		,AccntPayout.RecordVersion
+	FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+	INNER JOIN (
+		SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+		FROM @XMLDATA.nodes('//CustomerAccountNumberCollection/SelectList/CustomerAccountNumberItem') AS XMLInput(Item)
+		) TmpXml
+		ON AccntPayout.CustomerAccountNumber = TmpXml.CustomerAccountNumber
+	WHERE AccntPayout.PayoutYear = @TaxYear
+	ORDER BY AccntPayout.CustomerAccountNumber
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

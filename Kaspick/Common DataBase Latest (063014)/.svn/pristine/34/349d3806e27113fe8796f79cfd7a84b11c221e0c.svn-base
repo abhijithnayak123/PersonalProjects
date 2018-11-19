@@ -1,0 +1,271 @@
+/****** Object:  StoredProcedure [dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation]    Script Date: 04/14/2014 17:58:13 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	BEGIN	
+	DROP PROCEDURE [dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation]
+	PRINT 'Procedure USP_EML_InsEmailRuleEngineContentWithoutValidation Dropped'
+	End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation]    Script Date: 04/14/2014 17:58:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:     USP_EML_InsEmailRuleEngineContentWithoutValidation                  
+** Short Desc: Insert record to EmailQueue table without any validation based on Rules. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**	
+	DECLARE @InputXML XML
+	exec USP_EML_InsEmailRuleEngineContentWithoutValidation 
+	@InputXML = 
+		'<EMailQueue>
+			<EMail>
+				<from_email_address>Michael Jensen^mjensen@kaspick.com~</from_email_address>
+				<reply_to_email_address>Jennifer Harding^JHarding@kaspick.com~</reply_to_email_address>
+				<bounce_back_email_address>Michael Jensen^mjensen@kaspick.com~</bounce_back_email_address>
+				<to_email_address>Harry Greenwald^hgreenwald@aabgu.org~; Mariana Herscovici^mhersovici@aabgu.org~</to_email_address>
+				<cc_email_address></cc_email_address>
+				<bcc_email_address></bcc_email_address>
+                <subject>Kaspick and Company: TARP is now available on the web site.</subject>
+                <free_text>Harry and Mariana, as discussed yesterday, Im now be putting the three 3/31 "TARP" accounting reports up on the web for your convenience. As you know, these files were also already e-mailed to your attention on 4/15.This report is now available. Please go to the Kaspick Company Web site to download.</free_text>
+				<created_proxy_webuser_id>23041</created_proxy_webuser_id>
+				<created_webuser_id>34885</created_webuser_id>
+				<priority_flag>1</priority_flag>
+				<body_template>
+					<template_id>-1</template_id>
+					<Setting><Key></Key><Value></Value></Setting>
+					<Setting><Key></Key><Value></Value></Setting>
+					<Setting><Key></Key><Value></Value></Setting>
+				</body_template>
+				<footer_template>
+					<template_id>109</template_id>
+					<Setting><Key>DASHBOARD_URL</Key><Value>https://connect.kaspick.com/kaspick/dashboard.do?dispatch=loadDashboard</Value></Setting>
+					<Setting><Key></Key><Value></Value></Setting>
+					<Setting><Key></Key><Value></Value></Setting>
+				</footer_template>
+			</EMail>
+		</EMailQueue>';
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Soorya
+** Company   : Kaspick & Company                  
+** Project   : EmailRuleEngine                  
+** Created DT: 06/20/2011                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 04/15/2014	Tanuj				Procedure is modified as new KaspickDB
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation] (@InputXML XML)
+AS
+--DECLARE @InsertedEmailInfo Table
+--(
+--	email_id int
+--);
+SET NOCOUNT ON;
+
+DECLARE @OpenBr VARCHAR(10)
+	,@CloseBr VARCHAR(10);
+
+SET @OpenBr = '^';
+SET @CloseBr = '~';
+
+INSERT INTO dbo.TBL_EML_EmailQueue (
+	[from_email_address]
+	,[reply_to_email_address]
+	,[bounce_back_email_address]
+	,[to_email_address]
+	,[cc_email_address]
+	,[bcc_email_address]
+	,[subject]
+	,[body]
+	,[is_html_email]
+	,[is_sent]
+	,[created_datetime]
+	,[created_user_id]
+	,[created_proxy_webuser_id]
+	,[created_webuser_id]
+	,[email_template_id]
+	,[priority_flag]
+	)
+--OUTPUT inserted.email_id INTO @InsertedEmailInfo  
+SELECT REPLACE(REPLACE(nref.value('from_email_address[1]', 'VARCHAR(100)'), @OpenBr, '<'), @CloseBr, '>')
+	,--  from_email_address
+	CASE 
+		WHEN nref.value('reply_to_email_address[1]', 'VARCHAR(100)') = ''
+			THEN NULL
+		ELSE REPLACE(REPLACE(nref.value('reply_to_email_address[1]', 'VARCHAR(100)'), @OpenBr, '<'), @CloseBr, '>')
+		END
+	,--  reply_to_email_address
+	CASE 
+		WHEN nref.value('bounce_back_email_address[1]', 'VARCHAR(100)') = ''
+			THEN NULL
+		ELSE REPLACE(REPLACE(nref.value('bounce_back_email_address[1]', 'VARCHAR(100)'), @OpenBr, '<'), @CloseBr, '>')
+		END
+	,--  bounce_back_email_address
+	REPLACE(REPLACE(nref.value('to_email_address[1]', 'VARCHAR(MAX)'), @OpenBr, '<'), @CloseBr, '>')
+	,--  to_email_address
+	CASE 
+		WHEN nref.value('cc_email_address[1]', 'VARCHAR(MAX)') = ''
+			THEN NULL
+		ELSE REPLACE(REPLACE(nref.value('cc_email_address[1]', 'VARCHAR(MAX)'), @OpenBr, '<'), @CloseBr, '>')
+		END
+	,--  cc_email_address
+	CASE 
+		WHEN nref.value('bcc_email_address[1]', 'VARCHAR(MAX)') = ''
+			THEN NULL
+		ELSE REPLACE(REPLACE(nref.value('bcc_email_address[1]', 'VARCHAR(MAX)'), @OpenBr, '<'), @CloseBr, '>')
+		END
+	,--  bcc_email_address
+	CASE 
+		WHEN nref.value('subject[1]', 'VARCHAR(100)') = ''
+			THEN (
+					SELECT subject
+					FROM TBL_EML_EmailTemplate
+					WHERE email_template_id = nref.value('(body_template/template_id)[1]', 'BIGINT')
+					)
+		ELSE nref.value('subject[1]', 'VARCHAR(100)')
+		END
+	,-- subject 
+	CASE 
+		WHEN nref.value('free_text[1]', 'VARCHAR(MAX)') = ''
+			THEN ''
+		ELSE replace(nref.value('free_text[1]', 'VARCHAR(MAX)'), CHAR(13) + CHAR(10), '<br>') + '<br>'
+		END + -- replace 'CHAR(13) + CHAR(10)' with <br>
+	dbo.Fn_EML_ReplaceEmailKeyWithValue((
+			CASE 
+				WHEN nref.value('(footer_template/template_id)[1]', 'VARCHAR(20)') != ''
+					THEN (
+							CASE 
+								WHEN nref.value('(body_template/template_id)[1]', 'VARCHAR(20)') = ''
+									THEN ''
+								ELSE (
+										SELECT body
+										FROM TBL_EML_EmailTemplate
+										WHERE email_template_id = nref.value('(body_template/template_id)[1]', 'BIGINT')
+										)
+								END
+							) + CHAR(13) + (
+							CASE 
+								WHEN nref.value('(footer_template/template_id)[1]', 'VARCHAR(20)') = ''
+									THEN ''
+								ELSE (
+										SELECT body
+										FROM TBL_EML_EmailTemplate
+										WHERE email_template_id = nref.value('(footer_template/template_id)[1]', 'BIGINT')
+										)
+								END
+							)
+				ELSE (
+						CASE 
+							WHEN nref.value('(body_template/template_id)[1]', 'VARCHAR(20)') = ''
+								THEN ''
+							ELSE (
+									SELECT body
+									FROM TBL_EML_EmailTemplate
+									WHERE email_template_id = nref.value('(body_template/template_id)[1]', 'BIGINT')
+									)
+							END
+						)
+				END
+			), @InputXML)
+	,-- body
+	(
+		CASE 
+			WHEN nref.value('(body_template/template_id)[1]', 'BIGINT') IN (
+					SELECT email_template_id
+					FROM TBL_EML_EmailTemplate
+					WHERE contains_html = 1
+					)
+				THEN 1
+			ELSE (
+					CASE 
+						WHEN nref.value('(footer_template/template_id)[1]', 'BIGINT') IN (
+								CASE 
+									WHEN nref.value('(footer_template/template_id)[1]', 'VARCHAR(20)') != ''
+										THEN (
+												SELECT email_template_id
+												FROM TBL_EML_EmailTemplate
+												WHERE contains_html = 1
+													AND email_template_id = nref.value('(footer_template/template_id)[1]', 'BIGINT')
+												)
+									ELSE (
+											SELECT - 1
+											)
+									END
+								)
+							THEN 1
+						ELSE 0
+						END
+					)
+			END
+		)
+	,--  is_html_email	
+	0
+	,--  is_sent
+	GETDATE()
+	,--  created_datetime
+	NULL
+	,--  created_user_id
+	CASE 
+		WHEN nref.value('created_proxy_webuser_id[1]', 'INT') = ''
+			THEN NULL
+		ELSE nref.value('created_proxy_webuser_id[1]', 'INT')
+		END
+	,--  created_proxy_webuser_id
+	nref.value('created_webuser_id[1]', 'INT')
+	,--  created_webuser_id	
+	nref.value('(body_template/template_id)[1]', 'BIGINT')
+	,--  email_template_id
+	CASE 
+		WHEN nref.value('priority_flag[1]', 'VARCHAR(20)') = ''
+			THEN (
+					SELECT priority_flag
+					FROM TBL_EML_EmailTemplate
+					WHERE email_template_id = nref.value('(body_template/template_id)[1]', 'BIGINT')
+					)
+		ELSE nref.value('priority_flag[1]', 'TINYINT')
+		END --  priority_flag
+FROM @InputXML.nodes('//EMail') AS a(nref)
+	--SELECT * FROM @InsertedEmailInfo FOR XML RAW('Email'), ELEMENTS, ROOT('EmailQueue')
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_InsEmailRuleEngineContentWithoutValidation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	BEGIN	
+	PRINT 'Procedure USP_EML_InsEmailRuleEngineContentWithoutValidation Created.'
+	End

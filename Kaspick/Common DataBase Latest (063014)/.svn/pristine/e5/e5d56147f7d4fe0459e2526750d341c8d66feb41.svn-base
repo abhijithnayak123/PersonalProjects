@@ -1,0 +1,67 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTRules')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTRules;
+    PRINT 'DROPPED USP_RP_GetBRDTRules';
+END
+GO
+/************************************r******************************************                    
+** Old Name:     USP_EIS_BR_DT_Rules_SelProc       
+**
+** Name : USP_RP_GetBRDTRules
+**            
+** Short Desc: To retrieve Filter Section details  
+**                    
+** Full Description: To retrieve Filter Section details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  USP_RP_GetBRDTRules  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By:   
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 09/04/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- ----,----  
+** 19-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTRules]                   
+AS              
+BEGIN       
+ SELECT DISTINCT   
+	  VRules.RuleName AS RuleName,  
+	  VRules.ResultType AS RuleResult,  
+	  VRules.DisplayMessage AS RuleMessage,  
+	  VRules.RuleCategoryID AS RuleCategoryID,  
+	  VLI.ListItemName AS RuleCategory  
+ FROM TBL_DLV_ValidationRule VRules  
+ INNER JOIN VW_EX_ListItem VLI ON VLI.ListItemID = VRules.RuleCategoryID  
+ ORDER BY VRules.RuleName   
+END  
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTRules')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTRules';
+    END

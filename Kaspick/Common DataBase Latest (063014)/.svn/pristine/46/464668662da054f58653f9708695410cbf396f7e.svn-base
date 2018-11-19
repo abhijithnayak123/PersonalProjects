@@ -1,0 +1,223 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPODTActivityConsole'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetPODTActivityConsole;
+
+	PRINT 'DROPPED USP_RP_GetPODTActivityConsole';
+END
+GO
+/******************************************************************************                      
+** Old Name:     USP_EIS_PO_DT_ActivityConsole_SelProc       
+**                            
+** Name:     USP_RP_GetPODTActivityConsole                     
+**
+** Short Desc: To fetch data for Activity Console      
+**                      
+** Full Description: To fetch data for Activity Console           
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+Declare @DeliverableQueueID int,    
+@ClientID VARCHAR(4),    
+@ReportAnalyst int,    
+@ClientManager int,    
+@StatusID int
+    
+EXEC USP_RP_GetPODTActivityConsole     
+@DeliverableQueueID = '312',    
+@ClientID = 'AM',    
+@ReportAnalyst = 0,    
+@ClientManager = 0,    
+@RelationShipManager = 0,    
+@StatusID = '0',  
+@DeliveryMethodID = 0   
+**             
+** Return values: Null    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Venugopal    
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 25-AUG-10                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 30-Aug-2010  Venu. B  #12286    Updated name format for ReportAnalystUsers, ClientManagerUsers,    
+               RelationshipManagerUsers    
+** 12-Mar-2012 Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.     
+** 14-Mar-2012 Anand Kumar    ERD changes implemetation.         
+** 12-Jun-2014 Geervani			Made changes in the table names to refer new KASPICK DB         
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_GetPODTActivityConsole     
+(    
+@DeliverableQueueID VARCHAR(100) = '0',    
+@ClientID VARCHAR(10) = '',    
+@ReportAnalyst INT = 0,    
+@RelationShipManager INT = 0,    
+@ClientManager INT = 0,    
+@StatusID VARCHAR(100) = '0',  
+@DeliveryMethodID INT = 0     
+)    
+AS    
+	BEGIN    
+		SELECT 
+		DQ.DeliverableQueueID,    
+		DQ.DeliverableQueueName AS DeliverableQueueBriefName,    
+		DI.DeliverableItemID,     
+		DI.ManagerCode AS ClientID,    
+		AcctMgrCode.ManagerCode AS ClientBriefName,    
+		ReportAnalystUsers = (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  
+		FROM tbl_KS_User WHERE USERID = SRReportAnalyst.USERID), 
+
+		ClientManagerUsers = (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  
+		FROM TBL_KS_User WHERE userid = SRClientManager.USERID),    
+
+		RelationshipManagerUsers = (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  
+		FROM tbl_KS_User WHERE USERID = SRRelationshipManager.USERID), 
+		    
+		DT.DeliverableFrequency,    
+		DIAN.AttributeValue AS Notes,    
+		IMS.Comments,    
+		DIS.StatusName AS ReportStatus,      
+		MailedDate =   
+		(    
+		SELECT TOP 1 CASE WHEN DS1.StatusName='Cancelled' THEN ''     
+		WHEN DS1.StatusName = 'Mailed' THEN DIS1.StatusChangeDT END    
+		FROM TBL_DLV_MethodStatusChangeLog DIS1     
+		LEFT OUTER JOIN TBL_DLV_DeliverableProcessStatus DS1 ON DS1.DeliverableItemStatusID = DIS1.New_StatusID     
+		WHERE DIS1.ItemMethodStatusID = IMS.ItemMethodStatusID AND (DS1.StatusName = 'Mailed' OR DS1.StatusName = 'Cancelled')   
+		ORDER BY DIS1.MethodStatusChangeLogID DESC  
+		),    
+		DID.DocumentTypeID,    
+		DID.DELIVERABLEDOCUMENTSID AS DeliverableDocumentsID,    
+		DDT.DOCUMENTFILETYPE AS DocumentFileType,    
+	
+		-- This has to be changed once after getting the reply from client.
+		-- Issue : Getting duplicate record in the below query where in its expecting only one.
+		'' AS ClientSpecialInstruction,
+		--ClientSpecialInstruction =   
+		--(  
+		--SELECT Comments FROM TBL_BR_ReportCondition WHERE ManagerCode = AcctMgrCode.ManagerCode AND report_type_id =     
+		--(   
+		--SELECT ListItemID FROM VW_EX_ListItem     
+		--WHERE ListItemName = 'Special Instructions' AND ListTypeName = 'Report Type'  
+		--)     
+		--AND Status_ID = (SELECT ListItemID FROM VW_EX_ListItem     
+		--WHERE ListItemName='Yes' AND ListTypeName = 'Logical Value')  
+		--),    
+		IMS.ItemMethodStatusID,    
+		ISNULL(PIMFY.TextValue,'') AS FiscalYearEnd,    
+		PIMPS.DateValue AS PoStartDate,    
+		ISNULL(PIMEFM.LogicalValue,0) AS ExcludeMedian      
+		FROM TBL_DLV_DeliverableQueue DQ   WITH(NOLOCK)
+		INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID     
+		INNER JOIN TBL_DLV_DeliverableItem DI ON DQ.DeliverableQueueID = DI.DeliverableQueueID    
+		INNER JOIN SYN_IT_AccountManagerCodes AcctMgrCode ON DI.ManagerCode = AcctMgrCode.ManagerCode    
+		INNER JOIN TBL_DLV_DeliverableItemDocument DID ON DI.DeliverableItemID = DID.DeliverableItemID    
+		INNER JOIN TBL_DLV_DocumentType DDT ON DID.DocumentTypeID = DDT.DocumentTypeID     
+		--DeliverableTypeID changed to DeliverableID in TBL_DLV_DeliverableQueue table  
+		INNER JOIN VW_RP_DTDeliverable DT ON DT.DeliverableID = DQ.DeliverableID    
+		INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID     
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID    
+		--TBL_EIS_DT_Delivery_Type_Methods is changed to TBL_DLV_DeliverableMethod  
+		INNER JOIN TBL_DLV_DeliverableMethod TM ON IMS.DeliveryMethodID = TM.DeliveryMethodID AND TM.DeliverableID = DT.DeliverableID AND TM.IsPrimary = 1    
+		INNER JOIN TBL_PolicyItem PIMFY ON AcctMgrCode.ManagerCode = PIMFY.ownerid AND PIMFY.PolicyLevel = 100      
+		INNER JOIN TBL_PolicyDimension PDFY ON PIMFY.PolicyDimensionID = PDFY.PolicyDimensionID AND PDFY.FullName = 'Fiscal Year End'     
+		INNER JOIN TBL_PolicyItem PIMPS ON AcctMgrCode.ManagerCode = PIMPS.ownerid AND PIMPS.PolicyLevel = 100      
+		INNER JOIN TBL_PolicyDimension PDPS ON PIMPS.PolicyDimensionID = PDPS.PolicyDimensionID AND PDPS.FullName = 'PO Start Date'    
+		INNER JOIN TBL_PolicyItem PIMEFM ON AcctMgrCode.ManagerCode = PIMEFM.ownerid AND PIMEFM.PolicyLevel = 100      
+		INNER JOIN TBL_PolicyDimension PDEFM ON PIMEFM.PolicyDimensionID = PDEFM.PolicyDimensionID AND PDEFM.FullName = 'Exc from Rpt Medians'    
+		
+		LEFT OUTER JOIN 
+		(
+		SELECT DISTINCT AccMgrCds.ManagerCode AS ManagerCode, Usr.UserID
+		FROM
+		SYN_IT_ContactMaster ConMstr
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+		INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=2
+		INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+		INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRClientManager ON SRClientManager.ManagerCode = AcctMgrCode.ManagerCode  
+		    
+		LEFT OUTER JOIN 
+		(
+		SELECT DISTINCT AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+		FROM
+		SYN_IT_ContactMaster ConMstr
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+		INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=519
+		INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+		INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRReportAnalyst ON SRReportAnalyst.ManagerCode = AcctMgrCode.ManagerCode
+
+		--LEFT JOIN STAFFROLE SRRelationshipManager ON SRRelationshipManager.ClientID = AcctMgrCode.ClientID AND SRRelationshipManager.roleid = 1 AND SRRelationshipManager.IsPrimary = 1  
+		LEFT OUTER JOIN 
+		(
+		SELECT DISTINCT AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+		FROM
+		SYN_IT_ContactMaster ConMstr
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+		INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=519
+		INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+		INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRRelationshipManager ON SRRelationshipManager.ManagerCode = AcctMgrCode.ManagerCode
+
+		--DeliverableTypeID changed to DeliverableID in TBL_DLV_DeliverableTypeAttribute table  
+		LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIAN ON DI.DeliverableItemID = DIAN.DeliverableItemID AND 
+		DIAN.DeliverableTypeAttributeID = (SELECT DeliverableTypeAttributeID FROM TBL_DLV_DeliverableTypeAttribute 
+		WHERE AttributePromptName='Notes' AND DeliverableID = DQ.DeliverableID)    
+		WHERE QS.StatusName != ''    
+		AND (@DeliverableQueueID ='0' OR(CHARINDEX(','+CONVERT(VARCHAR(10),DQ.DeliverableQueueID)+',',','+@DeliverableQueueID+',' )>0))  
+		AND 
+		AcctMgrCode.ManagerCode = 
+		(
+			CASE @ClientID
+				WHEN '' THEN AcctMgrCode.ManagerCode    
+				ELSE @ClientID     
+			END
+		)    
+		AND (@ReportAnalyst = 0 OR    
+		SRReportAnalyst.UserID = @ReportAnalyst     
+		)    
+		AND (@RelationShipManager = 0 OR    
+		SRRelationshipManager.UserID = @RelationShipManager     
+		)    
+		AND (@ClientManager = 0 OR    
+		SRClientManager.UserID = @ClientManager     
+		)    
+		AND (@StatusID = '0' OR    
+		CHARINDEX( ',' + CONVERT(VARCHAR(10),DIS.DeliverableItemStatusID) + ',', ',' + @StatusID + ',' ) > 0     
+		)  
+		AND (@DeliveryMethodID = 0 OR (EXISTS(SELECT ItemMethodStatusID 
+		FROM TBL_DLV_ItemMethodStatus WHERE DeliverableItemID = DI.DeliverableItemID AND DeliveryMethodID = @DeliveryMethodID)))  
+		ORDER BY DeliverableQueueBriefName,AcctMgrCode.ManagerCode     
+	END
+GO	
+	
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPODTActivityConsole'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetPODTActivityConsole';
+END    

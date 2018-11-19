@@ -1,0 +1,91 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentProcessed]    Script Date: Script Date: 05/31/2013 11:35:14 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentProcessed]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentProcessed]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentProcessed]    Script Date: 05/31/2013 11:35:14 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_ReportGetPaymentProcessed                      
+** Short Desc: To Get all the payments processed details 
+**                      
+** Full Description: To Get all the payments processed details       
+**                              
+** Input Arguments:   @OptionType
+**         
+** Sample Call     
+ 		
+		EXEC [USP_PP_ReportGetPaymentProcessed]	'ManagerCode' 
+		   
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 31-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentProcessed] @OptionType AS VARCHAR(20)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	IF @OptionType = 'ManagerCode'
+	BEGIN
+		SELECT DISTINCT PaymtExport.ManagerCode
+		FROM TBL_PP_ARCH_PaymentExport PaymtExport
+		--INNER JOIN TBL_PP_ManagerRule TMR ON TMR.ManagerCode = PaymtExport.ManagerCode
+		ORDER BY PaymtExport.ManagerCode
+	END
+
+	IF @OptionType = 'CustomerAccountNumber'
+	BEGIN
+		SELECT DISTINCT CustomerAccountNumber
+		FROM TBL_PP_ARCH_PaymentExport
+		ORDER BY CustomerAccountNumber
+	END
+
+	IF @OptionType = 'Contact'
+	BEGIN
+		SELECT DISTINCT PaymtExport.ContactID
+			,PaymtExport.ManagerCode
+			,PaymtExport.CustomerAccountNumber
+		FROM TBL_PP_ARCH_PaymentExport PaymtExport
+		--INNER JOIN TBL_PP_ContactRule TCR ON PaymtExport.ContactID = TCR.ContactID
+		--	AND TCR.CustomerAccountNumber = PaymtExport.CustomerAccountNumber
+		WHERE PaymtExport.IsDeleted = 0
+		ORDER BY PaymtExport.ManagerCode
+			,PaymtExport.CustomerAccountNumber
+			,PaymtExport.ContactID
+	END
+END
+GO
+
+

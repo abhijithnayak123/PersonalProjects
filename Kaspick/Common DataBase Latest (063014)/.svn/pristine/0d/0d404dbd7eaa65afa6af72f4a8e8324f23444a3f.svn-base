@@ -1,0 +1,138 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdTradingOther'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdTradingOther;
+
+	PRINT 'DROPPED USP_EX_UpdTradingOther';
+END
+GO
+
+/******************************************************************************      
+** Name:     USP_EX_UpdTradingOther    
+** Old Name : USP_EIS_EX_TRADING_OTHER_UpdProc
+** Short Desc:     
+** Full Description      
+**          
+**      
+** Sample Call      
+  USP_EX_UpdTradingOther     
+ @alertid = 100043,     
+ @alertdetail = 'Amar',     
+ @cashneeds = 800,    
+ @modifieduserid = 58,     
+ @modifieddate = N'04/04/2007'    
+    
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: N.R.AMARNATH    
+** Company   : Kaspick & Company      
+** Project   : Excelsior  -- IM PROFILE    
+** Created DT: <03/23/2007>      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 16-Apr-2007   Amarnath  4970    Assigned To was changed to User Login Name    
+** 26-Apr-2007   Amar      5143    Change request to set order by duedate adventid    
+** 12-jul-07     Sandesh             Concurrency Check   
+** 2-Apr-2014    Sanath               Save option in other tab for req INVREQ3.1
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_UpdTradingOther] (
+	@alertid AS INT
+	,@alertdetail AS VARCHAR(25)
+	,@cashneeds AS MONEY
+	,@modifieduserid AS INT
+	,@modifieddate AS DATETIME
+	)
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+		---Checking Record is deleted or not..  
+		DECLARE @STATUSFLAG BIT
+
+		EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_BR_AlertEvent'
+			,@FIELD_NAME = 'AlertID'
+			,@FIELD_VALUE = @alertid
+			,@STATUS = @STATUSFLAG OUTPUT
+
+		IF (@STATUSFLAG = 1)
+		BEGIN
+			RAISERROR 50001 'RECORD DELETED'
+
+			RETURN
+		END
+
+		--  Variable Declarations  --      
+		DECLARE @procname VARCHAR(60);
+		DECLARE @ErrorMessage VARCHAR(1000);
+		DECLARE @ErrorNumber INT;
+		-- Variables used for error handling -       
+		DECLARE @val1 VARCHAR(Max);
+		DECLARE @val2 VARCHAR(30);
+
+		--  Variable Data Assignment  --      
+		SET @procname = 'USP_EX_UpdTradingOther';
+
+		--IF (@opertype='I')  -- I == Insert       
+	
+
+		--Updating the AlertEvent Table on AlertId    
+		UPDATE TBL_BR_AlertEvent
+		SET AlertDetail = @alertdetail
+			,CashNeeds = @cashneeds
+			,Modified_User_ID = @modifieduserid
+			,Modified_Date = getdate()
+		WHERE AlertId = @alertid
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = Cast(@AlertID AS VARCHAR(Max));
+		SET @val2 = @alertdetail;
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'Alert ID'
+			,@val2 = @val2
+			,@val2str = 'Insertion';
+
+		SELECT 0 [Failure]
+	END CATCH;
+
+	SELECT 1 [Success]
+END -- End insert     
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdTradingOther'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_UpdTradingOther';
+END

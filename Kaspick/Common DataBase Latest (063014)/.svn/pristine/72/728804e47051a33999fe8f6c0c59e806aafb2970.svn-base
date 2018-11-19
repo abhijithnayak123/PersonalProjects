@@ -1,0 +1,103 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_GetClients'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_GetClients;
+
+	PRINT 'DROPPED USP_BR_FASB_GetClients';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/**********************************************************************************************                  
+** Name	    : [USP_BR_FASB_GetClients]
+** Old Name : [USP_EIS_RPT_FASB_CLIENTS_SELPROC]
+** Short Desc: To retrieve the clients for FASB Export
+**                  
+** Full Description: To retrieve the clients for FASB Export. 
+   To Do: When excelsior client profile is created from Excelsior application, clients to be selected from the excelsior client profile table
+   Till then it is a dummy SP.
+**                          
+** Input Arguments: 
+**					
+** Sample Call                  
+**		EXEC USP_BR_FASB_GetClients  6, 'FASB' 
+**									
+** Return values:	NONE
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Ganapati
+** Company   : Kaspick & Company                  
+** Project   : FASB                  
+** Created DT: 08/08/2012                  
+**                              
+**********************************************************************************************            
+**       Change History                  
+**********************************************************************************************            
+** Date:				Author:			Bug #			Description:                           Rvwd            
+** --------		-------- ------    -----------		---------------------------			--------            
+** 08/08/2012    Ganapati							  Created
+** 10/17/2012	 Ganapati							  Added @ReportPurpose parameter	-----
+** 07/29/2014	 Srikanth R							  Changes for FASB BOI
+*********************************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*********************************************************************************************/                  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_GetClients]
+	@ReportingMonth INT,
+	@ReportPurpose VARCHAR(25)
+AS  
+BEGIN 
+	IF(@ReportPurpose = 'FASB')
+	BEGIN  
+		SELECT DISTINCT
+			LTRIM(RTRIM(ITCM.BriefName)) AS 'ClientID'
+			,LTRIM(RTRIM(ITCM.BriefName)) + ' - ' + ITCM.FullName AS ClientName
+			,LTRIM(RTRIM(ITCM.BriefName)) AS ClientBriefName    
+		FROM
+			Client ITCM
+		INNER JOIN
+			TBL_BR_FASBProfileInformation FPI
+		ON
+			FPI.ManagerCode = ITCM.BriefName
+		INNER JOIN
+			TBL_BR_FASBInputParam FIP
+		ON
+			FIP.FASB_InstanceID = FPI.FASB_InstanceID    
+		WHERE
+			FIP.IsReporting_Req = 1    
+			AND FPI.MarketValueMonth = @ReportingMonth  
+		ORDER BY
+			LTRIM(RTRIM(ITCM.BriefName))
+	END
+	ELSE IF (@ReportPurpose = '990')
+	BEGIN
+		SELECT 
+			LTRIM(RTRIM(ITCM.BriefName)) AS 'ClientID'
+			,LTRIM(RTRIM(ITCM.BriefName)) + ' - ' + ITCM.FullName AS ClientName
+			,LTRIM(RTRIM(ITCM.BriefName)) AS ClientBriefName
+		FROM
+			Client ITCM
+		INNER JOIN
+			TBL_DLV_ManagerCodeDeliverable MCD
+		ON
+			ITCM.BriefName = MCD.ManagerCode
+		INNER JOIN
+			TBL_DLV_Deliverable DL
+		ON
+			DL.DeliverableID = MCD.DeliverableID  
+		WHERE
+			DL.DeliverableName='990'
+		ORDER BY
+			LTRIM(RTRIM(ITCM.BriefName))
+	END
+END
+

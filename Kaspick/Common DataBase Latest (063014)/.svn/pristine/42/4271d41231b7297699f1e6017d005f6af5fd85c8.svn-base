@@ -1,0 +1,64 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetExceptionCode]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetExceptionCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetExceptionCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetExceptionCode]    Script Date: 05/01/2013 19:00:43 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_GetExceptionCode                      
+** Short Desc:To Get all the Exception codes and description
+**                      
+** Full Description: To Get all the Exception codes and description      
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+ EXEC [USP_PP_GetExceptionCode]     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 09-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetExceptionCode]
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT DISTINCT ExceptionCode AS 'DropDownID'
+		,ExceptionDescription AS 'DropDownValue'
+	FROM TBL_PP_ExceptionMaster
+	WHERE IsDeleted = 0
+	ORDER BY ExceptionCode
+END

@@ -1,0 +1,381 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[FN_PP_PaymentFrequency]')
+			AND type IN (
+				N'FN'
+				,N'IF'
+				,N'TF'
+				,N'FS'
+				,N'FT'
+				)
+		)
+	DROP FUNCTION [dbo].[FN_PP_PaymentFrequency]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Function Name: 	FN_PP_PaymentFrequency
+** Description: 	creates the payment frequency dates for a particular CustomerAccountNumber
+**
+**
+** Sample Call            
+	SELECT * FROM  [dbo].[FN_PP_PaymentFrequency] ('CBTUC', 'V')				
+**	Created By: Asit
+**	Company	  :	Ciber Offshore
+**	Project	  :	BOI - Reports and Queries
+**	Created DT:	05/07/2014
+**
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+** 
+*******************************************************************************
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION 
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_PP_PaymentFrequency] (
+	@CustomerAccountNumber CHAR(14)
+	,@EType CHAR(1)
+	)
+RETURNS @PaymentDates TABLE (
+	PaymentDate DATETIME
+	,CustomerAccountNumber CHAR(14)
+	)
+AS
+BEGIN
+	DECLARE @FreqCtr INT;
+
+	SET @FreqCtr = 1;
+
+	DECLARE @month INT
+	DECLARE @PaymentDate DATETIME;
+	DECLARE @CyclicDate DATETIME;
+	DECLARE @FindMonth DATETIME;
+	DECLARE @FreqDate DATETIME;
+	DECLARE @newDate FLOAT;
+	DECLARE @FirstEvenMonth SMALLINT;
+	DECLARE @monthPrev SMALLINT;
+	DECLARE @FirstEventDay SMALLINT;
+	DECLARE @mod SMALLINT;
+	DECLARE @AnDays DECIMAL(6, 2);
+	DECLARE @LpDay DATETIME;
+	DECLARE @day SMALLINT;
+	DECLARE @FirstOccurrence VARCHAR(1);
+	DECLARE @Freq INT;
+
+	SET @month = 1
+
+	DECLARE @TblAccFreqDtl TABLE (
+		CustomerAccountNumber CHAR(14)
+		,EventType CHAR(1)
+		,AnnualFrequency INT
+		,FirstOccurrence CHAR(1)
+		,FirstEventDay INT
+		,FirstEventMonth INT
+		)
+
+	INSERT INTO @TblAccFreqDtl
+	SELECT AccMstr.CustomerAccountNumber
+		,'V' AS EventType -- v is for Valuation
+		,CASE 
+			WHEN UDFAccMstr.UDFAMColumn021 = 'A'
+				THEN 1
+			WHEN UDFAccMstr.UDFAMColumn021 = 'S'
+				THEN 2
+			WHEN UDFAccMstr.UDFAMColumn021 = 'Q'
+				THEN 4
+			WHEN UDFAccMstr.UDFAMColumn021 = 'M'
+				THEN 12
+			ELSE 0
+			END AS AnnualFrequency
+		,UDFAccMstr.UDFAMColumn023 AS FirstOccurrence
+		,CAST(UDFAccMstr.UDFAMColumn025 AS SMALLINT) AS FirstEventDay
+		,CASE 
+			WHEN UDFAccMstr.UDFAMColumn024 = 'JAN'
+				THEN 1
+			WHEN UDFAccMstr.UDFAMColumn024 = 'FEB'
+				THEN 2
+			WHEN UDFAccMstr.UDFAMColumn024 = 'MAR'
+				THEN 3
+			WHEN UDFAccMstr.UDFAMColumn024 = 'APR'
+				THEN 4
+			WHEN UDFAccMstr.UDFAMColumn024 = 'MAY'
+				THEN 5
+			WHEN UDFAccMstr.UDFAMColumn024 = 'JUN'
+				THEN 6
+			WHEN UDFAccMstr.UDFAMColumn024 = 'JUL'
+				THEN 7
+			WHEN UDFAccMstr.UDFAMColumn024 = 'AUG'
+				THEN 8
+			WHEN UDFAccMstr.UDFAMColumn024 = 'SEP'
+				THEN 9
+			WHEN UDFAccMstr.UDFAMColumn024 = 'OCT'
+				THEN 10
+			WHEN UDFAccMstr.UDFAMColumn024 = 'NOV'
+				THEN 11
+			WHEN UDFAccMstr.UDFAMColumn024 = 'DEC'
+				THEN 12
+			END AS FirstEventMonth
+	FROM SYN_IT_AccountMaster AccMstr
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMstr ON AccMstr.CustomerAccountNumber = UDFAccMstr.CustomerAccountNumber_Key
+	WHERE AccMstr.CustomerAccountNumber = @CustomerAccountNumber
+	
+	UNION ALL
+	
+	SELECT CustomerAccountNumber
+		,'P' AS EventType
+		,CASE 
+			WHEN SchCode.ScheduleCode = 'ANNUAL'
+				THEN 1
+			WHEN SchCode.ScheduleCode = 'SEMI'
+				THEN 2
+			WHEN SchCode.ScheduleCode IN (
+					'QMJSD'
+					,'QFMJN'
+					,'QJAJO'
+					,'QJAJS'
+					,'QMJSD'
+					)
+				THEN 4
+			WHEN SchCode.ScheduleCode = 'MONTH'
+				THEN 12
+			ELSE 0
+			END AS AnnualFrequency
+		,CASE 
+			WHEN DayNumber = 1
+				THEN 'F'
+			WHEN DayNumber = DAY(DATEADD(month, ((YEAR(StartDate) - 1900) * 12) + MONTH(StartDate), - 1))
+				THEN 'L'
+			ELSE 'O'
+			END AS FirstOccurence
+		,CASE 
+			WHEN SchCode.ScheduleCode = 'ANNUAL'
+				THEN DAY(SchEvent.StartDate)
+			ELSE SchEvent.DayNumber
+			END AS FirstEventDay
+		,CASE 
+			WHEN SchCode.ScheduleCode = 'MONTH'
+				THEN MONTH(SchEvent.StartDate)
+			WHEN SchCode.ScheduleCode = 'SEMI'
+				THEN MONTH(SchEvent.StartDate)
+			WHEN SchCode.ScheduleCode = 'ANNUAL'
+				THEN MONTH(SchEvent.StartDate)
+			WHEN SchCode.ScheduleCode = 'QMJSD'
+				THEN 3
+			WHEN schCode.ScheduleCode = 'QFMJN'
+				THEN 2
+			WHEN SchCode.ScheduleCode = 'QJAJO'
+				THEN 1
+			WHEN SchCode.ScheduleCode = 'QJAJS'
+				THEN 1
+			WHEN SchCode.ScheduleCode = 'QMJSD'
+				THEN 3
+			END AS FirstEventMonth
+	FROM SYN_IT_RemittanceInstructions RemitInst
+	INNER JOIN SYN_IT_ScheduledEvents SchEvent ON RemitInst.InstructionID = SchEvent.EventID
+		AND SchEvent.EventType = 'S'
+	INNER JOIN SYN_IT_ScheduleCodes SchCode ON SchEvent.ScheduleCode = SchCode.ScheduleCode
+	WHERE CustomerAccountNumber = @CustomerAccountNumber
+
+	SELECT @CustomerAccountNumber = CustomerAccountNumber
+		,@Freq = AnnualFrequency
+		,@FirstOccurrence = FirstOccurrence
+		,@FirstEventDay = FirstEventDay
+		,@FirstEvenMonth = FirstEventMonth
+	FROM @TblAccFreqDtl
+	WHERE CustomerAccountNumber = @CustomerAccountNumber
+		AND eventtype = @EType
+
+	DECLARE @date DATETIME
+
+	--check the year is leap year or not
+	SET @LpDay = CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-02-28';
+
+	IF MONTH(DATEADD(DAY, 1, @LpDay)) = 3
+		SET @AnDays = 365.00
+	ELSE
+		SET @AnDays = 366.00
+
+	--find out the the first day
+	IF @FirstOccurrence = 'L'
+	BEGIN
+		WHILE @month <= 12
+		BEGIN
+			IF @FirstEvenMonth = @month
+			BEGIN
+				SET @date = CONVERT(VARCHAR(10), YEAR(GETDATE())) + '-' + CONVERT(NVARCHAR(5), @month) + '-28' ---30-02'
+
+				IF @month <> MONTH(DATEADD(DAY, 1, @date))
+					SET @FirstEventDay = 28
+				ELSE IF @month <> MONTH(DATEADD(DAY, 2, @date))
+					SET @FirstEventDay = 29
+				ELSE IF @month <> MONTH(DATEADD(DAY, 3, @date))
+					SET @FirstEventDay = 30
+				ELSE
+					SET @FirstEventDay = 31
+
+				--SET @PaymentDate = CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), @FirstEventDay)
+				SELECT @PaymentDate = CASE 
+						WHEN ISDATE(CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), @FirstEventDay)) = 0
+							THEN CAST(NULL AS DATETIME)
+						ELSE (CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), @FirstEventDay))
+						END
+			END
+
+			SET @month = @month + 1
+		END
+
+		SET @month = 0
+	END
+
+	IF @FirstOccurrence = 'F'
+	BEGIN
+		WHILE @month <= 12
+		BEGIN
+			IF @FirstEvenMonth = @month
+			BEGIN
+				--SET @PaymentDate = CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), '01')
+				SELECT @PaymentDate = CASE 
+						WHEN ISDATE(CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), '01')) = 0
+							THEN CAST(NULL AS DATETIME)
+						ELSE (CONVERT(VARCHAR(4), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(2), @month) + '-' + CONVERT(VARCHAR(10), '01'))
+						END
+			END
+
+			SET @month = @month + 1
+		END
+
+		SET @month = 0
+	END
+
+	IF @FirstOccurrence = 'O'
+	BEGIN
+		WHILE @month <= 12
+		BEGIN
+			IF @FirstEvenMonth = @month
+				--SET @PaymentDate = CONVERT(VARCHAR(10), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(25), @month) + '-' + CONVERT(VARCHAR(10), ISNULL(@FirstEventDay, '01'))
+				SELECT @PaymentDate = CASE 
+						WHEN ISDATE(CONVERT(VARCHAR(10), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(25), @month) + '-' + CONVERT(VARCHAR(10), ISNULL(@FirstEventDay, '01'))) = 0
+							THEN CAST(NULL AS DATETIME)
+						ELSE (CONVERT(VARCHAR(10), YEAR(GETDATE())) + '-' + CONVERT(VARCHAR(25), @month) + '-' + CONVERT(VARCHAR(10), ISNULL(@FirstEventDay, '01')))
+						END
+
+			SET @month = @month + 1
+		END
+
+		SET @month = 0
+	END
+
+	SET @FreqCtr = 1
+	SET @mod = @Freq % 2
+	SET @newDate = 0
+
+	DECLARE @changedFreq INT
+
+	IF (@EType != 'Y')
+		SET @changedFreq = @Freq + 1
+	ELSE
+		SET @changedFreq = @Freq
+
+	WHILE @FreqCtr <= @changedFreq
+	BEGIN
+		IF @Freq IN (
+				12
+				,4
+				,2
+				,1
+				)
+		BEGIN
+			SET @CyclicDate = DATEADD(MM, @newDate, @PaymentDate)
+			SET @newDate = 12 / @Freq
+
+			IF @monthPrev = MONTH(@CyclicDate)
+				AND @FreqCtr <> 1
+				AND @Freq <> 1
+				SET @FreqDate = DATEADD(mm, 1, @CyclicDate)
+			ELSE
+				SET @FreqDate = @CyclicDate
+
+			SET @monthPrev = MONTH(@FreqDate)
+			SET @PaymentDate = @FreqDate
+			SET @month = month(@FreqDate)
+
+			IF @FirstOccurrence = 'L' --and @month = MONTH(@FreqDate)
+			BEGIN
+				SET @FreqDate = CONVERT(VARCHAR(4), YEAR(@FreqDate)) + '-' + CONVERT(NVARCHAR(5), MONTH(@FreqDate)) + '-28'
+
+				IF @month <> MONTH(DATEADD(DAY, 1, @FreqDate))
+					SET @day = 28
+				ELSE IF @month <> MONTH(DATEADD(DAY, 2, @FreqDate))
+					SET @day = 29
+				ELSE IF @month <> MONTH(DATEADD(DAY, 3, @FreqDate))
+					SET @day = 30
+				ELSE
+					SET @day = 31
+			END
+			ELSE IF @FirstOccurrence = 'F'
+				SET @day = '01'
+			ELSE IF @FirstOccurrence = 'O'
+			BEGIN
+				IF MONTH(@FreqDate) = 2
+					AND @FirstEventDay >= 28
+				BEGIN
+					SET @FreqDate = CONVERT(VARCHAR(4), YEAR(@FreqDate)) + '-' + CONVERT(NVARCHAR(5), MONTH(@FreqDate)) + '-28'
+
+					IF @month <> MONTH(DATEADD(DAY, 1, @FreqDate))
+						SET @day = 28
+					ELSE
+						SET @day = 29
+				END
+				ELSE IF MONTH(@FreqDate) IN (
+						4
+						,6
+						,9
+						,11
+						)
+					AND @FirstEventDay = 31
+					SET @day = 30
+				ELSE
+					SET @day = @FirstEventDay
+			END
+
+			IF @FirstOccurrence IN ('F')
+				AND @Freq NOT IN (
+					12
+					,1
+					)
+			BEGIN
+				IF DATEPART(DAY, @FreqDate) >= 30
+					SET @FreqDate = DATEADD(mm, 1, @FreqDate)
+			END
+
+			SET @FreqDate = CONVERT(VARCHAR(4), YEAR(@FreqDate)) + '-' + CONVERT(NVARCHAR(5), MONTH(@FreqDate)) + '-' + CONVERT(VARCHAR(2), @day)
+		END
+		ELSE
+		BEGIN
+			SET @FreqDate = DATEADD(DAY, @newDate, @PaymentDate)
+			SET @newDate = ROUND(ISNULL(((@AnDays) / (NULLIF(@Freq, 0))), 0) * @FreqCtr, 0)
+		END
+
+		INSERT INTO @PaymentDates
+		VALUES (
+			@FreqDate
+			,@CustomerAccountNumber
+			)
+
+		SET @FreqCtr = @FreqCtr + 1
+	END
+
+	RETURN
+END
+GO
+
+

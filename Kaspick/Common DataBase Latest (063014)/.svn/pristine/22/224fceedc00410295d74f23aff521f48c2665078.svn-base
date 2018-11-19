@@ -1,0 +1,121 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_ClientEmployee]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_ClientEmployee]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_ClientEmployee
+* File Name		  : USP_Lookup_ClientEmployee.SQL      
+* Description     : This SP loads the newly added ClientEmployee into the ClientEmployee Lookup Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+
+CREATE PROCEDURE USP_Lookup_ClientEmployee(@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(100) ='TBL_Lookup_Client'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+		
+		--Inserts the Client Employee columns and the appropriate lookup Columns
+		--  which are not existing in Client Employee lookup table
+		INSERT INTO TBL_Lookup_ClientEmployee(SubContactID,ContactID,ContactRoleCode,ManagerCode,ClientID)
+		SELECT		 DISTINCT
+					 SCR.SubContactID
+					,SCR.ContactID
+					,SCR.ContactRoleCode
+					,C.ManagerCode
+					,C.ClientID		
+					
+		FROM		dbo.SYN_IT_SubContactRoles		SCR
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster		CMEmp	
+		ON			SCR.SubContactID		= CMEmp.ContactID
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC		
+		ON			SCR.ContactRoleCode  = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster		CM		
+		ON			SCR.ContactID = CM.ContactID
+		
+		INNER JOIN	dbo.SYN_IT_AccountManagerCodes AMC		
+		ON			AMC.ContactID = CM.ContactID	
+		
+		INNER JOIN  dbo.TBL_Lookup_Client	C		
+		ON			AMC.ManagerCode = C.ManagerCode
+		
+		LEFT JOIN   dbo.TBL_Lookup_ClientEmployee LP 
+		ON			SCR.SubContactID    = LP.SubContactID
+		AND			SCR.ContactID	    = LP.ContactID
+		AND			SCR.ContactRoleCode = LP.ContactRoleCode
+		
+		WHERE		CRC.ContactRoleCodeDesc='Client Employee'	
+		AND			LP.SubContactID IS NULL
+		
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+		
+		--TBL_Lookup_ClientEmployee_DeletedRecord
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_ClientEmployee_DeletedRecord'
+		
+		DELETE		 LP
+		OUTPUT		 Deleted.ContactID
+					,Deleted.SubContactID
+					,Deleted.ContactRoleCode
+					,Deleted.EmployeeID
+					,Deleted.ManagerCode
+					,Deleted.ClientID
+					,GETDATE() 
+		INTO TBL_Lookup_ClientEmployee_DeletedRecord(ContactID ,SubContactID ,ContactRoleCode ,EmployeeID ,ManagerCode ,ClientID,DeletedDate)
+		FROM		dbo.TBL_Lookup_ClientEmployee	LP
+		LEFT JOIN	dbo.SYN_IT_SubContactRoles	T 
+					ON	T.SubContactID    = LP.SubContactID
+					AND	T.ContactID		  = LP.ContactID
+					AND	T.ContactRoleCode = LP.ContactRoleCode
+		WHERE		T.SubContactID IS NULL
+		
+		--LOGGING
+		SET @RowCount=@@RowCount
+
+		SET @LogMessage = 'Incremental data loaded - Physical Delete - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+		
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message()
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error'  , @RunID    
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

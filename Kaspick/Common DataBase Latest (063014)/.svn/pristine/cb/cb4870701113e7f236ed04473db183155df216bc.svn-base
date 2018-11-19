@@ -1,0 +1,88 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetUserByRole]    Script Date: 03/06/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetUserByRole]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetUserByRole]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************            
+** Name   :   USP_PP_GetUserByRole            
+** Short Desc : Get all User By Role              
+**            
+** Full Description : Get all User By Role              
+**                    
+**            
+** Sample Call            
+		EXEC USP_PP_GetUserByRole @ReportOption = 'Client Manager'
+		EXEC USP_PP_GetUserByRole @ReportOption = 'Trader'
+		EXEC USP_PP_GetUserByRole @ReportOption = 'Trust Administrator'         
+** Return values: NONE            
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By :  Chaithra       
+** Company  :  Kaspick & Company            
+** Project  :  Back Office Integration - TRex            
+** Created DT :  08/22/2014            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+** 
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetUserByRole] @ReportOption VARCHAR(25)
+AS
+BEGIN
+	DECLARE @ContactRoleCode INT
+	DECLARE @Tmp_ClientTeam TABLE (
+		RecordId INT identity
+		,UserID INT
+		,ManagerCode VARCHAR(4)
+		,UserName VARCHAR(50)
+		)
+
+	SET @ContactRoleCode = CASE 
+			WHEN @ReportOption = 'Client Manager'
+				THEN 2
+			WHEN @ReportOption = 'Trader'
+				THEN 515
+			WHEN @ReportOption = 'Trust Administrator'
+				THEN 510
+			END
+
+	INSERT INTO @Tmp_ClientTeam (
+		ManagerCode
+		,UserName
+		,UserID
+		)
+	SELECT AccMgrCod.ManagerCode
+		,LTRIM(RTRIM(ISNULL(Usr.FIRSTNAME + ' ', '') + ISNULL(Usr.LASTNAME, '')))
+		,UserID = Usr.UserID
+	FROM SYN_IT_AccountManagerCodes AccMgrCod
+	INNER JOIN SYN_IT_SubContactRoles SubCntRol ON AccMgrCod.ContactID = SubCntRol.ContactID
+		AND SubCntRol.ContactRoleCode = @ContactRoleCode
+	INNER JOIN TBL_KS_User Usr ON SubCntRol.SubContactID = Usr.InnotrustContactID
+
+	SELECT DISTINCT UserID AS userid
+		,UserName AS FullName
+	FROM @Tmp_ClientTeam
+END

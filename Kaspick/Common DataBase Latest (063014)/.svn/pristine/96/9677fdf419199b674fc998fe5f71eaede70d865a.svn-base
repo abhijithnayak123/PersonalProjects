@@ -1,0 +1,355 @@
+SET NOCOUNT ON
+-- TBL_KS_User migration script
+SET IDENTITY_INSERT dbo.TBL_KS_User ON
+
+INSERT INTO TBL_KS_User (
+	UserID
+	,FirstName
+	,MiddleName
+	,LastName
+	,LoginName
+	,Initials
+	,IsActive
+	,LastLoginDateTime
+	,LoginCount
+	,CreatedDate
+	,CreatedUserID
+	,ModifiedDate
+	,ModifiedUserID
+	,OfficeID
+	,Phone
+	,Email
+	,MGRUserID
+	,InnotrustContactID
+	)
+SELECT user_id
+	,first_name
+	,middle_name
+	,last_name
+	,login_name
+	,initials
+	,is_active
+	,last_login_datetime
+	,login_count
+	,created_date
+	,created_user_id
+	,modified_date
+	,modified_user_id
+	,office_id
+	,phone
+	,email
+	,mgr_user_id
+	,Staff.ContactID
+FROM $(ExcelsiorDB)..TBL_EIS_USER Usr
+LEFT OUTER JOIN $(MappingDB)..TBL_KCOStaffLookup Staff on Usr.user_id = Staff.UserID
+
+SET IDENTITY_INSERT dbo.TBL_KS_User OFF
+
+-- TBL_KS_SecurityLevel migration script
+INSERT INTO TBL_KS_SecurityLevel
+SELECT SecurityLevel
+	,Description
+FROM $(ExcelsiorDB)..SECURITYLEVEL
+
+-- TBL_KS_Application migration script
+SET IDENTITY_INSERT TBL_KS_Application ON
+
+INSERT INTO TBL_KS_Application (
+	ApplicationID
+	,ApplicationName
+	,Abbrev
+	,Description
+	,DisplaySequence
+	,IsActive
+	)
+SELECT APPLICATION_ID
+	,APPLICATION_NAME
+	,ABBREV
+	,DESCRIPTION
+	,DISPLAY_SEQUENCE
+	,IS_ACTIVE
+FROM $(ExcelsiorDB)..TBL_EIS_APPLICATION
+
+SET IDENTITY_INSERT TBL_KS_Application OFF
+-- TBL_KS_MainModule Migration Script
+SET IDENTITY_INSERT TBL_KS_MainModule ON
+
+INSERT INTO TBL_KS_MainModule (
+	MainModuleID
+	,ApplicationID
+	,MainModuleName
+	,Abbrev
+	,Description
+	,DisplaySequence
+	,IsActive
+	)
+SELECT MAINMODULE_ID
+	,APPLICATION_ID
+	,MAINMODULE_NAME
+	,ABBREV
+	,DESCRIPTION
+	,DISPLAY_SEQUENCE
+	,IS_ACTIVE
+FROM $(ExcelsiorDB)..TBL_EIS_MAINMODULE
+
+SET IDENTITY_INSERT TBL_KS_MainModule OFF
+-- TBL_KS_Module Migration script
+SET IDENTITY_INSERT TBL_KS_Module ON
+
+INSERT INTO TBL_KS_Module (
+	ModuleID
+	,ApplicationID
+	,ParentID
+	,ModuleName
+	,Abbrev
+	,Description
+	,DisplaySequence
+	,IsActive
+	,MainModuleID
+	,ModuleURL
+	,ImageURL
+	)
+SELECT MODULE_ID
+	,APPLICATION_ID
+	,PARENT_ID
+	,MODULE_NAME
+	,ABBREV
+	,DESCRIPTION
+	,DISPLAY_SEQUENCE
+	,IS_ACTIVE
+	,MAINMODULE_ID
+	,MODULE_URL
+	,IMAGE_URL
+FROM $(ExcelsiorDB)..TBL_EIS_MODULE
+
+SET IDENTITY_INSERT TBL_KS_Module OFF
+-- TBL_KS_Function Migration Script 
+SET IDENTITY_INSERT TBL_KS_Function ON
+
+INSERT INTO TBL_KS_Function (
+	FunctionID
+	,FunctionName
+	,DisplaySequence
+	)
+SELECT FUNCTION_ID
+	,FUNCTION_NAME
+	,DISPLAY_SEQUENCE
+FROM $(ExcelsiorDB)..TBL_EIS_FUNCTION
+
+SET IDENTITY_INSERT TBL_KS_Function OFF
+-- TBL_KS_Privilege Migration script
+SET IDENTITY_INSERT TBL_KS_Privilege ON
+
+INSERT INTO TBL_KS_Privilege (
+	PrivilegeID
+	,PrivilegeName
+	,Description
+	,DisplaySequence
+	,ModuleID
+	,FunctionID
+	,GroupID
+	)
+SELECT PRIVILEGE_ID
+	,PRIVILEGE_NAME
+	,DESCRIPTION
+	,DISPLAY_SEQUENCE
+	,MODULE_ID
+	,FUNCTION_ID
+	,GROUP_ID
+FROM $(ExcelsiorDB)..TBL_EIS_PRIVILEGE
+
+SET IDENTITY_INSERT TBL_KS_Privilege OFF
+-- TBL_KS_Role Migration Script
+SET IDENTITY_INSERT TBL_KS_Role ON
+
+INSERT INTO TBL_KS_Role (
+	RoleID
+	,RoleName
+	,Abbrev
+	,Description
+	,IsMutable
+	,CreatedDate
+	,CreatedUserID
+	,ModifiedDate
+	,ModifiedUserID
+	,IsClientLevel
+	)
+SELECT ROLE_ID
+	,ROLE_NAME
+	,ABBREV
+	,DESCRIPTION
+	,IS_MUTABLE
+	,CREATED_DATE
+	,CREATED_USER_ID
+	,MODIFIED_DATE
+	,MODIFIED_USER_ID
+	,ISCLIENTLEVEL
+FROM $(ExcelsiorDB)..TBL_EIS_ROLE
+
+SET IDENTITY_INSERT TBL_KS_Role OFF
+
+-- TBL_KS_RolePrivilege Migration Script
+INSERT INTO TBL_KS_RolePrivilege
+SELECT ROLE_ID
+	,PRIVILEGE_ID
+FROM $(ExcelsiorDB)..TBL_EIS_ROLE_PRIVILEGE
+
+-- TBL_KS_UserApplication Migration Script
+INSERT INTO TBL_KS_UserApplication
+SELECT USER_ID
+	,APPLICATION_ID
+FROM $(ExcelsiorDB)..TBL_EIS_USER_APPLICATION
+
+-- TBL_KS_UserRole Migration Script
+INSERT INTO TBL_KS_UserRole
+SELECT USER_ID
+	,ROLE_ID
+FROM $(ExcelsiorDB)..TBL_EIS_USER_ROLE
+
+-- TBL_KS_UserProfile Migration Script
+INSERT INTO TBL_KS_UserProfile
+SELECT userid
+	,LoginName
+	,FullName
+	,IVANSecurityLevel
+	,EnfuegoSecurityLevel
+	,ForceNewPassword
+	,Initials
+FROM $(ExcelsiorDB)..USERPROFILE
+
+-- TBL_KS_UserRight Migration Script
+SET IDENTITY_INSERT TBL_KS_UserRight ON
+
+INSERT INTO TBL_KS_UserRight (
+	UserRightID
+	,UserID
+	,RightName
+	,RightLevel
+	)
+SELECT userrightid
+	,UserID
+	,RightName
+	,RightLevel
+FROM $(ExcelsiorDB)..USERRIGHT
+
+SET IDENTITY_INSERT TBL_KS_UserRight OFF
+-- TBL_KS_RoleMaster Migration Script
+SET IDENTITY_INSERT TBL_KS_RoleMaster ON
+
+INSERT INTO TBL_KS_RoleMaster (
+	MasterRoleID
+	,RoleBriefName
+	,RoleFullName
+	,RoleDescription
+	)
+SELECT Master_Role_ID
+	,Role_Brief_Name
+	,Role_Full_Name
+	,Role_Description
+FROM $(ExcelsiorDB)..TBL_EIS_RoleMaster
+
+SET IDENTITY_INSERT TBL_KS_RoleMaster OFF
+
+-- TBL_KS_ClientRole Migration Script
+INSERT INTO TBL_KS_ClientRole
+SELECT RoleID
+	,BriefName
+	,FullName
+	,Description
+	,Master_Role_ID
+FROM $(ExcelsiorDB)..ROLE
+
+-- [TBL_KS_UserException] Migration Script
+SET IDENTITY_INSERT [TBL_KS_UserException] ON
+
+INSERT INTO [TBL_KS_UserException] (
+	UserExceptionID
+	,UserID
+	,PrivilegeID
+	,AddORSubtract
+	,StartDate
+	,EndDate
+	,CreatedDate
+	,CreatedUserID
+	,ModifiedDate
+	,ModifiedUserID
+	)
+SELECT USER_EXCEPTION_ID
+	,USER_ID
+	,PRIVILEGE_ID
+	,ADD_OR_SUBTRACT
+	,START_DATE
+	,end_date
+	,CREATED_DATE
+	,CREATED_USER_ID
+	,MODIFIED_DATE
+	,MODIFIED_USER_ID
+FROM $(ExcelsiorDB)..TBL_EIS_USER_EXCEPTION
+
+SET IDENTITY_INSERT [TBL_KS_UserException] OFF
+-- [TBL_KS_SYSCompany] Migration Script
+SET IDENTITY_INSERT [TBL_KS_SYSCompany] ON
+
+INSERT INTO [TBL_KS_SYSCompany] (
+	CompanyID
+	,CompanyName
+	)
+SELECT company_id
+	,company_name
+FROM $(ExcelsiorDB)..SYS_Company
+
+SET IDENTITY_INSERT [TBL_KS_SYSCompany] OFF
+-- [TBL_KS_SYSOffice] Migration Script
+SET IDENTITY_INSERT [TBL_KS_SYSOffice] ON
+
+INSERT INTO [TBL_KS_SYSOffice] (
+	OfficeID
+	,OfficeName
+	,CompanyID
+	,Address1
+	,Address2
+	,City
+	,STATE
+	,Zip
+	,Phone
+	,Fax
+	,DisplaySequence
+	)
+SELECT office_id
+	,office_name
+	,company_id
+	,address_1
+	,address_2
+	,city
+	,STATE
+	,zip
+	,phone
+	,fax
+	,display_sequence
+FROM $(ExcelsiorDB)..SYS_Office
+
+SET IDENTITY_INSERT [TBL_KS_SYSOffice] OFF
+
+-- [TBL_KS_Privilege] Deletion Script for the privilege name 'ModuleGiftwrapPayment_EditAssigned'
+
+DECLARE @PrivilegeID INT
+
+SELECT @PrivilegeID = PrivilegeID
+FROM TBL_KS_Privilege
+WHERE PrivilegeName = 'ModuleGiftwrapPayment_EditAssigned'
+
+DELETE
+FROM TBL_KS_RolePrivilege
+WHERE PrivilegeID = @PrivilegeID
+
+DELETE
+FROM TBL_KS_UserException
+WHERE PrivilegeID = @PrivilegeID
+
+DELETE
+FROM TBL_KS_Privilege
+WHERE PrivilegeID = @PrivilegeID
+
+
+
+

@@ -1,0 +1,119 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_UpdEntityAddress')
+    BEGIN
+        DROP PROCEDURE USP_EX_UpdEntityAddress;
+        PRINT 'DROPPED USP_EX_UpdEntityAddress';
+    END
+GO
+/*********************************************************************************************************************                                               
+* New Procedure Name  : USP_EX_UpdEntityAddress      
+* Old Procedure Name  : USP_EIX_EntityAddressUpdProc      
+  
+* Description     : Update The Address table with the edited values.        
+*      :      
+* Input Parameter : @ADDRESSID,@ADDRESSTYPE,@ADDRESS1,@ADDRESS2,@ADDRESS3,@MAILSTOP,@CITY,@STATE,@COUNTRY,@ZIPCODE,@VALIDFROMMONTH,@VALIDTOMONTH            
+*                                  
+* Modification Log                                                   
+*                                  
+* Date       Modified By  Description                                                  
+*--------------------------------------------------------------------------------------------------------------------                                               
+* 13-Oct-06  Sujatha.B  Created        
+* 07-mAR-07  Saravanan PM   Add Concurrency Check  
+* 3-Apr-14   Yugandhar  EXCREQ 5.4    
+** 22-MAY-2014 Mallikarjun EXCREQ     SP Name Renamed and Formatted  
+*********************************************************************************************************************/                
+    
+    
+CREATE PROCEDURE USP_EX_UpdEntityAddress     
+(    
+ @ADDRESSID INT,    
+ @ADDRESSTYPE VARCHAR(20),    
+ @ADDRESS1 VARCHAR(50),    
+ @ADDRESS2 VARCHAR(50),    
+ @ADDRESS3 VARCHAR(50),    
+ @MAILSTOP VARCHAR(20),    
+ @CITY VARCHAR(30),    
+ @STATE VARCHAR(2),    
+ @COUNTRY VARCHAR(25),    
+ @ZIPCODE VARCHAR(10),    
+ @VALIDFROMMONTH INT,    
+ @VALIDTOMONTH INT,    
+ @VALIDFROMDAY INT,    
+ @VALIDTODAY INT,        
+    -- @MODIFIED_DATE DATETIME,    
+ @MODIFIED_USER_ID INT    
+     
+)    
+AS    
+BEGIN  
+	BEGIN TRY  
+		BEGIN TRANSACTION
+     
+ DECLARE @STATUSFLAG BIT      
+      
+ EXEC USP_EX_GetDeleteStatus     
+   @TABLE_NAME  = 'TBL_EIS_EX_ADDRESS_SUPPLEMENT',    
+   @FIELD_NAME  = 'ADDRESSID',    
+   @FIELD_VALUE = @ADDRESSID,    
+   @STATUS   = @STATUSFLAG OUTPUT    
+ IF(@STATUSFLAG = 1)    
+  RAISERROR  50001 'RECORD DELETED'     
+ ELSE    
+ BEGIN    
+    
+  IF(RTRIM(LTRIM(@ADDRESS2))='')    
+   SET @ADDRESS2=NULL    
+  IF(RTRIM(LTRIM(@ADDRESS3))='')    
+   SET @ADDRESS3=NULL    
+  IF(RTRIM(LTRIM(@MAILSTOP))='')    
+   SET @MAILSTOP=NULL    
+  IF(RTRIM(LTRIM(@STATE))='')    
+   SET @STATE=NULL    
+  IF(RTRIM(LTRIM(@ZIPCODE))='')    
+   SET @ZIPCODE=NULL    
+    
+  IF (@@error!=0)    
+  BEGIN    
+   RAISERROR  10001 'USP_EX_UpdEntityAddress: Cannot update  in Address'    
+   ROLLBACK TRAN    
+   RETURN(-1)    
+         
+  END    
+ END    
+ COMMIT TRAN   
+ END TRY
+ 
+ BEGIN CATCH
+            ROLLBACK TRAN
+            
+            DECLARE @ErrorMessage NVARCHAR(4000);
+            DECLARE @ErrorSeverity INT;
+            DECLARE @ErrorState INT;
+                                
+            SELECT @ErrorMessage = ERROR_MESSAGE()
+                  ,@ErrorSeverity = ERROR_SEVERITY()
+                  ,@ErrorState = ERROR_STATE();
+ 
+            RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );              
+                  
+      END CATCH 
+    
+END    
+    
+    
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_UpdEntityAddress') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_UpdEntityAddress';
+	END  

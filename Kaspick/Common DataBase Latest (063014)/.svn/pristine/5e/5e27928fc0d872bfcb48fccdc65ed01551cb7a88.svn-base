@@ -1,0 +1,1262 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveScheduleBeneSchedule]    Script Date: 09/20/2013 20:01:08 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveScheduleBeneSchedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveScheduleBeneSchedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveScheduleBeneSchedule]    Script Date: 09/20/2013 20:01:08 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_PP_SaveScheduleBeneSchedule      
+** Short Desc: Put in Short Description      
+**      
+** Full Description      
+**        More detailed description if necessary      
+**      
+** Sample Call 
+
+DECLARE @XMLCustomerAccountNumber XML
+DECLARE @XMLAccountPayoutSchedule XML
+DECLARE @XMLAnnualAccPayoutInfo XML
+DECLARE @returnstatus INT
+
+SET @XMLCustomerAccountNumber = '<AccountStatusCollection>
+  <InsertList>
+    <AccountStatus CustomerAccountNumber="TUASH"  />
+  </InsertList>
+  <UpdateList></UpdateList>
+  <DeleteList></DeleteList>
+</AccountStatusCollection>'
+
+SET @XMLAccountPayoutSchedule = '<AccountPayoutScheduleCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><BenPayoutScheduleCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></BenPayoutScheduleCollection></AccountPayoutScheduleCollection>'
+
+SET @XMLAnnualAccPayoutInfo = '<AnnualAccountPayoutInfoCollection><InsertList></InsertList><UpdateList><AnnualAccountPayoutInfo CustomerAccountNumber ="TUASH"  Deficit="0"  EstAnnualPayout="24629.14"  EstMethod="Override"  FMV="558800.67"  FMVAsOfDate="1/1/2014 12:00:00 AM"  EarlyTradedPayment="0"  LateTradedPayment="0"  IncomeFees="0"  OtherValuationAdjustment="0"  OutstandingBenPayments="365.27"  PaymentStagingID="0"  PayoutYear="2014"  PrevOverPayment="0"  ProratedGiftValuation="0"  Valuation="558635.4"  Yield="0"  YTDNetIncome="0"  YTDPayment="0"  PrevTaxYear="0"  RescheduleDate=""  Q5Amount="0"  RecordVersion="0x000000000161A238"  /></UpdateList><DeleteList></DeleteList></AnnualAccountPayoutInfoCollection>'
+
+EXEC USP_PP_SaveDisbursementSchedule @XMLCustomerAccountNumber
+	,@XMLAccountPayoutSchedule
+	,@XMLAnnualAccPayoutInfo
+	,1
+	,@returnstatus OUTPUT
+	,'BeneScheduleUI'
+	,'UPDATE'
+  Select @returnstatus   
+    
+**  
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Debajyoti Kalita    
+** Company   : Kaspick & Company    
+** Project   : BackOffice Integration    
+** Created DT: 23-Sep-2013      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 02/17/2014  Salih			   Q5 Valuation- Outstanding BenPayments changes      
+** 06/17/2014  Anand			   Corrected join condition
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+** 26-Jun-14   Saravanan		   Fixed ET16358 - Account Payout - newly added payment status has updated as NULL
+** 14-Jul-14   Saravanan		   Fixed ET 16445 - Modified the RecordStatus update query as per excelsior version. RecordVersion not matched or records are not available then return -2
+** 04-Aug-14   Saravanan		   Fixed ET16626 - Added Additional condition to validate Record version 									
+** 09/03/2014  Saravanan		  Implemented Valuation CR #16798 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+********************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveScheduleBeneSchedule]
+	--Input Parameters    
+	@XMLCustomerAccountNumber XML
+	,@XMLAccountPayoutSchedule XML
+	,@XMLAnnualAccPayoutInfo XML
+	,@UserID INT
+	,@ReturnStatus INT
+OUTPUT
+	,@SourceUI VARCHAR(50) = 'BeneScheduleUI' AS
+
+BEGIN
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+	--  Variable Declarations  -- 
+	--DECLARE @ContactRoleCode INT
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#TmpCustomerAccountNumber]') IS NOT NULL
+		DROP TABLE [#TmpCustomerAccountNumber]
+
+	IF OBJECT_ID('tempdb..[#AnnualAccountPayoutInfo]') IS NOT NULL
+		DROP TABLE [#AnnualAccountPayoutInfo]
+
+	IF OBJECT_ID('tempdb..[#AnnualAccountPayoutInfoUpdateList]') IS NOT NULL
+		DROP TABLE [#AnnualAccountPayoutInfoUpdateList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleInsertList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleInsertList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleUpdateList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleUpdateList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleDeleteList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleDeleteList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleInsertList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleInsertList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleUpdateList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleUpdateList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleDeleteList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleDeleteList]
+
+	IF OBJECT_ID('tempdb..[#TmpBeneficiaryLeadTime]') IS NOT NULL
+		DROP TABLE [#TmpBeneficiaryLeadTime]
+
+	--  Variable Data Assignment  --   
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	--SET @ContactRoleCode = 21 --'Beneficiary'
+
+	SET @ReturnStatus = 0
+
+	-- Body of procedure  --      
+	CREATE TABLE #TmpCustomerAccountNumber (
+		ID INT Identity(1, 1)
+		,CustomerAccountNumber VARCHAR(14)
+		)
+
+	CREATE TABLE #AnnualAccountPayoutInfo (
+		CustomerAccountNumber VARCHAR(14)
+		,PayoutYear SMALLINT
+		,Valuation MONEY
+		,ProratedGiftValuation MONEY
+		,Yield FLOAT
+		,IncomeFees FLOAT
+		,EstAnnualPayout MONEY
+		,EstMethod VARCHAR(10)
+		,YTDPayment MONEY
+		,PrevOverPayment MONEY
+		,Deficit MONEY
+		,YTDNetIncome MONEY
+		,FMV MONEY
+		-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+		,FMVAsOfDate DATETIME
+		,EarlyTradedPayment MONEY
+		,LateTradedPayment MONEY
+		,OutstandingBenPayments MONEY
+		,OtherValuationAdjustment MONEY
+		,PaymentStagingID INT
+		,RescheduleDate DATETIME
+		,PrevTaxYear SMALLINT
+		,Q5Amount MONEY
+		)
+
+	CREATE TABLE #AnnualAccountPayoutInfoUpdateList (
+		CustomerAccountNumber VARCHAR(14)
+		,PayoutYear SMALLINT
+		,Valuation MONEY
+		,ProratedGiftValuation MONEY
+		,Yield FLOAT
+		,IncomeFees FLOAT
+		,EstAnnualPayout MONEY
+		,EstMethod VARCHAR(10)
+		,YTDPayment MONEY
+		,PrevOverPayment MONEY
+		,Deficit MONEY
+		,YTDNetIncome MONEY
+		,FMV MONEY
+		-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+		,FMVAsOfDate DATETIME
+		,EarlyTradedPayment MONEY
+		,LateTradedPayment MONEY
+		,OutstandingBenPayments MONEY
+		,OtherValuationAdjustment MONEY
+		,PaymentStagingID INT
+		,RescheduleDate DATETIME
+		,PrevTaxYear SMALLINT
+		,Q5Amount MONEY
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	CREATE TABLE #AccountPayoutScheduleInsertList (
+		APScheduleID INT
+		,ManagerCode VARCHAR(4)
+		,CustomerAccountNumber VARCHAR(14)
+		,InstructionID INT
+		,TaxYear SMALLINT
+		,PaymentDate DATETIME
+		,ScheduledAmount MONEY
+		,PaymentBatch INT
+		)
+
+	CREATE TABLE #AccountPayoutScheduleUpdateList (
+		APScheduleID INT
+		,ManagerCode VARCHAR(4)
+		,CustomerAccountNumber VARCHAR(14)
+		,InstructionID INT
+		,TaxYear SMALLINT
+		,PaymentDate DATETIME
+		,ScheduledAmount MONEY
+		,PaymentBatch INT
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	CREATE TABLE #AccountPayoutScheduleDeleteList (
+		APScheduleID INT
+		,ManagerCode VARCHAR(4)
+		,CustomerAccountNumber VARCHAR(14)
+		,InstructionID INT
+		,TaxYear SMALLINT
+		,PaymentDate DATETIME
+		,ScheduledAmount MONEY
+		,PaymentBatch INT
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	CREATE TABLE #BenPayoutScheduleInsertList (
+		BPScheduleID INT
+		,APScheduleID INT
+		,BeneficiaryDistributionID INT
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,ContactRoleCode INT
+		,PaymentDate DATETIME
+		,TaxYear SMALLINT
+		,ScheduledAmount MONEY
+		,PaymentID INT
+		,IsBackBuilt BIT
+		,EPD DATETIME
+		,STATUS VARCHAR(100)
+		,StatusID NVARCHAR(100)
+		,Memo VARCHAR(100)
+		,Comments VARCHAR(1000)
+		)
+
+	CREATE TABLE #BenPayoutScheduleUpdateList (
+		BPScheduleID INT
+		,APScheduleID INT
+		,BeneficiaryDistributionID INT
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,ContactRoleCode INT
+		,PaymentDate DATETIME
+		,TaxYear INT
+		,ScheduledAmount MONEY
+		,PaymentID INT
+		,IsBackBuilt BIT
+		,EPD DATETIME
+		,STATUS VARCHAR(50)
+		,StatusID NVARCHAR(100)
+		,Memo VARCHAR(1000)
+		,Comments VARCHAR(1000)
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	CREATE TABLE #BenPayoutScheduleDeleteList (
+		BPScheduleID INT
+		,APScheduleID INT
+		,BeneficiaryDistributionID INT
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,ContactRoleCode INT
+		,PaymentDate DATETIME
+		,TaxYear SMALLINT
+		,ScheduledAmount MONEY
+		,PaymentID INT
+		,IsBackBuilt BIT
+		,EPD DATETIME
+		,STATUS VARCHAR(100)
+		,StatusID NVARCHAR(100)
+		,Memo VARCHAR(100)
+		,Comments VARCHAR(1000)
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	------Store lead time for all beneficiaries for which payments are scheduled   
+	CREATE TABLE #TmpBeneficiaryLeadTime (
+		CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		--,ContactRoleCode INT
+		,LeadTime INT
+		,BeneficiaryDistributionID INT
+		)
+
+	INSERT INTO #TmpBeneficiaryLeadTime (
+		CustomerAccountNumber
+		,ContactID
+		--,ContactRoleCode
+		,LeadTime
+		,BeneficiaryDistributionID 
+		)
+	EXEC USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML @XMLAccountPayoutSchedule
+
+	-------Store XML Schedule input data into Temp tables
+	INSERT INTO #TmpCustomerAccountNumber (CustomerAccountNumber)
+	SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @XMLCustomerAccountNumber.nodes('//AccountStatusCollection/InsertList/AccountStatus') AS XMLDATA(item)
+
+	INSERT INTO #AnnualAccountPayoutInfo (
+		CustomerAccountNumber
+		,PayoutYear
+		,Valuation
+		,ProratedGiftValuation
+		,Yield
+		,IncomeFees
+		,EstAnnualPayout
+		,EstMethod
+		,YTDPayment
+		,PrevOverPayment
+		,Deficit
+		,YTDNetIncome
+		,FMV
+		-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+		,FMVAsOfDate
+		,EarlyTradedPayment
+		,LateTradedPayment
+		,OutstandingBenPayments
+		,OtherValuationAdjustment
+		,PaymentStagingID
+		,RescheduleDate
+		,PrevTaxYear
+		,Q5Amount
+		)
+	SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@PayoutYear[1]', 'INT') AS PayoutYear
+		,XMLDATA.item.value('@Valuation[1]', 'money') AS Valuation
+		,XMLDATA.item.value('@ProratedGiftValuation[1]', 'money') AS ProratedGiftValuation
+		,XMLDATA.item.value('@Yield[1]', 'float') AS Yield
+		,XMLDATA.item.value('@IncomeFees[1]', 'float') AS IncomeFees
+		,XMLDATA.item.value('@EstAnnualPayout[1]', 'money') AS EstAnnualPayout
+		,XMLDATA.item.value('@EstMethod[1]', 'varchar(10)') AS EstMethod
+		,XMLDATA.item.value('@YTDPayment[1]', 'money') AS YTDPayment
+		,XMLDATA.item.value('@PrevOverPayment[1]', 'money') AS PrevOverPayment
+		,XMLDATA.item.value('@Deficit[1]', 'money') AS Deficit
+		,XMLDATA.item.value('@YTDNetIncome[1]', 'money') AS YTDNetIncome
+		,XMLDATA.item.value('@FMV[1]', 'money') AS FMV
+		,XMLDATA.item.value('@FMVAsOfDate[1]', 'DATETIME') AS FMVAsOfDate
+		,XMLDATA.item.value('@EarlyTradedPayment[1]', 'money') AS EarlyTradedPayment
+		,XMLDATA.item.value('@LateTradedPayment[1]', 'money') AS LateTradedPayment
+		,XMLDATA.item.value('@OutstandingBenPayments[1]', 'money') AS OutstandingBenPayments
+		,XMLDATA.item.value('@OtherValuationAdjustment[1]', 'money') AS OtherValuationAdjustment
+		,XMLDATA.item.value('@PaymentStagingID[1]', 'int') AS PaymentStagingID
+		,XMLDATA.item.value('@RescheduleDate[1]', 'Datetime') AS RescheduleDate
+		,XMLDATA.item.value('@PrevTaxYear[1]', 'INT') AS PrevTaxYear
+		,XMLDATA.item.value('@Q5Amount[1]', 'float') AS Q5Amount
+	FROM @XMLAnnualAccPayoutInfo.nodes('//AnnualAccountPayoutInfoCollection/InsertList/AnnualAccountPayoutInfo') AS XMLDATA(item)
+
+	INSERT INTO #AnnualAccountPayoutInfoUpdateList (
+		CustomerAccountNumber
+		,PayoutYear
+		,Valuation
+		,ProratedGiftValuation
+		,Yield
+		,IncomeFees
+		,EstAnnualPayout
+		,EstMethod
+		,YTDPayment
+		,PrevOverPayment
+		,Deficit
+		,YTDNetIncome
+		,FMV
+		-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+		,FMVAsOfDate
+		,EarlyTradedPayment
+		,LateTradedPayment
+		,OutstandingBenPayments
+		,OtherValuationAdjustment
+		,PaymentStagingID
+		,RescheduleDate
+		,PrevTaxYear
+		,Q5Amount
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@PayoutYear[1]', 'smallint') AS PayoutYear
+		,XMLDATA.item.value('@Valuation[1]', 'money') AS Valuation
+		,XMLDATA.item.value('@ProratedGiftValuation[1]', 'money') AS ProratedGiftValuation
+		,XMLDATA.item.value('@Yield[1]', 'float') AS Yield
+		,XMLDATA.item.value('@IncomeFees[1]', 'float') AS IncomeFees
+		,XMLDATA.item.value('@EstAnnualPayout[1]', 'money') AS EstAnnualPayout
+		,XMLDATA.item.value('@EstMethod[1]', 'varchar(10)') AS EstMethod
+		,XMLDATA.item.value('@YTDPayment[1]', 'money') AS YTDPayment
+		,XMLDATA.item.value('@PrevOverPayment[1]', 'money') AS PrevOverPayment
+		,XMLDATA.item.value('@Deficit[1]', 'money') AS Deficit
+		,XMLDATA.item.value('@YTDNetIncome[1]', 'money') AS YTDNetIncome
+		,XMLDATA.item.value('@FMV[1]', 'money') AS FMV
+		,XMLDATA.item.value('@FMVAsOfDate[1]', 'DATETIME') AS FMVAsOfDate
+		,XMLDATA.item.value('@EarlyTradedPayment[1]', 'money') AS EarlyTradedPayment
+		,XMLDATA.item.value('@LateTradedPayment[1]', 'money') AS LateTradedPayment
+		,XMLDATA.item.value('@OutstandingBenPayments[1]', 'money') AS OutstandingBenPayments
+		,XMLDATA.item.value('@OtherValuationAdjustment[1]', 'money') AS OtherValuationAdjustment
+		,XMLDATA.item.value('@PaymentStagingID[1]', 'int') AS PaymentStagingID
+		,XMLDATA.item.value('@RescheduleDate[1]', 'Datetime') AS RescheduleDate
+		,XMLDATA.item.value('@PrevTaxYear[1]', 'smallint') AS PrevTaxYear
+		,XMLDATA.item.value('@Q5Amount[1]', 'float') AS Q5Amount
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLAnnualAccPayoutInfo.nodes('//AnnualAccountPayoutInfoCollection/UpdateList/AnnualAccountPayoutInfo') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #AnnualAccountPayoutInfoUpdateList
+	SET ReturnStatus = - 2
+		,@returnstatus = - 2
+	FROM #AnnualAccountPayoutInfoUpdateList TmpAccntPay
+	INNER JOIN TBL_PP_AnnualAccountPayoutInfo AccntPay
+		ON AccntPay.CustomerAccountNumber = TmpAccntPay.CustomerAccountNumber
+			AND AccntPay.PayoutYear = TmpAccntPay.PayoutYear --Anand:6-17-2014: updated the join condition
+	WHERE CONVERT(VARCHAR(20), CAST(AccntPay.RecordVersion AS VARBINARY(8)), 1) <> TmpAccntPay.RecordVersion
+
+	INSERT INTO #AccountPayoutScheduleInsertList (
+		APScheduleID
+		,ManagerCode
+		,CustomerAccountNumber
+		,InstructionID
+		,TaxYear
+		,PaymentDate
+		,ScheduledAmount
+		,PaymentBatch
+		)
+	SELECT XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@InstructionID[1]', 'int') AS InstructionID
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentBatch
+	FROM @XMLAccountPayoutSchedule.nodes('//AccountPayoutScheduleCollection/InsertList/AccountPayoutSchedule') AS XMLDATA(item)
+
+	INSERT INTO #AccountPayoutScheduleUpdateList (
+		APScheduleID
+		,ManagerCode
+		,CustomerAccountNumber
+		,InstructionID
+		,TaxYear
+		,PaymentDate
+		,ScheduledAmount
+		,PaymentBatch
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@InstructionID[1]', 'int') AS InstructionID
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentBatch
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLAccountPayoutSchedule.nodes('//AccountPayoutScheduleCollection/UpdateList/AccountPayoutSchedule') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #AccountPayoutScheduleUpdateList
+	SET ReturnStatus = - 2
+		,@returnstatus = - 2
+	FROM #AccountPayoutScheduleUpdateList TmpAccntPay
+	LEFT OUTER JOIN TBL_PP_AccountPayoutSchedule AccntPay
+		ON AccntPay.APScheduleID = TmpAccntPay.APScheduleID
+			AND AccntPay.CustomerAccountNumber = TmpAccntPay.CustomerAccountNumber
+			AND AccntPay.TaxYear = TmpAccntPay.TaxYear
+	WHERE CONVERT(VARCHAR(20), CAST(AccntPay.RecordVersion AS VARBINARY(8)), 1) <> TmpAccntPay.RecordVersion
+		OR (AccntPay.APScheduleID IS NULL AND TmpAccntPay.RecordVersion <> '')
+
+	INSERT INTO #AccountPayoutScheduleDeleteList (
+		APScheduleID
+		,ManagerCode
+		,CustomerAccountNumber
+		,InstructionID
+		,TaxYear
+		,PaymentDate
+		,ScheduledAmount
+		,PaymentBatch
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@InstructionID[1]', 'int') AS InstructionID
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentBatch
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLAccountPayoutSchedule.nodes('//AccountPayoutScheduleCollection/DeleteList/AccountPayoutSchedule') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #AccountPayoutScheduleDeleteList
+	SET ReturnStatus = - 2
+		,@returnstatus = - 2
+	FROM #AccountPayoutScheduleUpdateList TmpAccntPay
+	LEFT OUTER JOIN TBL_PP_AccountPayoutSchedule AccntPay
+		ON AccntPay.APScheduleID = TmpAccntPay.APScheduleID
+			AND AccntPay.CustomerAccountNumber = TmpAccntPay.CustomerAccountNumber
+			AND AccntPay.TaxYear = TmpAccntPay.TaxYear
+	WHERE CONVERT(VARCHAR(20), CAST(AccntPay.RecordVersion AS VARBINARY(8)), 1) <> TmpAccntPay.RecordVersion
+		OR (AccntPay.APScheduleID IS NULL AND TmpAccntPay.RecordVersion <> '')
+
+	INSERT INTO #BenPayoutScheduleInsertList (
+		BPScheduleID
+		,APScheduleID
+		,BeneficiaryDistributionID
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,PaymentDate
+		,TaxYear
+		,ScheduledAmount
+		,PaymentID
+		,IsBackBuilt
+		,EPD
+		,[STATUS] --Fixed ET16358
+		,Memo
+		,Comments
+		)
+	SELECT XMLDATA.item.value('@BPScheduleID[1]', 'int') AS BPScheduleID
+		,XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@BeneficiaryDistributionID[1]', 'int') AS BeneficiaryDistributionID
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+		,0 AS ContactRoleCode
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentID
+		,XMLDATA.item.value('@IsBackBuilt[1]', 'bit') AS IsBackBuilt
+		,NULL AS EPD
+		,'Unposted' AS [STATUS] --Fixed ET16358
+		--,XMLDATA.item.value('@Memo[1]', 'Varchar(100)') AS Memo
+		--,XMLDATA.item.value('@Comments[1]', 'Varchar(1000)') AS Comments
+		,cast(XMLDATA.item.value('@Memo[1]', 'varbinary(max)') AS VARCHAR(100)) AS Memo
+		,cast(XMLDATA.item.value('@Comments[1]', 'varbinary(max)') AS VARCHAR(1000)) AS Comments
+	FROM @XMLAccountPayoutSchedule.nodes('//InsertList/BenPayoutSchedule') AS XMLDATA(item)
+	
+	
+	UPDATE BenPayoutSch
+	SET ContactRoleCode = CASE 
+			WHEN BeneDist.ContactID = BenPayoutSch.ContactID
+				THEN 21
+			ELSE 10
+			END
+	FROM #BenPayoutScheduleInsertList BenPayoutSch
+	INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+		ON BeneDist.BeneficiaryDistributionID = BenPayoutSch.BeneficiaryDistributionID
+
+	INSERT INTO #BenPayoutScheduleUpdateList (
+		BPScheduleID
+		,APScheduleID
+		,BeneficiaryDistributionID
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,PaymentDate
+		,TaxYear
+		,ScheduledAmount
+		,PaymentID
+		,IsBackBuilt
+		,EPD
+		,[STATUS] --Fixed ET16358
+		,Memo
+		,Comments
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@BPScheduleID[1]', 'int') AS BPScheduleID
+		,XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@BeneficiaryDistributionID[1]', 'int') AS BeneficiaryDistributionID
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+		,0 AS ContactRoleCode
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentID
+		,XMLDATA.item.value('@IsBackBuilt[1]', 'bit') AS IsBackBuilt
+		,NULL AS EPD
+		,'Unposted' AS [STATUS] --Fixed ET16358
+		,cast(XMLDATA.item.value('@Memo[1]', 'varbinary(max)') AS VARCHAR(100)) AS Memo
+		,cast(XMLDATA.item.value('@Comments[1]', 'varbinary(max)') AS VARCHAR(1000)) AS Comments
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLAccountPayoutSchedule.nodes('//UpdateList/BenPayoutSchedule') AS XMLDATA(item)
+	
+	
+	
+	UPDATE BenPayoutSch
+	SET ContactRoleCode = CASE 
+			WHEN BeneDist.ContactID = BenPayoutSch.ContactID
+				THEN 21
+			ELSE 10
+			END
+	FROM #BenPayoutScheduleUpdateList BenPayoutSch
+	INNER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+		ON BeneDist.BeneficiaryDistributionID = BenPayoutSch.BeneficiaryDistributionID
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #BenPayoutScheduleUpdateList
+	SET ReturnStatus = - 2
+		,@returnstatus = - 2
+	FROM #BenPayoutScheduleUpdateList TmpBenPay
+	LEFT OUTER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpBenPay.BPScheduleID
+			AND BenPay.ContactID = TmpBenPay.ContactID
+			AND BenPay.TaxYear = TmpBenPay.TaxYear
+	WHERE CONVERT(VARCHAR(20), CAST(BenPay.RecordVersion AS VARBINARY(8)), 1) <> TmpBenPay.RecordVersion
+		OR (BenPay.BPScheduleID IS NULL AND TmpBenPay.RecordVersion <> '')
+
+	INSERT INTO #BenPayoutScheduleDeleteList (
+		BPScheduleID
+		,APScheduleID
+		,BeneficiaryDistributionID
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,PaymentDate
+		,TaxYear
+		,ScheduledAmount
+		,PaymentID
+		,IsBackBuilt
+		,EPD
+		,[STATUS] --Fixed ET16358
+		,Memo
+		,Comments
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@BPScheduleID[1]', 'int') AS BPScheduleID
+		,XMLDATA.item.value('@APScheduleID[1]', 'int') AS APScheduleID
+		,XMLDATA.item.value('@BeneficiaryDistributionID[1]', 'int') AS BeneficiaryDistributionID
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+		,0 AS ContactRoleCode
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@ScheduledAmount[1]', 'money') AS ScheduledAmount
+		,NULL AS PaymentID
+		,XMLDATA.item.value('@IsBackBuilt[1]', 'bit') AS IsBackBuilt
+		,NULL AS EPD
+		,'Unposted' AS [STATUS] --Fixed ET16358
+		,cast(XMLDATA.item.value('@Memo[1]', 'varbinary(max)') AS VARCHAR(100)) AS Memo
+		,cast(XMLDATA.item.value('@Comments[1]', 'varbinary(max)') AS VARCHAR(1000)) AS Comments
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @XMLAccountPayoutSchedule.nodes('//DeleteList/BenPayoutSchedule') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE #BenPayoutScheduleDeleteList
+	SET ReturnStatus = - 2
+		,@returnstatus = - 2
+	FROM #BenPayoutScheduleDeleteList TmpBenPay
+	LEFT OUTER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpBenPay.BPScheduleID
+			AND BenPay.ContactID = TmpBenPay.ContactID
+			AND BenPay.TaxYear = TmpBenPay.TaxYear
+	WHERE CONVERT(VARCHAR(20), CAST(BenPay.RecordVersion AS VARBINARY(8)), 1) <> TmpBenPay.RecordVersion
+		OR (BenPay.BPScheduleID IS NULL AND TmpBenPay.RecordVersion <> '')
+
+	IF @ReturnStatus <> - 2
+	BEGIN
+		---If CAN exists then Update existing  records in  TBL_PP_AnnualAccountPayoutInfo          
+		UPDATE TBL_PP_AnnualAccountPayoutInfo
+		SET Valuation = TmpAccnyPayout.Valuation
+			,ProratedGiftValuation = TmpAccnyPayout.ProratedGiftValuation
+			,Yield = TmpAccnyPayout.Yield
+			,IncomeFees = TmpAccnyPayout.IncomeFees
+			,EstAnnualPayout = TmpAccnyPayout.EstAnnualPayout
+			,EstMethod = TmpAccnyPayout.EstMethod
+			,PrevOverPayment = TmpAccnyPayout.PrevOverPayment
+			,Deficit = TmpAccnyPayout.Deficit
+			,FMV = TmpAccnyPayout.FMV
+			-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+			,FMVAsOfDate = TmpAccnyPayout.FMVAsOfDate
+			,EarlyTradedPayment = TmpAccnyPayout.EarlyTradedPayment
+			,LateTradedPayment = TmpAccnyPayout.LateTradedPayment
+			,OutstandingBenPayments = TmpAccnyPayout.OutstandingBenPayments
+			,
+			--  PaymentStagingID = TmpAccnyPayout.PaymentStagingID,            
+			OtherValuationAdjustment = TmpAccnyPayout.OtherValuationAdjustment
+			,Modifieddate = GETDATE()
+			,ModifiedBy = @UserID
+		FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+		INNER JOIN #AnnualAccountPayoutInfo TmpAccnyPayout
+			ON TmpAccnyPayout.CustomerAccountNumber = AccntPayout.CustomerAccountNumber
+				AND TmpAccnyPayout.PayoutYear = AccntPayout.PayoutYear
+
+		---If it is a new record,then Insert record into TBL_PP_AnnualAccountPayoutInfo      
+		INSERT INTO TBL_PP_AnnualAccountPayoutInfo (
+			CustomerAccountNumber
+			,PayoutYear
+			,Valuation
+			,ProratedGiftValuation
+			,Yield
+			,IncomeFees
+			,EstAnnualPayout
+			,EstMethod
+			,PrevOverPayment
+			,Deficit
+			,FMV
+			,FMVAsOfDate
+			,EarlyTradedPayment
+			,LateTradedPayment
+			,OutstandingBenPayments
+			,PaymentStagingID
+			,OtherValuationAdjustment
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT TmpAccnyPayout.CustomerAccountNumber
+			,TmpAccnyPayout.PayoutYear
+			,TmpAccnyPayout.Valuation
+			,TmpAccnyPayout.ProratedGiftValuation
+			,TmpAccnyPayout.Yield
+			,TmpAccnyPayout.IncomeFees
+			,TmpAccnyPayout.EstAnnualPayout
+			,TmpAccnyPayout.EstMethod
+			,TmpAccnyPayout.PrevOverPayment
+			,TmpAccnyPayout.Deficit
+			,TmpAccnyPayout.FMV
+			,TmpAccnyPayout.FMVAsOfDate
+			,TmpAccnyPayout.EarlyTradedPayment
+			,TmpAccnyPayout.LateTradedPayment
+			,TmpAccnyPayout.OutstandingBenPayments
+			,NULL AS PaymentStagingID
+			,--TmpAccnyPayout.PaymentStagingID,            
+			TmpAccnyPayout.OtherValuationAdjustment
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #AnnualAccountPayoutInfo TmpAccnyPayout
+		WHERE (
+				LTRIM(RTRIM(TmpAccnyPayout.CustomerAccountNumber)) + '-' + LTRIM(RTRIM(CAST(TmpAccnyPayout.PayoutYear AS VARCHAR))) NOT IN (
+					SELECT LTRIM(RTRIM(AccntPayout.CustomerAccountNumber)) + '-' + LTRIM(RTRIM(CAST(AccntPayout.PayoutYear AS VARCHAR)))
+					FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+					)
+				)
+
+		-----Update records in TBL_PP_AnnualAccountPayoutInfo from  #AnnualAccountPayoutInfoUpdateList       
+		UPDATE TBL_PP_AnnualAccountPayoutInfo
+		SET Valuation = TmpAccntUpd.Valuation
+			,ProratedGiftValuation = TmpAccntUpd.ProratedGiftValuation
+			,Yield = TmpAccntUpd.Yield
+			,IncomeFees = TmpAccntUpd.IncomeFees
+			,EstAnnualPayout = TmpAccntUpd.EstAnnualPayout
+			,EstMethod = TmpAccntUpd.EstMethod
+			,PrevOverPayment = TmpAccntUpd.PrevOverPayment
+			,Deficit = TmpAccntUpd.Deficit
+			,FMV = TmpAccntUpd.FMV
+			-- 02/17/2014  Salih:   Q5 Valuation- Outstanding BenPayments changes
+			,FMVAsOfDate = TmpAccntUpd.FMVAsOfDate
+			,EarlyTradedPayment = TmpAccntUpd.EarlyTradedPayment
+			,LateTradedPayment = TmpAccntUpd.LateTradedPayment
+			,OutstandingBenPayments = TmpAccntUpd.OutstandingBenPayments
+			,OtherValuationAdjustment = TmpAccntUpd.OtherValuationAdjustment
+			,Modifieddate = GETDATE()
+			,ModifiedBy = @UserID
+		FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+		INNER JOIN #AnnualAccountPayoutInfoUpdateList TmpAccntUpd
+			ON TmpAccntUpd.CustomerAccountNumber = AccntPayout.CustomerAccountNumber
+				AND TmpAccntUpd.PayoutYear = AccntPayout.PayoutYear
+
+		INSERT INTO TBL_PP_AnnualAccountPayoutInfo (
+			CustomerAccountNumber
+			,PayoutYear
+			,Valuation
+			,ProratedGiftValuation
+			,Yield
+			,IncomeFees
+			,EstAnnualPayout
+			,EstMethod
+			,PrevOverPayment
+			,Deficit
+			,FMV
+			,FMVAsOfDate
+			,EarlyTradedPayment
+			,LateTradedPayment
+			,OutstandingBenPayments
+			,PaymentStagingID
+			,OtherValuationAdjustment
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT TmpAccntUpd.CustomerAccountNumber
+			,TmpAccntUpd.PayoutYear
+			,TmpAccntUpd.Valuation
+			,TmpAccntUpd.ProratedGiftValuation
+			,TmpAccntUpd.Yield
+			,TmpAccntUpd.IncomeFees
+			,TmpAccntUpd.EstAnnualPayout
+			,TmpAccntUpd.EstMethod
+			,TmpAccntUpd.PrevOverPayment
+			,TmpAccntUpd.Deficit
+			,TmpAccntUpd.FMV
+			,TmpAccntUpd.FMVAsOfDate
+			,TmpAccntUpd.EarlyTradedPayment
+			,TmpAccntUpd.LateTradedPayment
+			,TmpAccntUpd.OutstandingBenPayments
+			,NULL AS PaymentStagingID
+			,---TmpAccntUpd.PaymentStagingID,            
+			TmpAccntUpd.OtherValuationAdjustment
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #AnnualAccountPayoutInfoUpdateList TmpAccntUpd
+		WHERE (
+				LTRIM(RTRIM(TmpAccntUpd.CustomerAccountNumber)) + '-' + LTRIM(RTRIM(CAST(TmpAccntUpd.PayoutYear AS VARCHAR))) NOT IN (
+					SELECT LTRIM(RTRIM(AccntPay.CustomerAccountNumber)) + '-' + LTRIM(RTRIM(CAST(AccntPay.PayoutYear AS VARCHAR)))
+					FROM TBL_PP_AnnualAccountPayoutInfo AccntPay
+					)
+				)
+
+		---deletelist BenPayoutSchedule          
+		DELETE
+		FROM TBL_PP_BeneficiaryPayoutSchedule
+		WHERE BPScheduleID IN (
+				SELECT TmpBenPay.BPScheduleID
+				FROM #BenPayoutScheduleDeleteList TmpBenPay
+				)
+
+		---deletelist- AccountPayoutSchedule          
+		DELETE
+		FROM TBL_PP_AccountPayoutSchedule
+		WHERE APScheduleID IN (
+				SELECT TmpAccntPayDelete.APScheduleID
+				FROM #AccountPayoutScheduleDeleteList TmpAccntPayDelete
+				)
+
+		----Update List- TBL_PP_AccountPayoutSchedule       
+		UPDATE TBL_PP_AccountPayoutSchedule
+		SET PaymentDate = TmpAccntPayUpd.PaymentDate
+			,ScheduledAmount = TmpAccntPayUpd.ScheduledAmount
+			,ModifiedBy = @UserID
+			,ModifiedDate = GETDATE()
+		FROM TBL_PP_AccountPayoutSchedule AccntPay
+		INNER JOIN #AccountPayoutScheduleUpdateList TmpAccntPayUpd
+			ON AccntPay.APScheduleID = TmpAccntPayUpd.APScheduleID
+				AND AccntPay.TaxYear = TmpAccntPayUpd.TaxYear
+
+		----Update List- TBL_PP_BeneficiaryPayoutSchedule 
+		UPDATE TBL_PP_BeneficiaryPayoutSchedule
+		SET PaymentDate = TmpBenPayUpd.PaymentDate
+			,ScheduledAmount = TmpBenPayUpd.ScheduledAmount
+			,IsBackBuilt = ISNULL(TmpBenPayUpd.IsBackBuilt, 0)
+			,EPD = dateadd(day, (ISNULL(LeadTime, 0) * - 1) - dbo.Fn_GetHoliday(TmpBenPayUpd.PaymentDate - ISNULL(LeadTime, 0), TmpBenPayUpd.PaymentDate), TmpBenPayUpd.PaymentDate)
+			,Memo = TmpBenPayUpd.Memo
+			,Comments = TmpBenPayUpd.Comments
+			,ModifiedBy = @UserID
+			,ModifiedDate = GETDATE()
+		FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+		INNER JOIN #BenPayoutScheduleUpdateList TmpBenPayUpd
+			ON BenPay.BPScheduleID = TmpBenPayUpd.BPScheduleID
+				AND BenPay.TaxYear = TmpBenPayUpd.TaxYear
+		LEFT OUTER JOIN #TmpBeneficiaryLeadTime TmpLeadTime
+			ON TmpBenPayUpd.BeneficiaryDistributionID = TmpLeadTime.BeneficiaryDistributionID
+				--AND TmpBenPayUpd.CustomerAccountNumber = TmpLeadTime.CustomerAccountNumber
+				--AND TmpBenPayUpd.ContactRoleCode = TmpLeadTime.ContactRoleCode
+				--AND TmpLeadTime.ContactRoleCode = @ContactRoleCode
+
+		--Record comes in Update List but it does not exists in table (Reschedule-update comment case)                           
+		--This temp table (#TmpAccPaySchUpd) is used to capture the new Identity values inserted in the 'TBL_PP_AccountPayoutSchedule' table
+		CREATE TABLE #TmpAccPaySchUpd (
+			APScheduleID INT
+			,OldAPScheduleID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,TaxYear INT
+			,PaymentDate DATETIME
+			,ScheduledAmount MONEY
+			)
+
+		MERGE TBL_PP_AccountPayoutSchedule AS AccPaySch
+		USING (
+			SELECT APScheduleID
+				,ManagerCode
+				,CustomerAccountNumber
+				,InstructionID
+				,TaxYear
+				,PaymentDate
+				,ScheduledAmount
+			FROM #AccountPayoutScheduleUpdateList
+			) AS TmpAccPaySch(APScheduleID, ManagerCode, CustomerAccountNumber, InstructionID, TaxYear, PaymentDate, ScheduledAmount)
+			ON (AccPaySch.APScheduleID = TmpAccPaySch.APScheduleID)
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET AccPaySch.ManagerCode = TmpAccPaySch.ManagerCode
+					,AccPaySch.CustomerAccountNumber = TmpAccPaySch.CustomerAccountNumber
+					,AccPaySch.InstructionID = TmpAccPaySch.InstructionID
+					,AccPaySch.TaxYear = TmpAccPaySch.TaxYear
+					,AccPaySch.PaymentDate = TmpAccPaySch.PaymentDate
+					,AccPaySch.ScheduledAmount = TmpAccPaySch.ScheduledAmount
+					,AccPaySch.ModifiedDate = GETDATE()
+					,AccPaySch.ModifiedBy = @UserID
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					ManagerCode
+					,CustomerAccountNumber
+					,InstructionID
+					,TaxYear
+					,PaymentDate
+					,ScheduledAmount
+					,ModifiedDate
+					,ModifiedBy
+					,CreatedDate
+					,CreatedBy
+					)
+				VALUES (
+					TmpAccPaySch.ManagerCode
+					,TmpAccPaySch.CustomerAccountNumber
+					,TmpAccPaySch.InstructionID
+					,TmpAccPaySch.TaxYear
+					,TmpAccPaySch.PaymentDate
+					,TmpAccPaySch.ScheduledAmount
+					,GETDATE()
+					,@UserID
+					,GETDATE()
+					,@UserID
+					)
+		OUTPUT inserted.APScheduleID
+			,TmpAccPaySch.APScheduleID
+			,TmpAccPaySch.CustomerAccountNumber
+			,TmpAccPaySch.TaxYear
+			,TmpAccPaySch.PaymentDate
+			,TmpAccPaySch.ScheduledAmount
+		INTO #TmpAccPaySchUpd;
+
+		UPDATE #BenPayoutScheduleUpdateList
+		SET APScheduleID = TmpAccPaySch.APScheduleID
+		FROM #BenPayoutScheduleUpdateList BenPaySch
+		INNER JOIN #TmpAccPaySchUpd TmpAccPaySch
+			ON BenPaySch.APScheduleID = TmpAccPaySch.OldAPScheduleID
+
+		
+
+		MERGE TBL_PP_BeneficiaryPayoutSchedule AS BenPaySch
+		USING (
+			SELECT DISTINCT TmpBenPaySch.BPScheduleID
+				,TmpBenPaySch.APScheduleID
+				,TmpBenPaySch.ContactID
+				,TmpBenPaySch.BeneficiaryDistributionID
+				,TmpBenPaySch.ContactRoleCode
+				,TmpBenPaySch.PaymentDate
+				,TmpBenPaySch.TaxYear
+				,TmpBenPaySch.ScheduledAmount
+				,NULL AS PaymentID
+				,TmpBenPaySch.IsBackBuilt
+				,dateadd(day, (ISNULL(TmpBeneLeadTime.LeadTime, 0) * - 1) - dbo.FN_GetHoliday(TmpBenPaySch.PaymentDate - ISNULL(TmpBeneLeadTime.LeadTime, 0), TmpBenPaySch.PaymentDate), TmpBenPaySch.PaymentDate) AS EPD
+				,TmpBenPaySch.STATUS
+				,TmpBenPaySch.Memo
+				,TmpBenPaySch.Comments
+			FROM #BenPayoutScheduleUpdateList TmpBenPaySch
+			LEFT OUTER JOIN #TmpBeneficiaryLeadTime TmpBeneLeadTime
+				ON TmpBenPaySch.BeneficiaryDistributionID = TmpBeneLeadTime.BeneficiaryDistributionID
+					--AND TmpBenPaySch.ContactRoleCode = TmpBeneLeadTime.ContactRoleCode
+					--AND TmpBeneLeadTime.CustomerAccountNumber = TmpBenPaySch.CustomerAccountNumber
+			) AS TmpBenPay(BPScheduleID, APScheduleID, ContactID, BeneficiaryDistributionID, ContactRoleCode, PaymentDate, TaxYear, ScheduledAmount, PaymentID, IsBackBuilt, EPD, STATUS, Memo, Comments)
+			ON BenPaySch.BPScheduleID = TmpBenPay.BPScheduleID
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET BenPaySch.ContactID = TmpBenPay.ContactID
+					,BenPaySch.BeneficiaryDistributionID = TmpBenPay.BeneficiaryDistributionID
+					,BenPaySch.ContactRoleCode = TmpBenPay.ContactRoleCode
+					,BenPaySch.PaymentDate = TmpBenPay.PaymentDate
+					,BenPaySch.TaxYear = TmpBenPay.TaxYear
+					,BenPaySch.ScheduledAmount = TmpBenPay.ScheduledAmount
+					,BenPaySch.PaymentID = TmpBenPay.PaymentID
+					,BenPaySch.IsBackBuilt = TmpBenPay.IsBackBuilt
+					,BenPaySch.EPD = TmpBenPay.EPD
+					,BenPaySch.STATUS = TmpBenPay.STATUS
+					,BenPaySch.Memo = TmpBenPay.Memo
+					,BenPaySch.Comments = TmpBenPay.Comments
+					,BenPaySch.ModifiedDate = Getdate()
+					,BenPaySch.ModifiedBy = @UserID
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					APScheduleID
+					,ContactID
+					,BeneficiaryDistributionID
+					,ContactRoleCode
+					,PaymentDate
+					,TaxYear
+					,ScheduledAmount
+					,PaymentID
+					,IsBackBuilt
+					,EPD
+					,STATUS
+					,Memo
+					,Comments
+					,ModifiedDate
+					,ModifiedBy
+					,CreatedDate
+					,CreatedBy
+					)
+				VALUES (
+					TmpBenPay.APScheduleID
+					,TmpBenPay.ContactID
+					,TmpBenPay.BeneficiaryDistributionID
+					,TmpBenPay.ContactRoleCode
+					,TmpBenPay.PaymentDate
+					,TmpBenPay.TaxYear
+					,TmpBenPay.ScheduledAmount
+					,TmpBenPay.PaymentID
+					,TmpBenPay.IsBackBuilt
+					,TmpBenPay.EPD
+					,TmpBenPay.STATUS
+					,TmpBenPay.Memo
+					,TmpBenPay.Comments
+					,Getdate()
+					,@UserID
+					,getdate()
+					,@UserID
+					);
+
+		UPDATE #BenPayoutScheduleInsertList
+		SET APScheduleID = TmpAccPay.APScheduleID
+		FROM #BenPayoutScheduleInsertList TmpBenPay
+		INNER JOIN #TmpAccPaySchUpd TmpAccPay
+			ON TmpAccPay.OldAPScheduleID = TmpBenPay.APScheduleID
+		WHERE TmpBenPay.APScheduleID IN (
+				SELECT TmpData.OldAPScheduleID
+				FROM #TmpAccPaySchUpd TmpData
+				)
+
+		----InsertList APS            
+		--This temp table (#TmpAccPaySchInsert) is used to capture the new Identity values inserted in the 'TBL_PP_AccountPayoutSchedule' table
+		CREATE TABLE #TmpAccPaySchInsert (
+			APScheduleID INT
+			,OldAPScheduleID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,TaxYear INT
+			,PaymentDate DATETIME
+			,ScheduledAmount MONEY
+			)
+
+		MERGE TBL_PP_AccountPayoutSchedule AS AccPaySch
+		USING (
+			SELECT APScheduleID
+				,ManagerCode
+				,CustomerAccountNumber
+				,InstructionID
+				,TaxYear
+				,PaymentDate
+				,ScheduledAmount
+			FROM #AccountPayoutScheduleInsertList
+			) AS TmpAccPaySch(APScheduleID, ManagerCode, CustomerAccountNumber, InstructionID, TaxYear, PaymentDate, ScheduledAmount)
+			ON (AccPaySch.APScheduleID = TmpAccPaySch.APScheduleID)
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET AccPaySch.ManagerCode = TmpAccPaySch.ManagerCode
+					,AccPaySch.CustomerAccountNumber = TmpAccPaySch.CustomerAccountNumber
+					,AccPaySch.InstructionID = TmpAccPaySch.InstructionID
+					,AccPaySch.TaxYear = TmpAccPaySch.TaxYear
+					,AccPaySch.PaymentDate = TmpAccPaySch.PaymentDate
+					,AccPaySch.ScheduledAmount = TmpAccPaySch.ScheduledAmount
+					,AccPaySch.ModifiedDate = GETDATE()
+					,AccPaySch.ModifiedBy = @UserID
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					ManagerCode
+					,CustomerAccountNumber
+					,InstructionID
+					,TaxYear
+					,PaymentDate
+					,ScheduledAmount
+					,ModifiedDate
+					,ModifiedBy
+					,CreatedDate
+					,CreatedBy
+					)
+				VALUES (
+					TmpAccPaySch.ManagerCode
+					,TmpAccPaySch.CustomerAccountNumber
+					,TmpAccPaySch.InstructionID
+					,TmpAccPaySch.TaxYear
+					,TmpAccPaySch.PaymentDate
+					,TmpAccPaySch.ScheduledAmount
+					,GETDATE()
+					,@UserID
+					,GETDATE()
+					,@UserID
+					)
+		OUTPUT inserted.APScheduleID
+			,TmpAccPaySch.APScheduleID
+			,TmpAccPaySch.CustomerAccountNumber
+			,TmpAccPaySch.TaxYear
+			,TmpAccPaySch.PaymentDate
+			,TmpAccPaySch.ScheduledAmount
+		INTO #TmpAccPaySchInsert;
+
+		UPDATE #BenPayoutScheduleInsertList
+		SET APScheduleID = TmpAccPaySch.APScheduleID
+		FROM #BenPayoutScheduleInsertList BenPaySch
+		INNER JOIN #TmpAccPaySchInsert TmpAccPaySch
+			ON BenPaySch.APScheduleID = TmpAccPaySch.OldAPScheduleID
+
+		MERGE TBL_PP_BeneficiaryPayoutSchedule AS BenPaySch
+		USING (
+			SELECT TmpBenPaySch.BPScheduleID
+				,TmpBenPaySch.APScheduleID
+				,TmpBenPaySch.ContactID
+				,TmpBenPaySch.BeneficiaryDistributionID
+				,TmpBenPaySch.ContactRoleCode
+				,TmpBenPaySch.PaymentDate
+				,TmpBenPaySch.TaxYear
+				,TmpBenPaySch.ScheduledAmount
+				,NULL AS PaymentID
+				,TmpBenPaySch.IsBackBuilt
+				,dateadd(day, (ISNULL(TmpBeneLeadTime.LeadTime, 0) * - 1) - dbo.FN_GetHoliday(TmpBenPaySch.PaymentDate - ISNULL(TmpBeneLeadTime.LeadTime, 0), TmpBenPaySch.PaymentDate), TmpBenPaySch.PaymentDate) AS EPD
+				,TmpBenPaySch.STATUS
+				,TmpBenPaySch.Memo
+				,TmpBenPaySch.Comments
+			FROM #BenPayoutScheduleInsertList TmpBenPaySch
+			LEFT OUTER JOIN #TmpBeneficiaryLeadTime TmpBeneLeadTime
+				ON TmpBenPaySch.BeneficiaryDistributionID = TmpBeneLeadTime.BeneficiaryDistributionID
+					--AND TmpBenPaySch.ContactRoleCode = TmpBeneLeadTime.ContactRoleCode
+					--AND TmpBeneLeadTime.CustomerAccountNumber = TmpBenPaySch.CustomerAccountNumber
+			) AS TmpBenPay(BPScheduleID, APScheduleID, ContactID, BeneficiaryDistributionID, ContactRoleCode, PaymentDate, TaxYear, ScheduledAmount, PaymentID, IsBackBuilt, EPD, STATUS, Memo, Comments)
+			ON BenPaySch.BPScheduleID = TmpBenPay.BPScheduleID
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET BenPaySch.ContactID = TmpBenPay.ContactID
+					,BenPaySch.BeneficiaryDistributionID = TmpBenPay.BeneficiaryDistributionID
+					,BenPaySch.ContactRoleCode = TmpBenPay.ContactRoleCode
+					,BenPaySch.PaymentDate = TmpBenPay.PaymentDate
+					,BenPaySch.TaxYear = TmpBenPay.TaxYear
+					,BenPaySch.ScheduledAmount = TmpBenPay.ScheduledAmount
+					,BenPaySch.PaymentID = TmpBenPay.PaymentID
+					,BenPaySch.IsBackBuilt = TmpBenPay.IsBackBuilt
+					,BenPaySch.EPD = TmpBenPay.EPD
+					,BenPaySch.STATUS = TmpBenPay.STATUS
+					,BenPaySch.Memo = TmpBenPay.Memo
+					,BenPaySch.Comments = TmpBenPay.Comments
+					,BenPaySch.ModifiedDate = Getdate()
+					,BenPaySch.ModifiedBy = @UserID
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					APScheduleID
+					,ContactID
+					,BeneficiaryDistributionID
+					,ContactRoleCode
+					,PaymentDate
+					,TaxYear
+					,ScheduledAmount
+					,PaymentID
+					,IsBackBuilt
+					,EPD
+					,STATUS
+					,Memo
+					,Comments
+					,ModifiedDate
+					,ModifiedBy
+					,CreatedDate
+					,CreatedBy
+					)
+				VALUES (
+					TmpBenPay.APScheduleID
+					,TmpBenPay.ContactID
+					,TmpBenPay.BeneficiaryDistributionID
+					,TmpBenPay.ContactRoleCode
+					,TmpBenPay.PaymentDate
+					,TmpBenPay.TaxYear
+					,TmpBenPay.ScheduledAmount
+					,TmpBenPay.PaymentID
+					,TmpBenPay.IsBackBuilt
+					,TmpBenPay.EPD
+					,TmpBenPay.STATUS
+					,TmpBenPay.Memo
+					,TmpBenPay.Comments
+					,Getdate()
+					,@UserID
+					,getdate()
+					,@UserID
+					);
+
+		----Return AAPI record with current time stamp.        
+		IF EXISTS (
+				SELECT 1
+				FROM #AnnualAccountPayoutInfoUpdateList
+				)
+		BEGIN
+			SELECT AccntPay.CustomerAccountNumber
+				,CAST(AccntPay.RecordVersion AS VARBINARY(8)) AS RecordVersion
+				,@ReturnStatus AS Return_Status
+			FROM TBL_PP_AnnualAccountPayoutInfo AccntPay
+			INNER JOIN #AnnualAccountPayoutInfoUpdateList TmpAccntPay
+				ON TmpAccntPay.CustomerAccountNumber = AccntPay.CustomerAccountNumber
+					AND TmpAccntPay.PayoutYear = AccntPay.PayoutYear
+		END
+		ELSE
+		BEGIN
+			SELECT AccntPay.CustomerAccountNumber
+				,CAST(AccntPay.RecordVersion AS VARBINARY(8)) AS RecordVersion
+				,@ReturnStatus AS Return_Status
+			FROM TBL_PP_AnnualAccountPayoutInfo AccntPay
+			INNER JOIN #AnnualAccountPayoutInfo TmpAccntPay
+				ON TmpAccntPay.CustomerAccountNumber = AccntPay.CustomerAccountNumber
+					AND TmpAccntPay.PayoutYear = AccntPay.PayoutYear
+		END
+	END
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#TmpCustomerAccountNumber]') IS NOT NULL
+		DROP TABLE [#TmpCustomerAccountNumber]
+
+	IF OBJECT_ID('tempdb..[#AnnualAccountPayoutInfo]') IS NOT NULL
+		DROP TABLE [#AnnualAccountPayoutInfo]
+
+	IF OBJECT_ID('tempdb..[#AnnualAccountPayoutInfoUpdateList]') IS NOT NULL
+		DROP TABLE [#AnnualAccountPayoutInfoUpdateList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleInsertList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleInsertList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleUpdateList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleUpdateList]
+
+	IF OBJECT_ID('tempdb..[#AccountPayoutScheduleDeleteList]') IS NOT NULL
+		DROP TABLE [#AccountPayoutScheduleDeleteList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleInsertList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleInsertList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleUpdateList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleUpdateList]
+
+	IF OBJECT_ID('tempdb..[#BenPayoutScheduleDeleteList]') IS NOT NULL
+		DROP TABLE [#BenPayoutScheduleDeleteList]
+
+	IF OBJECT_ID('tempdb..[#TmpBeneficiaryLeadTime]') IS NOT NULL
+		DROP TABLE [#TmpBeneficiaryLeadTime]
+END

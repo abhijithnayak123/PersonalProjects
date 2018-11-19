@@ -1,0 +1,136 @@
+/****** Object:  StoredProcedure [dbo].[USP_InsErrorLog]    Script Date: 06/21/2013 12:52:37 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_InsErrorLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_InsErrorLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_InsErrorLog]    Script Date: 06/21/2013 12:52:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_InsErrorLog                      
+** Short Desc: Inserts Application Error details to TBL_ErrorLog.
+**                      
+** Full Description: Inserts Application Error details to TBL_ErrorLog.
+**      
+**                              
+** Input Arguments:   
+**	
+**	        
+** Sample Call     
+      
+ EXEC USP_InsErrorLog '2014-05-22','11','Test','test','test','test','UserTest',123,'test','test','test','Error','Exceptiontest'
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Rajesh
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Jun-13             
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_InsErrorLog] (
+	@LogDate DATETIME
+	,@MessageID VARCHAR(50) = NULL
+	,@MessageName VARCHAR(100) = NULL
+	,@SessionID VARCHAR(50) = NULL
+	,@ClientIP VARCHAR(50) = NULL
+	,@ServerIP VARCHAR(50) = NULL
+	,@UserID VARCHAR(50) = NULL
+	,@LogType INT = NULL
+	,@ClientMachine VARCHAR(100) = NULL
+	,@ApplicationName VARCHAR(100) = NULL
+	,@ServiceName VARCHAR(100) = NULL
+	,@Message VARCHAR(8000)
+	,@Exception VARCHAR(8000) = NULL
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	BEGIN TRY
+		BEGIN TRAN
+
+		INSERT INTO [dbo].[TBL_ErrorLog] (
+			[Date]
+			,[MessageID]
+			,[MessageName]
+			,[SessionID]
+			,[ClientIP]
+			,[ServerIP]
+			,[UserID]
+			,[LogType]
+			,[ApplicationName]
+			,[ServiceName]
+			,[Message]
+			,[Exception]
+			)
+		VALUES (
+			@LogDate
+			,@MessageID
+			,@MessageName
+			,@SessionID
+			,@ClientIP
+			,@ServerIP
+			,@UserID
+			,@LogType
+			,@ApplicationName
+			,@ServiceName
+			,@Message
+			,@Exception
+			)
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRAN
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

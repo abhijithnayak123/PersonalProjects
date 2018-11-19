@@ -1,0 +1,135 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EIS_RPT_BR_VE_Rules_SelProc')
+BEGIN
+    DROP PROCEDURE USP_EIS_RPT_BR_VE_Rules_SelProc;
+    PRINT 'DROPPED USP_EIS_RPT_BR_VE_Rules_SelProc';
+END
+GO
+
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_RPT_BR_VE_Rules_SelProc]    Script Date: 06/25/2014 14:51:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_Rules_SelProc                    
+** Short Desc: To retrieve details of validtion rules for input category.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @RulesCategory varchar(max)  
+    set @RulesCategory  = ''  
+ EXEC USP_EIS_RPT_BR_VE_Rules_SelProc  
+    @RulesCategory  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 07/28/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 10-30-2012	RajeshP			Commented the  where clause for IsActive=1
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_Rules_SelProc]        
+	-- paremeters here        
+	-- @RulesCategory varchar(max)  
+AS        
+BEGIN
+--  Initial Set statements  --        
+--SET NOCOUNT ON;        
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+  
+--  Variable Declarations  --        
+Declare @procname    varchar(60);        
+Declare @errmsg     varchar(1000);        
+Declare @errnbr     int;   
+  
+-- Variables used for error handling - uncomment if needed        
+Declare @val1      varchar(30);        
+Declare @val2      varchar(30);        
+  
+--  Temp tables, Cursors, Table Variables  --        
+--  Variable Data Assignment  --        
+Set @procname = 'USP_EIS_RPT_BR_VE_Rules_SelProc';        
+-- Body of procedure  --        
+BEGIN TRY        
+	SELECT     
+		r.ValidationRuleID,    
+		r.RuleName,    
+		r.ExecutionOrder,    
+		r.ResultType,    
+		r.DisplayMessage,    
+		r.RuleLeadTime,    
+		r.IsActive,    
+		r.StopValidationIfFails,    
+		r.SPName,  
+		VLI.LIST_ITEM_NAME as RuleCategory,   
+		--r.RuleCategoryID,    
+		ra.ValidationRuleAttributeID,    
+		ra.Attribute,    
+		ra.ExpectedValue,    
+		ra.EvaluationOrder,    
+		ra.OperatorType,    
+		ra.Datatype    
+	FROM     
+		TBL_DLV_ValidationRule r   -- changed the Kaspick DB table as StagingDB table is missing  
+		-- New Kaspick DB table name replaced here.
+		INNER JOIN TBL_DLV_ValidationRuleAttribute ra ON r.ValidationRuleID=ra.ValidationRuleID  
+		INNER JOIN V_EIS_LIST_ITEMS VLI ON VLI.LIST_ITEM_ID = r.RuleCategoryID   
+	WHERE     
+		--r.IsActive=1 AND --commented by RajeshP as now Rules tables are database server driven for Excelsior and ReportDB
+		VLI.LIST_ITEM_NAME in ('Data Quality','Data Readiness','Universe Rule')           
+	ORDER BY    
+		ExecutionOrder    
+END TRY        
+BEGIN CATCH        
+	Set @errmsg = ERROR_MESSAGE();        
+	Set @errnbr = ERROR_NUMBER();        
+	Set @val1 = '';        
+	Set @val2 = '';        
+      
+	exec dbo.spSYS_ErrorHandler @codename = @procname,        
+	@errmsg = @errmsg,         
+	@errnbr = @errnbr,        
+	@val1 = '',         
+	@val1str = 'USP_EIS_RPT_BR_VE_Rules_SelProc: Cannot Select.',         
+	@val2 = '',         
+	@val2str = '';        
+END CATCH        
+-- End of procedure  --   
+END
+GO
+
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_Rules_SelProc')
+    BEGIN
+        PRINT 'CREATED USP_EIS_RPT_BR_VE_Rules_SelProc';
+    END
+
+

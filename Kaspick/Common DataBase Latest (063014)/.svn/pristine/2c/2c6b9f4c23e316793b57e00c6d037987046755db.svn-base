@@ -1,0 +1,93 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbFiscalYearEnd')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbFiscalYearEnd;
+        PRINT 'DROPPED USP_EX_GetRptFasbFiscalYearEnd';
+    END
+GO
+
+
+     
+              
+/******************************************************************************                    
+** New Name :   USP_EX_GetRptFasbFiscalYearEnd  
+** Old Name:     USP_EIS_RPT_FASB_FiscalYearEnd_SelProc                     
+** Short Desc: SP to get Fiscal year end             
+** Full Description:               
+**              
+                    
+** Sample Call                    
+        EXEC USP_EIS_RPT_FASB_FiscalYearEnd_SelProc 100008,'CLIENT'                     
+**               
+** Return values: string                    
+**              
+**               
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Ganapati                    
+** Company   : Kaspick & Company                    
+** Project   : Excelsior                    
+** Created DT: 09/18/2012                 
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+** 04/02/2014     Yugandhar        EXCREQ 5.4        
+** 23/05/2014  Mallikarjun  SP Name Renamed and Formatted     
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE USP_EX_GetRptFasbFiscalYearEnd --'ACL','MANAGER'                
+(                    
+ @ENTITYID VARCHAR(15),                    
+ @ENTITYTYPE VARCHAR(20)                    
+)                    
+AS                    
+BEGIN                    
+BEGIN TRY                  
+                  
+declare @VALUE varchar(100)    
+declare @DATATYPE  VARCHAR(100)    
+declare @POLICYDIMENSIONID int    
+SET @VALUE=NULL        
+DECLARE @FISCAL_DATE_VALUE DATETIME        
+  
+SELECT @DATATYPE=DATATYPE,@POLICYDIMENSIONID=POLICYDIMENSIONID         
+FROM TBL_PolicyDimension         
+WHERE FULLNAME ='Fiscal Year End'     
+  
+print @ENTITYID  
+print @ENTITYTYPE  
+print @DATATYPE  
+print @POLICYDIMENSIONID  
+print @VALUE  
+     
+EXEC USP_EX_GetPolicydimensionValue
+  @ENTITYID,@ENTITYTYPE,NULL,@DATATYPE,@POLICYDIMENSIONID,@VALUE OUTPUT    
+      
+select @VALUE    
+END TRY            
+                
+BEGIN CATCH                  
+ RAISERROR  1000091 'USP_EX_GetRptFasbFiscalYearEnd: Cannot select'                  
+ RETURN (-1)                  
+END CATCH                   
+END   
+  
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbFiscalYearEnd') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbFiscalYearEnd';
+	END

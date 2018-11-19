@@ -1,0 +1,183 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveDisbursementSchedule]    Script Date: 09/20/2013 20:01:08 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveDisbursementSchedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveDisbursementSchedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveDisbursementSchedule]    Script Date: 09/20/2013 20:01:08 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name:     USP_PP_SaveDisbursementSchedule          
+** Short Desc: Parent SP for disbursement Schedule       
+**          
+** Full Description          
+**        Parent SP which  calls 3 child sps in CalcEngine         
+**          
+** Sample Call: 
+
+DECLARE @XMLCustomerAccountNumber XML
+DECLARE @XMLAccountPayoutSchedule XML
+DECLARE @XMLAnnualAccPayoutInfo XML
+DECLARE @returnstatus INT
+
+SET @XMLCustomerAccountNumber = '<AccountStatusCollection><InsertList><AccountStatus AdventID="ACADW"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></AccountStatusCollection>'
+
+SET @XMLAccountPayoutSchedule = '<AccountPayoutScheduleCollection><InsertList><AccountPayoutSchedule APScheduleID="1"  PaymentBatch="0"  PaymentDate="1/31/2014 12:00:00 AM"  ScheduledAmount="250"  TaxYear="2014"  TotalScheduledAmount="250"  RecordVersion=""  /><AccountPayoutSchedule APScheduleID="2"  PaymentBatch="0"  PaymentDate="4/30/2014 12:00:00 AM"  ScheduledAmount="250"  TaxYear="2014"  TotalScheduledAmount="250"  RecordVersion=""  /><AccountPayoutSchedule APScheduleID="3"  PaymentBatch="0"  PaymentDate="7/31/2014 12:00:00 AM"  ScheduledAmount="250"  TaxYear="2014"  TotalScheduledAmount="250"  RecordVersion=""  /><AccountPayoutSchedule APScheduleID="4"  PaymentBatch="0"  PaymentDate="10/31/2014 12:00:00 AM"  ScheduledAmount="250"  TaxYear="2014"  TotalScheduledAmount="250"  RecordVersion=""  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><BenPayoutScheduleCollection><InsertList><BenPayoutSchedule APScheduleID="1"  BeneficiaryID="2072"  BPScheduleID="1"  PaymentDate="1/31/2014 12:00:00 AM"  PaymentID="0"  ScheduledAmount="250"  TaxYear="2014"  PayeeName=""  IsBackBuilt="False"  Memo=""  Comments=""  EPD="1/1/1900 12:00:00 AM"  VoidDate="1/1/1900 12:00:00 AM"  ReissueAs="0"  FixedPayment="False"  RecordVersion=""  /><BenPayoutSchedule APScheduleID="2"  BeneficiaryID="2072"  BPScheduleID="2"  PaymentDate="4/30/2014 12:00:00 AM"  PaymentID="0"  ScheduledAmount="250"  TaxYear="2014"  PayeeName=""  IsBackBuilt="False"  Memo=""  Comments=""  EPD="1/1/1900 12:00:00 AM"  VoidDate="1/1/1900 12:00:00 AM"  ReissueAs="0"  FixedPayment="False"  RecordVersion=""  /><BenPayoutSchedule APScheduleID="3"  BeneficiaryID="2072"  BPScheduleID="3"  PaymentDate="7/31/2014 12:00:00 AM"  PaymentID="0"  ScheduledAmount="250"  TaxYear="2014"  PayeeName=""  IsBackBuilt="False"  Memo=""  Comments=""  EPD="1/1/1900 12:00:00 AM"  VoidDate="1/1/1900 12:00:00 AM"  ReissueAs="0"  FixedPayment="False"  RecordVersion=""  /><BenPayoutSchedule APScheduleID="4"  BeneficiaryID="2072"  BPScheduleID="4"  PaymentDate="10/31/2014 12:00:00 AM"  PaymentID="0"  ScheduledAmount="250"  TaxYear="2014"  PayeeName=""  IsBackBuilt="False"  Memo=""  Comments=""  EPD="1/1/1900 12:00:00 AM"  VoidDate="1/1/1900 12:00:00 AM"  ReissueAs="0"  FixedPayment="False"  RecordVersion=""  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></BenPayoutScheduleCollection></AccountPayoutScheduleCollection>'
+
+SET @XMLAnnualAccPayoutInfo = '<AnnualAccountPayoutInfoCollection><InsertList><AnnualAccountPayoutInfo Deficit="0"  EstAnnualPayout="1000"  EstMethod="Override"  FMV="217427.82"  IncomeFees="0"  OtherValuationAdjustment="0"  EarlyTradedPayment="0" LateTradedPayment="0"  PaymentStagingID="0"  PayoutYear="2014"  PrevOverPayment="0"  ProratedGiftValuation="0"  Valuation="217427.82"  Yield="0"  YTDNetIncome="0"  YTDPayment="0"  PrevTaxYear="0"  RescheduleDate="1/21/2014 12:00:00 AM"  Q5Amount="0"  RecordVersion=""  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></AnnualAccountPayoutInfoCollection>'
+
+EXEC USP_PP_SaveDisbursementSchedule @XMLCustomerAccountNumber
+	,@XMLAccountPayoutSchedule
+	,@XMLAnnualAccPayoutInfo
+	,300028
+	,@returnstatus OUTPUT
+	,'EstimateScheduleUI'
+	,'UPDATE'
+  Select @returnstatus    
+
+**      
+** Return values: @returnstatus          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company    
+** Project   : BackOffice Integration    
+** Created DT: 29-Nov-2013        
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** <mm/dd/yyyy>          
+*******************************************************************************          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveDisbursementSchedule] @XMLCustomerAccountNumber XML
+	,@XMLAccountPayoutSchedule XML
+	,@XMLAnnualAccPayoutInfo XML
+	,@UserID INT
+	,@returnstatus INT
+OUTPUT
+	,@SourceUI VARCHAR(50) = 'AutoScheduleUI'
+	,@Mode VARCHAR(25) AS
+
+--  Initial Set statements  --          
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds          
+
+--  Variable Declarations  --          
+DECLARE @errmsg VARCHAR(1000);
+
+--  Variable Data Assignment  --          
+SET @returnstatus = 0
+
+-- Body of procedure  --       
+DECLARE @status INT;
+
+BEGIN TRY
+
+BEGIN TRANSACTION	
+
+	IF (@SourceUI = 'AutoScheduleUI')
+	BEGIN
+		EXEC USP_PP_SaveScheduleAutoSchedule @XMLCustomerAccountNumber = @XMLCustomerAccountNumber
+			,@XMLAccountPayoutSchedule = @XMLAccountPayoutSchedule
+			,@XMLAnnualAccPayoutInfo = @XMLAnnualAccPayoutInfo
+			,@UserID = @UserID
+			,@returnstatus = @status OUTPUT
+			,@SourceUI = @SourceUI
+	END
+	ELSE
+		IF (@SourceUI = 'EstimateScheduleUI')
+		BEGIN
+			EXEC USP_PP_SaveScheduleEISchedule @XMLCustomerAccountNumber = @XMLCustomerAccountNumber
+				,@XMLAccountPayoutSchedule = @XMLAccountPayoutSchedule
+				,@XMLAnnualAccPayoutInfo = @XMLAnnualAccPayoutInfo
+				,@UserID = @UserID
+				,@returnstatus = @status OUTPUT
+				,@SourceUI = @SourceUI
+		END
+		ELSE
+		BEGIN
+			EXEC USP_PP_SaveScheduleBeneSchedule @XMLCustomerAccountNumber = @XMLCustomerAccountNumber
+				,@XMLAccountPayoutSchedule = @XMLAccountPayoutSchedule
+				,@XMLAnnualAccPayoutInfo = @XMLAnnualAccPayoutInfo
+				,@UserID = @UserID
+				,@returnstatus = @status OUTPUT
+				,@SourceUI = @SourceUI
+		END
+
+	SET @returnstatus = @status;
+
+	INSERT INTO TBL_PP_CalcEngInput (
+		RunDate
+		,XMLAccount
+		,XMLAccountPayoutSchedule
+		,XMLAnnualAccPayoutInfo
+		,UserID
+		,ReturnStatus
+		,SourceUI
+		,ErrMsg
+		)
+	VALUES (
+		GETDATE()
+		,@XMLCustomerAccountNumber
+		,@XMLAccountPayoutSchedule
+		,@XMLAnnualAccPayoutInfo
+		,@UserID
+		,@returnstatus
+		,@SourceUI
+		,(
+			CASE 
+				WHEN @returnstatus = '-1'
+					THEN @errmsg
+				ELSE 'record saved'
+				END
+			)
+		)
+
+COMMIT TRANSACTION		
+
+END TRY
+
+BEGIN CATCH
+	SET @returnstatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+

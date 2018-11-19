@@ -1,0 +1,90 @@
+/****** Object:  UserDefinedFunction [dbo].[Fn_GetBusinessDaysDiff]    Script Date: 10/21/2013 14:00:23 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'Fn_GetBusinessDaysDiff'
+		)
+BEGIN
+	DROP FUNCTION Fn_GetBusinessDaysDiff;
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name:     Fn_GetBusinessDaysDiff                      
+** Short Desc: To Calculate Businessdays Diff
+**                      
+** Full Description:  To Calculate Businessdays Diff      
+**                              
+** Input Arguments:  	
+	@StartDate DATETIME
+	,@EndDate DATETIME
+   
+**         
+** Sample Call     
+        
+ select dbo.Fn_GetBusinessDaysDiff '01/01/2013','01/12/2013'
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti Kalita    
+** Company   : Kaspick & Company                      
+** Project   : Back Office Integration                      
+** Created DT: 21-Oct-2012                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_GetBusinessDaysDiff] (
+	@StartDate DATETIME
+	,@EndDate DATETIME
+	)
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @i INT
+	DECLARE @TempStartDate DATETIME
+	DECLARE @TempEndDate DATETIME
+	DECLARE @Isholiday BIT
+	DECLARE @IsNegative INT
+
+	SET @i = 0
+
+	IF (@StartDate < @EndDate)
+	BEGIN
+		SET @TempStartDate = Convert(DATETIME, Convert(VARCHAR(10), @StartDate, 101), 101)
+		SET @TempEndDate = Convert(DATETIME, Convert(VARCHAR(10), @EndDate, 101), 101)
+		SET @IsNegative = 1
+	END
+	ELSE
+	BEGIN
+		SET @TempStartDate = Convert(DATETIME, Convert(VARCHAR(10), @EndDate, 101), 101)
+		SET @TempEndDate = Convert(DATETIME, Convert(VARCHAR(10), @StartDate, 101), 101)
+		SET @IsNegative = - 1
+	END
+
+	SELECT @i = COUNT(HOLIDAYID)
+	FROM TBL_PP_HOLIDAY
+	WHERE IsDeleted = 0
+		AND IsHoliday = 1
+		AND HolidayDate > @TempStartDate
+		AND HolidayDate <= @TempEndDate
+
+	RETURN (abs(@i - DATEDIFF(DAY, @TempStartDate, @TempEndDate)) * @IsNegative)
+END

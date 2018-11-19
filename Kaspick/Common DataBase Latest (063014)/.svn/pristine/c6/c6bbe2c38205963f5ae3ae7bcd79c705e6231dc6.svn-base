@@ -1,0 +1,568 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_UpdPolicyItemCascade ')
+    BEGIN
+        DROP PROCEDURE USP_EX_UpdPolicyItemCascade ;
+        PRINT 'DROPPED USP_EX_UpdPolicyItemCascade ';
+    END
+GO
+    
+/******************************************************************************                      
+** Name: USP_EX_UpdPolicyItemCascade
+** Old Name:     USP_EIS_EX_POLICYITEM_CASCADE_UpdProc                       
+** Short Desc: To Insert/Update the POLICYITEM table for a particular dimension.                
+**                      
+** Full Description: To Insert/Update the POLICYITEM table for a particular dimension.                
+**                              
+** @POLICYDIMENSIONNAME: for which record has to be added in POLICYITEM.                
+   @LIST_ITEM_ID: used to fetch the DROPDOWNTEXT or BIT value to save for DATATYPE [LIST/LOGICAL].                
+   @POLICYLEVEL: for which record has to be added in POLICYITEM.                
+   @OWNERID INT: for which record has to be added in POLICYITEM.                
+   @SCALARVALUE: is value tobe saved for DATATYPE [DATE/NUMERIC].          
+   @USERID: user who is Updating/Inserting/Deleting the policy.          
+   @POLICYCATEGORY: is a optional parameter which takes special care for 'Reporting' PolicyCategory.                
+** Sample Call                      
+        EXEC USP_EIS_EX_POLICYITEM_CASCADE_UpdProc '08/27/2007', 'Inception Date','CLIENT',4,69                
+**                      
+** Return values: NONE                      
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: VShivhare                      
+** Company   : Kaspick & Company                      
+** Project   : Excelsior                      
+** Created DT: July 04 2007    
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------  
+** 03/18/2008 Saravanan PM ET# 6274 Modified  && Updating Billing Information of TA - Only Acount Level BillingProfile                          
+** 03/20/2008 Saravanan PM ET# 6274 Modified && BillStartSate updation condition in BillingProfile Table  
+** 12/04/2014 Yugandhar				Modified EXCREQ 6.1
+ *******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/                      
+CREATE PROCEDURE USP_EX_UpdPolicyItemCascade  --'08/27/2007', 'Inception Date','CLIENT',4,100002    
+(    
+ @NEW_VALUE VARCHAR(100),     
+ @POLICYDIMENTISON VARCHAR(100),    
+ @ENTITY_TYPE VARCHAR(100),    
+ @ENTITY_ID VARCHAR(14),    
+ @USERID INT     
+)    
+AS    
+BEGIN     
+--BEGIN TRY    
+  DECLARE     
+  @MAX_POLICY_LEVEL INT,    
+  @POLICYDIMENSIONID INT,    
+  @DATA_TYPE VARCHAR(20),    
+  @C_VAL_DATE DATETIME,    
+  @C_VAL_LIST INT,    
+  @C_VAL_LOGICAL BIT,    
+  @C_VAL_NUMERIC FLOAT,    
+  @C_VAL_TEXT VARCHAR(100),    
+  @P_VAL_DATE DATETIME,    
+  @P_VAL_LIST INT,    
+  @P_VAL_LOGICAL BIT,    
+  @P_VAL_NUMERIC FLOAT,    
+  @P_VAL_TEXT VARCHAR(100)    
+    
+  -- declare table for stored program ids where policy value is not overridden    
+  DECLARE @TMP_C_PRG_EQUAL TABLE(PROGRAMID VARCHAR(14))    
+    
+  --Temp Table for Client Program    
+  DECLARE @TMP_C_PRG TABLE(PROGRAMID VARCHAR(14))    
+    
+  --Temp Table for Program Accounts    
+  DECLARE @TMP_P_ACT TABLE(ACCOUNTID VARCHAR(14))    
+    
+ DECLARE @TEMP_PR_ACT_BILLING TABLE(ACCOUNTID VARCHAR(14))  
+ DECLARE @TMP_ACT_BILL_PROFILE TABLE(ID INT  IDENTITY (1,1), ACCOUNTID VARCHAR(14), BILLINGSTARTDATE DATETIME) --Temp Table for Account Billing Start date  
+  
+  
+  SELECT @MAX_POLICY_LEVEL=MAXPOLICYLEVEL, @DATA_TYPE=DATATYPE ,@POLICYDIMENSIONID=POLICYDIMENSIONID     
+  FROM TBL_PolicyDimension WHERE FULLNAME =@POLICYDIMENTISON    
+    
+  --Fetch Current Clietn Level Value     
+      
+  IF(@ENTITY_TYPE='CLIENT' AND @MAX_POLICY_LEVEL>100)    
+  BEGIN    
+   --first select all the current value stored in policyitem for this client for this policydimension    
+   SELECT     
+    @C_VAL_DATE=DATEVALUE,    
+    @C_VAL_LIST=POLICYDROPDOWNID,    
+    @C_VAL_LOGICAL =LOGICALVALUE,    
+    @C_VAL_NUMERIC =NUMERICVALUE,    
+    @C_VAL_TEXT=TEXTVALUE     
+   FROM tbl_POLICYITEM WHERE OWNERID=@ENTITY_ID AND POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=100     
+--     print @C_VAL_DATE  
+					
+   INSERT INTO @TMP_C_PRG SELECT AlnsNmbr.AllianceNumber FROM 
+						SYN_IT_AllianceNumbers AlnsNmbr
+						INNER JOIN SYN_IT_ContactMaster ConMstr ON AlnsNmbr.CONTACTID=ConMstr.CONTACTID
+						WHERE MANAGERCODE=@ENTITY_ID    
+   IF NOT EXISTS(SELECT PROGRAMID FROM @TMP_C_PRG)    
+   BEGIN    
+    --Since no program found under this client, return.    
+ print ''  
+    --RETURN(1)    
+   END    
+   --First update all the associated program with this client    
+   IF(@DATA_TYPE='DATE')    
+   BEGIN    
+    INSERT INTO @TMP_C_PRG_EQUAL (PROGRAMID)     
+     SELECT OWNERID FROM TBL_PolicyItem     
+     WHERE POLICYLEVEL=200     
+     AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+     AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0   
+  AND OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)   
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN (SELECT POLICYITEMID FROM TBL_PolicyItem     
+        WHERE OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)     
+        AND POLICYLEVEL=200     
+        AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+        AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0)     
+    
+      
+ UPDATE TBL_PolicyItem SET DATEVALUE=CAST(@NEW_VALUE AS DATETIME),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT PROGRAMID FROM @TMP_C_PRG)     
+    AND POLICYLEVEL=200     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0    
+   END    
+   ELSE IF(@DATA_TYPE='LIST')    
+   BEGIN    
+    INSERT INTO @TMP_C_PRG_EQUAL (PROGRAMID)     
+     SELECT OWNERID FROM TBL_PolicyItem     
+     WHERE POLICYLEVEL=200     
+     AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+     AND POLICYDROPDOWNID=@C_VAL_LIST   
+  AND OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)   
+     
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN (SELECT POLICYITEMID FROM TBL_PolicyItem     
+        WHERE OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)     
+        AND POLICYLEVEL=200     
+        AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+        AND POLICYDROPDOWNID = @C_VAL_LIST)     
+    
+    UPDATE TBL_PolicyItem SET POLICYDROPDOWNID=CAST(@NEW_VALUE AS INT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT PROGRAMID FROM @TMP_C_PRG)     
+    AND POLICYLEVEL=200     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND POLICYDROPDOWNID=@C_VAL_LIST    
+   END    
+   ELSE IF(@DATA_TYPE='LOGICAL')    
+   BEGIN    
+    INSERT INTO @TMP_C_PRG_EQUAL (PROGRAMID)     
+     SELECT OWNERID FROM TBL_PolicyItem     
+     WHERE POLICYLEVEL=200     
+     AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+     AND LOGICALVALUE=@C_VAL_LOGICAL    
+  AND OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)  
+     
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN (SELECT POLICYITEMID FROM TBL_PolicyItem     
+        WHERE OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)     
+        AND POLICYLEVEL=200     
+        AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+        AND LOGICALVALUE = @C_VAL_LOGICAL)     
+         
+      
+ UPDATE TBL_PolicyItem SET LOGICALVALUE=CAST(@NEW_VALUE AS BIT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT PROGRAMID FROM @TMP_C_PRG)     
+    AND POLICYLEVEL=200     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND LOGICALVALUE=@C_VAL_LOGICAL     
+        
+   END    
+   ELSE IF(@DATA_TYPE='NUMERIC')    
+   BEGIN    
+    INSERT INTO @TMP_C_PRG_EQUAL (PROGRAMID)     
+     SELECT OWNERID FROM TBL_PolicyItem     
+     WHERE POLICYLEVEL=200     
+     AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+     AND NUMERICVALUE=@C_VAL_NUMERIC    
+ AND OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)  
+     
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN (SELECT POLICYITEMID FROM TBL_PolicyItem     
+        WHERE OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)     
+        AND POLICYLEVEL=200     
+        AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+        AND NUMERICVALUE = @C_VAL_NUMERIC)     
+    
+
+   UPDATE TBL_PolicyItem SET NUMERICVALUE=CAST(@NEW_VALUE AS FLOAT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT PROGRAMID FROM @TMP_C_PRG)     
+    AND POLICYLEVEL=200     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND NUMERICVALUE=@C_VAL_NUMERIC    
+          
+   END    
+   ELSE IF(@DATA_TYPE='TEXT')    
+   BEGIN    
+    INSERT INTO @TMP_C_PRG_EQUAL (PROGRAMID)     
+     SELECT OWNERID FROM TBL_PolicyItem     
+     WHERE POLICYLEVEL=200     
+     AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+     AND TEXTVALUE=@C_VAL_TEXT    
+ AND OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)  
+     
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN (SELECT POLICYITEMID FROM TBL_PolicyItem     
+        WHERE OWNERID IN (SELECT PROGRAMID FROM @TMP_C_PRG)     
+        AND POLICYLEVEL=200     
+        AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+        AND TEXTVALUE = @C_VAL_TEXT)    
+    
+
+ UPDATE TBL_PolicyItem SET TEXTVALUE=@NEW_VALUE,MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT PROGRAMID FROM @TMP_C_PRG)     
+    AND POLICYLEVEL=200     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND TEXTVALUE=@C_VAL_TEXT    
+    
+        
+END    
+   --Update all the account associated to this client    
+   INSERT INTO @TMP_P_ACT   
+ SELECT ACCOUNTID FROM VW_EX_Account   
+ WHERE AllianceNumber IN (SELECT PROGRAMID FROM @TMP_C_PRG_EQUAL)    
+  
+   IF NOT EXISTS(SELECT ACCOUNTID FROM @TMP_P_ACT)    
+   BEGIN    
+    --Since no account found under this client,so  return.    
+    RETURN(1)    
+   END    
+    
+   IF(@DATA_TYPE='DATE')    
+   BEGIN    
+   UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0)    
+   
+   
+ DELETE FROM @TEMP_PR_ACT_BILLING  
+  
+ --ET 6274 Updating Billing Information of TA  
+ -- if the Policydimention is 225 (Services start date)  
+ -- Added by Saravanan on 18 Mar 2008  
+ IF(@POLICYDIMENSIONID = 225)  
+ BEGIN  
+  INSERT INTO @TEMP_PR_ACT_BILLING (ACCOUNTID)  
+  SELECT OWNERID FROM TBL_PolicyItem  
+  WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0    
+      
+  INSERT INTO @TMP_ACT_BILL_PROFILE(ACCOUNTID, BILLINGSTARTDATE)  
+  SELECT ACCOUNTID , CAST(@NEW_VALUE AS DATETIME) FROM @TEMP_PR_ACT_BILLING  
+  
+ END  
+ --End  
+  
+ UPDATE TBL_PolicyItem SET DATEVALUE=CAST(@NEW_VALUE AS DATETIME),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0    
+   
+   END    
+   ELSE IF(@DATA_TYPE='LIST')    
+   BEGIN    
+     
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND POLICYDROPDOWNID = @C_VAL_LIST)     
+    
+    UPDATE TBL_PolicyItem SET POLICYDROPDOWNID=CAST(@NEW_VALUE AS INT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND POLICYDROPDOWNID=@C_VAL_LIST    
+   END    
+   ELSE IF(@DATA_TYPE='LOGICAL')    
+   BEGIN    
+     
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND LOGICALVALUE=@C_VAL_LOGICAL)    
+   
+  
+    UPDATE TBL_PolicyItem SET LOGICALVALUE=CAST(@NEW_VALUE AS BIT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND LOGICALVALUE=@C_VAL_LOGICAL    
+   END    
+   ELSE IF(@DATA_TYPE='NUMERIC')    
+   BEGIN    
+     
+  
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE    
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND NUMERICVALUE=@C_VAL_NUMERIC)    
+    
+  
+    UPDATE TBL_PolicyItem SET NUMERICVALUE=CAST(@NEW_VALUE AS FLOAT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND NUMERICVALUE=@C_VAL_NUMERIC    
+   END    
+   ELSE IF(@DATA_TYPE='TEXT')    
+   BEGIN  
+     
+    
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND TEXTVALUE=@C_VAL_TEXT)    
+    
+  
+    UPDATE TBL_PolicyItem SET TEXTVALUE=@NEW_VALUE ,MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND TEXTVALUE=@C_VAL_TEXT    
+   END    
+  END    
+  ELSE IF (@ENTITY_TYPE='PROGRAM' AND @MAX_POLICY_LEVEL>200)    
+  BEGIN    
+   SELECT     
+    @C_VAL_DATE=DATEVALUE,    
+    @C_VAL_LIST=POLICYDROPDOWNID,    
+    @C_VAL_LOGICAL =LOGICALVALUE,    
+    @C_VAL_NUMERIC =NUMERICVALUE,    
+    @C_VAL_TEXT=TEXTVALUE     
+   FROM TBL_PolicyItem WHERE OWNERID=@ENTITY_ID AND POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=200    
+     
+   INSERT INTO @TMP_P_ACT SELECT ACCOUNTID FROM VW_EX_Account WHERE AllianceNumber=@ENTITY_ID    
+   IF NOT EXISTS(SELECT ACCOUNTID FROM @TMP_P_ACT)    
+   BEGIN    
+    --Since no account found under this client,so return.    
+    RETURN(1)    
+   END    
+    
+   IF(@DATA_TYPE='DATE')    
+   BEGIN    
+   
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0)    
+    
+ --ET 6274 Updating Billing Information of TA  
+ -- if the Policydimention is 225 (Services start date)  
+ -- Added by Saravanan on 18 Mar 2008  
+ IF(@POLICYDIMENSIONID = 225)  
+ BEGIN  
+  DELETE FROM @TEMP_PR_ACT_BILLING  
+  INSERT INTO @TEMP_PR_ACT_BILLING (ACCOUNTID)  
+  SELECT OWNERID FROM TBL_PolicyItem  
+  WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+   AND POLICYLEVEL=300     
+   AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+   AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0   
+  
+  INSERT INTO @TMP_ACT_BILL_PROFILE(ACCOUNTID, BILLINGSTARTDATE)  
+  SELECT ACCOUNTID , CAST(@NEW_VALUE AS DATETIME) FROM @TEMP_PR_ACT_BILLING  
+   
+ END  
+ --End  
+  
+    UPDATE TBL_PolicyItem SET DATEVALUE=CAST(@NEW_VALUE AS DATETIME),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND DATEDIFF(day,ISNULL(DATEVALUE,''),ISNULL(@C_VAL_DATE,''))=0    
+  
+   END    
+   ELSE IF(@DATA_TYPE='LIST')    
+   BEGIN    
+   
+ UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND POLICYDROPDOWNID=@C_VAL_LIST)    
+    
+  
+    UPDATE TBL_PolicyItem SET POLICYDROPDOWNID=CAST(@NEW_VALUE AS INT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND POLICYDROPDOWNID=@C_VAL_LIST    
+   END    
+   ELSE IF(@DATA_TYPE='LOGICAL')    
+   BEGIN    
+   
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND LOGICALVALUE=@C_VAL_LOGICAL)    
+    
+  
+    UPDATE TBL_PolicyItem SET LOGICALVALUE=CAST(@NEW_VALUE AS BIT),MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND LOGICALVALUE=@C_VAL_LOGICAL     
+   END    
+   
+   ELSE IF(@DATA_TYPE='NUMERIC')    
+   BEGIN    
+   
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND NUMERICVALUE=@C_VAL_NUMERIC)    
+    
+
+    UPDATE TBL_PolicyItem SET NUMERICVALUE=CAST(@NEW_VALUE AS FLOAT), MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND NUMERICVALUE=@C_VAL_NUMERIC    
+   END    
+   ELSE IF(@DATA_TYPE='TEXT')    
+   BEGIN    
+   
+    UPDATE TBL_PolicyItem    
+    SET MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()    
+    WHERE     
+    POLICYITEMID IN(SELECT POLICYITEMID FROM TBL_PolicyItem     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND TEXTVALUE=@C_VAL_TEXT)   
+   
+  
+    UPDATE TBL_PolicyItem SET TEXTVALUE=@NEW_VALUE,MODIFIEDUSERID=@USERID,    
+     MODIFIEDDATE=GETDATE()     
+    WHERE OWNERID IN(SELECT ACCOUNTID FROM @TMP_P_ACT)     
+    AND POLICYLEVEL=300     
+    AND POLICYDIMENSIONID=@POLICYDIMENSIONID    
+    AND TEXTVALUE=@C_VAL_TEXT    
+   END    
+  END     
+  
+  
+ --ET 6274 Updating Billing Information of TA  
+ -- if the Policydimention is 225 (Services start date)  
+ -- Added by Saravanan on 18 Mar 2008  
+ DECLARE  @C_COUNT INT  
+ DECLARE  @MAX_CCOUNT INT  
+ DECLARE @CUR_ACCOUNTID INT,@CUR_DATE DATETIME  
+ SET @C_COUNT = 1  
+ SELECT  @MAX_CCOUNT  = COUNT(ID) FROM @TMP_ACT_BILL_PROFILE  
+ WHILE (@C_COUNT <=  @MAX_CCOUNT)  
+ BEGIN  
+  SELECT @CUR_ACCOUNTID=ACCOUNTID , @CUR_DATE = BILLINGSTARTDATE FROM @TMP_ACT_BILL_PROFILE WHERE ID=@C_COUNT  
+  SET @C_COUNT  = @C_COUNT +1  
+ END   
+
+
+if(@@error !=0)  
+begin  
+  RAISERROR 1000092 'USP_EX_UpdPolicyItemCascade: Cannot update  in TBL_POLICYITEM table'                
+end  
+
+END  
+
+
+  GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_UpdPolicyItemCascade') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_UpdPolicyItemCascade';
+	END

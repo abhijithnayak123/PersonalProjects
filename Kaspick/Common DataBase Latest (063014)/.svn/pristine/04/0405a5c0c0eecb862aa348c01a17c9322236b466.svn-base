@@ -1,0 +1,62 @@
+
+    
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProfileTaxConditionDTL')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProfileTaxConditionDTL;
+        PRINT 'DROPPED USP_EX_GetProfileTaxConditionDTL';
+    END
+GO
+
+/**************************************************************************                          
+* New Procedure Name : USP_EX_GetProfileTaxConditionDTL  
+* Old PROCEDURE NAME  : USP_EIS_EX_PROFILE_TAX_CONDITION_DTLSelProc                          
+* DESCRIPTION     : DELETES ACCOUNT TAX CONDITIONS SUPPLIED IN XML AS PARAMETER    
+*     CONDITION IDS ARE SENT IN XML DOCUMENT    
+* INPUT           :               
+* MODIFICATION LOG:               
+*                                                      
+* DATE   CREATED BY  DESCRIPTION                                                                      
+*-------------------------------------------------------------------------                  
+* 24-Sept-07 Chirag Parekh CREATED  
+* 4-Apr-2014 Yugandhar EXCREQ7.4 Modified  
+* 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+****************************************************************************/                          
+    
+CREATE PROCEDURE USP_EX_GetProfileTaxConditionDTL    
+( @TAX_CONDITION_ID INT )    
+AS    
+BEGIN    
+    
+SELECT TAX_ID,     
+  LstItm.LISTITEMNAME,CONDITION_ID,    
+  (CASE     
+   WHEN LstItm.ABBREV = 'D' THEN 'Diagnostic Error'    
+   WHEN LstItm.ABBREV = 'P' THEN 'Production Exception'    
+   WHEN LstItm.ABBREV = 'O' THEN 'Other'    
+   ELSE LstItm.ABBREV    
+  END) COND_TYPE,    
+  LstItmSttus.LISTITEMNAME,STATUS_ID,    
+  START_YEAR,END_YEAR,COMMENTS    
+ FROM TBL_BR_ProfileTaxCondition PrflTxCond   
+ INNER JOIN TBL_LISTITEM LstItm    
+  ON PrflTxCond.CONDITION_ID = LstItm.LISTITEMID  
+   INNER JOIN TBL_LISTITEM LstItmSttus    
+  ON PrflTxCond.STATUS_ID = LstItmSttus.LISTITEMID    
+ WHERE TAX_CONDITION_ID = @TAX_CONDITION_ID    
+END    
+    
+    
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProfileTaxConditionDTL') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProfileTaxConditionDTL';
+	END
+    

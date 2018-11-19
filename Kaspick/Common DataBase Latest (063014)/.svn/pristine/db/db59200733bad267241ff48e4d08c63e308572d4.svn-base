@@ -1,0 +1,67 @@
+
+IF EXISTS (	SELECT	*
+			FROM sysobjects
+			WHERE type = 'P' AND name = 'USP_EX_GetUserApplication') 
+		BEGIN
+			DROP PROCEDURE USP_EX_GetUserApplication;
+			PRINT 'DROPPED PROCEDURE USP_EX_GetUserApplication';
+		END
+		
+GO
+
+/******************************************************************************  
+** Name: USP_EX_GetUserApplication
+** Old Name:     USP_EIS_IE_Get_User_Application  
+** Short Desc: Put in Short Description  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+        EXEC USP_EIS_IE_Get_User_Application 200735  -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Rahul  
+** Company   : Kaspick & Company  
+** Project   : IE  
+** Created DT: <12/15/2007>  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 20-Feb-2014   Mallikarjun  EXCREQ3.1 Modified
+** 23-05-2014	 Mallikarjun	SP Name Renamed and Modified
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+
+CREATE PROCEDURE [dbo].[USP_EX_GetUserApplication]    
+ -- paremeters here    
+ @USER_ID int     
+AS     
+--  Initial Set statements  --    
+SET NOCOUNT ON;    
+Select APPLICATIONID,APPLICATIONNAME     
+From TBL_KS_Application     
+Where APPLICATIONID in (Select APPLICATIONID From TBL_KS_UserApplication Where   
+UserId=@USER_ID)   
+GO
+    
+SET NOCOUNT OFF;
+
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetUserApplication') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetUserApplication';
+	END   
+    

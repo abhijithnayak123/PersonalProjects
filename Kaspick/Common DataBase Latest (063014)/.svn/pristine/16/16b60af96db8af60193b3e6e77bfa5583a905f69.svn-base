@@ -1,0 +1,118 @@
+
+
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'spSYS_ErrorHandler')
+    BEGIN
+        DROP PROCEDURE spSYS_ErrorHandler;
+        PRINT 'DROPPED spSYS_ErrorHandler';
+    END
+GO
+
+  
+/******************************************************************************  
+** Name:     spSYS_ErrorHandler  
+** Short Desc: Generic Error Handler  
+**  
+** Full Description  
+**        This procedure should be used by all procedures to handle error  
+**   situations.  It should be called within the CATCH block.  
+**  
+**   Allows for the passing of up to 4 pieces of data that can be  
+**   used to identify the row in error - should be the elements of   
+**   the primary key of the table that is the target of the   
+*8   transaction.  Pass in numerics as varchar(30)  
+**  
+** Sample Call  
+        EXEC spSYS_ErrorHandler  @codename = 'test', @errmsg = 'test error',  
+   @errnbr = 50000, @val1 = '12', @val1str = 'empid'  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Rod Prince  
+** Company   : Kaspick & Company  
+** Project   : System Procedure  
+** Created DT: 10/06/2006  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**      
+*******************************************************************************  
+** Copyright (C) 2006 Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[spSYS_ErrorHandler] @codename varchar(60),  
+ @errmsg varchar(1000), @errnbr int,  
+ @val1 varchar(30), @val1str varchar(30), @val2 varchar(30) = '',   
+ @val2str varchar(30) = '', @val3 varchar(30) = '', @val3str varchar(30) = '',  
+ @val4 varchar(30) = '', @val4str varchar(30) = ''  
+AS   
+  
+--  Initial Set statements  --  
+SET NOCOUNT ON;  
+SET LOCK_TIMEOUT                30000;   -- 30 seconds  
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+  
+--  Variable Declarations  --  
+  
+Declare @errstr varchar(2000);  
+  
+--Set @errmsg = ERROR_MESSAGE()  
+  
+Set @errstr = @val1 + ' - ' + @val1str + ', ' + @val2 + ' - ' + @val2str + ', ' +   
+ @val3 + ' - ' + @val3str + ', ' + @val4 + ' - ' + @val4str + ', '    
+  
+--select @errstr  
+Set @errstr = @errstr + ' ' + Cast(@errnbr as varchar(30)) + ' - ' + @errmsg;  
+--select @errstr  
+  
+RaisError ('%s - Failed for identifiers %s',  
+ 16, 1, @codename, @errstr)  
+  
+SELECT @codename 'Source', @errstr 'Identifiers',  
+ @errnbr AS ErrorNumber,  
+ @errmsg AS ErrorMessage;  
+  
+--  Temp tables, Cursors, Table Variables  --  
+  
+  
+--  Variable Data Assignment  --  
+  
+  
+-- Body of procedure  --  
+  
+Return @errnbr;  
+  
+  
+--  End of procedure  --  
+  
+  
+  
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'spSYS_ErrorHandler') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE spSYS_ErrorHandler';
+	END
+
+
+
+
+
+
+
+

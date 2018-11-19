@@ -1,0 +1,104 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationByID]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationByID]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationByID]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationByID]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationByID                      
+** Short Desc: Fetch valuation details for given valuation id. 
+**                      
+** Full Description: Fetch valuation details for given valuation id..
+**      
+**                              
+** Input Arguments:  
+	@ValuationID		: @ValuationID value tobe searched.          
+    
+**         
+** Sample Call          
+ EXEC USP_PV_GetValuationByID  11
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationByID] (@ValuationID INT)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Get valuation records
+	SELECT ValuationID
+		,ValuationDate
+		,Reconfromdate
+		,Recontodate
+		,CustomerAccountNumber
+		,ManagerCode
+		,ManageCodeName
+		,CurrentStatusID
+		,PValStat.STATUS AS CurrentStatus
+		,InitialFMV
+		,PendingSeverence
+		,PendingGiftAddition
+		,EarlyTradedPayments
+		,GiftwrapPaymentsAsOfDate
+		,InnoTrustPaymentsAsOfDate
+		,OtherAdjustment
+		,FinalFMV
+		,GiftwrapEquityUnit
+		,NAV
+		,ReconcilliationType
+		,Comment
+		,RecordVersion
+		,ReconWithDW
+		,GiftWrapCashtracInput
+		,GiftWrapMVDARptGenerated
+		,PVal.CreatedDate
+		,PVal.CreatedBy
+		,PVal.ModifiedDate
+		,PVal.ModifiedBy
+		,Usr.LoginName AS 'LoginName'
+		,AccountType
+		,HasGiftExclusion
+		,GiftExclusionComment
+		,ValuationType
+	FROM TBL_PV_Valuation PVal
+	INNER JOIN TBL_PV_ValuationStatus PValStat
+		ON PValStat.StatusID = PVal.CurrentStatusID
+	INNER JOIN TBL_KS_User Usr
+		ON Usr.UserID = PVal.ModifiedBy
+	WHERE ValuationID = @ValuationID
+END

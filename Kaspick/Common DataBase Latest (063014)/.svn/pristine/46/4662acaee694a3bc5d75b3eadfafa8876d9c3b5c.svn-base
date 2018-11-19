@@ -1,0 +1,123 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTrading'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTrading;
+
+	PRINT 'DROPPED USP_EX_GetTrading';
+END
+GO
+
+/******************************************************************************        
+** Name : USP_EX_GetTrading
+** Old Name:     US_EIS_EX_TRADING_SelProc        
+** Short Desc: This Procedure checks for the existence of AdventID passed through XML.         
+**        
+** Full Description        
+**        More detailed description if necessary        
+**        
+** Sample Call        
+        USP_EIS_EX_TRADING_SelProc  @adventdoc = N'<root><Item><advent_id>ss</advent_id></Item><Item><advent_id>ggg</advent_id></Item><Item><alert_date>04/13/2007</alert_date></Item></root>',      
+  @adventxpath = N'root/Item'       
+*         
+*        
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET NOCOUNT             ON        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By: Rahul Sharma        
+** Company   : Kaspick & Company        
+** Project   : Excelsior -- IM PROFILE        
+** Created DT: 04/03/2007        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** <mm/dd/yyyy>  
+**  04/21/2014  Sanath            In Excelsior Prime project ,Trading task module, req INVREQ3.1 
+**  23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted      
+*******************************************************************************        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTrading] (
+	@adventdoc VARCHAR(MAX) = NULL
+	,@adventxpath VARCHAR(50) = NULL
+	)
+AS
+--  Variable Declarations  --        
+DECLARE @procname VARCHAR(60);
+DECLARE @ErrorMessage VARCHAR(1000);
+DECLARE @ErrorNumber INT;
+DECLARE @hdoc INT;
+-- Variables used for error handling - uncomment if needed        
+DECLARE @val1 VARCHAR(30);
+DECLARE @val2 VARCHAR(255);
+
+SET @procname = 'USP_EX_GetTrading';
+
+BEGIN TRY
+	CREATE TABLE #TempAdventDTL (
+		advent_id VARCHAR(15)
+		,
+		)
+
+	EXEC SP_XML_PREPAREDOCUMENT @hdoc OUTPUT
+		,@adventdoc
+
+	INSERT INTO #TempAdventDTL
+	SELECT rtrim(ltrim(advent_id))
+	FROM OpenXml(@hdoc, @adventxpath, 2) WITH (advent_id VARCHAR(15))
+
+	SELECT rtrim(ltrim(advent_id)) AS advent_id
+	FROM #TempAdventDTL
+	WHERE rtrim(ltrim(advent_id)) NOT IN (
+			SELECT DISTINCT isnull(CustomerAccountNumber, '')
+			FROM TBL_INV_AccountProfile DG
+			)
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.dbo.sysobjects
+			WHERE id = object_id(N'TEMPDB.[dbo].[#TempAdventDTL]')
+			)
+		DROP TABLE #TempAdventDTL
+
+	EXEC SP_XML_REMOVEDOCUMENT @hdoc
+END TRY
+
+--  Error Handling Sample - uncomment if needed        
+BEGIN CATCH
+	SET @ErrorMessage = ERROR_MESSAGE();
+	SET @ErrorNumber = ERROR_NUMBER();
+	SET @val1 = Cast(@adventxpath AS VARCHAR(20));
+	SET @val2 = Cast(@adventxpath AS VARCHAR(255));
+
+	EXEC USP_EX_SYSErrorHandler @codename = @procname
+		,@ErrorMessage = @ErrorMessage
+		,@ErrorNumber = @ErrorNumber
+		,@val1 = @val1
+		,@val1str = 'XMLPATH'
+		,@val2 = @val2
+		,@val2str = 'XMLDOC';
+END CATCH;
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTrading'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTrading';
+END

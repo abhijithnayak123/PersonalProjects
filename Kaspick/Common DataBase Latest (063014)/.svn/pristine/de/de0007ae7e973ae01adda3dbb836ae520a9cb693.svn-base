@@ -1,0 +1,80 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAccountGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAccountGroup]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetAccountGroup
+** Short Desc : Gets all Account Groups     
+**      
+** Full Description   : Gets all Account Groups   
+**              
+**      
+** Sample Call      
+		Declare @ReturnStatus Int
+		Declare @ErrorDesc Varchar(8000)
+        EXEC USP_TR_GetAccountGroup @ReturnStatus , @ErrorDesc
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa          
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)
+** Created DT :		Feb/27/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**   Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAccountGroup] @ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	SELECT AcntGrp.GroupName
+		,AcntGrp.GroupType
+		,AcntGrp.CreationDate
+		,AcntGrp.LastRefreshed
+		,AcntGrp.GroupDescription
+		,AcntGrp.Refreshable
+		,AcntGrp.QueryName
+	FROM TBL_TR_STG_AccountGroup AcntGrp
+	ORDER BY AcntGrp.LastRefreshed DESC
+		,AcntGrp.groupname ASC
+
+	SELECT GrpAcnt.GroupName
+		,GrpAcnt.CustomerAccountNumber
+	FROM TBL_TR_GroupXAccount GrpAcnt
+	ORDER BY GrpAcnt.groupname ASC
+END
+GO
+
+

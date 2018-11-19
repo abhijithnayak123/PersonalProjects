@@ -1,0 +1,379 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSavePrimeAndParagonData]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportSavePrimeAndParagonData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportSavePrimeAndParagonData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSavePrimeAndParagonData]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportSavePrimeAndParagonData    
+** Short Desc:  For importing Innotrust Data to staging table  TBL_IE_STG_Estimate.
+**    
+** Full Description : For importing Innotrust Data to staging table TBL_IE_STG_Estimate.
+**            
+**    
+** Sample Call    
+  EXEC USP_IE_ImportSavePrimeAndParagonData  -- parameters  
+  '<ImportStagingCollection><InsertList>  
+   <ImportStaging StagingID="94"  RunDate="9/25/2007 12:00:00 AM" />  
+	<ImportStaging StagingID="95"  RunDate="9/25/2007 12:00:00 AM" />  
+	<ImportStaging StagingID="96"  RunDate="9/25/2007 12:00:00 AM" />  
+   </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>  
+  </ImportStagingCollection>'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income STGEstimation    
+** Created DT: 07/16/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportSavePrimeAndParagonData] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @RunDate DATETIME;
+	DECLARE @TaxYear INT;
+	DECLARE @SpclIncmEstmID INT;
+	DECLARE @IncmAcrlPolID INT;
+	DECLARE @AmrtzPlcyID INT;
+	DECLARE @AccretionID INT;
+	DECLARE @RealEstIncRulID INT;
+	DECLARE @REMiscExpRulID INT;
+	DECLARE @RealEstTaxRulID INT;
+	DECLARE @PrmNtAmrtID INT;
+
+	--  Temp tables, Cursors, Table Variables  --  
+	IF OBJECT_ID('tempdb..#Tmp_AccountsToBeImported') IS NOT NULL
+		DROP TABLE #Tmp_AccountsToBeImported
+
+	CREATE TABLE #Tmp_AccountsToBeImported (
+		StagingID INT
+		,RunDate DATETIME
+		)
+
+	-- Body of procedure  --  
+	BEGIN TRY
+		--  Transactions  
+		BEGIN TRANSACTION
+
+		--Get acounts to be imported from xml  
+		INSERT INTO #Tmp_AccountsToBeImported
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@RunDate[1]', 'datetime') AS RunDate
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+		--Get Tax year from Groups table and RunDate from XML
+		SELECT @TaxYear = TaxYear
+			,@RunDate = RunDate
+		FROM (
+			SELECT grp.TaxYear
+				,ImpAcc.RunDate
+				,ROW_NUMBER() OVER (
+					ORDER BY ImpAcc.StagingID
+					) AS RwNum
+			FROM TBL_IE_STG_Estimate STGEst
+			INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+				ON STGEst.StagingID = ImpAcc.StagingID
+			INNER JOIN TBL_IE_Group Grp
+				ON STGEst.GroupID = Grp.GroupID
+			) TopRec
+		WHERE RwNum = 1
+
+		--Clear Excelsior Import Data for above accounts  
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_ValuationPriorYear1 = NULL
+			,PP_ValuationPriorYear2 = NULL
+			,PP_ValuationPriorYear3 = NULL
+			,PP_Valuation = NULL
+			,PP_OverPayment = NULL
+			,PP_UnitrustAmount = NULL
+			,PP_CumulativeDeficiency = NULL
+			,PP_ValuationStatus = NULL
+			,PP_InvestmentAllocationYield = NULL
+			,IT_NewGiftsAndAdditions = NULL
+			,PP_Q1_Q4PaymentsPriorYear1 = NULL
+			,PP_Q1_Q4PaymentsPriorYear2 = NULL
+			,PP_Q1_Q4PaymentsPriorYear3 = NULL
+			,PP_Q5PaymentsPriorYear1 = NULL
+			,PP_Q5PaymentsPriorYear2 = NULL
+			,PP_Q5PaymentsPriorYear3 = NULL
+			,PP_TotalPaymentsPriorYear1 = NULL
+			,PP_TotalPaymentsPriorYear2 = NULL
+			,PP_TotalPaymentsPriorYear3 = NULL
+			,IE_DisplayOrder = NULL
+			,PP_TrustYieldPriorYear1 = NULL
+			,PP_TrustYieldPriorYear2 = NULL
+			,PP_TrustYieldPriorYear3 = NULL
+			,PP_PriorYearPayout = NULL
+			,PP_PriorYearValuation = NULL
+			,PP_PriorYearYield = NULL
+			,IsExcelsiorImported = NULL
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		-- Data Import From Account Master tables  
+		-----------------------------------------------------------  
+		UPDATE TBL_IE_STG_Estimate
+		SET ObjectiveCode = InvAcc.ObjectiveCode
+			,EP_MasterObjectiveName = InvObj.MasterObjectiveName
+			,EP_InvestPerPolicy = InvAcc.Bypolicy
+			,EP_InvestmentType = InvAcc.InvestmentTypeCode
+			,EP_FirstTradeDate = InvAcc.FirstTradeDate
+			,EP_TranchingStatus = InvAcc.TrancheStatusCode
+			,EP_InvestmentComment = InvAcc.InvestmentComment
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_AccountMaster AccMas
+			ON STGEst.CustomerAccountNumber = AccMas.CustomerAccountNumber
+		INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+			ON STGEst.CustomerAccountNumber = UDFAccMas.CustomerAccountNumber_Key
+		INNER JOIN TBL_INV_AccountProfile InvAcc
+			ON STGEst.CustomerAccountNumber = InvAcc.CustomerAccountNumber
+		INNER JOIN SYN_IT_CTAccountDetails CTAcc
+			ON STGEst.CustomerAccountNumber = CTAcc.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_INV_InvestmentObjective InvObj
+			ON InvObj.ObjectiveCode = InvAcc.ObjectiveCode
+
+		--Annual Account Payout Info Loaded
+		--Investment Objective Yield 
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_InvestmentAllocationYield = CASE 
+				WHEN InvObj.ExpectedYield IS NULL
+					THEN NULL
+				ELSE InvObj.ExpectedYield / 100
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_INV_InvestmentObjective InvObj
+			ON STGEst.ObjectiveCode = InvObj.ObjectiveCode
+
+		--Investment Objective Yield Loaded
+		--Loading New Gifts
+		UPDATE TBL_IE_STG_Estimate
+		SET IT_NewGiftsAndAdditions = (
+				SELECT SUM(ISNULL(MarketValue, 0)) AS NewGiftsAndAdditions
+				FROM SYN_PS_Gift Gift
+				INNER JOIN SYN_PS_GiftAsset GiftAsset
+					ON Gift.GiftID = GiftAsset.GiftID
+				INNER JOIN TBL_Lookup_Account LkpAccnt
+					ON Gift.AccountID = LkpAccnt.AccountID
+						AND LkpAccnt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+				WHERE GiftDate BETWEEN dateadd(month, - 18, @RunDate)
+						AND @RunDate
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q1_Q4PaymentsPriorYear1 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 1
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate BETWEEN CONVERT(DATETIME, '1/1/' + CONVERT(VARCHAR(4), @TaxYear - 1))
+						AND CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 1))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q1_Q4PaymentsPriorYear2 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 2
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate BETWEEN CONVERT(DATETIME, '1/1/' + CONVERT(VARCHAR(4), @TaxYear - 2))
+						AND CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 2))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q1_Q4PaymentsPriorYear3 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 3
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate BETWEEN CONVERT(DATETIME, '1/1/' + CONVERT(VARCHAR(4), @TaxYear - 3))
+						AND CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 3))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Q1 - Q4 Prior Year Payments Loaded'  
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q5PaymentsPriorYear1 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 1
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate > CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 1))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q5PaymentsPriorYear2 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 2
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate > CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 2))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_Q5PaymentsPriorYear3 = (
+				SELECT SUM(ISNULL(BenPymt.PaymentAmount, 0)) AS PriorYearPayment
+				FROM TBL_PP_BeneficiaryPayment BenPymt
+				WHERE BenPymt.CustomerAccountNumber = STGEst.CustomerAccountNumber
+					AND (
+						BenPymt.TaxYear = @TaxYear - 3
+						AND BenPymt.VoidDate IS NULL
+						)
+					AND PaymentDate > CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear - 3))
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Q5 Prior Year Payments Loaded'  
+		UPDATE TBL_IE_STG_Estimate
+		SET PP_PriorYearPayout = ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) + ISNULL(PP_Q5PaymentsPriorYear1, 0)
+			,PP_PriorYearValuation = ISNULL(PP_ValuationPriorYear1, 0)
+			,PP_PriorYearYield = CASE 
+				WHEN ISNULL(PP_ValuationPriorYear1, 0) = 0
+					THEN 0
+				ELSE (((ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) + ISNULL(PP_Q5PaymentsPriorYear1, 0)) / PP_ValuationPriorYear1))
+				END
+			,PP_TotalPaymentsPriorYear1 = ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) + ISNULL(PP_Q5PaymentsPriorYear1, 0)
+			,PP_TotalPaymentsPriorYear2 = ISNULL(PP_Q1_Q4PaymentsPriorYear2, 0) + ISNULL(PP_Q5PaymentsPriorYear2, 0)
+			,PP_TotalPaymentsPriorYear3 = ISNULL(PP_Q1_Q4PaymentsPriorYear3, 0) + ISNULL(PP_Q5PaymentsPriorYear3, 0)
+			,PP_TrustYieldPriorYear1 = CASE 
+				WHEN ISNULL(PP_ValuationPriorYear1, 0) = 0
+					THEN 0
+				ELSE (((ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) + ISNULL(PP_Q5PaymentsPriorYear1, 0)) / PP_ValuationPriorYear1))
+				END
+			,PP_TrustYieldPriorYear2 = CASE 
+				WHEN ISNULL(PP_ValuationPriorYear2, 0) = 0
+					THEN 0
+				ELSE (((ISNULL(PP_Q1_Q4PaymentsPriorYear2, 0) + ISNULL(PP_Q5PaymentsPriorYear2, 0)) / PP_ValuationPriorYear2))
+				END
+			,PP_TrustYieldPriorYear3 = CASE 
+				WHEN ISNULL(PP_ValuationPriorYear3, 0) = 0
+					THEN 0
+				ELSE (((ISNULL(PP_Q1_Q4PaymentsPriorYear3, 0) + ISNULL(PP_Q5PaymentsPriorYear3, 0)) / PP_ValuationPriorYear3))
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Total Payments Loaded
+		--update actualflip date to override STGEstimated where available  
+		UPDATE TBL_IE_STG_Estimate
+		SET IT_ExpectedFlipDate = UDFAccMas.UDFAMColumn009
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+			ON STGEst.CustomerAccountNumber = UDFAccMas.CustomerAccountNumber_Key
+		WHERE UDFAccMas.UDFAMColumn009 IS NOT NULL
+
+		-- Display Order
+		UPDATE TBL_IE_STG_Estimate
+		SET IE_DisplayOrder = DO.DisplayOrder
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_DisplayOrder DO
+			ON DO.ITC = STGEst.EP_InvestmentType
+
+		----Update IsExcelsiorImported Flag   
+		--UPDATE TBL_IE_STG_Estimate
+		--SET IsExcelsiorImported = 1
+		--	,ModifiedDate = GETDATE()
+		--FROM TBL_IE_STG_Estimate STGEst
+		--INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+		--	ON STGEst.StagingID = ImpAcc.StagingID
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

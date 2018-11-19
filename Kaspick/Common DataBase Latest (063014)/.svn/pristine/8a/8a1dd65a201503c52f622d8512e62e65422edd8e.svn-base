@@ -1,0 +1,169 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc';
+END
+GO
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc                  
+** Short Desc: Retrieves the donor report quantity. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="204"  BeneficiaryID="585"  ClientEmployeeID="0"  ClientID="1"  
+DeliverableItemID="16444"  DeliverableQueueID="2"  DonorID="0"  TrustparticipantID="1250"  DeliverableFrequency="S"  /><DeliverableItemsDataToValidate AccountID="640"  BeneficiaryID="1676"  ClientEmployeeID="0"  ClientID="1"  
+DeliverableItemID="7"  DeliverableQueueID="1"  DonorID="123079"  TrustparticipantID="47"  
+DeliverableFrequency="A"  /></SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc
+    @XMLDeliverableItems
+	
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 11/10/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 12/11/2009 Venugopal.B ET #11102 Updated to considere BeneReportQuantity
+								for Participant Type "Donor Active/Beneficiary Active"
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted 
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+	--  Variable Declarations  --      
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @AnnPublishToWeb INT;
+	DECLARE @AnnDonRptPrnSet INT;
+	DECLARE @AnnBeneRptCopies INT;
+	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		,ParticipantID INT
+		,DonorID INT
+		,BeneficiaryID INT
+		);
+
+	--  Variable Data Assignment  --      
+	SET @procname = 'USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc';
+
+	-- Body of procedure  --      
+	BEGIN TRY
+		SELECT @AnnPublishToWeb = policydimensionid
+		FROM policydimension
+		WHERE fullname = 'Ann Publish to Web'
+
+		SELECT @AnnDonRptPrnSet = policydimensionid
+		FROM policydimension
+		WHERE fullname = 'Ann Don Rpt Prn set'
+
+		SELECT @AnnBeneRptCopies = policydimensionid
+		FROM policydimension
+		WHERE fullname = 'Ann Bene Rpt Copies' --ET #11102
+
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,XMLdoc.DeliverableItemData.value('@TrustparticipantID[1]', 'int') AS ParticipantID
+			,XMLdoc.DeliverableItemData.value('@DonorID[1]', 'int') AS DonorID
+			,XMLdoc.DeliverableItemData.value('@BeneficiaryID[1]', 'int') AS BeneficiaryID
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		INNER JOIN TBL_EIS_DT_Deliverable_Items DIDS ON XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') = DIDS.DeliverableItemID
+		WHERE DIDS.ReportType = 'D'
+
+		SELECT DID.DeliverableItemID
+			,107 AS RuleID
+			,'DonorReportQuantity' AS Attribute
+			,(
+				CASE 
+					WHEN ISNULL(PWA.LogicalValue, 0) = 1
+						THEN 1
+					WHEN VTT.PARTICIPANT_TYPE = 'Donor Active/Beneficiary Active'
+						THEN ISNULL(PAB.NumericValue, 0) --ET #11102 
+					ELSE ISNULL(PAD.NumericValue, 0)
+					END
+				) AS ActualValue
+			,'' AS DisplayMessage
+		FROM @DeliverableItemData DID
+		LEFT JOIN policyitem PAB ON DID.ACCOUNTID = PAB.ownerid
+			AND PAB.PolicyLevel = 300
+			AND PAB.policydimensionid = @AnnBeneRptCopies --ET #11102 
+		LEFT JOIN policyitem PAD ON DID.ACCOUNTID = PAD.ownerid
+			AND PAD.PolicyLevel = 300
+			AND PAD.policydimensionid = @AnnDonRptPrnSet
+		LEFT JOIN policyitem PWA ON DID.ACCOUNTID = PWA.ownerid
+			AND PWA.PolicyLevel = 300
+			AND PWA.policydimensionid = @AnnPublishToWeb
+		--ET #11102 Begin
+		INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON DID.AccountID = VTT.AccountID
+			AND DID.ParticipantID = VTT.ParticipantID
+			AND DID.BeneficiaryID = ISNULL(VTT.BeneficiaryID, 0)
+			AND DID.DonorID = ISNULL(VTT.DonorID, 0)
+			--ET #11102 End  
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  -- 
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_UR_DonorReportQuantity_SelProc';
+END

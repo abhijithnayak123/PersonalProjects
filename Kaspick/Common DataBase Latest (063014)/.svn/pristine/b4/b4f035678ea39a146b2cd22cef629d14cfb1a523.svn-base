@@ -1,0 +1,90 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportIndicesManagementDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetRptReportIndicesManagementDetail;
+
+	PRINT 'DROPPED USP_EX_GetRptReportIndicesManagementDetail';
+END
+GO
+
+/******************************************************************************                    
+** Name:     USP_EX_GetRptReportIndicesManagementDetail                    
+** Old Name:USP_EIS_RPT_REPORT_INDICES_MANAGEMENT_DTLSelProc
+** Short Desc: To retrieve Client Reporting Indices Management Value for the particular Client             
+**                    
+** Full Description: To retrieve Client Reporting Indices Management Value for the particular Client            
+**                            
+** Input Arguments: @CLIENTID : Client ID for which Indices management details are to be fetched      
+**       
+** Sample Call                    
+**  EXEC USP_EIS_RPT_REPORT_INDICES_MANAGEMENT_DTLSelProc  
+   @CLIENTID = 100153,  
+**           
+** Return values: @INDICESXML : Indices Management XML Value                    
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Saravanan P Muthu             
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 06/08/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+**  4-Apr-2014  Yugandhar  EXCREQ5.4 Modified 
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [USP_EX_GetRptReportIndicesManagementDetail] (
+	@CLIENTID VARCHAR(15)
+	,@INDICESXML VARCHAR(max) = NULL OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EX_GetRptReportIndicesManagementDetail';
+	SET @INDICESXML = (
+			SELECT INDMGMTVER.VersionNo
+				,INDMGMT.IndexNo
+				,INDMGMT.IndexID
+				,INDMGMTVER.MultiAssetBM
+			FROM TBL_BR_ReportIndiceManagement INDMGMT
+			RIGHT JOIN TBL_BR_ReportIndiceManagementVersion INDMGMTVER ON INDMGMTVER.ReportIndexMgmtVersionID = INDMGMT.ReportIndexMgmtVersionID
+			WHERE ManagerCode = @CLIENTID
+			GROUP BY INDMGMTVER.VersionNo
+				,INDMGMT.IndexNo
+				,INDMGMT.IndexID
+				,INDMGMTVER.MultiAssetBM
+			FOR XML AUTO
+			)
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportIndicesManagementDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetRptReportIndicesManagementDetail';
+END

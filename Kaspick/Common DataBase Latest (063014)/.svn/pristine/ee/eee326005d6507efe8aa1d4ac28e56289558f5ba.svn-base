@@ -1,0 +1,417 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetRule]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetRule]    Script Date: 05/16/2013 12:11:16 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_GetRule                      
+** Short Desc	:	To get all Manager/Account/Contact Rules      
+*                  
+**                      
+** Full Description: To get all Manager/Account/Contact Rules depending on the Input type    
+**                              
+** Input Arguments:   XML,Type 
+**         
+** Sample Call     
+        
+	EXEC USP_PP_GetRule
+		'<ManagerCode
+Collection><ManagerCode1 ManagerCode="AFH"  /><ManagerCode1 ManagerCode="TMC"  /><ManagerCode1 ManagerCode="ACL"  /></ManagerCodeCollection>'
+		,'Manager'
+		
+	EXEC USP_PP_GetRule  
+  '<RuleDetailCollection>
+		<RuleDetail ManagerCode="AM" ManagerDescription="ABC" CustomerAccountNumber="" AccountName="" ContactID="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="1" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000962243"  />
+		<RuleDetail ManagerCode="ACL" ManagerDescription="ABC" CustomerAccountNumber="" AccountName="" ContactID="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,5" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000962244"  />
+		<RuleDetail ManagerCode="AL" ManagerDescription="ABC" CustomerAccountNumber="" AccountName="" ContactID="" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="6,2" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000000962245"  />
+	</RuleDetailCollection>'  
+  ,'Manager'  	
+  
+  
+   EXEC USP_PP_GetRule    
+  '<RuleDetailCollection><RuleDetail ManagerCode="ACL" ManagerDescription="" CustomerAccountNumber="ACADW" AccountName="" ContactId="1" ContactDescription="" DaysValue="" IsException="false" ExceptionCode="" ExceptionDescription="" IsExclusion="false" ExclusionDescription="" TemplateCode="" TemplateDescription="" RecordVersion="" /></RuleDetailCollection>'    
+  ,'Contact'
+  
+  
+  EXEC USP_PP_GetRule    
+  '<RuleDetailCollection><RuleDetail ManagerCode="ACL" ManagerDescription="" CustomerAccountNumber="ACADW" AccountName="" ContactId="1085" ContactDescription="1085 - BERTHA ORTEGA" DaysValue="" IsException="false" ExceptionCode="" ExceptionDescription="" IsExclusion="false" ExclusionDescription="" TemplateCode="" TemplateDescription="" RecordVersion="" /></RuleDetailCollection>'
+  ,'Contact'
+
+		
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 7-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 04-jun-2013 Niveditha	optimization of the code
+** 11/10/2013	Saravanan	Added distinct in Template Deescription column
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetRule] @RuleFilterXML XML = ''
+	,@Type VARCHAR(20)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	DECLARE @Tmp_Rule TABLE (
+		ManagerCode VARCHAR(4)
+		,ManagerDescription VARCHAR(255)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountName VARCHAR(255)
+		,ContactID INT
+		,ContactDescription VARCHAR(255)
+		,DaysValue INT
+		,IsException BIT
+		,ExceptionCode INT
+		,ExceptionCodeDesc VARCHAR(255)
+		,ExceptionDescription VARCHAR(1000)
+		,IsExclusion BIT
+		,ExclusionDescription VARCHAR(1000)
+		,TemplateCode VARCHAR(100)
+		,TemplateCodeDesc VARCHAR(255)
+		,TemplateDescription VARCHAR(500)
+		,RecordVersion BINARY (8)
+		,LastModifiedBy INT
+		,LastModifiedDate DATETIME
+		)
+	DECLARE @TBL_ManagerRuleTemplate TABLE (
+		ManagerCode VARCHAR(4)
+		,TemplateCode VARCHAR(255)
+		,TemplateCodeDesc VARCHAR(255)
+		,TemplateDescription VARCHAR(255)
+		)
+	DECLARE @TBL_ManagerRuleTemplate1 TABLE (
+		ManagerCode VARCHAR(4)
+		,TemplateCode VARCHAR(255)
+		,TemplateCodeDesc VARCHAR(255)
+		,TemplateDescription VARCHAR(500)
+		)
+
+	IF @Type = 'Manager'
+	BEGIN
+		INSERT INTO @Tmp_Rule
+		SELECT SelectedMgrRule.ManagerCode
+			,SelectedMgrRule.ManagerDescription
+			,NULL
+			,NULL
+			,NULL
+			,NULL
+			,DaysValue
+			,IsException
+			,ExceptionCode
+			,NULL
+			,ExceptionDescription
+			,IsExclusion
+			,ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,RecordVersion
+			,ModifiedBy
+			,ModifiedDate
+		FROM (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+				,XMLDoc.item.value('@ManagerDescription[1]', 'VARCHAR(255)') AS ManagerDescription
+			FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+			) SelectedMgrRule
+		LEFT OUTER JOIN TBL_PP_ManagerRule TblMgrRule ON SelectedMgrRule.ManagerCode = TblMgrRule.ManagerCode
+
+		INSERT INTO @TBL_ManagerRuleTemplate
+		SELECT DISTINCT TmpRule.ManagerCode
+			,TmplTypRule.TemplateCode
+			,TmplMstr.TemplateDescription
+			,TmplTypRule.TemplateDescription
+		FROM @Tmp_Rule TmpRule
+		INNER JOIN TBL_PP_TemplateTypeRule TmplTypRule ON TmpRule.ManagerCode = TmplTypRule.ManagerCode
+		INNER JOIN TBL_PP_TemplateMaster TmplMstr ON TmplMstr.TemplateCode = TmplTypRule.TemplateCode
+
+		INSERT INTO @TBL_ManagerRuleTemplate1
+		SELECT OutTab.[managercode]
+			,TemplateCode = STUFF((
+					SELECT ',' + convert(VARCHAR(500), InrTab.TemplateCode)
+					FROM @TBL_ManagerRuleTemplate InrTab
+					WHERE InrTab.managercode = OutTab.managercode
+					ORDER BY InrTab.TemplateCode
+					FOR XML PATH('')
+						,TYPE
+					).value('.', 'VARCHAR(500)'), 1, 1, SPACE(0))
+			,TemplateCodeDesc = STUFF((
+					SELECT ',' + convert(VARCHAR(500), InrTab.TemplateCodeDesc)
+					FROM @TBL_ManagerRuleTemplate InrTab
+					WHERE InrTab.managercode = OutTab.managercode
+					ORDER BY InrTab.TemplateCodeDesc
+					FOR XML PATH('')
+						,TYPE
+					).value('.', 'VARCHAR(500)'), 1, 1, SPACE(0))
+			,TemplateDescription = STUFF((
+					SELECT distinct ',' + convert(VARCHAR(50), InrTab.TemplateDescription)
+					FROM @TBL_ManagerRuleTemplate InrTab
+					WHERE InrTab.managercode = OutTab.managercode
+					--ORDER BY InrTab.TemplateDescription
+					FOR XML PATH('')
+						,TYPE
+					).value('.', 'VARCHAR(500)'), 1, 1, SPACE(0))
+		FROM @TBL_ManagerRuleTemplate OutTab
+		GROUP BY OutTab.[managercode]
+
+		UPDATE @Tmp_Rule
+		SET TemplateCode = TmpTemplateInput.TemplateCode
+			,TemplateCodeDesc = TmpTemplateInput.TemplateCodeDesc
+			,TemplateDescription = TmpTemplateInput.TemplateDescription
+		FROM @Tmp_Rule TmpRuleInput
+		INNER JOIN @TBL_ManagerRuleTemplate1 TmpTemplateInput ON TmpRuleInput.ManagerCode = TmpTemplateInput.ManagerCode
+	END
+
+	IF @Type = 'Account'
+	BEGIN
+		INSERT INTO @Tmp_Rule
+		SELECT SelectedAccRule.ManagerCode
+			,NULL
+			,SelectedAccRule.CustomerAccountNumber
+			,SelectedAccRule.AccountName
+			,NULL
+			,NULL
+			,DaysValue
+			,IsException
+			,ExceptionCode
+			,NULL
+			,ExceptionDescription
+			,IsExclusion
+			,ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,RecordVersion
+			,AccRule.ModifiedBy
+			,AccRule.ModifiedDate
+		FROM TBL_PP_AccountRule AccRule
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+				,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+				,XMLDoc.item.value('@AccountName[1]', 'VARCHAR(255)') AS AccountName
+			FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+			) SelectedAccRule ON AccRule.CustomerAccountNumber = SelectedAccRule.CustomerAccountNumber
+
+		INSERT INTO @Tmp_Rule
+		SELECT ManagerCode
+			,NULL
+			,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+			,XMLDoc.item.value('@AccountName[1]', 'VARCHAR(255)')
+			,NULL
+			,NULL
+			,DaysValue
+			,IsException
+			,ExceptionCode
+			,NULL
+			,ExceptionDescription
+			,IsExclusion
+			,ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,RecordVersion
+			,MgrRule.ModifiedBy
+			,MgrRule.ModifiedDate
+		FROM TBL_PP_ManagerRule MgrRule
+		INNER JOIN @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item) ON XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(14)') = MgrRule.ManagerCode
+			AND XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') NOT IN (
+				SELECT CustomerAccountNumber
+				FROM TBL_PP_AccountRule
+				)
+
+		INSERT INTO @Tmp_Rule (
+			ManagerCode
+			,CustomerAccountNumber
+			,AccountName
+			)
+		SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)')
+			,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+			,XMLDoc.item.value('@AccountName[1]', 'VARCHAR(255)')
+		FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+		WHERE XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') NOT IN (
+				SELECT CustomerAccountNumber
+				FROM @Tmp_Rule
+				)
+	END
+
+	IF @Type = 'Contact'
+	BEGIN
+	
+	
+	
+		INSERT INTO @Tmp_Rule
+		SELECT SelectedContRule.ManagerCode
+			,NULL
+			,SelectedContRule.CustomerAccountNumber
+			,NULL
+			,ContRule.ContactID
+			,SelectedContRule.ContactDescription
+			,DaysValue
+			,IsException
+			,ExceptionCode
+			,NULL
+			,ExceptionDescription
+			,IsExclusion
+			,ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,RecordVersion
+			,ContRule.ModifiedBy
+			,ContRule.ModifiedDate
+		FROM TBL_PP_ContactRule ContRule
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+				,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+				,XMLDoc.item.value('@ContactId[1]', 'INT') AS ContactID
+				,XMLDoc.item.value('@ContactDescription[1]', 'VARCHAR(255)') AS ContactDescription
+			FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+			) SelectedContRule ON ContRule.CustomerAccountNumber = SelectedContRule.CustomerAccountNumber
+			AND ContRule.ContactID = SelectedContRule.ContactID
+		
+		
+
+		INSERT INTO @Tmp_Rule
+		SELECT SelectedContRule.ManagerCode
+			,NULL
+			,AcctRule.CustomerAccountNumber
+			,SelectedContRule.AccountName
+			,SelectedContRule.ContactID
+			,SelectedContRule.ContactDescription
+			,AcctRule.DaysValue
+			,AcctRule.IsException
+			,AcctRule.ExceptionCode
+			,NULL
+			,AcctRule.ExceptionDescription
+			,AcctRule.IsExclusion
+			,AcctRule.ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,AcctRule.RecordVersion
+			,AcctRule.ModifiedBy
+			,AcctRule.ModifiedDate
+		FROM TBL_PP_AccountRule AcctRule
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(14)') AS ManagerCode
+				,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+				,XMLDoc.item.value('@AccountName[1]', 'VARCHAR(255)') AS AccountName
+				,XMLDoc.item.value('@ContactId[1]', 'INT') AS ContactID
+				,XMLDoc.item.value('@ContactDescription[1]', 'VARCHAR(255)') AS ContactDescription
+			FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+			) SelectedContRule ON SelectedContRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_PP_ContactRule ContRule ON ContRule.ContactID = SelectedContRule.ContactID
+			AND ContRule.CustomerAccountNumber = SelectedContRule.CustomerAccountNumber
+		WHERE ContRule.CustomerAccountNumber IS NULL
+			AND ContRule.ContactID IS NULL
+
+		INSERT INTO @Tmp_Rule
+		SELECT MgrRule.ManagerCode
+			,SelectedMgrRule.ManagerDescription
+			,SelectedMgrRule.CustomerAccountNumber
+			,SelectedMgrRule.AccountName
+			,SelectedMgrRule.ContactID
+			,SelectedMgrRule.ContactDescription
+			,MgrRule.DaysValue
+			,MgrRule.IsException
+			,MgrRule.ExceptionCode
+			,NULL
+			,MgrRule.ExceptionDescription
+			,MgrRule.IsExclusion
+			,MgrRule.ExclusionDescription
+			,NULL
+			,NULL
+			,NULL
+			,MgrRule.RecordVersion
+			,MgrRule.ModifiedBy
+			,MgrRule.ModifiedDate
+		FROM TBL_PP_ManagerRule MgrRule
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+				,XMLDoc.item.value('@ManagerDescription[1]', 'VARCHAR(255)') AS ManagerDescription
+				,XMLDoc.item.value('@AccountName[1]', 'VARCHAR(255)') AS AccountName
+				,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+				,XMLDoc.item.value('@ContactId[1]', 'INT') AS ContactID
+				,XMLDoc.item.value('@ContactDescription[1]', 'VARCHAR(255)') AS ContactDescription
+			FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+			) SelectedMgrRule ON MgrRule.ManagerCode = SelectedMgrRule.ManagerCode
+		LEFT OUTER JOIN TBL_PP_ContactRule ContRule ON ContRule.ContactID = SelectedMgrRule.ContactID
+			AND ContRule.CustomerAccountNumber = SelectedMgrRule.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_PP_AccountRule AcctRule ON SelectedMgrRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+		WHERE ContRule.CustomerAccountNumber IS NULL
+			AND ContRule.ContactID IS NULL
+			AND AcctRule.CustomerAccountNumber IS NULL
+			
+		INSERT INTO @Tmp_Rule (
+			ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactDescription
+			)
+		SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)')
+			,XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+			,XMLDoc.item.value('@ContactId[1]', 'INT') AS ContactID
+			,XMLDoc.item.value('@ContactDescription[1]', 'VARCHAR(255)')
+		FROM @RuleFilterXML.nodes('//RuleDetailCollection/RuleDetail') AS XMLDoc(item)
+		LEFT OUTER JOIN @Tmp_Rule TmpRule ON TmpRule.CustomerAccountNumber = XMLDoc.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+			AND TmpRule.ContactID = XMLDoc.item.value('@ContactId[1]', 'INT')
+		WHERE TmpRule.ContactID IS NULL
+			AND TmpRule.CustomerAccountNumber IS NULL
+	END
+
+	UPDATE @Tmp_Rule
+	SET ExceptionCodeDesc = ExcepMstr.ExceptionDescription
+	FROM @Tmp_Rule Tmp_Rule
+	LEFT OUTER JOIN TBL_PP_ExceptionMaster ExcepMstr ON Tmp_Rule.ExceptionCode = ExcepMstr.ExceptionCode
+	WHERE Tmp_Rule.IsException = 1
+
+	SELECT TmpRule.ManagerCode
+		,TmpRule.ManagerDescription
+		,TmpRule.CustomerAccountNumber
+		,TmpRule.AccountName
+		,TmpRule.ContactID
+		,TmpRule.ContactDescription
+		,TmpRule.DaysValue
+		,IsException
+		,TmpRule.ExceptionCode
+		,TmpRule.ExceptionCodeDesc
+		,ExceptionDescription
+		,IsExclusion
+		,ExclusionDescription
+		,TmpRule.TemplateCode
+		,TemplateCodeDesc
+		,TemplateDescription
+		,RecordVersion
+		,LoginName AS LastModifiedBy
+		,TmpRule.LastModifiedDate
+	FROM @Tmp_Rule TmpRule
+	LEFT OUTER JOIN TBL_KS_User ModUser ON ModUser.UserID = TmpRule.LastModifiedBy
+END

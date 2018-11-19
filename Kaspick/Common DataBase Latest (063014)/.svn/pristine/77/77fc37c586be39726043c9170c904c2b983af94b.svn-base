@@ -1,0 +1,257 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveAuditReconcilliation]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_SaveAuditReconcilliation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_SaveAuditReconcilliation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveAuditReconcilliation]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_SaveAuditReconcilliation    
+** Short Desc:  Saves the reconciliation details for the given valuation IDs.   
+**    
+** Full Description : Saves the reconciliation details for the given valuation IDs. 
+**            
+**    
+** Sample Call    
+  Declare @XMLdata XML
+  Declare @ReturnStatus INT
+  Declare @ErrorDesc Varchar(100)
+  
+  SET @XMLdata = '<AuditReconciliationCollection>
+	<InsertList>
+	<AuditReconciliation ValuationID= "1" CustomerAccountNumber="ACADW" />
+	</InsertList>
+	</AuditReconciliationCollection>'
+        EXEC USP_SIT_SaveAuditReconcilliation  @XMLdata , 1, @ReturnStatus OUTPUT , @ErrorDesc OUTPUT
+  SELECT @ReturnStatus,@ErrorDesc
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/03/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_SaveAuditReconcilliation] @XMLdata XML
+	,@UserID INT
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF OBJECT_ID('tempdb..[#Tmp_AuditReconciliation]') IS NOT NULL
+			DROP TABLE [#Tmp_AuditReconciliation]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		CREATE TABLE #Tmp_CustomerAccountNumber (
+			ValuationID INT
+			,XmlCustomerAccountNumber VARCHAR(14)
+			)
+
+		CREATE TABLE #Tmp_AuditReconciliation (
+			ValuationID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,ContributionOrTransferIn DECIMAL(28, 4)
+			,WithdrawalOrTransferOut DECIMAL(28, 4)
+			,TransferIn DECIMAL(28, 4)
+			,TransferOut DECIMAL(28, 4)
+			,OtherAdjustment DECIMAL(28, 4)
+			,DividendIncome DECIMAL(28, 4)
+			,InterestIncome DECIMAL(28, 4)
+			,STRealizedGainLoss DECIMAL(28, 4)
+			,LTRealizedGainLoss DECIMAL(28, 4)
+			,STCapitalGainDistribution DECIMAL(28, 4)
+			,LTCapitalGainDistribution DECIMAL(28, 4)
+			,BeneficiaryPayment DECIMAL(28, 4)
+			)
+
+		DECLARE @Colname VARCHAR(100)
+		DECLARE @SelColname VARCHAR(1000)
+		DECLARE @Qry VARCHAR(1000)
+		DECLARE @TableName VARCHAR(100)
+
+		SET @TableName = 'TBL_SIT_Audit_Reconciliation'
+
+		INSERT INTO #Tmp_CustomerAccountNumber (
+			ValuationID
+			,XmlCustomerAccountNumber
+			)
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS ValuationID
+			,XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+		--,PVal.CustomerAccountNumber
+		FROM @XMLDATA.nodes('//AuditReconciliationCollection/InsertList/AuditReconciliation') AS XmlInput(Item)
+
+		--INNER JOIN TBL_PV_Valuation PVal
+		--	ON PVal.ValuationID = XmlInput.Item.value('@ValuationID[1]', 'INT')
+		DELETE TBL_SIT_Audit_Reconciliation
+		WHERE ValuationID IN (
+				SELECT ValuationID
+				FROM #Tmp_CustomerAccountNumber
+				)
+
+		SELECT @Colname = ISNULL(@Colname + ',', '') + QUOTENAME(TransactionCode)
+		FROM (
+			SELECT DISTINCT TransactionCode
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+
+		SELECT @SelColname = ISNULL(@SelColname + ',', '') + QUOTENAME(TransactionCode) + ' as ' + KaspickColumnName
+		FROM (
+			SELECT DISTINCT TransactionCode
+				,ColumnSequence
+				,KaspickColumnName
+				,ROW_NUMBER() OVER (
+					PARTITION BY TransactionCode ORDER BY TransactionCode
+					) AS RowNum
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+		WHERE Rownum = 1
+		ORDER BY ColumnSequence
+
+		SET @Qry = ' SELECT ValuationID,CustomerAccountNumber,' + @SelColname + ' 
+		FROM Stmt_TransactionSummary TranSmry
+		INNER JOIN #Tmp_CustomerAccountNumber TmpInput
+			ON TranSmry.CustomerAccountNumber = TmpInput.XmlCustomerAccountNumber
+		PIVOT(MAX(TransactionTotal) FOR TransactionCategoryCode IN (
+		' + @Colname + '
+		)) p'
+
+		INSERT INTO #Tmp_AuditReconciliation (
+			ValuationID
+			,CustomerAccountNumber
+			,ContributionOrTransferIn
+			,WithdrawalOrTransferOut
+			,TransferIn
+			,TransferOut
+			,OtherAdjustment
+			,DividendIncome
+			,InterestIncome
+			--,OtherIncome
+			,STRealizedGainLoss
+			,LTRealizedGainLoss
+			,STCapitalGainDistribution
+			,LTCapitalGainDistribution
+			,BeneficiaryPayment
+			)
+		EXECUTE (@Qry)
+
+		INSERT INTO TBL_SIT_Audit_Reconciliation (
+			ValuationID
+			,ContributionOrTransferIn
+			,WithdrawalOrTransferOut
+			,TransferIn
+			,TransferOut
+			,OtherAdjustment
+			,DividendIncome
+			,InterestIncome
+			--,OtherIncome
+			,STRealizedGainLoss
+			,LTRealizedGainLoss
+			,STCapitalGainDistribution
+			,LTCapitalGainDistribution
+			,BeneficiaryPayment
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,SUM(ISNULL(ContributionOrTransferIn, 0))
+			,SUM(ISNULL(WithdrawalOrTransferOut, 0))
+			,SUM(ISNULL(TransferIn, 0))
+			,SUM(ISNULL(TransferOut, 0))
+			,SUM(ISNULL(OtherAdjustment, 0))
+			,SUM(ISNULL(DividendIncome, 0))
+			,SUM(ISNULL(InterestIncome, 0))
+			--,0
+			,SUM(ISNULL(STRealizedGainLoss, 0))
+			,SUM(ISNULL(LTRealizedGainLoss, 0))
+			,SUM(ISNULL(STCapitalGainDistribution, 0))
+			,SUM(ISNULL(LTCapitalGainDistribution, 0))
+			,SUM(ISNULL(BeneficiaryPayment, 0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_AuditReconciliation
+		GROUP BY ValuationID
+
+		SET @ReturnStatus = 0
+		SET @ErrorDesc = '';
+
+		IF OBJECT_ID('tempdb..[#Tmp_AuditReconciliation]') IS NOT NULL
+			DROP TABLE [#Tmp_AuditReconciliation]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

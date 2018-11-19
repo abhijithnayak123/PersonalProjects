@@ -1,0 +1,159 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[Fn_GetFormattedAddress]')
+			AND type IN (
+				N'FN'
+				,N'IF'
+				,N'TF'
+				,N'FS'
+				,N'FT'
+				)
+		)
+	DROP FUNCTION [dbo].[Fn_GetFormattedAddress]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE FUNCTION [dbo].[Fn_GetFormattedAddress] (@ContactID INT)
+RETURNS VARCHAR(max)
+AS
+BEGIN
+	/*Declare and Initialize Local Variables*/
+	DECLARE @Add1 VARCHAR(50)
+		,@Add2 VARCHAR(50)
+		,@Add3 VARCHAR(50)
+		--,@MStop VARCHAR(20)
+		,@City VARCHAR(30)
+		,@State VARCHAR(2)
+		,@Zip VARCHAR(10)
+		,@Country VARCHAR(25)
+		,@CRLF CHAR(2)
+		,@CurMonth INT
+		,@Empty BIT
+		,@Result VARCHAR(MAX)
+
+	/* Get Current Month to filter out seasonal addresses */
+	SELECT @CurMonth = DATEPART(month, GETDATE())
+		,@CRLF = CHAR(13) + CHAR(10)
+
+	/*Find higest ranked active address*/
+	/*Since we ORDER BY Rating DESC, the highest ranked address will be retrieved*/
+	SELECT @Add1 = RTRIM(Address1)
+		,@Add2 = RTRIM(Address2)
+		,@Add3 = RTRIM(Address3)
+		--,@MStop = RTRIM(MailStop)
+		,@City = RTRIM(City)
+		,@State = RTRIM(STATE)
+		,@Country = RTRIM(CountryCode)
+		,@Zip = RTRIM(ZipCode)
+	FROM SYN_IT_ContactAddresses  
+	WHERE ContactID = @ContactID
+
+	/*Did we get anything*/
+	IF @@ROWCOUNT = 0
+		SELECT @Result = ''
+	ELSE
+		/*Format the selected address*/
+	BEGIN
+		SELECT @Result = RTRIM('')
+			,@Empty = 1
+
+		/*Address Line 1 */
+		IF (
+				(@Add1 IS NOT NULL)
+				AND (@Add1 <> '')
+				)
+		BEGIN
+			SELECT @Result = @Result + @Add1
+				,@Empty = 0
+		END
+
+		/*Address Line 2 */
+		IF (@Add2 IS NOT NULL)
+			AND (@Add2 <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Add2
+				,@Empty = 0
+		END
+
+		/*Address Line 3 */
+		IF (@Add3 IS NOT NULL)
+			AND (@Add3 <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Add3
+				,@Empty = 0
+		END
+
+		--/*Mail Stop */
+		--IF (@MStop IS NOT NULL)
+		--	AND (@MStop <> '')
+		--BEGIN
+		--	IF (@Empty = 0)
+		--		SELECT @Result = @Result + @CRLF
+
+		--	SELECT @Result = @Result + @MStop
+		--		,@Empty = 0
+		--END
+
+		/*City*/
+		IF (@City IS NOT NULL)
+			AND (@City <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @City
+				,@Empty = 0
+		END
+
+		/*State*/
+		IF (@State IS NOT NULL)
+			AND (@State <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + ', '
+
+			SELECT @Result = @Result + @State
+				,@Empty = 0
+		END
+
+		/*Zip*/
+		IF (@Zip IS NOT NULL)
+			AND (@Zip <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + '  '
+
+			SELECT @Result = @Result + @Zip
+				,@Empty = 0
+		END
+
+		/*Country*/
+		IF (@Country IS NOT NULL)
+			AND (@Country <> '')
+			AND (@Country <> 'USA')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Country
+				,@Empty = 0
+		END
+	END
+
+	RETURN @Result
+END
+GO
+
+

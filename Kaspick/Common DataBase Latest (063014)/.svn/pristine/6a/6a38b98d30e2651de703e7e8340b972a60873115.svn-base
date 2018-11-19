@@ -1,0 +1,442 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetSUBDTActivityConsole')
+BEGIN
+    DROP PROCEDURE USP_RP_GetSUBDTActivityConsole;
+    PRINT 'DROPPED USP_RP_GetSUBDTActivityConsole';
+END
+GO
+ /******************************************************************************                        
+** Name:     USP_EIS_SUB_DT_ActivityConsole_SelProc         
+**                         
+** New Name:     USP_RP_GetSUBDTActivityConsole      
+**                
+** Short Desc: To fetch data for Activity Console        
+**                        
+** Full Description: To fetch data for Activity Console             
+**                                
+** Input Arguments:       
+**           
+** Sample Call          
+EXEC USP_RP_GetSUBDTActivityConsole       
+@DeliverableQueueID = '54,55',      
+@ClientID = 'AL',      
+@ReportAnalyst = 0,      
+@ClientManager = 0,      
+@RelationShipManager = 0,      
+@StatusID = '0',    
+@DeliveryMethodID = 0,  
+@AdventID = '0',  
+@OwnerRoleID = 0,  
+@Approver1RoleID = 0,   
+@Approver1UserID = 0,  
+@Approver2RoleID = 0,  
+@Approver2UserID = 0,  
+@IsReadyForMyAction = 0,  
+@ReadyForMyActionUserID = 300028  
+**               
+** Return values: Null      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Venugopal      
+** Company   : Kaspick & Company                        
+** Project   : Excelsior  - BeneReport                        
+** Created D: 25-AUG-10                   
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------                  
+** 30-Aug-2010  Venu. B  #12286    Updated name format for ReportAnalystUsers, ClientManagerUsers,      
+               RelationshipManagerUsers        
+** 12-Mar-12   Anand Kumar    Changes for Adding Comments AS per Stored Procedure standard template.    
+** 14-Mar-12   Anand Kumar    ERD changes implemetation.                  
+** 3/26/2012   Niveditha      Updating the query AS per ERD for processs status  
+** 5-Apr-2012  Ashvin  ET - 13690  
+** 16-Apr-2012 Ashvin  Added and corrected OwnerRoleID,Approver1RoleID,Approver2RoleID,  
+       OwnerRoleFullName,Approver1RoleFullName,Approver2RoleFullName,  
+       OwnerName,Approver1Name,Approver2Name  
+** 16-Apr-2012  Ashvin  Added Full filter criteria.  
+** 19-Apr-2012  Anand  Added DeliverableItemStatusID and DeliverableID.  
+** 29-Jun-2012 Anand Kumar Updated for QueueCreationEnabled validation  
+** 06-July-2012 Soorya  Added FrequncyID condition to validate the Deliverable Queue  
+** 17-July-2012 Soorya      Implemented ReadyForMyAction functionality  
+** 19-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB           
+** 14-Jul-2014 Geervani			Updated SP to use view for client manager, report analyst,relationship manager
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE PROCEDURE USP_RP_GetSUBDTActivityConsole (
+	@DeliverableQueueID VARCHAR(100) = '0'
+	,@ClientID VARCHAR(14) = ''
+	,@ReportAnalyst INT = 0
+	,@RelationShipManager INT = 0
+	,@ClientManager INT = 0
+	,@StatusID VARCHAR(100) = '0'
+	,@DeliveryMethodID INT = 0
+	,@AdventID VARCHAR(8) = '0'
+	,@OwnerRoleID INT = 0
+	,@OwnersUserID INT = 0
+	,@Approver1RoleID INT = 0
+	,@Approver1UserID INT = 0
+	,@Approver2RoleID INT = 0
+	,@Approver2UserID INT = 0
+	,@IsReadyForMyAction BIT = 0
+	,@ReadyForMyActionUserID INT = 0
+	)
+AS
+BEGIN
+	IF (@IsReadyForMyAction = 0)
+		SET @ReadyForMyActionUserID = 0;
+
+	SELECT DISTINCT DQ.DeliverableQueueID
+		,DQ.DeliverableQueueName AS DeliverableQueueBriefName
+		,DI.DeliverableItemID
+		,DI.ManagerCode AS ClientID
+		,AcctMgrCode.ManagerCode AS ClientBriefName
+		,ReportAnalystUsers = (
+			SELECT RTRIM((
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+								THEN ''
+							ELSE (LASTNAME)
+							END
+						) + (
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+								THEN ''
+							ELSE (', ' + FIRSTNAME)
+							END
+						) + ' ' + ISNULL(MIDDLENAME, ''))
+			FROM tbl_KS_User
+			WHERE USERID = SRReportAnalyst.USERID
+			)
+		,ClientManagerUsers = (
+			SELECT RTRIM((
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+								THEN ''
+							ELSE (LASTNAME)
+							END
+						) + (
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+								THEN ''
+							ELSE (', ' + FIRSTNAME)
+							END
+						) + ' ' + ISNULL(MIDDLENAME, ''))
+			FROM TBL_KS_User
+			WHERE userid = SRClientManager.USERID
+			)
+		,RelationshipManagerUsers = (
+			SELECT RTRIM((
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+								THEN ''
+							ELSE (LASTNAME)
+							END
+						) + (
+						CASE 
+							WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+								THEN ''
+							ELSE (', ' + FIRSTNAME)
+							END
+						) + ' ' + ISNULL(MIDDLENAME, ''))
+			FROM tbl_KS_User
+			WHERE USERID = SRRelationshipManager.USERID
+			)
+		,LI.ListItemName AS DeliverableFrequency
+		,DIAN.AttributeValue AS Notes
+		,IMS.Comments AS Comments
+		,DPS.StatusName AS ReportStatus
+		,MailedDate = (
+			SELECT TOP 1 CASE 
+					WHEN DS1.StatusName = 'Cancelled'
+						THEN ''
+					WHEN DS1.StatusName = 'Mailed'
+						THEN DIS1.StatusChangeDT
+					END
+			FROM TBL_DLV_MethodStatusChangeLog DIS1
+			LEFT JOIN TBL_DLV_DeliverableProcessStatus DS1 ON DS1.DeliverableItemStatusID = DIS1.New_StatusID
+			--WHERE DIS1.ItemMethodStatusID = IMS.ItemMethodStatusID and (DS1.StatusName='Mailed' or DS1.StatusName='Cancelled')order by DIS1.MethodStatusChangeLogID desc),  
+			WHERE DIS1.ItemMethodStatusID = 1
+				AND (
+					DS1.StatusName = 'Mailed'
+					OR DS1.StatusName = 'Cancelled'
+					)
+			ORDER BY DIS1.MethodStatusChangeLogID DESC
+			)
+		
+		-- This has to be changed once after getting the reply from client.
+		-- Issue : Getting duplicate record in the below query where in its expecting only one.
+		,'' AS ClientSpecialInstruction	
+		--,ClientSpecialInstruction = (
+		--	SELECT Comments
+		--	FROM TBL_BR_ReportCondition
+		--	WHERE ManagerCode = AcctMgrCode.ManagerCode
+		--		AND report_type_id = (
+		--			SELECT ListItemID
+		--			FROM VW_EX_ListItem
+		--			WHERE ListItemName = 'Special Instructions'
+		--				AND ListTypeName = 'Report Type'
+		--			)
+		--		AND Status_ID = (
+		--			SELECT ListItemID
+		--			FROM VW_EX_ListItem
+		--			WHERE ListItemName = 'Yes'
+		--				AND ListTypeName = 'Logical Value'
+		--			)
+		--	)
+		,IMS.ItemMethodStatusID
+		,DI.OwnerRoleID
+		,(
+			SELECT RoleFullName
+			FROM TBL_KS_RoleMaster
+			WHERE MasterRoleID = DI.OwnerRoleID
+			) AS OwnerRoleFullName
+		,DI.Approver1RoleID
+		,(
+			SELECT RoleFullName
+			FROM TBL_KS_RoleMaster
+			WHERE MasterRoleID = DI.Approver1RoleID
+			) AS Approver1RoleFullName
+		,DI.Approver2RoleID
+		,(
+			SELECT RoleFullName
+			FROM TBL_KS_RoleMaster
+			WHERE MasterRoleID = DI.Approver2RoleID
+			) AS Approver2RoleFullName
+		,(
+			SELECT LTRIM(RTRIM((
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+									THEN ''
+								ELSE (LASTNAME)
+								END
+							) + (
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+									THEN ''
+								ELSE (', ' + FIRSTNAME)
+								END
+							))) AS OwnerName
+			FROM TBL_KS_User
+			WHERE USERID = DI.OwnerID
+			) AS OwnerName
+		,(
+			SELECT LTRIM(RTRIM((
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+									THEN ''
+								ELSE (LASTNAME)
+								END
+							) + (
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+									THEN ''
+								ELSE (', ' + FIRSTNAME)
+								END
+							))) AS OwnerName
+			FROM TBL_KS_User
+			WHERE USERID = DI.Approver1ID
+			) AS Approver1Name
+		,(
+			SELECT LTRIM(RTRIM((
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+									THEN ''
+								ELSE (LASTNAME)
+								END
+							) + (
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+									THEN ''
+								ELSE (', ' + FIRSTNAME)
+								END
+							))) AS OwnerName
+			FROM TBL_KS_User
+			WHERE USERID = DI.Approver2ID
+			) AS Approver2Name
+		,DI.CustomerAccountNumber AS AdventID
+		,DI.ContactID AS TrustparticipantID
+		,LTRIM(RTRIM((
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(VP.LastName)), '') = '')
+							THEN ''
+						ELSE (VP.LastName)
+						END
+					) + (
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(VP.FirstName)), '') = '')
+							THEN ''
+						ELSE (', ' + VP.FirstName)
+						END
+					) + ' ' + ISNULL(LTRIM(RTRIM(VP.MiddleInitials)), ''))) AS Participant
+		,IMS.DeliverableItemStatusID
+		,DQ.DeliverableID
+		,CAST(DIA.AttributeValue AS BIT) AS Hold
+		,DI.FolderName + '\' + DI.FILENAME AS FILEPATH
+	FROM TBL_DLV_DeliverableQueue DQ
+	INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID
+	INNER JOIN TBL_DLV_DeliverableItem DI ON DQ.DeliverableQueueID = DI.DeliverableQueueID
+	INNER JOIN SYN_IT_AccountManagerCodes AcctMgrCode ON DI.ManagerCode = AcctMgrCode.ManagerCode
+	INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID -- AND D.QueueCreationEnabled = @QueueCreationEnabled   
+	INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID
+	INNER JOIN TBL_DLV_DeliverableProcessStatus DPS ON IMS.DeliverableItemStatusID = DPS.DeliverableItemStatusID
+	--INNER JOIN TBL_EIS_DT_Delivery_Type_Methods TM ON IMS.DeliveryMethodID = TM.DeliveryMethodID and TM.DeliverableTypeID =D.DeliverableID and TM.IsPrimary=1      
+	INNER JOIN TBL_DLV_DeliverableProcess DP ON DP.DeliverableProcessID = D.DeliverableProcessID
+	INNER JOIN TBL_ListItem LIQC ON LIQC.ListItemID = DP.QueueCreationMethodID
+	INNER JOIN TBL_DLV_DeliverableFrequency DF ON D.DeliverableID = DF.DeliverableID
+	INNER JOIN TBL_ListItem LI ON LI.ListItemID = DF.FrequencyID
+	LEFT OUTER JOIN VW_RP_ClientManager SRClientManager ON SRClientManager.ManagerCode = AcctMgrCode.ManagerCode
+	LEFT OUTER JOIN VW_RP_ReportAnalyst SRReportAnalyst ON SRReportAnalyst.ManagerCode = AcctMgrCode.ManagerCode
+	LEFT OUTER JOIN VW_RP_RelationshipManager SRRelationshipManager ON SRRelationshipManager.ManagerCode = AcctMgrCode.ManagerCode
+	
+	LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIA ON DI.DeliverableItemID = DIA.DeliverableItemID
+		AND DIA.DeliverableTypeAttributeID = (
+			SELECT DeliverableTypeAttributeID
+			FROM TBL_DLV_DeliverableTypeAttribute
+			WHERE AttributePromptName = 'Hold'
+				AND DeliverableID = DQ.DeliverableID
+			)
+	LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIAN ON DI.DeliverableItemID = DIAN.DeliverableItemID
+		AND DIAN.DeliverableTypeAttributeID = (
+			SELECT DeliverableTypeAttributeID
+			FROM TBL_DLV_DeliverableTypeAttribute
+			WHERE AttributePromptName = 'Notes'
+				AND DeliverableID = DQ.DeliverableID
+			)
+	LEFT JOIN VW_RP_TrustParticipant VP ON DI.ContactID = VP.ParticipantID
+	WHERE QS.StatusName != ''
+		AND CHARINDEX(',' + CONVERT(VARCHAR(10), DQ.DeliverableQueueID) + ',', ',' + @DeliverableQueueID + ',') > 0
+		AND (
+			@ClientID = '' 
+			OR AcctMgrCode.ManagerCode = @ClientID
+			)  
+		AND (
+			@ReportAnalyst = 0
+			OR SRReportAnalyst.UserID = @ReportAnalyst
+			)
+		AND (
+			@RelationShipManager = 0
+			OR SRRelationshipManager.UserID = @RelationShipManager
+			)
+		AND (
+			@ClientManager = 0
+			OR SRClientManager.UserID = @ClientManager
+			)
+		AND (
+			@StatusID = '0'
+			OR CHARINDEX(',' + CONVERT(VARCHAR(10), DPS.DeliverableItemStatusID) + ',', ',' + @StatusID + ',') > 0
+			)
+		AND (
+			@DeliveryMethodID = 0
+			OR (
+				EXISTS (
+					SELECT ItemMethodStatusID
+					FROM TBL_DLV_ItemMethodStatus
+					WHERE DeliverableItemID = DI.DeliverableItemID
+						AND DeliveryMethodID = @DeliveryMethodID
+					)
+				)
+			)
+		AND LIQC.ListItemName = 'subscription'
+		AND (DQ.FrequencyID = LI.ListItemID)
+		AND (
+			@AdventID = '0'
+			OR DI.CustomerAccountNumber = @AdventID
+			)
+		AND (
+			@OwnerRoleID = 0
+			OR DI.OwnerRoleID = @OwnerRoleID
+			)
+		AND (
+			@OwnersUserID = 0
+			OR DI.OwnerID = @OwnersUserID
+			)
+		AND (
+			@Approver1RoleID = 0
+			OR DI.Approver1RoleID = @Approver1RoleID
+			)
+		AND (
+			@Approver1UserID = 0
+			OR DI.Approver1ID = @Approver1UserID
+			)
+		AND (
+			@Approver2RoleID = 0
+			OR DI.Approver2RoleID = @Approver2RoleID
+			)
+		AND (
+			@Approver2UserID = 0
+			OR DI.Approver2ID = @Approver2UserID
+			)
+		AND (
+			@IsReadyForMyAction = CASE 
+				WHEN (
+						DI.WaitingForNextActionRole IS NOT NULL
+						AND (
+							(
+								DI.WaitingForNextActionRole = 'OWNER'
+								AND DI.OwnerID = @ReadyForMyActionUserID
+								)
+							OR (
+								DI.WaitingForNextActionRole = 'OWNER'
+								AND DI.OwnerID IS NULL
+								AND DI.OwnerRoleID IN (
+									SELECT MasterRoleID
+									FROM dbo.VW_EX_UserRole
+									WHERE UserID = @ReadyForMyActionUserID
+									)
+								)
+							)
+						OR (
+							DI.WaitingForNextActionRole = 'APPROVER1'
+							AND DI.Approver1ID = @ReadyForMyActionUserID
+							)
+						OR (
+							DI.WaitingForNextActionRole = 'APPROVER1'
+							AND DI.Approver1ID IS NULL
+							AND DI.Approver1RoleID IN (
+								SELECT MasterRoleID
+								FROM dbo.VW_EX_UserRole
+								WHERE UserID = @ReadyForMyActionUserID
+								)
+							)
+						OR (
+							DI.WaitingForNextActionRole = 'APPROVER2'
+							AND DI.Approver2ID = @ReadyForMyActionUserID
+							OR (
+								DI.WaitingForNextActionRole = 'APPROVER2'
+								AND DI.Approver2ID IS NULL
+								AND DI.Approver2RoleID IN (
+									SELECT MasterRoleID
+									FROM dbo.VW_EX_UserRole
+									WHERE UserID = @ReadyForMyActionUserID
+									)
+								)
+							)
+						)
+					THEN 1
+				ELSE 0
+				END
+			)
+	ORDER BY DeliverableQueueBriefName
+		,AcctMgrCode.ManagerCode
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetSUBDTActivityConsole'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetSUBDTActivityConsole';
+END

@@ -1,0 +1,128 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_InsProfileTaxConditionDTL')
+    BEGIN
+        DROP PROCEDURE USP_EX_InsProfileTaxConditionDTL;
+        PRINT 'DROPPED USP_EX_InsProfileTaxConditionDTL';
+    END
+GO
+  
+/**************************************************************************                            
+* New Procedure Name : USP_EX_InsProfileTaxConditionDTL   
+* Old PROCEDURE NAME  : USP_EIS_EX_PROFILE_TAX_CONDITION_DTLInsProc                            
+* DESCRIPTION     : INSERTS 'ACCOUNT TAX CONDITIONS' WITH THE PARAMETERS SUPPLIED      
+*      
+* INPUT           :      
+* MODIFICATION LOG:      
+*                                                        
+* DATE   CREATED BY  DESCRIPTION      
+*-------------------------------------------------------------------------                    
+* 25-Sept-07 Chirag Parekh CREATED  
+* 04-Apr-14 Yugandhar  EXCREQ 7.4      
+* 23/05/2014 Mallikarjun  SP name Renamed and Formatted  
+****************************************************************************/  
+CREATE PROCEDURE USP_EX_InsProfileTaxConditionDTL (  
+ @TAX_ID INT  
+ ,@CONDITION_ID INT  
+ ,@STATUS VARCHAR(25)  
+ ,@START_YEAR INT  
+ ,@END_YEAR INT  
+ ,@COMMENTS VARCHAR(1000)  
+ ,@CREATED_USER_ID INT  
+ ,@TAX_CONDITION_ID INT OUTPUT  
+ )  
+AS  
+BEGIN  
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+ 
+BEGIN TRY 
+	DECLARE @COND_STATUS_ID INT  
+	DECLARE @STATUSFLAG BIT  
+BEGIN TRANSACTION  
+  
+ EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_BR_ProfileTax'  
+  ,@FIELD_NAME = 'TAX_ID'  
+  ,@FIELD_VALUE = @TAX_ID  
+  ,@STATUS = @STATUSFLAG OUTPUT  
+  
+ IF (@STATUSFLAG = 1)  
+  RAISERROR 50002 'PARENT RECORD DELETED'  
+ ELSE  
+ BEGIN  
+  EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'TAX CONDITIONS STATUS'  
+   ,@LIST_ITEM_NAME = @STATUS  
+   ,@LIST_ITEM_ID = @COND_STATUS_ID OUTPUT  
+  
+  INSERT INTO TBL_BR_ProfileTaxCondition (  
+   TAX_ID  
+   ,CONDITION_ID  
+   ,STATUS_ID  
+   ,START_YEAR  
+   ,END_YEAR  
+   ,COMMENTS  
+   ,CREATED_USER_ID  
+   ,CREATED_DATE  
+   ,MODIFIED_USER_ID  
+   ,MODIFIED_DATE  
+   )  
+  VALUES (  
+   @TAX_ID  
+   ,@CONDITION_ID  
+   ,@COND_STATUS_ID  
+   ,@START_YEAR  
+   ,@END_YEAR  
+   ,@COMMENTS  
+   ,@CREATED_USER_ID  
+   ,GETDATE()  
+   ,@CREATED_USER_ID  
+   ,GETDATE()  
+   )  
+  
+  SET @TAX_CONDITION_ID = IDENT_CURRENT('TBL_BR_ProfileTaxCondition')  
+  
+  IF (@@error != 0)  
+  BEGIN  
+   RAISERROR 10001 'USP_EX_InsProfileTaxConditionDTL: Cannot insert'  
+  
+   ROLLBACK TRANSACTION  
+  
+   RETURN (- 1)  
+  END  
+  
+ END  
+  
+ COMMIT TRANSACTION  
+ END TRY
+ BEGIN CATCH
+            ROLLBACK TRAN
+            
+            DECLARE @ErrorMessage NVARCHAR(4000);
+            DECLARE @ErrorSeverity INT;
+            DECLARE @ErrorState INT;
+                                
+            SELECT @ErrorMessage = ERROR_MESSAGE()
+                  ,@ErrorSeverity = ERROR_SEVERITY()
+                  ,@ErrorState = ERROR_STATE();
+ 
+            RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );              
+                  
+      END CATCH
+END  
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_InsProfileTaxConditionDTL') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_InsProfileTaxConditionDTL';
+	END

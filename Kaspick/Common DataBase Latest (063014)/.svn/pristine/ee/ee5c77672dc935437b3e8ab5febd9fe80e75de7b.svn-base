@@ -1,0 +1,70 @@
+/****** Object:  StoredProcedure [dbo].[CreateDefaultMVDSet]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[CreateDefaultMVDSet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[CreateDefaultMVDSet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[CreateDefaultMVDSet]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     CreateDefaultMVDSet                      
+** Short Desc: When creating a new version for MVD's, we automatically add a deliverableset with Media/Format = WebSite/MVD.  
+**                      
+** Full Description: When creating a new version for MVD's, we automatically add a deliverableset with Media/Format = WebSite/MVD.  
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE CreateDefaultMVDSet (
+	@deliverableid INT
+	,@versionid INT
+	)
+AS
+DECLARE @setid INT
+
+EXEC GetNextUniqueID @IDType = 'DELIVERABLESET'
+	,@Result = @setid OUTPUT
+
+INSERT INTO DeliverableSet (
+	DeliverableSetID
+	,DeliverableID
+	,VersionID
+	,MediaID
+	,FormatID
+	) (
+	SELECT @setid
+	,@deliverableid
+	,@versionid
+	,m.MediaID
+	,f.FormatID FROM DeliverableMedia m
+	,DeliverableFormat f WHERE m.fullname = 'Website'
+	AND f.fullname = 'MVD'
+	)

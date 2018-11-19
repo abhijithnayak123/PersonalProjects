@@ -1,0 +1,150 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAuditSummary]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetAuditSummary]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetAuditSummary]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAuditSummary]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetAuditSummary
+** Short Desc: Get Audit Summary fir the given valuation
+** Full Description: Get Audit Summary fir the given valuation
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_GetAuditSummary '<ValuationCollection><InsertList><Valuation ValuationID="13600" /></InsertList></ValuationCollection>', '2014-08-26'
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetAuditSummary] (
+	@valuationXML XML
+	,@periodEndDate DATETIME
+	)
+AS
+BEGIN
+	DECLARE @enddate DATETIME
+	DECLARE @startdate DATETIME
+
+	SET @enddate = @periodEndDate
+	SET @startdate = CAST((STR(YEAR(@enddate)) + '/' + STR(MONTH(@enddate)) + '/1') AS DATETIME)
+
+	SELECT DISTINCT DGA.ExternalCustomerID AS CustomerAccountNumber
+		,(IsNull(DGA.CustomerDescriptionLine1, '') + IsNull(DGA.CustomerDescriptionLine2, '') + IsNull(DGA.CustomerDescriptionLine3, '') + IsNull(DGA.CustomerDescriptionLine4, '')) AS AccountFullName
+		,VAL.ValuationID
+		,VAL.[ValuationDate]
+		,VAL.[ReconFromDate]
+		,VAL.[ReconToDate]
+		,VAL.[CustomerAccountNumber]
+		--,VAL.[AdventID]
+		,VAL.[AccountType]
+		,VAL.[ManagerCode]
+		--,VAL.[ClientBriefName]
+		,VAL.[ManageCodeName]
+		,VAL.[InitialFMV]
+		--,VAL.[OutstandingPaymentsParagon]
+		,VAL.[PendingSeverence]
+		,VAL.[PendingGiftAddition]
+		,VAL.[EarlyTradedPayments]
+		,VAL.[GiftwrapPaymentsAsOfDate]
+		,VAL.[InnoTrustPaymentsAsOfDate]
+		,VAL.[OtherAdjustment]
+		,VAL.[FinalFMV]
+		,VAL.[GiftwrapEquityUnit]
+		,VAL.[NAV]
+		,VAL.[ReconcilliationType]
+		,VAL.[Comment]
+		,VAL.[CurrentStatusID]
+		,VAL.[ReconWithDW]
+		,VAL.[GiftWrapCashtracInput]
+		,VAL.[GiftWrapMVDARptGenerated]
+		,VAL.[RecordVersion]
+		,VAL.[HasGiftExclusion]
+		,VAL.[GiftExclusionComment]
+		,VAL.[ValuationType]
+		,VAL.[CreatedDate]
+		,VAL.[CreatedBy]
+		,VAL.[ModifiedDate]
+		,VAL.[ModifiedBy]
+		--,MVS.TrusteeCustodyFees
+		--,MVS.TransferToOtherAccount
+		--,MVS.OtherCashDisbursements
+		,MVS.BeginningMarketValue
+		,MVS.IncomeEarned
+		,MVS.RealizedGainOrLoss
+		,MVS.BeginningUnrealizedGainOrLoss
+		,MVS.EndingUnrealizedGainOrLoss
+		,MVS.EndingMarketValue
+		,MVS.NonAssetRelatedIncome
+		,(MVS.EndingUnrealizedGainOrLoss - MVS.BeginningUnrealizedGainOrLoss) AS ChangeinUGL
+		,AVS.BeginningAccrual
+		,AVS.EndingAccrual
+		,AVS.BeginningCost
+		,AVS.EndingCost
+		,AVS.BeginningCash
+		,AVS.EndingCash
+		,AVS.BeginningMarket
+		,AVS.EndingMarket
+		,(AVS.EndingAccrual - AVS.BeginningAccrual) AS ChangeinAccruedInterest
+		,ORE.OtherReceiptAndExpenseID
+		,TDM.TransactionDetailName
+		,TT.TransactionTypeDescription
+		,ORE.TransactionDate
+		,ORE.PrincipalValue
+		,ORE.IncomeValue
+		,@startdate AS StartDate
+		,@enddate AS EndDate
+		,AR.[ContributionOrTransferIn]
+		,AR.[WithdrawalOrTransferOut]
+		,AR.[DividendIncome]
+		,AR.[InterestIncome]
+		,AR.[OtherIncome]
+		,(IsNull(AR.STCapitalGainDistribution, 0) + IsNull(AR.LTCapitalGainDistribution, 0)) AS CapitalGainDistribution
+		,(IsNull(AR.STRealizedGainLoss, 0) + IsNull(AR.LTRealizedGainLoss, 0)) AS FMVRealizedGainorLoss
+		--,AR.[CapitalGainDistribution]
+		--,AR.[FMVRealizedGainorLoss]
+		,AR.[BeneficiaryPayment]
+	FROM TBL_PV_Valuation VAL
+	INNER JOIN SYN_IT_AccountMaster DGA ON DGA.CustomerAccountNumber = VAL.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_SIT_EBRMarketValueSummary MVS ON MVS.ValuationID = VAL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_EBRAccountValueOnStatement AVS ON AVS.ValuationID = VAL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_EBROtherReceiptAndExpense ORE ON ORE.ValuationID = VAL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_TransactionDetailMaster TDM ON TDM.TransactionDetailId = ORE.TransactionDetailId
+	LEFT OUTER JOIN TBL_SIT_TransactionType TT ON TT.TransactionTypeId = TDM.TransactionTypeId
+	LEFT OUTER JOIN TBL_SIT_Audit_Reconciliation AR ON AR.ValuationID = VAL.ValuationID
+	WHERE VAL.ValuationID IN (
+			SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+			FROM @valuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+			)
+END
+

@@ -1,0 +1,98 @@
+
+/****** Object:  UserDefinedFunction [dbo].[Fn_EML_ReplaceEmailKeyWithValue]    Script Date: 04/18/2014 09:49:05 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Fn_EML_ReplaceEmailKeyWithValue]') AND type in (N'FN', N'IF', N'TF', N'FS', N'FT'))
+DROP FUNCTION [dbo].[Fn_EML_ReplaceEmailKeyWithValue]
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[Fn_EML_ReplaceEmailKeyWithValue]    Script Date: 04/18/2014 09:49:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+  
+/******************************************************************************  
+** Name:	   [Fn_EML_ReplaceEmailKeyWithValue]
+** Short Desc: 
+**  
+** Full Description: 
+**        
+**  
+** Sample Call  
+	DECLARE @Content VARCHAR(MAX), @InputXML XML;	 
+	SET @InputXML = '<EMailQueue>
+			<EMail>
+				<from_email_address>Michael Jensen^mjensen@kaspick.com~</from_email_address>
+				<reply_to_email_address>Jennifer Harding ^JHarding@kaspick.com~</reply_to_email_address>
+				<bounce_back_email_address>Michael Jensen ^mjensen@kaspick.com~</bounce_back_email_address>
+				<to_email_address> Harry Greenwald ^hgreenwald@aabgu.org~; Mariana Herscovici^mhersovici@aabgu.org~</to_email_address>
+				<cc_email_address></cc_email_address>
+				<bcc_email_address></bcc_email_address>
+                <subject>Kaspick and Company: TARP is now available on the web site.</subject>
+                <free_text>Harry and Mariana, as discussed yesterday, Im now be putting the three 3/31 "TARP" accounting reports up on the web for your convenience. As you know, these files were also already e-mailed to your attention on 4/15.This report is now available. Please go to the Kaspick Company Web site to download.</free_text>
+				<created_proxy_webuser_id>23041</created_proxy_webuser_id>
+				<created_webuser_id>34885</created_webuser_id>
+				<priority_flag>1</priority_flag>
+				<body_template>
+					<template_id>23</template_id>
+					<Setting><Key>A</Key><Value>aaa</Value></Setting>
+					<Setting><Key>B</Key><Value>bbb</Value></Setting>
+					<Setting><Key>C</Key><Value>ccc</Value></Setting>
+				</body_template>
+				<footer_template>
+					<template_id>0</template_id>
+					<Setting><Key>X</Key><Value>xxx</Value></Setting>
+					<Setting><Key>Y</Key><Value>yyy</Value></Setting>
+					<Setting><Key>Z</Key><Value>zzz</Value></Setting>
+				</footer_template>
+			</EMail>
+		</EMailQueue>';
+		SELECT dbo.Fn_EML_ReplaceEmailKeyWithValue('A B C & M Y Z',@InputXML); 
+**  
+** Return values: @Content
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya
+** Company   : Kaspick & Company  
+** Project   : WebSite - EmailEngine Integration 
+** Created DT: 04/11/2011  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** <mm/dd/yyyy>  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_EML_ReplaceEmailKeyWithValue] 
+(         
+	@Content VARCHAR(MAX),
+	@InputXML XML
+)        
+	RETURNS VARCHAR(MAX)
+AS
+BEGIN
+	SELECT @Content = REPLACE(	@Content,
+								'{' + nref.value('Key[1]','VARCHAR(MAX)') + '}',
+								nref.value('Value[1]','VARCHAR(MAX)'))
+	FROM @InputXML.nodes('//EMail/body_template/Setting') AS a(nref)
+
+	SELECT @Content = REPLACE(	@Content,
+								'{' + nref.value('Key[1]','VARCHAR(MAX)') + '}',
+								nref.value('Value[1]','VARCHAR(MAX)'))
+	FROM @InputXML.nodes('//EMail/footer_template/Setting') AS a(nref)
+
+	RETURN @Content;
+END
+
+GO
+
+

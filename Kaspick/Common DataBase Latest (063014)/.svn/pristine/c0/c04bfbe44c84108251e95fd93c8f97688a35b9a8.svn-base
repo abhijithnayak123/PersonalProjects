@@ -1,0 +1,287 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdEntityStatus'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdEntityStatus;
+
+	PRINT 'DROPPED USP_EX_UpdEntityStatus';
+END
+GO
+
+/******************************************************************************                
+** New NAME:     USP_EX_UpdEntityStatus    
+** Old NAME:     USP_EIS_EX_ENTITY_STATUS_UPDPROC                
+** SHORT DESC: PROCEDURE TO UPDATE THE STATUS OF A CLIENT,PROGRAM OR AN ACCOUNT                
+**                
+** FULL DESCRIPTION                
+**      THIS PROCEDURE IS USED TO UPDATE THE STATUS OF THE CLIENT, PROGRAM OR AN ACCOUNT.                
+ENTITY TYPE -> "CLIENT" OR "PROGRAM" OR "ACCOUNT"                
+ENTITY ID -> CLIENTID OR PROGRAMID OR ACCOUNTID                
+**                
+** SAMPLE CALL                
+EXEC USP_EX_UpdEntityStatus 'CLIENT', 1124, 123                
+**                
+** RETURN VALUES: NONE                
+**                
+**                
+** STANDARD DECLARATIONS                
+**       SET LOCK_TIMEOUT         30000   -- 30 SECONDS                
+**                 
+** CREATED BY: Tanuj               
+** COMPANY   : KASPICK & COMPANY                
+** PROJECT   : PAYMENTS                
+** CREATED DT: 06-04-2008                
+**                            
+*******************************************************************************                
+**       CHANGE HISTORY                
+*******************************************************************************                
+** DATE:        AUTHOR:  BUG #     DESCRIPTION:                           RVWD                
+** --------     -------- ------    -------------------------------------- --------                
+** 06-APR-08 Tanuj 4442      MODIFIED THE PROC TO include two more parameters           
+** 10-Apr-08 Tanuj     Added Inactive else part in client condition for updating check n noncheck values      
+** 8-Apr-2014 Yugandhar  EXCREQ 5.4    
+** 23/05/2014	Mallikarjun	 SP Name Renamed and Formatted  
+*******************************************************************************                
+** COPYRIGHT (C) <COPYRIGHTYEAR,,YEAR> KASPICK & COMPANY, ALL RIGHTS RESERVED                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_UpdEntityStatus --'PROGRAM','100015',300004 ,10,5              
+	(
+	@ENTITY_TYPE VARCHAR(10),
+	@ENTITY_ID CHAR(15),
+	@USER_ID INT,
+	@NONCHECKDAYS INT = NULL,
+	@CHECKDAYS INT = NULL
+	)
+AS
+BEGIN
+	BEGIN TRY
+	--	BEGIN TRANSACTION
+
+		---- DECLARATIONS                
+		SET NOCOUNT ON;
+
+		---- VARIABLES                
+		DECLARE @CURRENT_STATUS_ID INT
+		DECLARE @CHANGED_STATUS_ID INT
+		--          
+		DECLARE @INACTIVE_ID INT -- STORING INACTIVE ID                    
+		DECLARE @TRANSITION_ID INT -- STORING TRANSITION ID                    
+		DECLARE @ACTIVE_ID INT -- STORING ACTIVE ID                    
+			--          
+		DECLARE @TEMP_PROGRAMS TABLE (
+			P_RECORDID INT IDENTITY,
+			P_PROGRAMID INT
+			)
+		DECLARE @TEMP_ACCOUNTS TABLE (
+			A_RECORDID INT IDENTITY,
+			A_ACCOUNTID INT
+			)
+		DECLARE @MINPROGRAMID INT
+		DECLARE @MAXPROGRAMID INT
+		DECLARE @MINACCOUNTID INT
+		DECLARE @MAXACCOUNTID INT
+		DECLARE @TEMPPROGRAMID CHAR(15)
+		DECLARE @TEMPACCOUNTID CHAR(15)
+
+		---- STORE TRANSITION ID AND ACTIVE ID                  
+		EXEC USP_EX_GetListItemID 'STATUS',
+			'ACTIVE',
+			@ACTIVE_ID OUTPUT -- 58                  
+
+		EXEC USP_EX_GetListItemID 'STATUS',
+			'INACTIVE',
+			@INACTIVE_ID OUTPUT -- 59                   
+
+		EXEC USP_EX_GetListItemID 'STATUS',
+			'TRANSITION',
+			@TRANSITION_ID OUTPUT -- 60        
+
+		IF @ENTITY_TYPE = 'CLIENT'
+		BEGIN --//1          
+			--GET THE CURRENT STATUS OF THE CLIENT                  
+			SELECT @CURRENT_STATUS_ID = ActiveFlag
+			FROM SYN_IT_AccountManagerCodes
+			WHERE ManagerCode = @ENTITY_ID
+
+			--GET THE LATEST STATUS OF THE CLIENT AFTER SAVING            
+			EXEC USP_EX_GetClientStatus @ENTITY_ID,
+				@CHANGED_STATUS_ID OUTPUT
+
+			SELECT @CHANGED_STATUS_ID
+
+			IF @CHANGED_STATUS_ID = - 1
+				RETURN -- RECORD DOESNT EXIST            
+
+			IF (@CHANGED_STATUS_ID <> @INACTIVE_ID)
+			BEGIN --//2     
+				-----------        
+				IF (@CHANGED_STATUS_ID = @ACTIVE_ID)
+				BEGIN --//4          
+					------------    
+					DELETE
+					FROM @TEMP_PROGRAMS
+
+					INSERT INTO @TEMP_PROGRAMS (P_PROGRAMID)
+					SELECT AllianceNumber
+					FROM SYN_IT_AccountMaster
+					WHERE ManagerCode = @ENTITY_ID
+						AND ActiveFlag = @TRANSITION_ID
+
+					SET @MINPROGRAMID = 0
+					SET @MAXPROGRAMID = 0
+
+					SELECT @MINPROGRAMID = MIN(P_RECORDID),
+						@MAXPROGRAMID = MAX(P_RECORDID)
+					FROM @TEMP_PROGRAMS
+
+					WHILE @MINPROGRAMID <= @MAXPROGRAMID
+					BEGIN --//5          
+						SELECT @TEMPPROGRAMID = P_PROGRAMID
+						FROM @TEMP_PROGRAMS
+						WHERE P_RECORDID = @MINPROGRAMID
+
+						EXEC USP_EX_GetProgramStatus @TEMPPROGRAMID,
+							@CHANGED_STATUS_ID OUTPUT
+
+						IF @CHANGED_STATUS_ID = @ACTIVE_ID
+						BEGIN --6          
+							DELETE
+							FROM @TEMP_ACCOUNTS
+
+							INSERT INTO @TEMP_ACCOUNTS (A_ACCOUNTID)
+							SELECT AccMstr.CustomerAccountNumber
+							FROM SYN_IT_AccountMaster AccMstr
+							WHERE AccMstr.ActiveFlag = @TRANSITION_ID
+								AND AccMstr.AllianceNumber = @TEMPPROGRAMID
+
+							SET @MINACCOUNTID = 0
+							SET @MAXACCOUNTID = 0
+
+							SELECT @MINACCOUNTID = MIN(A_RECORDID),
+								@MAXACCOUNTID = MAX(A_RECORDID)
+							FROM @TEMP_ACCOUNTS
+
+							WHILE @MINACCOUNTID <= @MAXACCOUNTID
+							BEGIN --//7           
+								SELECT @TEMPACCOUNTID = A_ACCOUNTID
+								FROM @TEMP_ACCOUNTS
+								WHERE A_RECORDID = @MINACCOUNTID
+
+								EXEC USP_EX_GetAccountStatus @TEMPACCOUNTID,
+									@CHANGED_STATUS_ID OUTPUT
+
+								SET @MINACCOUNTID = @MINACCOUNTID + 1
+							END --//7           
+						END -- 6          
+
+						SET @MINPROGRAMID = @MINPROGRAMID + 1
+					END --//5                    
+				END --//4       
+			END --//2          
+		END --//1      
+
+		--          
+		IF @ENTITY_TYPE = 'PROGRAM'
+		BEGIN --1            
+			SELECT @CURRENT_STATUS_ID = Activeflag
+			FROM dbo.SYN_IT_AccountMaster
+			WHERE AllianceNumber = @ENTITY_ID
+
+			EXEC USP_EX_GetProgramStatus @ENTITY_ID,
+				@CHANGED_STATUS_ID OUTPUT
+
+			IF @CHANGED_STATUS_ID = - 1
+				RETURN -- RECORD DOESNT EXIST                
+
+			IF (@CHANGED_STATUS_ID <> @INACTIVE_ID)
+			BEGIN --2          
+				IF (@CHANGED_STATUS_ID = @ACTIVE_ID)
+				BEGIN --4          
+					-- UPDATE THE EACH ACCOUNT UNDER THE PROGRAM            
+					DELETE
+					FROM @TEMP_ACCOUNTS
+
+					INSERT INTO @TEMP_ACCOUNTS (A_ACCOUNTID)
+					SELECT CustomerAccountNumber
+					FROM SYN_IT_AccountMaster
+					WHERE Activeflag = @TRANSITION_ID
+						AND AllianceNumber = @ENTITY_ID
+
+					SET @MINACCOUNTID = 0
+					SET @MAXACCOUNTID = 0
+
+					SELECT @MINACCOUNTID = MIN(A_RECORDID),
+						@MAXACCOUNTID = MAX(A_RECORDID)
+					FROM @TEMP_ACCOUNTS
+
+					WHILE @MINACCOUNTID <= @MAXACCOUNTID
+					BEGIN --//5           
+						SELECT @TEMPACCOUNTID = A_ACCOUNTID
+						FROM @TEMP_ACCOUNTS
+						WHERE A_RECORDID = @MINACCOUNTID
+
+						EXEC USP_EX_GetAccountStatus @TEMPACCOUNTID,
+							@CHANGED_STATUS_ID OUTPUT
+
+						SET @MINACCOUNTID = @MINACCOUNTID + 1
+					END --//5          
+				END --4          
+			END --2          
+		END --1               
+				--          
+
+		IF @ENTITY_TYPE = 'ACCOUNT'
+		BEGIN
+			SELECT @CURRENT_STATUS_ID = Activeflag
+			FROM SYN_IT_AccountMaster
+			WHERE CustomerAccountNumber = @ENTITY_ID
+
+			EXEC USP_EX_GetAccountStatus @ENTITY_ID,
+				@CHANGED_STATUS_ID OUTPUT
+
+			IF @CHANGED_STATUS_ID = - 1
+				RETURN -- RECORD DOESNT EXIST                
+		END
+
+		--COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		--ROLLBACK TRANSACTION
+
+	
+    DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+              
+	RETURN (- 1)
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdEntityStatus'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_UpdEntityStatus';
+END
+

@@ -1,0 +1,122 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_SaveParsedPriceInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_SaveParsedPriceInfo]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_TR_SaveParsedPriceInfo      
+** Short Desc : Saves PriceInfo to TBL_TR_Asset and TBL_TR_AXYSInfoImportLog 
+**      
+** Full Description : Saves PriceInfo to TBL_TR_Asset and TBL_TR_AXYSInfoImportLog
+**      
+** Sample Call      
+      
+EXEC USP_TR_SaveParsedPriceInfo        
+@XMLUnpostedPayments =       
+'<SecurityInfoCollection>      
+  <InsertList>        
+   <SecurityInfo  PaymentType="Beneficiary payment" ScheduleID="309802" PaymentDate="01/01/2007" ScheduledAmount="9669.24" ClientID="100033" ProgramID="100034" CustomerAccountNumber="103899" ParticipantID="115492" BeneficiaryID ="114957" Lead_Time="0"/>       
+ </InsertList>      
+</SecurityInfoCollection>'    
+@ReturnStatus out,
+@ErrorDesc out
+      
+** Return values: 0,-1,-2 and Error Description
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/27/2014    
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_SaveParsedPriceInfo]
+	-- paremeters here      
+	@XMLPriceInfo XML
+	,@PriceFileName VARCHAR(500)
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+--  Variable Declarations  --      
+DECLARE @procname VARCHAR(60);
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_TR_SaveParsedPriceInfo';
+
+-- Body of procedure  --      
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	UPDATE TBL_TR_Asset
+	SET PriceStatusCode = 3
+
+	UPDATE TBL_TR_Asset
+	SET LastUpdate = GetDate()
+		,CurrentPrice = Prices.Price
+	FROM TBL_TR_Asset existingAsset
+	INNER JOIN (
+		SELECT DISTINCT XMLDATA.item.value('@SecuritySymbol[1]', 'varchar(25)') AS SecuritySymbol
+			,XMLDATA.item.value('@AssetClassName[1]', 'varchar(10)') AS AssetClassName
+			,XMLDATA.item.value('@Price[1]', 'FLOAT') AS Price
+		FROM @XMLPriceInfo.nodes('//PriceInfoCollection/PriceInfo') AS XMLDATA(item)
+		WHERE isnull(XMLDATA.item.value('@SecuritySymbol[1]', 'varchar(25)'), '') <> ''
+		) Prices ON Prices.SecuritySymbol = existingAsset.SecuritySymbol
+
+	UPDATE TBL_TR_AXYSInfoImportLog
+	SET lastUpdated = GetDate()
+		,FileName = @PriceFileName
+		,RowsLoaded = (
+			SELECT count(*)
+			FROM @XMLPriceInfo.nodes('//PriceInfoCollection/PriceInfo') AS XMLDATA(item)
+			WHERE isnull(XMLDATA.item.value('@SecuritySymbol[1]', 'varchar(25)'), '') <> ''
+			)
+	WHERE FileDescription = 'Asset Prices'
+
+	SET @ReturnStatus = 0;
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1;
+	SET @ErrorDesc = error_message();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+
+SET NOCOUNT OFF;
+GO
+
+

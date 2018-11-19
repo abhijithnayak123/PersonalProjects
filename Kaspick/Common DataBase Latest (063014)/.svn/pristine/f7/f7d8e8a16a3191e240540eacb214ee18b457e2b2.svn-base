@@ -1,0 +1,209 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc')
+BEGIN
+    DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc;
+    PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc';
+END
+GO
+
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc]    Script Date: 06/25/2014 11:51:35 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc                  
+** Short Desc: RetrieveS payment distribution for deliverable items. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @RuleCategory varchar(max)
+    DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList>
+	<DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  
+	BeneficiaryID="645"  ClientEmployeeID="0"  Clientid="1"  DeliverableItemID="3"  DeliverableQueueID="1"  
+	DonorID="0"  TrustparticipantID="27" DeliverableFrequency="A" /></SelectList></DeliverableItemsDataToValidateCollection>' 
+	SET @RuleCategory = 'Universe Rule' 	
+	EXEC USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc
+    @XMLDeliverableItems
+	
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 08/11/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** <MM/DD/YYYY>
+** 11/27/2009	Venu	ET#10793	SP updated to throw Warning when no payment extists for selected Bene for Queue Year+1
+** 11/20/2013	Niveditha			Stanford 12/31 changes - ProxyBene issue resolve
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+	--  Variable Declarations  --      
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorDesc VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @Cnt INT;
+	DECLARE @MaxCnt INT;
+	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,ClientID INT
+		,ProgramID INT
+		,AccountID INT
+		,ParticipantID INT
+		,BeneficiaryID INT
+		,DonorID INT
+		,ClientEmployeeID INT
+		,DeliverableQueueID INT
+		);
+	DECLARE @DistinctBeneficiary TABLE (
+		BeneficiaryID INT
+		,K1BeneficiaryID INT
+		,DeliverableQueueYear INT
+		)
+	DECLARE @BeneficiaryPayments TABLE (
+		BeneficiaryID INT
+		,PmtAmount MONEY
+		)
+	DECLARE @K1BeneficiaryPayments TABLE (
+		BeneficiaryID INT
+		,PmtAmount MONEY
+		)
+
+	--  Variable Data Assignment  --      
+	SET @procname = 'USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc';
+	SET @Cnt = 1
+
+	-- Body of procedure  --      
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@ClientID[1]', 'int') AS ClientID
+			,XMLdoc.DeliverableItemData.value('@ProgramID[1]', 'int') AS ProgramID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,XMLdoc.DeliverableItemData.value('@ParticipantID[1]', 'int') AS ParticipantID
+			,XMLdoc.DeliverableItemData.value('@BeneficiaryID[1]', 'int') AS BeneficiaryID
+			,XMLdoc.DeliverableItemData.value('@DonorID[1]', 'int') AS DonorID
+			,XMLdoc.DeliverableItemData.value('@ClientEmployeeID[1]', 'int') AS ClientEmployeeID
+			,XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')
+		JOIN policyitem PSPI ON PSPI.ownerid = VA.ACCOUNTID
+			AND PSPI.PolicyLevel = 300
+		JOIN policydimension PSPD ON PSPI.policydimensionid = PSPD.policydimensionid
+			AND PSPD.fullname = 'Payment Summary'
+		WHERE XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar') = 'A'
+			AND VA.ACCOUNT_TYPE <> 'PIF'
+			AND PSPI.LogicalValue <> 0
+
+		INSERT INTO @DistinctBeneficiary
+		SELECT DISTINCT DID.BeneficiaryID
+			--11/20/2013	Niveditha			Stanford 12/31 changes - ProxyBene issue resolve
+			,Proxy.BeneficiaryID AS K1BeneficiaryID
+			,DQ.DeliverableQueueYear
+		FROM @DeliverableItemData DID
+		INNER JOIN TBL_EIS_DT_DELIVERABLE_QUEUE DQ ON DQ.DeliverableQueueID = DID.DeliverableQueueID
+		INNER JOIN Beneficiary B ON B.BeneficiaryID = DID.BeneficiaryID
+		INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON VTT.BeneficiaryId = DID.BeneficiaryId
+			AND VTT.PARTICIPANT_TYPE LIKE ('%Beneficiary Active%')
+		--11/20/2013	Niveditha			Stanford 12/31 changes - ProxyBene issue resolve
+		LEFT JOIN Beneficiary Proxy ON Proxy.k1BeneficiaryID = DID.BeneficiaryID
+		LEFT JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTTP ON VTTp.BeneficiaryId = Proxy.BeneficiaryID
+			AND VTTP.PARTICIPANT_TYPE = 'Beneficiary Proxy'
+
+		INSERT INTO @BeneficiaryPayments
+		SELECT DB.BeneficiaryID
+			,SUM(ISNULL(BPS.ScheduledAmount, 0))
+		FROM @DistinctBeneficiary DB
+		LEFT JOIN BenPayoutSchedule BPS ON BPS.BeneficiaryID = DB.BeneficiaryID
+			AND BPS.TaxYear = DB.DeliverableQueueYear + 1
+		LEFT JOIN Payment PMT ON PMT.PaymentID = BPS.PaymentID
+			AND ISNULL(PMT.VoidDate, 0) = 0
+		GROUP BY DB.BeneficiaryID
+
+		INSERT INTO @K1BeneficiaryPayments
+		SELECT DB.BeneficiaryID
+			,SUM(ISNULL(BPS.ScheduledAmount, 0))
+		FROM @DistinctBeneficiary DB
+		LEFT JOIN BenPayoutSchedule BPS ON BPS.BeneficiaryID = DB.K1BeneficiaryID
+			AND BPS.TaxYear = DB.DeliverableQueueYear + 1
+		LEFT JOIN Payment PMT ON PMT.PaymentID = BPS.PaymentID
+			AND ISNULL(PMT.VoidDate, 0) = 0
+		GROUP BY DB.BeneficiaryID
+
+		UPDATE @BeneficiaryPayments
+		SET PmtAmount = BP.PmtAmount + KBP.PmtAmount
+		FROM @BeneficiaryPayments BP
+		JOIN @K1BeneficiaryPayments KBP ON KBP.BeneficiaryID = BP.BeneficiaryID
+
+		SELECT DeliverableItemID
+			,2 AS RuleID
+			,'CurrentYearDistribution' AS Attribute
+			,ISNULL(BP.PmtAmount, 0) AS ActualValue
+			,'' AS DisplayMessage
+		FROM @DeliverableItemData DID
+		JOIN @BeneficiaryPayments BP ON BP.BeneficiaryID = DID.BeneficiaryID
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorDesc
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+	-- End of procedure  -- 
+END
+
+GO
+
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc')
+    BEGIN
+        PRINT 'CREATED USP_EIS_RPT_BR_VE_DR_CurrentYearDistribution_SelProc';
+    END

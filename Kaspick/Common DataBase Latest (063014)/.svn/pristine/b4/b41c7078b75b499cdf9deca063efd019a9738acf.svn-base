@@ -1,0 +1,168 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[Fn_GetFormattedAddress]')
+			AND type IN (
+				N'FN'
+				,N'IF'
+				,N'TF'
+				,N'FS'
+				,N'FT'
+				)
+		)
+	DROP FUNCTION [dbo].[Fn_GetFormattedAddress]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+/******************************************************************************                      
+** Name:     Fn_ReportGetPaymentDate                      
+** Short Desc: To retrieve formatted adress
+**                      
+** Full Description: To retrieve formatted adress
+**                              
+** Input Arguments:  
+   
+**         
+** Sample Call     
+        
+	select  [dbo].[Fn_ReportGetPaymentDate] ('L',31,'JAN','12/31/2012','1/1/2014') 
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_GetFormattedAddress] (
+	@Add1 VARCHAR(40)
+	,@Add2 VARCHAR(40)
+	,@Add3 VARCHAR(40)
+	,@City VARCHAR(30)
+	,@State VARCHAR(2)
+	,@Country VARCHAR(25)
+	,@Zip VARCHAR(10)
+	)
+RETURNS VARCHAR(1000)
+AS
+BEGIN
+	/*Declare and Initialize Local Variables*/
+	DECLARE @CRLF CHAR(2)
+		,@CurMonth INT
+		,@Empty BIT
+		,@Result VARCHAR(1000)
+
+	/* Get Current Month to filter out seasonal addresses */
+	SELECT @CurMonth = DATEPART(month, GETDATE())
+		,@CRLF = CHAR(13) + CHAR(10)
+
+	/*Did we get anything*/
+	IF @@ROWCOUNT = 0
+		SELECT @Result = ''
+	ELSE
+		/*Format the selected address*/
+	BEGIN
+		SELECT @Result = RTRIM('')
+			,@Empty = 1
+
+		/*Address Line 1 */
+		IF (
+				(@Add1 IS NOT NULL)
+				AND (@Add1 <> '')
+				)
+		BEGIN
+			SELECT @Result = @Result + @Add1
+				,@Empty = 0
+		END
+
+		/*Address Line 2 */
+		IF (@Add2 IS NOT NULL)
+			AND (@Add2 <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Add2
+				,@Empty = 0
+		END
+
+		/*Address Line 3 */
+		IF (@Add3 IS NOT NULL)
+			AND (@Add3 <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Add3
+				,@Empty = 0
+		END
+
+		/*City*/
+		IF (@City IS NOT NULL)
+			AND (@City <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @City
+				,@Empty = 0
+		END
+
+		/*State*/
+		IF (@State IS NOT NULL)
+			AND (@State <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + ', '
+
+			SELECT @Result = @Result + @State
+				,@Empty = 0
+		END
+
+		/*Zip*/
+		IF (@Zip IS NOT NULL)
+			AND (@Zip <> '')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + '  '
+
+			SELECT @Result = @Result + @Zip
+				,@Empty = 0
+		END
+
+		/*Country*/
+		IF (@Country IS NOT NULL)
+			AND (@Country <> '')
+			AND (@Country <> 'USA')
+		BEGIN
+			IF (@Empty = 0)
+				SELECT @Result = @Result + @CRLF
+
+			SELECT @Result = @Result + @Country
+				,@Empty = 0
+		END
+	END
+
+	RETURN @Result
+END
+GO
+
+
+sp_helptext Fn_GetFormattedAddress

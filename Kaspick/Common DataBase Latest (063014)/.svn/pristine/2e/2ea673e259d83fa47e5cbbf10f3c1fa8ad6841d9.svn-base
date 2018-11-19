@@ -1,0 +1,221 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveSummaryOfCashTransaction]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_SaveSummaryOfCashTransaction]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_SaveSummaryOfCashTransaction]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveSummaryOfCashTransaction]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_SaveSummaryOfCashTransaction    
+** Short Desc:  Saves the cash transaction details for the given valuation IDs.     
+**    
+** Full Description : Saves the cash transaction details for the given valuation IDs. 
+**            
+**    
+** Sample Call    
+  Declare @XMLdata XML
+  Declare @ReturnStatus INT
+  Declare @ErrorDesc Varchar(100)
+  SET @XMLdata = '<SummaryOfCashTransactionsCollection>
+	<InsertList>
+	<SummaryOfCashTransactions ValuationID= "1" CustomerAccountNumber="ACADW" />
+	</InsertList>
+	</SummaryOfCashTransactionsCollection>'
+        EXEC USP_SIT_SaveSummaryOfCashTransaction  @XMLdata , @ReturnStatus OUTPUT , @ErrorDesc OUTPUT
+  SELECT @ReturnStatus,@ErrorDesc
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/03/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_SaveSummaryOfCashTransaction] @XMLdata XML
+	,@UserID INT
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF OBJECT_ID('tempdb..[#Tmp_CashTransaction]') IS NOT NULL
+			DROP TABLE [#Tmp_CashTransaction]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		CREATE TABLE #Tmp_CustomerAccountNumber (
+			ValuationID INT
+			,XmlCustomerAccountNumber VARCHAR(14)
+			)
+
+		CREATE TABLE #Tmp_CashTransaction (
+			ValuationID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,TotalIncomeReceiveda DECIMAL(28, 4)
+			,TotalIncomeReceivedb DECIMAL(28, 4)
+			,TotalDisbursement DECIMAL(28, 4)
+			)
+
+		DECLARE @Colname VARCHAR(100)
+		DECLARE @SelColname VARCHAR(1000)
+		DECLARE @Qry VARCHAR(500)
+		DECLARE @TableName VARCHAR(100);
+
+		SET @TableName = 'TBL_SIT_EBRSummaryOfCashTransaction'
+
+		INSERT INTO #Tmp_CustomerAccountNumber (
+			ValuationID
+			,XmlCustomerAccountNumber
+			)
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS ValuationID
+			,XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS XmlCustomerAccountNumber
+		--,PVal.CustomerAccountNumber
+		FROM @XMLDATA.nodes('//SummaryOfCashTransactionsCollection/InsertList/SummaryOfCashTransactions') AS XmlInput(Item)
+		select * from #Tmp_CustomerAccountNumber
+		--INNER JOIN TBL_PV_Valuation PVal
+		--	ON PVal.ValuationID = XmlInput.Item.value('@ValuationID[1]', 'INT')
+		
+		DELETE TBL_SIT_EBRSummaryOfCashTransaction
+		WHERE ValuationID IN (
+				SELECT ValuationID
+				FROM #Tmp_CustomerAccountNumber
+				)
+
+		SELECT @Colname = ISNULL(@Colname + ',', '') + QUOTENAME(TransactionCode)
+		FROM (
+			SELECT DISTINCT TransactionCode
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+
+		SELECT @SelColname = ISNULL(@SelColname + ',', '') + QUOTENAME(TransactionCode) + ' as ' + KaspickColumnName
+		FROM (
+			SELECT DISTINCT TransactionCode
+				,ColumnSequence
+				,KaspickColumnName
+				,ROW_NUMBER() OVER (
+					PARTITION BY TransactionCode ORDER BY TransactionCode
+					) AS RowNum
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+		WHERE Rownum = 1
+		ORDER BY ColumnSequence
+
+		SET @Qry = ' SELECT ValuationID,CustomerAccountNumber,' 
+		+ @SelColname + '
+		FROM SYN_IT_Stmt_TransactionSummary TranSmry
+		INNER JOIN #Tmp_CustomerAccountNumber TmpInput
+			ON TranSmry.CustomerAccountNumber = TmpInput.XmlCustomerAccountNumber
+		PIVOT(MAX(TransactionTotal) FOR TransactionCategoryCode IN (
+        ' + @Colname + '
+        )) p'
+
+		INSERT INTO #Tmp_CashTransaction (
+			ValuationID
+			,CustomerAccountNumber
+			,TotalIncomeReceiveda
+			,TotalIncomeReceivedb
+			,TotalDisbursement
+			)
+		EXECUTE (@Qry)
+
+		INSERT INTO TBL_SIT_EBRSummaryOfCashTransaction (
+			ValuationID
+			,TotalIncomeReceived
+			,TotalNetMiscellaneousIncome
+			,TotalDisbursement
+			,TotalReceipt
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,SUM(ISNULL(TotalIncomeReceiveda,0)+ISNULL(TotalIncomeReceivedb,0))
+			,0
+			,SUM(ISNULL(TotalDisbursement,0))
+			,(SUM(ISNULL(TotalIncomeReceiveda,0)+ISNULL(TotalIncomeReceivedb,0))) - SUM(ISNULL(TotalDisbursement,0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_CashTransaction
+		GROUP BY ValuationID
+		
+		IF OBJECT_ID('tempdb..[#Tmp_CashTransaction]') IS NOT NULL
+			DROP TABLE [#Tmp_CashTransaction]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+			
+		SET @ReturnStatus = 0
+		SET @ErrorDesc = '';
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

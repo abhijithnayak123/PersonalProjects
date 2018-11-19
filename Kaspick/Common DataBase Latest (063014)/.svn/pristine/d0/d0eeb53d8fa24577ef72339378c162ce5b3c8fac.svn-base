@@ -1,0 +1,119 @@
+   IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_Ins_VALNoBeneExcludeFromLift'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_Ins_VALNoBeneExcludeFromLift;
+
+	PRINT 'DROPPED USP_BR_FASB_Ins_VALNoBeneExcludeFromLift';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO 
+/******************************************************************************                
+** Name		  :   USP_BR_FASB_Ins_VALNoBeneExcludeFromLift
+** Old Name   :   USP_EIS_RPT_FASB_VAL_NoBeneExcludeFromLift_InsProc                
+** Short Desc : No Benes are marked as "Exclude from life of Trust" for Account with TermType=L & TermYrs>0    
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_BR_FASB_Ins_VALNoBeneExcludeFromLift 4              
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Aug/25/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Aug/10/2012   Ganapati           Created        
+**  Nov/19/12 Saravanan  Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules    
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_Ins_VALNoBeneExcludeFromLift] @RuleId INT  
+AS  
+		DECLARE @ValidationMessage VARCHAR(max)  
+		DECLARE @ValidationType VARCHAR(25)  
+		  
+		--select @ValidationMessage = DisplayMessage, @ValidationType = ResultType from TBL_EIS_PP_Validation_Rules where RuleID = @RuleId        
+		SELECT 
+				@ValidationMessage = DisplayMessage  
+			   ,@ValidationType = ResultType  
+		FROM 
+				TBL_DLV_ValidationRule  
+		WHERE 
+				ValidationRuleID = @RuleId  
+		  
+		--Rule 4. No Benes are marked as "Exclude from life of Trust" for Account with TermType=L & TermYrs>0.    
+		INSERT INTO TBL_BR_FASBValidationResult (  
+			ClientID
+			,ClientName 
+			,RecordIdentifier  
+			,ValidationMessage  
+			,ValidationType  
+		 )  
+		SELECT DISTINCT 
+		  A.OrgId  
+		 ,A.ManagerName  
+		 ,A.identifier  
+		 ,A.ValidationMessage  
+		 ,A.ValidationType  
+		FROM (  
+		 SELECT DISTINCT Gift.OrgId  
+			  ,AccmgrCode.ManagerName  
+			  ,'AdventID = ' + DGA.AdventID AS identifier  
+			  ,@ValidationMessage AS ValidationMessage  
+			  ,@ValidationType AS ValidationType  
+			  ,sum(BENE.ExcludeFromLifeofTrust) AS Exclude  
+		 FROM 
+				dbo.SYN_IT_AccountManagerCodes AccmgrCode  
+		 INNER JOIN 
+				TBL_BR_STG_FASBGift Gift 
+			ON 
+				AccmgrCode.ManagerCode = Gift.EX_ManagerCode_OrgID  
+		 INNER JOIN 
+				VW_EX_Account DGA 
+			ON 
+				DGA.AccountID = Gift.CustomerAccountNumber  
+		 INNER JOIN 
+				VW_Beneficiary BENE 
+			ON 
+				BENE.CustomerAccountNumber = DGA.AccountID  
+		 WHERE
+				Gift.TermTypeID = 4 --and Bene.ExcludeFromLifeofTrust = 0    
+		  AND (  
+		   DGA.UDFAMColumn030 IS NULL  
+		   OR DGA.UDFAMColumn030 >= Gift.MarketValueDate  
+		   )  
+		 GROUP BY 
+			Gift.OrgId  
+		  ,AccmgrCode.ManagerName  
+		  ,DGA.AdventID  
+		 HAVING sum(isnull(BENE.ExcludeFromLifeofTrust, 0)) = 0  
+		 ) A  
+		 				  
+	GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_Ins_VALNoBeneExcludeFromLift'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_Ins_VALNoBeneExcludeFromLift';
+END 

@@ -1,0 +1,208 @@
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_Missing_Flip_Info]    Script Date: 07/08/2014 12:13:43 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_Missing_Flip_Info]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_Missing_Flip_Info]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_Missing_Flip_Info]    Script Date: 07/08/2014 12:13:43 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/********************************************************************************************        
+* Procedure Name  : [dbo].[USP_EIS_IRS_Missing_Flip_Info]         
+* Purpose         : SELECTS ALL Missing Flip Account information     
+*        
+* Input           : N/A        
+*                
+*        EXEC USP_EIS_IRS_Missing_Flip_Info 2013, 'AM' ,''                     
+* Modification Log                                                     
+*                                    
+* Date             Modified By  Description                                                    
+*---------------------------------------------------------------------------------        
+* 03-Jan-08        Rajesh P 
+* 08-Jul-14        Salih      Modifed data sources with the synonyms
+********************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_Missing_Flip_Info] (
+	@Tax_YEAR INT
+	,@CLIENT_BRIEF_NAME VARCHAR(10)
+	,@ADVENT_ID VARCHAR(10)
+	)
+AS
+BEGIN
+	IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+		AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+	BEGIN
+		SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+			,DefGiftAct.ADVENTID
+			,DefGiftAct.ACCOUNTTYPE
+			,FLIPPROVISION
+			,FLIPDATE
+			,DefGftActSup.TRIGGERING_DATE
+			,DefGiftAct.FLIPEVENT
+			,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+			,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+			,DefGiftAct.FIRSTTAXYEAR
+			,DefGiftAct.MATUREDATE
+			,DefGftActSup.TRIGGERING_DATE
+			,DefGiftAct.FLIPEVENT
+		FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+		INNER JOIN SYN_EP_TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DefGftActSup
+			ON DefGiftAct.ACCOUNTID = DefGftActSup.ACCOUNTID
+		INNER JOIN SYN_EP_Program Prgm
+			ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+		INNER JOIN SYN_EP_Client Clnt
+			ON Clnt.CLIENTID = Prgm.CLIENTID
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+			ON Clnt.BriefName = KCO_TA.ManagerCode
+				AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+			ON Clnt.BriefName = KCO_CM.ManagerCode
+				AND KCO_CM.ROLENAME = 14 -- 'Client Manager'
+		WHERE FLIPPROVISION = 1
+			AND YEAR(FLIPDATE) = @Tax_YEAR
+			AND (
+				DefGftActSup.TRIGGERING_DATE IS NULL
+				OR DefGftActSup.TRIGGERING_DATE = ''
+				OR DefGiftAct.FLIPEVENT IS NULL
+				OR DefGiftAct.FLIPEVENT = ''
+				)
+			AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+			AND DefGiftAct.ADVENTID = @ADVENT_ID
+		ORDER BY DefGiftAct.ADVENTID
+	END
+	ELSE
+		IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+			AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+		BEGIN
+			SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+				,DefGiftAct.ADVENTID
+				,DefGiftAct.ACCOUNTTYPE
+				,FLIPPROVISION
+				,FLIPDATE
+				,DefGftActSup.TRIGGERING_DATE
+				,DefGiftAct.FLIPEVENT
+				,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+				,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+				,DefGiftAct.FIRSTTAXYEAR
+				,DefGiftAct.MATUREDATE
+				,DefGftActSup.TRIGGERING_DATE
+				,DefGiftAct.FLIPEVENT
+			FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+			INNER JOIN SYN_EP_TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DefGftActSup
+				ON DefGiftAct.ACCOUNTID = DefGftActSup.ACCOUNTID
+			INNER JOIN SYN_EP_Program Prgm
+				ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+			INNER JOIN SYN_EP_Client Clnt
+				ON Clnt.CLIENTID = Prgm.CLIENTID
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+				ON Clnt.BriefName = KCO_TA.ManagerCode
+					AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+				ON Clnt.BriefName = KCO_CM.ManagerCode
+					AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+			WHERE FLIPPROVISION = 1
+				AND YEAR(FLIPDATE) = @Tax_YEAR
+				AND (
+					DefGftActSup.TRIGGERING_DATE IS NULL
+					OR DefGftActSup.TRIGGERING_DATE = ''
+					OR DefGiftAct.FLIPEVENT IS NULL
+					OR DefGiftAct.FLIPEVENT = ''
+					)
+				AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+			ORDER BY DefGiftAct.ADVENTID
+		END
+		ELSE
+			IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+				AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+			BEGIN
+				SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+					,DefGiftAct.ADVENTID
+					,DefGiftAct.ACCOUNTTYPE
+					,FLIPPROVISION
+					,FLIPDATE
+					,DefGftActSup.TRIGGERING_DATE
+					,DefGiftAct.FLIPEVENT
+					,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+					,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+					,DefGiftAct.FIRSTTAXYEAR
+					,DefGiftAct.MATUREDATE
+					,DefGftActSup.TRIGGERING_DATE
+					,DefGiftAct.FLIPEVENT
+				FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EP_TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DefGftActSup
+					ON DefGiftAct.ACCOUNTID = DefGftActSup.ACCOUNTID
+				INNER JOIN SYN_EP_Program Prgm
+					ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EP_Client Clnt
+					ON Clnt.CLIENTID = Prgm.CLIENTID
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+					ON Clnt.BriefName = KCO_TA.ManagerCode
+						AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+					ON Clnt.BriefName = KCO_CM.ManagerCode
+						AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+				WHERE FLIPPROVISION = 1
+					AND YEAR(FLIPDATE) = @Tax_YEAR
+					AND (
+						DefGftActSup.TRIGGERING_DATE IS NULL
+						OR DefGftActSup.TRIGGERING_DATE = ''
+						OR DefGiftAct.FLIPEVENT IS NULL
+						OR DefGiftAct.FLIPEVENT = ''
+						)
+					AND DefGiftAct.ADVENTID = @ADVENT_ID
+				ORDER BY DefGiftAct.ADVENTID
+			END
+			ELSE
+				IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+					AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+				BEGIN
+					SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+						,DefGiftAct.ADVENTID
+						,DefGiftAct.ACCOUNTTYPE
+						,FLIPPROVISION
+						,FLIPDATE
+						,DefGftActSup.TRIGGERING_DATE
+						,DefGiftAct.FLIPEVENT
+						,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+						,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+						,DefGiftAct.FIRSTTAXYEAR
+						,DefGiftAct.MATUREDATE
+						,DefGftActSup.TRIGGERING_DATE
+						,DefGiftAct.FLIPEVENT
+					FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+					INNER JOIN SYN_EP_TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DefGftActSup
+						ON DefGiftAct.ACCOUNTID = DefGftActSup.ACCOUNTID
+					INNER JOIN SYN_EP_Program Prgm
+						ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+					INNER JOIN SYN_EP_Client Clnt
+						ON Clnt.CLIENTID = Prgm.CLIENTID
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+						ON Clnt.BriefName = KCO_TA.ManagerCode
+							AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+						ON Clnt.BriefName = KCO_CM.ManagerCode
+							AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+					WHERE FLIPPROVISION = 1
+						AND YEAR(FLIPDATE) = @Tax_YEAR
+						AND (
+							DefGftActSup.TRIGGERING_DATE IS NULL
+							OR DefGftActSup.TRIGGERING_DATE = ''
+							OR DefGiftAct.FLIPEVENT IS NULL
+							OR DefGiftAct.FLIPEVENT = ''
+							)
+					ORDER BY DefGiftAct.ADVENTID
+				END
+END
+GO
+
+

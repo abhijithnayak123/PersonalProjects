@@ -1,0 +1,590 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_TerminationsAndSeverances]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_TerminationsAndSeverances]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_TerminationsAndSeverances  
+** Short Desc: Terminations & Severances for Account Types - Trust, PIF, CGA  
+**    
+** Full Description    
+**      Terminations & Severances for Account Types - Trust, PIF, CGA  
+**    
+** Sample Call    
+        EXEC USP_KCo_TerminationsAndSeverances   
+   'MIT', '1/1/2013', '10/31/2013', 'Yes'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : Reports    
+** Created DT: 01-04-2013  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------      
+**  
+** MM/DD/YYYY XXXX  
+*******************************************************************************    
+** Copyright (C) 2013 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_TerminationsAndSeverances] @ManagerCode AS CHAR(4)
+	,@TerminationDateFrom AS DATE
+	,@TerminationDateTo AS DATE
+	,@OrderByInvObjective AS VARCHAR(5)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @GW_ManagerCode AS CHAR(4)
+	DECLARE @GW_CGA_GiftTypeID AS INT
+	DECLARE @GW_PIF_GiftTypeID AS INT
+
+	SELECT @GW_ManagerCode = 4195 --dbo.FN_GET_KaspickClientID()  
+
+	SELECT @GW_CGA_GiftTypeID = GiftTypeID
+	FROM GWRAP_TBLGIFTTYPE
+	WHERE short = 'CGA'
+
+	SELECT @GW_PIF_GiftTypeID = GiftTypeID
+	FROM GWRAP_TBLGIFTTYPE
+	WHERE short = 'PIF'
+
+	DECLARE @TBL_GiftDetails_Trust TABLE (
+		CustomerAccountNumber VARCHAR(14)
+		,OriginalGiftDate DATETIME
+		,TotalGiftAmount MONEY
+		)
+	DECLARE @TBL_Remainderman_Trust TABLE (
+		CustomerAccountNumber VARCHAR(14)
+		,FASBRestrictionType VARCHAR(20)
+		,FundName VARCHAR(100)
+		,DesignationCode VARCHAR(15)
+		)
+	DECLARE @TBL_Gift TABLE (
+		CustomerAccountNumber VARCHAR(14)
+		,AccountName VARCHAR(100)
+		,AccountType VARCHAR(20)
+		,AllianceNumber CHAR(15)
+		,ClientAccountCode1 VARCHAR(20)
+		,ClientAccountCode2 VARCHAR(20)
+		,ContactName VARCHAR(2000)
+		,Account1 VARCHAR(20)
+		,Account2 VARCHAR(20)
+		,Account3 VARCHAR(20)
+		,Account4 VARCHAR(20)
+		,Account5 VARCHAR(20)
+		,OriginalGiftDate DATETIME
+		,TotalGiftAmount MONEY
+		,MatureDate DATETIME
+		,NotificationDate DATETIME
+		,PriorValuationDate DATETIME
+		,Units DECIMAL(17, 8)
+		,DistributionAmount MONEY
+		,Liability MONEY
+		,LiabilityDate DATETIME
+		,FundName VARCHAR(max)
+		,DesignationCode VARCHAR(max)
+		,GiftRestriction VARCHAR(max)
+		,AccountClosingDateMarketValue VARCHAR(20)
+		,InvestmentObjective VARCHAR(40)
+		,ManagerCode CHAR(4)
+		,GiftID INT
+		)
+
+	--Get the first Gift Date and total Gift Amount for each account  
+	INSERT INTO @TBL_GiftDetails_Trust (
+		CustomerAccountNumber
+		,OriginalGiftDate
+		,TotalGiftAmount
+		)
+	SELECT g.AccountID
+		,MIN(GiftDate)
+		,SUM(ga.MarketValue)
+	FROM dbo.Gift g
+	LEFT JOIN dbo.GiftAsset ga
+		ON g.GiftID = ga.GiftID
+	GROUP BY g.AccountID -- Gift table has no corresponding mapping and there is no CustomerAccountNumber
+
+	--Get the Remainderman details into a temp table  
+	INSERT INTO @TBL_Remainderman_Trust (
+		CustomerAccountNumber
+		,FASBRestrictionType
+		,FundName
+		,DesignationCode
+		)
+	SELECT DISTINCT AccMstr.CustomerAccountNumber
+		,NULL
+		,NULL
+		--FASBRestrictionType --No Mapping
+		--Fundname --No Mapping
+		,UDFContAccRole.UDFCAColumn009 AS DesignationCode
+	FROM SYN_IT_ContactMaster ContMstr
+	INNER JOIN SYN_IT_ContactAccountRoles ContAccRole
+		ON ContAccRole.ContactID = ContMstr.ContactID
+	INNER JOIN SYN_IT_ContactRoleCodes ContRole
+		ON ContAccRole.ContactRoleCode = ContRole.ID
+			AND ContRole.ContactRoleCodeDesc IN (
+				'Remainderman'
+				,'Remainderman Designation'
+				)
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = ContAccRole.CustomerAccountNumber
+	INNER JOIN SYN_IT_UDF_ContactAccountRole UDFContAccRole
+		ON UDFContAccRole.ContactID_Key = ContAccRole.ContactID
+			AND AccMstr.CustomerAccountNumber = UDFContAccRole.CustomerAccountNumber_Key
+			AND ContactRoleCode_Key = ContAccRole.ContactRoleCode
+	WHERE
+		--rm.IsExternal = 0 AND --Only Remainderman of type 'Client' -- Mapping not available  for IsExternal
+		AccMstr.ManagerCode = @ManagerCode
+
+	--Get Trust Accounts  
+	INSERT INTO @TBL_Gift (
+		CustomerAccountNumber
+		,AccountName
+		,AccountType
+		,AllianceNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,OriginalGiftDate
+		,TotalGiftAmount
+		,MatureDate
+		,NotificationDate
+		,PriorValuationDate
+		,Units
+		,DistributionAmount
+		,Liability
+		,LiabilityDate
+		,FundName
+		,DesignationCode
+		,GiftRestriction
+		,AccountClosingDateMarketValue
+		,InvestmentObjective
+		,ManagerCode
+		,GiftID
+		)
+	SELECT AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,AccMas.CustomerDescriptionLine1 AS 'AccountName'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,AccMas.ManagerCode AS 'ClientAccountCode1'
+		,UDFAccMas.UDFAMColumn042 AS 'ClientAccountCode2'
+		,'' AS 'ContactName'
+		,'' AS 'Account1'
+		,'' AS 'Account2'
+		,'' AS 'Account3'
+		,'' AS 'Account4'
+		,'' AS 'Account5'
+		,ISNULL(gdt.OriginalGiftDate, AccMas.DateOpened) AS 'OriginalGiftDate'
+		,gdt.TotalGiftAmount AS 'TotalGiftAmount'
+		,
+		--(  
+		-- SELECT SUM(ga.MarketValue) FROM dbo.GiftAsset ga   
+		--    INNER JOIN dbo.Gift g ON g.GiftID = ga.GiftID  
+		--    WHERE g.AccountID = dga.ACCOUNTID  
+		--)     AS 'TotalGiftAmount',  
+		UDFAccMas.UDFAMColumn030 AS 'MatureDate'
+		,ISNULL(dga.MatureNotifyDate, UDFAccMas.UDFAMColumn030) AS 'NotificationDate'
+		,-- dga.MatureNotifyDate is obsolete
+		NULL AS 'PriorValuationDate'
+		,0 AS 'Units'
+		,0 AS 'DistributionAmount'
+		,0 AS 'Liability'
+		,NULL AS 'LiabilityDate'
+		,FundName = STUFF((
+				SELECT DISTINCT '; ' + rm.FundName
+				FROM @TBL_Remainderman_Trust rm
+				WHERE rm.CustomerAccountNumber = AccMas.CustomerAccountNumber
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,DesignationCode = STUFF((
+				SELECT DISTINCT '; ' + rm.DesignationCode
+				FROM @TBL_Remainderman_Trust rm
+				WHERE rm.CustomerAccountNumber = AccMas.CustomerAccountNumber
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,GiftRestriction = STUFF((
+				SELECT DISTINCT '; ' + rm.FASBRestrictionType
+				FROM @TBL_Remainderman_Trust rm
+				WHERE rm.CustomerAccountNumber = AccMas.CustomerAccountNumber
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,
+		--GiftRestriction =   
+		--       STUFF((SELECT DISTINCT '; ' + rmd.FASBRestrictionType --+ CHAR(13)  
+		--          FROM dbo.REMAINDERMAN rm  
+		--  LEFT JOIN RemaindermanDesignation rmd ON rm.RemaindermanID = rmd.RemaindermanID  
+		--          WHERE rm.AccountID = dga.AccountID            
+		--         FOR XML PATH(''), root('MyString'), type   
+		--   ).value('/MyString[1]','varchar(max)')         
+		--         , 1, 2, ''),     
+		'' AS 'AccountClosingDateMarketValue'
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,AccMas.ManagerCode AS 'ManagerCode'
+		,NULL AS 'GiftID'
+	FROM SYN_IT_AccountMaster AccMas
+	LEFT OUTER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+		ON UDFAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccMas.ObjectiveCode -- No mapping for ObjectiveCode in Innotrust
+	LEFT JOIN @TBL_GiftDetails_Trust gdt
+		ON gdt.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	WHERE AccMas.AccountTypeCode <> 'PIF'
+		AND AccMas.AccountTypeCode <> 'CGA'
+		AND UDFAccMas.UDFAMColumn030 >= @TerminationDateFrom
+		AND UDFAccMas.UDFAMColumn030 <= @TerminationDateTo
+		AND AccMas.ManagerCode = @ManagerCode
+
+	--CGA Accounts from Giftwrap  
+	INSERT INTO @TBL_Gift (
+		CustomerAccountNumber
+		,AccountName
+		,AccountType
+		,AllianceNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,OriginalGiftDate
+		,TotalGiftAmount
+		,MatureDate
+		,NotificationDate
+		,PriorValuationDate
+		,Units
+		,DistributionAmount
+		,Liability
+		,LiabilityDate
+		,FundName
+		,DesignationCode
+		,GiftRestriction
+		,AccountClosingDateMarketValue
+		,InvestmentObjective
+		,ManagerCode
+		,GiftID
+		)
+	SELECT AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,AccMas.CustomerDescriptionLine1 AS 'AccountName'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,'' AS 'ClientAccountCode1'
+		,'' AS 'ClientAccountCode2'
+		,LTRIM(RTRIM(gwp.FirstName) + SPACE(1) + RTRIM(gwp.LastName)) AS 'ContactName'
+		,g.Account1 AS 'Account1'
+		,g.Account2 AS 'Account2'
+		,g.Account3 AS 'Account3'
+		,g.Account4 AS 'Account4'
+		,g.Account5 AS 'Account5'
+		,gd.GiftDate AS 'OriginalGiftDate'
+		,g.TotalGiftAmount AS 'TotalGiftAmount'
+		,g.AccountClosedDate AS 'MatureDate'
+		,g.AccountClosedDate AS 'NotificationDate'
+		,g.MarketValueDate AS 'PriorValuationDate'
+		,g.TotalUnits AS 'Units'
+		,g.DistributionAmount AS 'DistributionAmount'
+		,g.FASBAmount AS 'Liability'
+		,g.FASBDate AS 'LiabilityDate'
+		,g.Purpose AS 'FundName'
+		,DesignationCode = STUFF((
+				SELECT DISTINCT '; ' + d.Short
+				FROM SYN_GW_TBLDESIGNATION d
+				INNER JOIN SYN_GW_TBLDESIGNATIONDETAIL dd
+					ON dd.DesignationID = d.DesignationID
+				WHERE dd.GiftID = g.GiftID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,(
+			SELECT Description
+			FROM SYN_GW_TBLLOOKUP
+			WHERE lookupid = g.RestrictedIDLookup
+			) AS 'GiftRestriction'
+		,'' AS 'AccountClosingDateMarketValue'
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,AccMas.ManagerCode AS 'ManagerCode'
+		,g.GiftID AS 'GiftID'
+	FROM SYN_GW_TBLGIFT g
+	INNER JOIN SYN_GW_TBLGIFTDETAIL gd
+		ON (
+				gd.GiftID = g.GiftID
+				AND gd.InitialGift = 1
+				)
+	INNER JOIN SYN_GW_TBLPERSONGIFTMAP pg
+		ON g.GiftID = pg.GiftID
+	INNER JOIN SYN_GW_TBLPERSON gwp
+		ON gwp.PersonID = pg.PersonID
+	INNER JOIN SYN_GW_TBLORGANIZATION gwo
+		ON gwo.OrgID = g.OrgID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.ManagerCode = gwo.OrgAccount1
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccMas.ManagerCode --  earlier ObjectiveCode Joining with ObjectiveCode
+	WHERE gwo.OrgNickName = @GW_ManagerCode
+		AND g.GiftTypeID = @GW_CGA_GiftTypeID
+		AND g.AccountClosedDate >= @TerminationDateFrom
+		AND g.AccountClosedDate <= @TerminationDateTo
+		AND c.BriefName = @ManagerCode
+
+	--PIF Accounts from Giftwrap  
+	INSERT INTO @TBL_Gift (
+		CustomerAccountNumber
+		,AccountName
+		,AccountType
+		,AllianceNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,OriginalGiftDate
+		,TotalGiftAmount
+		,MatureDate
+		,NotificationDate
+		,PriorValuationDate
+		,Units
+		,DistributionAmount
+		,Liability
+		,LiabilityDate
+		,FundName
+		,DesignationCode
+		,GiftRestriction
+		,AccountClosingDateMarketValue
+		,InvestmentObjective
+		,ManagerCode
+		,GiftID
+		)
+	SELECT AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,AccMas.CustomerDescriptionLine1 AS 'AccountName'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,'' AS 'ClientAccountCode1'
+		,'' AS 'ClientAccountCode2'
+		,LTRIM(RTRIM(gwp.FirstName) + SPACE(1) + RTRIM(gwp.LastName)) AS 'ContactName'
+		,g.Account1 AS 'Account1'
+		,g.Account2 AS 'Account2'
+		,g.Account3 AS 'Account3'
+		,g.Account4 AS 'Account4'
+		,g.Account5 AS 'Account5'
+		,gd.GiftDate AS 'OriginalGiftDate'
+		,g.TotalGiftAmount AS 'TotalGiftAmount'
+		,g.AccountClosedDate AS 'MatureDate'
+		,g.AccountClosedDate AS 'NotificationDate'
+		,g.MarketValueDate AS 'PriorValuationDate'
+		,g.TotalUnits AS 'Units'
+		,g.DistributionAmount AS 'DistributionAmount'
+		,g.FASBAmount AS 'Liability'
+		,g.FASBDate AS 'LiabilityDate'
+		,g.Purpose AS 'FundName'
+		,DesignationCode = STUFF((
+				SELECT DISTINCT '; ' + d.Short
+				FROM SYN_GW_TBLDESIGNATION d
+				INNER JOIN SYN_GW_TBLDESIGNATIONDETAIL dd
+					ON dd.DesignationID = d.DesignationID
+				WHERE dd.GiftID = g.GiftID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,(
+			SELECT Description
+			FROM SYN_GW_TBLLOOKUP
+			WHERE lookupid = g.RestrictedIDLookup
+			) AS 'GiftRestriction'
+		,'' AS 'AccountClosingDateMarketValue'
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,c.BriefName AS 'ManagerCode'
+		,g.GiftID AS 'GiftID'
+	FROM SYN_GW_TBLGIFT g
+	INNER JOIN SYN_GW_TBLGIFTDETAIL gd
+		ON (
+				gd.GiftID = g.GiftID
+				AND gd.InitialGift = 1
+				)
+	INNER JOIN SYN_GW_TBLPERSONGIFTMAP pg
+		ON g.GiftID = pg.GiftID
+	INNER JOIN SYN_GW_TBLPERSON gwp
+		ON gwp.PersonID = pg.PersonID
+	INNER JOIN SYN_GW_TBLPIF pif
+		ON pif.PifID = g.PifID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = pif.PifNickname
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccMas.ManagerCode --  earlier ObjectiveCode Joining with ObjectiveCode  
+	LEFT JOIN SYN_GW_TBLASSETDETAIL ad
+		ON ad.GiftDetailID = gd.GiftDetailID
+	LEFT JOIN SYN_GW_TBLPERSONGIFTMAP pfm
+		ON (
+				pfm.GiftID = g.GiftID
+				AND pfm.PersonID = pg.PersonID
+				)
+	WHERE AccMas.ManagerCode = @GW_ManagerCode
+		AND g.GiftTypeID = @GW_PIF_GiftTypeID
+		AND g.AccountClosedDate >= @TerminationDateFrom
+		AND g.AccountClosedDate <= @TerminationDateTo
+		AND c.BriefName = @ManagerCode
+		AND gd.Units > 0
+		AND pfm.ASSOCIATIONID <> 11
+
+	IF (@OrderByInvObjective = 'Yes')
+	BEGIN
+		SELECT DISTINCT ManagerCode
+			,AllianceNumber
+			,CustomerAccountNumber
+			,ClientAccountCode1
+			,ClientAccountCode2
+			,SUBSTRING((
+					SELECT DISTINCT ('; ' + ContactName)
+					FROM @TBL_Gift g2
+					WHERE (
+							g2.AccountType = 'PIF'
+							OR g2.AccountType = 'CGA'
+							)
+						AND g2.GiftID = t.GiftID
+					FOR XML PATH('')
+					), 3, 2000) ContactName
+			,Account1
+			,Account2
+			,Account3
+			,Account4
+			,Account5
+			,AccountType
+			,AccountName
+			,OriginalGiftDate
+			,CASE 
+				WHEN TotalGiftAmount <> 0
+					THEN CONVERT(VARCHAR, TotalGiftAmount, 1)
+				ELSE NULL
+				END AS 'TotalGift(s)'
+			,FundName
+			,DesignationCode
+			,MatureDate
+			,NotificationDate
+			,PriorValuationDate
+			,CAST(Units AS DECIMAL(20, 4)) AS Units
+			,CASE 
+				WHEN DistributionAmount <> 0
+					THEN CONVERT(VARCHAR, DistributionAmount, 1)
+				ELSE NULL
+				END AS DistributionAmount
+			,CASE 
+				WHEN Liability <> 0
+					THEN CONVERT(VARCHAR, Liability, 1)
+				ELSE NULL
+				END AS Liability
+			,LiabilityDate
+			,GiftRestriction
+			,CASE 
+				WHEN AccountClosingDateMarketValue <> 0
+					THEN CONVERT(VARCHAR, AccountClosingDateMarketValue, 1)
+				ELSE NULL
+				END AS AccountClosingDateMarketValue
+			,InvestmentObjective
+		FROM @TBL_Gift t
+		ORDER BY AllianceNumber
+			,InvestmentObjective
+			,AccountType
+			,MatureDate
+	END
+	ELSE
+	BEGIN
+		SELECT DISTINCT ManagerCode
+			,AllianceNumber
+			,CustomerAccountNumber
+			,ClientAccountCode1
+			,ClientAccountCode2
+			,SUBSTRING((
+					SELECT DISTINCT ('; ' + ContactName)
+					FROM @TBL_Gift g2
+					WHERE (
+							g2.AccountType = 'PIF'
+							OR g2.AccountType = 'CGA'
+							)
+						AND g2.GiftID = t.GiftID
+					FOR XML PATH('')
+					), 3, 2000) ContactName
+			,Account1
+			,Account2
+			,Account3
+			,Account4
+			,Account5
+			,AccountType
+			,AccountName
+			,OriginalGiftDate
+			,CASE 
+				WHEN TotalGiftAmount <> 0
+					THEN CONVERT(VARCHAR, TotalGiftAmount, 1)
+				ELSE NULL
+				END AS 'TotalGift(s)'
+			,FundName
+			,DesignationCode
+			,MatureDate
+			,NotificationDate
+			,PriorValuationDate
+			,CAST(Units AS DECIMAL(20, 4)) AS Units
+			,CASE 
+				WHEN DistributionAmount <> 0
+					THEN CONVERT(VARCHAR, DistributionAmount, 1)
+				ELSE NULL
+				END AS DistributionAmount
+			,CASE 
+				WHEN Liability <> 0
+					THEN CONVERT(VARCHAR, Liability, 1)
+				ELSE NULL
+				END AS Liability
+			,LiabilityDate
+			,GiftRestriction
+			,CASE 
+				WHEN AccountClosingDateMarketValue <> 0
+					THEN CONVERT(VARCHAR, AccountClosingDateMarketValue, 1)
+				ELSE NULL
+				END AS AccountClosingDateMarketValue
+			,InvestmentObjective
+		FROM @TBL_Gift t
+		ORDER BY AllianceNumber
+			,MatureDate
+	END
+
+	SET NOCOUNT OFF;
+END

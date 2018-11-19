@@ -1,0 +1,748 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_SaveBRDTDeliverableItems')
+BEGIN
+    DROP PROCEDURE USP_RP_SaveBRDTDeliverableItems;
+    PRINT 'DROPPED USP_RP_SaveBRDTDeliverableItems';
+END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************                    
+** Old Name:     USP_EIS_BR_DT_DeliverableItems_InsUpdProc     
+**                   
+** Name:     USP_RP_SaveBRDTDeliverableItems                    
+** Short Desc: To insert Deliverable Items to 'TBL_DLV_DeliverableItem' table    
+**                    
+** Full Description: To insert Deliverable Items         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+     
+	DECLARE @DeliverableQueueID  INT  
+	DECLARE @DeliverableID      BIGINT  
+	DECLARE @DeliverableFrequency   VARCHAR(2)  
+	DECLARE @UserID     INT  
+	DECLARE @ReturnStatus   INT    
+	DECLARE @ErrorDesc    VARCHAR(8000)   
+	DECLARE @DeliverableEndDate  DateTime  
+	set @DeliverableQueueID = 238  
+	set @DeliverableID = 2  
+	set @DeliverableFrequency = 'S'  
+	SET @DeliverableEndDate = '12/31/2008'  
+	SET @UserID = 1  
+	EXEC USP_RP_SaveBRDTDeliverableItems  
+	@DeliverableQueueID,  
+	@DeliverableID,   
+	@DeliverableFrequency,  
+	@DeliverableEndDate,   
+	@UserID,  
+	@ReturnStatus,   
+	@ErrorDesc  
+**           
+** Return values: Return Status  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By:   
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 25-Sep-09               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 10/13/2009   Venugopal ET #10518 ISNULL condition added in lines 229 to 241  
+** 12/14/2009	Venugopal ET #11112 Updated to include only those participants where link1.assoc ends with "Bene - A".   
+                                    ROLLBACK and commint TRANSACTION statement moved to end of stored procedure.   
+** 02/18/2010   Venu   ET #11362 Universe Creation Logic updated in relation to Reporting As of Date and Calendard/Fiscal Year  
+** 03/12/2010   Venu   ET #11168 Accounts setup for calendar year should not appear in Annual instances other than 12/31/<year>  
+** 03/17/2010   Venu   ET #11168 Accounts setup for calendar year should not appear in Semi Annual instances other than 6/30/<year>,12/31/<year>  
+         Accounts setup for calendar year should not appear in Quarterly instances other than 3/31/<year>,6/30/<year>,9/30/<year>,12/31/<year>  
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+** 07/26/2012 Ganapati  Updated the fields as per the changed view VW_EX_GiftKey 
+** 20-May-2014 Geervani	Made changes in the table names to refer new KASPICK DB                     
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_RP_SaveBRDTDeliverableItems]  
+(  
+	@DeliverableQueueID  INT,  
+	@DeliverableID      BIGINT,  
+	@DeliverableFrequency   VARCHAR(2),  
+	@DeliverableEndDate     DateTime, --ET #11362  
+	@UserID     INT,  
+	@ReturnStatus   INT = -1 OUTPUT, -- assume SP fails and   
+	@ErrorDesc    VARCHAR(8000) OUTPUT  
+)  
+AS  
+	BEGIN  
+		--  Initial Set statements  --              
+		SET NOCOUNT ON;              
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds              
+		SET ARITHABORT ON             
+	               
+		--  Variable Declarations  --              
+		DECLARE @procname   VARCHAR(60);                 
+		DECLARE @ErrorNumber     INT;      
+		DECLARE @Count  BIGINT;  
+		DECLARE @I    BIGINT;  
+		DECLARE @DICount BIGINT;  
+		
+		DECLARE @ErrorMessage VARCHAR(4000);
+		DECLARE @ErrorSeverity INT
+		DECLARE @ErrorState INT
+
+		BEGIN TRANSACTION
+		DECLARE @DeliverableItemStatusID BIGINT;  
+		DECLARE @DeliveryMethodID BIGINT;  
+		DECLARE @DeliverableTypeAttributeIDNotes BIGINT;  
+		DECLARE @DeliverableTypeAttributeIDHold BIGINT;  
+		--ET #11362 BEGIN  
+		DECLARE @MonEnd INT;  
+		DECLARE @Q1  VARCHAR(5);  
+		DECLARE @Q2  VARCHAR(5);  
+		DECLARE @Q3  VARCHAR(5);  
+		DECLARE @Q4  VARCHAR(5);  
+		
+		--ET #11362 END  
+		SELECT @DeliverableItemStatusID = DeliverableItemStatusID,   
+		@DeliveryMethodID = DeliveryMethodID   
+		FROM dbo.TBL_DLV_DeliverableProcessStatus Inner Join TBL_DLV_Deliverable On TBL_DLV_DeliverableProcessStatus.DeliverableProcessID = TBL_DLV_Deliverable.DeliverableProcessID  
+		WHERE StatusName = 'Scheduled' AND TBL_DLV_Deliverable.DeliverableID = @DeliverableID    
+
+		SELECT @DeliverableTypeAttributeIDNotes = DeliverableTypeAttributeID FROM dbo.TBL_DLV_DeliverableTypeAttribute WHERE DeliverableID = @DeliverableID AND AttibuteLongName = 'Notes'  
+		SELECT @DeliverableTypeAttributeIDHold = DeliverableTypeAttributeID FROM dbo.TBL_DLV_DeliverableTypeAttribute WHERE DeliverableID = @DeliverableID AND AttibuteLongName = 'Hold'  
+		--ET #11362 BEGIN  
+		SELECT @MonEnd = DATEPART(MONTH,@DeliverableEndDate)-DATEPART(MONTH,DATEADD(DAY,1,@DeliverableEndDate))      
+
+		IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'Q')   
+			BEGIN  
+				IF(DATEPART(MONTH,@DeliverableEndDate)<=3)  
+					BEGIN  
+						IF (@MonEnd =0)   
+							BEGIN  
+								SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+								SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,3,@DeliverableEndDate)) AS VARCHAR)  
+								SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,6,@DeliverableEndDate)) AS VARCHAR)  
+								SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+9 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,9,@DeliverableEndDate)) AS VARCHAR)  
+							END  
+						ELSE  
+							BEGIN  
+								SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+								SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+								SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,6,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+								SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+9 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,9,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+							END  
+						END  
+					ELSE IF(DATEPART(MONTH,@DeliverableEndDate)>3 AND DATEPART(MONTH,@DeliverableEndDate)<=6)  
+						BEGIN  
+							IF (@MonEnd =0)   
+								BEGIN  
+									SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+									SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,3,@DeliverableEndDate)) AS VARCHAR)  
+									SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,6,@DeliverableEndDate)) AS VARCHAR)   
+									SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-3,@DeliverableEndDate)) AS VARCHAR)  
+								END  
+							ELSE  
+								BEGIN  
+									SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+									SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+									SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,6,@DeliverableEndDate))+1,0))) AS VARCHAR)   
+									SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+								END  
+						END  
+					ELSE IF(DATEPART(MONTH,@DeliverableEndDate)>6 AND DATEPART(MONTH,@DeliverableEndDate)<=9)  
+						BEGIN  
+							IF (@MonEnd =0)   
+								BEGIN  
+									SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+									SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,3,@DeliverableEndDate)) AS VARCHAR)  
+									SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-3,@DeliverableEndDate)) AS VARCHAR)  
+									SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-6,@DeliverableEndDate)) AS VARCHAR)   
+								END  
+							ELSE  
+								BEGIN  
+									SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+									SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate)+3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+									SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+									SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-6,@DeliverableEndDate))+1,0))) AS VARCHAR)   
+								END  
+							END   
+						ELSE  
+							BEGIN  
+								IF (@MonEnd =0)   
+									BEGIN  
+										SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+										SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-3,@DeliverableEndDate)) AS VARCHAR)  
+										SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-6,@DeliverableEndDate)) AS VARCHAR)  
+										SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-9 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-9,@DeliverableEndDate)) AS VARCHAR)  
+									END  
+								ELSE  
+									BEGIN  
+										SET @Q4 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+										SET @Q3 = CAST(DATEPART(MONTH,@DeliverableEndDate)-3 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-3,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+										SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-6,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+										SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-9 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-9,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+									END  
+								END  
+							END  
+					ELSE IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'S')   
+					BEGIN  
+						IF(DATEPART(MONTH,@DeliverableEndDate)<=6)  
+							BEGIN  
+							IF (@MonEnd =0)   
+								BEGIN  
+									SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+									SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,6,@DeliverableEndDate)) AS VARCHAR)  
+								END  
+								ELSE  
+									BEGIN  
+										SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+										SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate)+6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,6,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+									END  
+								END  
+							ELSE  
+								BEGIN  
+									IF (@MonEnd =0)   
+										BEGIN  
+											SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+											SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(MONTH,-6,@DeliverableEndDate)) AS VARCHAR)  
+										END  
+									ELSE  
+										BEGIN  
+											SET @Q2 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+											SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate)-6 AS VARCHAR)+'/'+CAST(DATEPART(DAY,DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,DATEADD(MONTH,-6,@DeliverableEndDate))+1,0))) AS VARCHAR)  
+										END   
+									END  
+								END  
+					ELSE IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'A')  
+						BEGIN  
+							SET @Q1 = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)  
+						END  
+	--ET #11362 END  
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_RP_SaveBRDTDeliverableItems';              
+	SET @ReturnStatus = 0;              
+
+	-- Body of procedure  --         
+	BEGIN TRY  
+	--BEGIN TRANSACTION  
+		IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_ITEMS]'))      
+			DROP TABLE [DBO].[#TEMP_ITEMS]  
+				CREATE TABLE #TEMP_ITEMS  
+				(  
+				ITEMID    BIGINT IDENTITY(1,1),        
+				DeliverableQueueID  BIGINT NULL,        
+				ClientID   BIGINT    NULL,        
+				ClientEmployeeID    BIGINT    NULL,  
+				CustomerAccountNumber   BIGINT    NULL,  
+				TrustParticipantID BIGINT    NULL,  
+				BeneficiaryID  BIGINT    NULL,  
+				DonorID    BIGINT    NULL,  
+				GiftKey    BIGINT    NULL,  
+				DorB    VARCHAR(1) NULL,  
+				ReportQuantity  INT    NULL,  
+				DVDQuantity         INT       NULL,  
+				Website    INT    NULL,  
+				AccountType   VARCHAR(20) NULL,  
+				SpigotAccount  BIT       NOT NULL    
+				)        
+
+		IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_DELIVERABLE_ITEMS]'))      
+		DROP TABLE [DBO].[#TEMP_DELIVERABLE_ITEMS]  
+			CREATE TABLE #TEMP_DELIVERABLE_ITEMS  
+			(  
+			ITEMID    BIGINT IDENTITY(1,1),        
+			DeliverableQueueID  BIGINT  NULL,        
+			ClientID   BIGINT  NULL,        
+			ClientEmployeeID    BIGINT  NULL,  
+			CustomerAccountNumber   BIGINT  NULL,  
+			TrustParticipantID BIGINT  NULL,  
+			BeneficiaryID  BIGINT  NULL,  
+			DonorID    BIGINT  NULL,  
+			GiftKey    BIGINT  NULL,  
+			ReportType   VARCHAR(3) NULL,  
+			AccountType         VARCHAR(20) NULL,  
+			SpigotAccount       BIT     NOT NULL        
+			)   
+
+		INSERT INTO #TEMP_ITEMS    
+		SELECT   
+		@DeliverableQueueID,  
+		VTP.Clientid,  
+		NULL AS ClientEmployeeID,  
+		VTP.CustomerAccountNumber,  
+		VTP.ParticipantID AS TrustParticipantID,  
+		VTP.BeneficiaryID,  
+		VTP.DonorID,  
+		NULL AS GiftKey,  
+		DorB =  
+		(  
+			CASE   
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' AND VTP.PARTICIPANT_TYPE = 'Donor Active' THEN 'D'  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' AND VTP.PARTICIPANT_TYPE = 'Donor Active/Beneficiary Active' THEN 'D'  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) IN ('S','Q','M') AND VTP.PARTICIPANT_TYPE = 'Donor Active/Beneficiary Active' THEN 'B'  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' AND VTP.PARTICIPANT_TYPE = 'Donor Active/Beneficiary Inactive' THEN 'D'  
+			WHEN VTP.PARTICIPANT_TYPE = 'Beneficiary Active' THEN 'B'  
+		ELSE ''  
+		END  
+		),  
+		ReportQuantity =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN  
+		CASE   
+			WHEN VTP.PARTICIPANT_TYPE IN ('Beneficiary Active','Donor Active/Beneficiary Active')   
+			THEN (SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 108)  
+			ELSE (SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 253)  
+		END  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' AND VTP.PARTICIPANT_TYPE IN ('Beneficiary Active','Donor Active/Beneficiary Active') THEN    
+			(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 251)  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' AND VTP.PARTICIPANT_TYPE IN ('Beneficiary Active','Donor Active/Beneficiary Active') THEN   
+			(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 205)  
+			WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' AND VTP.PARTICIPANT_TYPE IN ('Beneficiary Active','Donor Active/Beneficiary Active') THEN   
+			(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 252)  
+			ELSE  
+			0  
+			END  
+		),  
+		DVDQuantity =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND  PI.Policylevel = 100 AND  PI.Policydimensionid = 202)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' THEN   
+		(SELECT sum(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 254)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 255)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 256)  
+		ELSE  
+		0  
+		END     
+		),  
+		WebSite =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND  PI.Policylevel = 300 AND  PI.Policydimensionid = 257)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 258)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 259)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 260)  
+		ELSE  
+		0  
+		END     
+		),VTP.AccountType,VTP.SpigotAccount    
+		FROM   
+		VW_EX_TrustParticipantType VTP  
+		JOIN TBL_DLV_STG_EndingMarketValue EndMrkValue ON VTP.CustomerAccountNumber = EndMrkValue.CustomerAccountNumber AND EndMrkValue.DQueueID = @DeliverableQueueID  
+		JOIN TBL_PolicyItem PIM ON PIM.OwnerID = VTP.ClientID AND PIM.PolicyLevel = 100  
+		JOIN TBL_PolicyDimension PD ON pd.PolicyDimensionID = PIM.PolicyDimensionID AND PD.FullName = 'Institution Type'  
+		JOIN TBL_PolicyDropDown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID  
+		--ET #11362 BEGIN  
+		JOIN TBL_PolicyItem PIMRS ON VTP.CustomerAccountNumber = PIMRS.ownerid AND PIMRS.PolicyLevel = 300    
+		JOIN TBL_PolicyDimension PDRS ON PIMRS.PolicyDimensionID = PDRS.PolicyDimensionID AND PDRS.FullName = 'Rpt Schedule'  
+		JOIN TBL_PolicyDropDown PDDRS ON PIMRS.PolicyDropDownID = PDDRS.PolicyDropDownID  
+		JOIN TBL_PolicyItem PIMFY ON VTP.ProgramID = PIMFY.ownerid AND PIMFY.PolicyLevel = 200    
+		JOIN TBL_PolicyDimension PDFY ON PIMFY.PolicyDimensionID = PDFY.PolicyDimensionID AND PDFY.FullName = 'Fiscal Year End'   
+		--ET #11362 END  
+		WHERE   
+		EndMrkValue.EndingMarketValue > 0 -- EndingMarketValue should be greater than zero  
+		AND  
+		VTP.PARTICIPANT_TYPE IN ('Donor Active','Donor Active/Beneficiary Active','Donor Active/Beneficiary Inactive','Beneficiary Active') -- Active Donor/Beneficiary  
+		AND   
+		VTP.Account_Status IN (0,-1)--('Active','Transition') -- Active and Transition Accounts  
+		AND   
+		VTP.DateOfDeath IS NULL -- No Dead Participant  
+		AND   
+		PDD.DropDownText <> 'DMO' -- No Demo Client  
+		AND  
+		VTP.AccountType <> 'PIF'  
+		----ET #11362 BEGIN  
+		AND (RTRIM(LTRIM(@DeliverableFrequency)) = 'M'   
+		OR  
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'Q'  
+		AND (  
+		(DATEPART(MONTH,@DeliverableEndDate)=3 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=6 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=9 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		)  
+		)--ET #11168  
+		OR   
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'S'  
+		AND (  
+		(DATEPART(MONTH,@DeliverableEndDate)=6 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		)  
+		)--ET #11168  
+		OR   
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'A' AND DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31 )--ET #11168  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'Q'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		(PIMFY.TextValue = @Q1 OR PIMFY.TextValue = @Q2 OR PIMFY.TextValue = @Q3 OR PIMFY.TextValue = @Q4)    
+		)--'Q'  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'S'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		(PIMFY.TextValue = @Q1 OR PIMFY.TextValue = @Q2)    
+		)--'S'  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'A'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		PIMFY.TextValue = @Q1    
+		)--'A'    
+		)  
+		--ET #11362 END  
+		--ET #11112 Begin  
+		INSERT INTO #TEMP_ITEMS    
+		SELECT   
+		@DeliverableQueueID,  
+		VTP.Clientid,  
+		NULL AS ClientEmployeeID,  
+		VTP.CustomerAccountNumber,  
+		VTP.ParticipantID AS TrustParticipantID,  
+		VTP.BeneficiaryID,  
+		VTP.DonorID,  
+		VGK.GIFTKEY,          
+		DorB = 'B',  
+		ReportQuantity =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN  
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 108)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' THEN    
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 251)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 205)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND PI.Policydimensionid = 252)  
+		ELSE  
+		0  
+		END  
+		),  
+		DVDQuantity =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND  PI.Policylevel = 100 AND  PI.Policydimensionid = 202)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' THEN   
+		(SELECT sum(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 254)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 255)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' THEN   
+		(SELECT SUM(NumericValue) FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.ClientID AND PI.Policylevel = 100 AND  PI.Policydimensionid = 256)  
+		ELSE  
+		0  
+		END     
+		),  
+		WebSite =  
+		(  
+		SELECT CASE   
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'A' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND  PI.Policylevel = 300 AND  PI.Policydimensionid = 257)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'S' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 258)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'Q' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 259)  
+		WHEN RTRIM(LTRIM(@DeliverableFrequency)) = 'M' THEN   
+		(SELECT LogicalValue FROM TBL_PolicyItem PI WHERE PI.OwnerID = VTP.CustomerAccountNumber AND PI.Policylevel = 300 AND  PI.Policydimensionid = 260)  
+		ELSE  
+		0  
+		END     
+		),VTP.AccountType,VTP.SpigotAccount    
+		FROM   
+		VW_RP_GiftKey VGK  
+		JOIN VW_EX_TrustParticipantType VTP ON VGK.PIFNICKNAME = VTP.CustomerAccountNumber AND VGK.PERSONACCOUNT1 = cast(VTP.ParticipantID as varchar(20))  
+		JOIN SYN_IT_ContactMaster ConMstr ON VTP.BeneficiaryID = ConMstr.ContactID       
+		JOIN TBL_DLV_STG_EndingMarketValue EndMrkValue ON VTP.CustomerAccountNumber = EndMrkValue.CustomerAccountNumber AND EndMrkValue.DQueueID = @DeliverableQueueID  
+		JOIN TBL_PolicyItem PIM ON PIM.OwnerID = VTP.ClientID AND PIM.PolicyLevel = 100  
+		JOIN TBL_PolicyDimension PD ON pd.PolicyDimensionID = PIM.PolicyDimensionID AND PD.FullName = 'Institution Type'  
+		JOIN TBL_PolicyDropDown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID  
+		JOIN TBL_DLV_STG_FMVAccountClosed AC ON AC.DQUEUEID = @DeliverableQueueID AND AC.CustomerAccountNumber = VTP.CustomerAccountNumber AND AC.GiftKey = VGK.GIFTKEY AND ISNULL(AC.acctclosed,0) = 0 AND AC.FMV > 0          
+		--ET #11362 BEGIN  
+		JOIN TBL_PolicyItem PIMRS ON VTP.CustomerAccountNumber = PIMRS.ownerid AND PIMRS.PolicyLevel = 300    
+		JOIN TBL_PolicyDimension PDRS ON PIMRS.PolicyDimensionID = PDRS.PolicyDimensionID AND PDRS.FullName = 'Rpt Schedule'  
+		JOIN TBL_PolicyDropDown PDDRS ON PIMRS.PolicyDropDownID = PDDRS.PolicyDropDownID  
+		JOIN TBL_PolicyItem PIMFY ON VTP.ProgramID = PIMFY.ownerid AND PIMFY.PolicyLevel = 200    
+		JOIN TBL_PolicyDimension PDFY ON PIMFY.PolicyDimensionID = PDFY.PolicyDimensionID AND PDFY.FullName = 'Fiscal Year End'    
+		--ET #11362 END  
+		WHERE   
+		EndMrkValue.EndingMarketValue > 0 -- EndingMarketValue should be greater than zero  
+		AND   
+		VTP.Account_Status IN (0,-1)--('Active','Transition') -- Active and Transition Accounts  
+		AND   
+		VTP.DateOfDeath IS NULL -- No Dead Participant  
+		AND   
+		PDD.DropDownText <> 'DMO' -- No Demo Client  
+		AND  
+		VTP.AccountType = 'PIF'  
+		AND   
+		VGK.SHORT LIKE '%Bene-A'  
+		--ET #11362 BEGIN  
+		AND (RTRIM(LTRIM(@DeliverableFrequency)) = 'M'   
+		OR  
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'Q'  
+		AND (  
+		(DATEPART(MONTH,@DeliverableEndDate)=3 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=6 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=9 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		)  
+		)--ET #11168  
+		OR   
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'S'  
+		AND (  
+		(DATEPART(MONTH,@DeliverableEndDate)=6 AND DATEPART(DAY,@DeliverableEndDate)=30)  
+		OR  
+		(DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31)  
+		)  
+		)--ET #11168  
+		OR   
+		(PDDRS.DropDownText = 'Calendar Year' AND RTRIM(LTRIM(@DeliverableFrequency)) = 'A' AND DATEPART(MONTH,@DeliverableEndDate)=12 AND DATEPART(DAY,@DeliverableEndDate)=31 )--ET #11168  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'Q'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		(PIMFY.TextValue = @Q1 OR PIMFY.TextValue = @Q2 OR PIMFY.TextValue = @Q3 OR PIMFY.TextValue = @Q4)    
+		)--'Q'  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'S'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		(PIMFY.TextValue = @Q1 OR PIMFY.TextValue = @Q2)    
+		)--'S'  
+		OR  
+		(RTRIM(LTRIM(@DeliverableFrequency)) = 'A'   
+		AND  
+		PDDRS.DropDownText = 'Fiscal Year'  
+		AND   
+		PIMFY.TextValue = @Q1    
+		)--'A'    
+		)  
+		--ET #11362 End  
+		--ET #11112 End  
+
+		SELECT @Count = COUNT(*) FROM #TEMP_ITEMS  
+
+		SELECT @I = ISNULL(MAX(DeliverableItemID),0) FROM TBL_DLV_DeliverableItem  
+
+		IF(@Count > 0)  
+			BEGIN  
+				INSERT INTO #TEMP_DELIVERABLE_ITEMS  
+				SELECT TDI.DeliverableQueueID, TDI.ClientID, NULL, TDI.CustomerAccountNumber, TDI.TrustParticipantID,   
+				TDI.BeneficiaryID, TDI.DonorID, TDI.GiftKey, TDI.DorB,TDI.AccountType,TDI.SpigotAccount    
+				FROM #TEMP_ITEMS TDI   
+				WHERE NOT EXISTS(SELECT DI.DeliverableItemID FROM TBL_DLV_DeliverableItem DI  
+				WHERE DI.DeliverableQueueID = ISNULL(TDI.DeliverableQueueID,0)  
+				AND   
+				DI.ManagerCode = ISNULL(TDI.ClientID,0)  
+				AND  
+				ISNULL(DI.CustomerAccountNumber,0) = ISNULL(TDI.CustomerAccountNumber,0)  
+				AND   
+				ISNULL(DI.TrustParticipantID,0) = ISNULL(TDI.TrustParticipantID,0)  
+				AND   
+				ISNULL(DI.BeneficiaryID,0) = ISNULL(TDI.BeneficiaryID,0)  
+				AND   
+				ISNULL(DI.DonorID,0) = ISNULL(TDI.DonorID,0)  
+				AND   
+				ISNULL(DI.GiftKey,0) = ISNULL(TDI.GiftKey,0)  
+				) AND (ISNULL(TDI.ReportQuantity,0)>0 OR ISNULL(TDI.WebSite,0)>0)  
+				AND TDI.DorB <> ''     
+		
+				SELECT @DICount = COUNT(*) FROM #TEMP_DELIVERABLE_ITEMS  
+		  
+
+				IF(@DICount > 0)  
+					BEGIN   
+						SET IDENTITY_INSERT TBL_DLV_DeliverableItem ON  
+						INSERT INTO [TBL_DLV_DeliverableItem]  
+						([DeliverableItemID]  
+						,[DeliverableQueueID]  
+						--,[Clientid]  
+						,[ClientEmployeeID]  
+						,[CustomerAccountNumber]  
+						,[ContactID]  
+						,[ContactRoleCode]  
+						--,[DonorID]  
+						,[GiftKey]  
+						,[Modifieddate]  
+						,[ModifieduserID]  
+						,[CreatedDate]  
+						,[CreatedUserID]  
+						,[ReportType])  
+						SELECT [ITEMID] + @I  
+						,[DeliverableQueueID]  
+						--,[Clientid]  
+						,[ClientEmployeeID]  
+						,[CustomerAccountNumber]  
+						,[TrustparticipantID]  
+						,[BeneficiaryID]  
+						--,[DonorID]  
+						,[GiftKey]  
+						,GETDATE()  
+						,@UserID  
+						,GETDATE()  
+						,@UserID  
+						,[ReportType]  
+						FROM #TEMP_DELIVERABLE_ITEMS                 
+					
+					SET IDENTITY_INSERT TBL_DLV_DeliverableItem OFF  
+
+					-- Add DeliveryMethodID and DeliverableItemStatusID  
+					-- corresponding to the DeliverableItem  
+						INSERT INTO [TBL_DLV_ItemMethodStatus]  
+						([DeliverableItemID]  
+						,[DeliveryMethodID]  
+						,[DeliverableItemStatusID]  
+						,[Comments]  
+						,[CreatedDate]  
+						,[CreatedUserID]  
+						,[ModifiedDate]  
+						,[ModifiedUserID])  
+						SELECT [ITEMID]+@I  
+						,@DeliveryMethodID  
+						,@DeliverableItemStatusID  
+						,''  
+						,GETDATE()  
+						,@UserID  
+						,GETDATE()  
+						,@UserID  
+						FROM #TEMP_DELIVERABLE_ITEMS  
+
+					-- Add DocumentTypeID corresponding to the DeliverableItem     
+						INSERT INTO [TBL_DLV_DeliverableItemDocument]    
+						([DeliverableItemID]    
+						,[DocumentTypeID]    
+						,[FilePath]    
+						,[CreatedDate]    
+						,[CreatedUserID])    
+						SELECT  [ITEMID]+@I     
+						,(CASE   
+						WHEN @DeliverableFrequency = 'Q'   
+						THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Periodic' AND DocumentTypeName = 'Periodic Quarterly' AND DeliverableID = @DeliverableID)    
+						WHEN @DeliverableFrequency = 'S'  
+						THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Periodic' AND DocumentTypeName = 'Periodic Semi-Annual' AND DeliverableID = @DeliverableID)    
+						WHEN @DeliverableFrequency = 'M'  
+						THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Periodic' AND DocumentTypeName = 'Periodic Monthly' AND DeliverableID = @DeliverableID)    
+						WHEN @DeliverableFrequency = 'A'  
+						THEN (CASE WHEN accounttype='PIF' THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'PIF' AND DeliverableID = @DeliverableID)  
+						WHEN spigotaccount = 1 THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Spigot' AND DeliverableID = @DeliverableID)  
+						WHEN accounttype = 'D-A FUND' THEN (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'DAF' AND DeliverableID = @DeliverableID)  
+						ELSE (SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Annual' AND DeliverableID = @DeliverableID)  
+						END  
+						)  
+						END) AS DocumentTypeID   
+						,''    
+						,GETDATE()    
+						,1    
+						FROM #TEMP_DELIVERABLE_ITEMS  
+
+						-- Add record for DeliverableTypeAttributeID - Notes     
+						INSERT INTO [TBL_DLV_DeliverableItemDeliverableTypeAttribute]  
+						([DeliverableItemID]  
+						,[DeliverableTypeAttributeID]  
+						,[AttributeValue]  
+						,[CreatedDate]  
+						,[CreatedUserID]  
+						,[ModifiedUserID]  
+						,[ModifiedDate])  
+						SELECT [ITEMID]+@I  
+						,@DeliverableTypeAttributeIDNotes  
+						,NULL  
+						,GETDATE()  
+						,@UserID  
+						,@UserID  
+						,GETDATE()  
+						FROM #TEMP_DELIVERABLE_ITEMS  
+
+					-- Add record for DeliverableTypeAttributeID - Hold  
+						INSERT INTO [TBL_DLV_DeliverableItemDeliverableTypeAttribute]  
+						([DeliverableItemID]  
+						,[DeliverableTypeAttributeID]  
+						,[AttributeValue]  
+						,[CreatedDate]  
+						,[CreatedUserID]  
+						,[ModifiedUserID]  
+						,[ModifiedDate])  
+						SELECT [ITEMID]+@I  
+						,@DeliverableTypeAttributeIDHold  
+						,NULL  
+						,GETDATE()  
+						,@UserID  
+						,@UserID  
+						,GETDATE()  
+						FROM #TEMP_DELIVERABLE_ITEMS  
+					END -- End of IF(@DICount > 0)  
+				END -- End of IF(@Count > 0)  
+				
+				SET @ReturnStatus = 0;  
+			
+		--IF(@@ERROR > 0)   
+		--BEGIN  
+		--ROLLBACK TRANSACTION  
+		--END  
+
+		COMMIT TRANSACTION  
+
+	END TRY  
+		BEGIN CATCH  
+			
+			SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+			RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+			ROLLBACK TRANSACTION;  
+			SET @ReturnStatus = -1;    
+		END CATCH   
+END
+
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_SaveBRDTDeliverableItems')
+    BEGIN
+        PRINT 'CREATED USP_RP_SaveBRDTDeliverableItems';
+    END
+  

@@ -1,0 +1,136 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationSeverence]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationSeverence]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationSeverence                      
+** Short Desc: Get pending gift additions for given valuation ids. This excludes    
+the reconcilled and discarded transaction
+**                      
+** Full Description: Get pending gift additions for given valuation ids. This excludes    
+the reconcilled and discarded transaction
+**      
+**                              
+** Input Arguments:   	 @ValuationDate datetime,    
+ @CustomerAccountNumber varchar(8),    
+ @ValuationID int            
+** Sample Call     
+ 
+ Exec USP_PV_GetValuationSeverence '09/30/2009', 'argap', 16  
+ Exec USP_PV_GetValuationSeverence '2010-01-14 00:00:00.000', 'OSGAP', 0
+ 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 4/8/2014	Saravanan				Renamed PersonIDFK to PersonID
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationSeverence] (
+	@ValuationDate DATETIME
+	,@CustomerAccountNumber VARCHAR(14)
+	,@ValuationID INT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+	DECLARE @ValuationRecordVersion VARCHAR(20)
+
+	IF @ValuationID = 0
+	BEGIN
+		SELECT TOP 1 @ValuationID = ValuationID
+			,@ValuationRecordVersion = CONVERT(varchar(20),CAST(RecordVersion AS varbinary(8)),1)
+		FROM TBL_PV_Valuation
+		WHERE ValuationDate = @ValuationDate
+			AND CustomerAccountNumber = @CustomerAccountNumber
+		ORDER BY ValuationID DESC
+	END
+
+	SELECT max(transactionid) AS TransactionID
+		,ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,Association
+		,PersonID
+		,PersonName
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+		,SUM(Distributions) AS SeveredAmount
+		,MAX(AccountClosedDate) AS AccountClosedDate
+		,@ValuationRecordVersion AS ValuationRecordVersion
+	FROM TBL_PV_ValuationGiftwrapTransaction
+	WHERE ValuationID = @ValuationID
+		AND GiftStatus <> 'Current'
+	GROUP BY ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,Association
+		,PersonID
+		,PersonName
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+	ORDER BY PersonName
+
+	SELECT PersonID 
+		,PersonGiftMapID
+		,OrgID
+		,OrgAccount1
+		,giftdate
+		,gifttype
+		,GiftAmount
+		,MarketValue
+		,MarketValueDate
+		,GiftStatus
+		,GiftKey
+		,AccountClosedDate
+		,Distributions
+	FROM TBL_PV_ValuationGiftwrapTransaction
+	WHERE ValuationID = @ValuationID
+		AND GiftStatus <> 'Current'
+
+	SET NOCOUNT OFF
+END

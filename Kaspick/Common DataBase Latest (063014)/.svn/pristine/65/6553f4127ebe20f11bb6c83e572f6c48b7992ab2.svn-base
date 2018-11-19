@@ -1,0 +1,70 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_IsLegalContactAddress'
+		)
+BEGIN
+	DROP FUNCTION FN_IsLegalContactAddress;
+
+	PRINT 'DROPPED FN_IsLegalContactAddress';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : FN_IsLegalContactAddress
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to determine if the contact address is LEGAL
+**      
+** Sample Call      
+   SELECT dbo.[FN_IsLegalContactAddress]()
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 09/05/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_IsLegalContactAddress]
+(
+	@PrimaryAddressFlag	INT
+	,@AddressType		VARCHAR(30)
+	,@ActiveFlag		INT
+)
+RETURNS BIT
+AS
+BEGIN
+	DECLARE @ReturnValue BIT
+	
+	IF(@PrimaryAddressFlag = -1 AND UPPER(@AddressType) IN ('HOME','BUSINESS'))-- AND @ActiveFlag = -1)
+		SET @ReturnValue = 1
+	ELSE
+		SET @ReturnValue = 0
+
+	RETURN @ReturnValue
+END
+GO

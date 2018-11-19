@@ -1,0 +1,118 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetRPTBRSSIS')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetRPTBRSSIS;
+        PRINT 'DROPPED USP_RP_GetRPTBRSSIS';
+    END
+GO
+    
+        
+/******************************************************************************                          
+** Name : USP_RP_GetRPTBRSSIS
+** Old Name:     USP_EIS_RPT_BR_SSIS_SelProc                          
+** Short Desc: This will execute ssis package         
+
+** Full Description:         
+**                                  
+** Input Arguments:         
+**             
+** Sample Call         
+**          
+ Declare @SSISPath varchar(max);        
+ Declare @SSISConfigPath varchar(max);        
+    set @SSISPath = 'D:\SSISPackageETL devtest\Package.dtsx';        
+ set @SSISConfigPath ='D:\SSISPackageETL devtest\BenereportETL.dtsConfig'               
+ EXEC USP_RP_GetRPTBRSSIS        
+ @SSISPath,        
+ @SSISConfigPath        
+        
+**                 
+** Return values: Null        
+**                          
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Venugopal B        
+** Company   : Kaspick & Company                          
+** Project   : Excelsior  - BeneReport                          
+** Created DT: 10/20/2009                          
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------          
+      
+** 20-05-2014 RAJ  Modified with SP Name Excelsior into KaspickDB  
+** 09/06/2014 RAJ SP Name Renamed and Formatted               
+** <MM/DD/YYYY>        
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/                          
+CREATE PROCEDURE [dbo].[USP_RP_GetRPTBRSSIS]              
+ @SSISPath varchar(max),        
+ @SSISConfigPath varchar(max)        
+AS              
+ --  Initial Set statements  --              
+ --SET NOCOUNT ON;              
+ --SET LOCK_TIMEOUT                30000;   -- 30 seconds              
+ --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;              
+        
+ --  Variable Declarations  --              
+ Declare @procname    varchar(60);              
+ Declare @ErrorMessage     varchar(1000);              
+ Declare @ErrorNumber     int;         
+ Declare @SQL NVARCHAR(max);        
+    -- Variables used for error handling - uncomment if needed              
+ Declare @val1      varchar(30);              
+ Declare @val2      varchar(30);              
+    DECLARE @returncode int        
+ --  Temp tables, Cursors, Table Variables  --              
+        
+ --  Variable Data Assignment  --              
+ Set @procname = 'USP_RP_GetRPTBRSSIS';              
+        
+ -- Body of procedure  --              
+ BEGIN TRY              
+     SET @SQL = 'xp_cmdshell ''dtexec /f "'+@SSISPath+'" /conf "'+ @SSISConfigPath+'"'''+',no_output'         
+     
+  EXEC @returncode = sp_executesql @SQL        
+      
+  IF @returncode <> 0        
+  BEGIN        
+     RAISERROR('Error in SSISPackage',16,@returncode)        
+        END         
+        
+   END TRY              
+ BEGIN CATCH              
+     Set @ErrorMessage  = ERROR_MESSAGE();              
+  Set @ErrorNumber = ERROR_NUMBER();              
+  Set @val1 = '';              
+  Set @val2 = '';              
+            
+  exec dbo.spSYS_ErrorHandler @codename = @procname,              
+  @errmsg = @ErrorMessage,               
+  @errnbr = @ErrorNumber,              
+  @val1 = '',               
+  @val1str = 'USP_RP_GetRPTBRSSIS: Cannot Select.',               
+  @val2 = '',               
+  @val2str = '';        
+     
+ END CATCH              
+ -- End of procedure  --   
+   
+   
+  
+  
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetRPTBRSSIS') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetRPTBRSSIS';
+	END

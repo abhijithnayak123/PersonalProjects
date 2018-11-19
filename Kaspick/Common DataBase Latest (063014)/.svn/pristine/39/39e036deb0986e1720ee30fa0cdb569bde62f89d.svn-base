@@ -1,0 +1,64 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportGetDateProrate'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportGetDateProrate
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportGetDateProrate                      
+** Short Desc:  
+**                      
+** Full Description:  
+**                              
+** Input Arguments: @IDate 
+**         
+** Sample Call     
+        
+ SELECT [dbo].[Fn_ReportGetDateProrate]('01/01/2013')   
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportGetDateProrate] (@IDate DATETIME)
+RETURNS FLOAT
+AS
+BEGIN
+	DECLARE @ReturnValue FLOAT
+	DECLARE @iDaysInYear INT
+	DECLARE @iDaysElapsed INT
+
+	--Calclate number of days in year  
+	SET @iDaysInYear = dbo.Fn_ReportGetDaysInYear(year(@IDate))
+	--Calculate # of Days elapsed  
+	SET @iDaysElapsed = datediff(day, cast('01/01/' + cast(year(@IDate) AS VARCHAR) AS DATETIME), @IDate)
+	--Calculate fraction of year remaining  
+	SET @ReturnValue = 1 - (cast(@iDaysElapsed AS FLOAT) / cast(@iDaysInYear AS FLOAT))
+
+	RETURN @ReturnValue
+END
+

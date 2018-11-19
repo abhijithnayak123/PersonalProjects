@@ -1,0 +1,223 @@
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Schedule]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_Deliverable_Schedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_Deliverable_Schedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Schedule]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_Deliverable_Schedule                      
+** Short Desc: Creates entries in DeliverableHorizon for a specific DeliverableDetail and CalendarParameter
+**                      
+** Full Description: Creates entries in DeliverableHorizon for a specific DeliverableDetail and CalendarParameter 
+**                              
+** Input Arguments:   @DetailID    -  DeliverableDetail associated with calculated Horizon
+**					  @MinDate     -  Earliest date to include in schedule (OPTIONAL)
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_Deliverable_Schedule @DetailID INT
+	,@MinDate DATETIME = NULL
+AS
+/* vars for date calculation */
+DECLARE @dates_added INT
+	,@dates_needed INT
+	,@proj_date DATETIME
+	,@last_sched_date DATETIME
+	,@horizon_id INT
+	,@count INT
+	,@folder_name VARCHAR(255)
+	,@file_name VARCHAR(255)
+	,@web_text VARCHAR(255)
+	,@isClosed INT
+	,@CalendarID INT
+	,@LagDays INT
+/* vars for calendar parameters */
+DECLARE @freq_type INT
+	,-- 0 = Daily; 1 = weekly; 2 = Mothly; 3 = Yearly      
+	@freq_recurrence INT
+	,@freq_occurrence INT
+	,@freq_month_occurrence INT
+	,@freq_day_occurrence VARCHAR(10)
+	,@freq_look_ahead INT
+	,@freq_start_date DATETIME
+	,@freq_end_date DATETIME
+
+/* Terminate schedule if this DeliverableDetail is closed */
+SELECT @isClosed = IsClosed
+	,@CalendarID = CalendarParameterID
+	,@LagDays = LagDays
+FROM DeliverableDetail
+WHERE DeliverableDetailID = @DetailID
+
+IF @isClosed = 1
+BEGIN
+	DELETE
+	FROM DeliverableHorizon
+	WHERE DeliverableDetailID = @DetailID
+		AND ActualDate IS NULL
+
+	RETURN
+END
+
+/* Look up calendar parameters */
+SELECT @freq_type = FrequencyType
+	,@freq_recurrence = Recurrence
+	,@freq_occurrence = Occurrence
+	,@freq_month_occurrence = MonthOccurrence
+	,@freq_day_occurrence = DayOccurrence
+	,@freq_look_ahead = LookAhead
+	,@freq_start_date = StartDate
+	,@freq_end_date = EndDate
+FROM CalendarParameter
+WHERE CalendarParameterID = @CalendarID
+
+/* Verify that we got something valid ... */
+IF (@@ROWCOUNT <> 1)
+	OR (@freq_type IS NULL)
+	OR (@freq_look_ahead IS NULL)
+	OR (@freq_start_date IS NULL)
+	RETURN
+
+/* Initializations */
+SELECT @proj_date = @freq_start_date
+	,@dates_added = 0
+	,@count = 0
+
+IF @LagDays IS NULL
+	SELECT @LagDays = 0
+
+/* Determine number of dates to calculate */
+SELECT @dates_needed = COUNT(*)
+FROM DeliverableHorizon
+WHERE DeliverableDetailID = @DetailID
+	AND ActualDate IS NULL
+
+SELECT @dates_needed = @freq_look_ahead - @dates_needed
+
+/* Determine last date in schedule */
+SELECT @last_sched_date = MAX(ProjectedDate)
+FROM DeliverableHorizon
+WHERE DeliverableDetailID = @DetailID
+
+/* Override @MinDate if the schedule goes beyond */
+IF (@last_sched_date IS NOT NULL)
+	AND (
+		(@MinDate IS NULL)
+		OR (@MinDate <= @last_sched_date)
+		)
+	SELECT @MinDate = DATEADD(day, 1, @last_sched_date)
+
+/* Add appropriate number of scheduled dates */
+WHILE (@dates_added < @dates_needed)
+BEGIN
+	/* Calculate first/next date */
+	IF @count < 1
+		EXEC sp_dsInit @freq_type = @freq_type
+			,@freq_occurrence = @freq_occurrence
+			,@freq_month_occurrence = @freq_month_occurrence
+			,@freq_day_occurrence = @freq_day_occurrence
+			,@seed_date = @proj_date OUTPUT
+	ELSE
+		EXEC sp_dsIncrement @freq_type = @freq_type
+			,@freq_recurrence = @freq_recurrence
+			,@freq_occurrence = @freq_occurrence
+			,@freq_month_occurrence = @freq_month_occurrence
+			,@freq_day_occurrence = @freq_day_occurrence
+			,@seed_date = @proj_date OUTPUT
+
+	/* Verify calculation */
+	IF (@proj_date IS NULL)
+		BREAK
+
+	SELECT @count = @count + 1
+
+	/* Check end date */
+	IF (
+			(@freq_end_date IS NOT NULL)
+			AND (@proj_date > @freq_end_date)
+			)
+		BREAK
+
+	/* Check min date */
+	IF (@proj_date >= @freq_start_date)
+		AND (
+			(@MinDate IS NULL)
+			OR (@proj_date >= @MinDate)
+			)
+	BEGIN
+		/* Get ID for new DeliverableHorizon */
+		EXEC GetNextUniqueID @IDType = 'DELIVERABLEHORIZON'
+			,@Result = @horizon_id OUTPUT
+
+		IF (@horizon_id = 0)
+			BREAK
+
+		/* Get File/Folder Names */
+		SELECT @folder_name = NULL
+			,@file_name = NULL
+			,@web_text = NULL
+
+		EXEC sp_dsGetLocation @DetailID = @DetailID
+			,@DueDate = @proj_date
+			,@FolderName = @folder_name OUTPUT
+			,@FileName = @file_name OUTPUT
+			,@WebText = @web_text OUTPUT
+
+		/* Insert row in DeliverableHorizon */
+		INSERT INTO DeliverableHorizon (
+			HorizonID
+			,DeliverableDetailID
+			,ProjectedDate
+			,NextPlannedDate
+			,CalendarParameterID
+			,FileLocation
+			,FileName
+			,WebDisplayText
+			,LastModifyDate
+			,ErrorCode
+			)
+		VALUES (
+			@horizon_id
+			,@DetailID
+			,@proj_date
+			,DATEADD(day, @LagDays, @proj_date)
+			,@CalendarID
+			,@folder_name
+			,@file_name
+			,@web_text
+			,'01/01/1900'
+			,- 1
+			)
+
+		/* Increment counters */
+		SELECT @dates_added = @dates_added + 1
+	END
+END

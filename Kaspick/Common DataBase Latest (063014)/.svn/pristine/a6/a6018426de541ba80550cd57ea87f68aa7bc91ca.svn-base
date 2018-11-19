@@ -1,0 +1,217 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveWftRequestFlow'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveWftRequestFlow;
+
+	PRINT 'DROPPED USP_EX_SaveWftRequestFlow';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name : USP_EX_SaveWftRequestFlow
+** Old Name:     sp_wft_insert_update_request_flow  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to save the request details.  
+**  
+** Sample Call  
+   sp_wft_insert_update_request_flow 584,29,16,'test#2 Insert/Update SP',1  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Ganapati  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 7/31/2009  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 09/29/2009 Abhishek   Change the lenghth of the comment field from varchar 256 to 2000  
+** 12/03/2010 Tanuj   Change the lenghth of @from_db_flow_comment Variable from 256 to 2000  
+** 21-Mar-2014 Yugandhar EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveWftRequestFlow]
+	-- paremeters here      
+	@request_id INT
+	,@form_flow_id INT
+	,@to_flow_status_id INT
+	,@to_flow_comment VARCHAR(2000)
+	,@curr_to_flow_status_id INT
+	,@curr_to_flow_comment VARCHAR(2000)
+	,@user_id INT
+AS
+BEGIN
+	--  Variable Declarations  --      
+	DECLARE @request_flow_id INT -- this is the request_flow_id form the wft_request_flow tables based upon requestid & form_flow_id      
+	DECLARE @from_db_flow_status_id INT -- this is the current status id of the request flow      
+	DECLARE @from_db_flow_comment VARCHAR(2000)
+	DECLARE @isRequestModified INT
+	DECLARE @audit TABLE (
+		request_flow_id BIGINT
+		,from_flow_status_id INT
+		,to_flow_status_id INT
+		,audit_datetime DATETIME
+		,audit_user_id INT
+		,flow_status_comment VARCHAR(2000)
+		)
+
+	--  temp tables, cursors, table variables  --      
+	BEGIN TRY
+	--	BEGIN TRANSACTION
+
+		--  variable data assignment  --      
+		SELECT @request_flow_id = request_flow_id
+		FROM TBL_WFT_RequestFlow
+		WHERE request_id = @request_id
+			AND form_flow_id = @form_flow_id
+
+		SET @isRequestModified = 0
+
+		-- body of procedure  --      
+		IF (isnull(@request_flow_id, 0) = 0) -- this is new record for the wft_request_flow table thus insert the record      
+		BEGIN
+			INSERT INTO TBL_WFT_RequestFlow (
+				request_id
+				,form_flow_id
+				,flow_status_id
+				,flow_status_datetime
+				,flow_status_user_id
+				,flow_status_comment
+				)
+			OUTPUT INSERTED.request_flow_id
+				,INSERTED.flow_status_id
+				,INSERTED.flow_status_id
+				,INSERTED.flow_status_datetime
+				,INSERTED.flow_status_user_id
+				,INSERTED.flow_status_comment
+			INTO @audit
+			VALUES (
+				@request_id
+				,@form_flow_id
+				,@to_flow_status_id
+				,getdate()
+				,@user_id
+				,@to_flow_comment
+				)
+
+			-- set @isRequestModified = 1 to flag that the request status has been modifed to update the datetime & userid in Request table      
+			SET @isRequestModified = 1
+		END
+		ELSE -- this is an existing record thus update WFT_Request_Flow      
+		BEGIN
+			SELECT @from_db_flow_status_id = flow_status_id
+				,@from_db_flow_comment = flow_status_comment
+			FROM TBL_WFT_RequestFlow
+			WHERE request_flow_id = @request_flow_id
+
+			IF (
+					(@curr_to_flow_status_id <> @to_flow_status_id)
+					OR (isnull(@curr_to_flow_comment, '') <> isnull(@to_flow_comment, ''))
+					)
+			BEGIN
+				UPDATE TBL_WFT_RequestFlow
+				SET flow_status_id = CASE 
+						WHEN @curr_to_flow_status_id = @to_flow_status_id
+							THEN @from_db_flow_status_id
+						ELSE @to_flow_status_id
+						END
+					,flow_status_comment = CASE 
+						WHEN (isnull(@curr_to_flow_comment, '') = isnull(@to_flow_comment, ''))
+							THEN @from_db_flow_comment
+						ELSE @to_flow_comment
+						END
+					,flow_status_datetime = getdate()
+					,flow_status_user_id = @user_id
+				OUTPUT INSERTED.request_flow_id
+					,DELETED.flow_status_id
+					,INSERTED.flow_status_id
+					,INSERTED.flow_status_datetime
+					,INSERTED.flow_status_user_id
+					,INSERTED.flow_status_comment
+				INTO @audit
+				WHERE request_flow_id = @request_flow_id
+
+				-- set @isRequestModified = 1 to flag that the request status has been modifed to update the datetime & userid in Request table      
+				SET @isRequestModified = 1
+			END
+		END
+
+		--updtae the status datetime & userid on the request table...      
+		IF (@isRequestModified = 1)
+		BEGIN
+			UPDATE TBL_WFT_Request
+			SET status_datetime = getdate()
+				,status_user_id = @user_id
+			WHERE request_id = @request_id
+		END
+
+		-- insert the values in the Audit table      
+		INSERT INTO TBL_WFT_RequestFlowAudit (
+			request_flow_id
+			,from_flow_status_id
+			,to_flow_status_id
+			,audit_datetime
+			,audit_user_id
+			,flow_status_comment
+			)
+		SELECT request_flow_id
+			,from_flow_status_id
+			,to_flow_status_id
+			,audit_datetime
+			,audit_user_id
+			,flow_status_comment
+		FROM @audit
+
+	--	COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+	--    ROLLBACK TRANSACTION
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveWftRequestFlow'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveWftRequestFlow';
+END

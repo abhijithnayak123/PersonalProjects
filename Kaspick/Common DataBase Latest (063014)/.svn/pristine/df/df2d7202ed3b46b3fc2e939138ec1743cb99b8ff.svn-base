@@ -1,0 +1,118 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuationSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetLastValuationSeverence]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetLastValuationSeverence]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuationSeverence]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetLastValuationSeverence                      
+** Short Desc: Reading last valuation severence data.
+** Full Description: Reading last valuation severence data.
+** Input Arguments:   	@TransactionCode, @XMLManagerCodeParam XML
+** Sample Call     
+        
+DECLARE @ValuationXML XML   
+ SET  @ValuationXML = 
+		'<ValuationCollection>    
+		  <InsertList>    
+			<Valuation ValuationID="2" />    
+		  </InsertList>    
+		</ValuationCollection>'        
+ EXEC USP_PV_GetLastValuationSeverence @ValuationXML
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [USP_PV_GetLastValuationSeverence] @ValuationXML XML
+AS
+SET NOCOUNT ON
+
+SELECT max(TransactionID) AS TransactionID
+	,ValuationID
+	,MatchKey
+	,MatchStatus
+	,MatchComment
+	,Association
+	,PersonID
+	,PersonName
+	,LastName
+	,FirstName
+	,SSN
+	,BirthDate
+	,PersonStatus
+	,DeathDate
+	,SUM(Distributions) AS SeveredAmount
+	,Max(AccountClosedDate) AS AccountClosedDate
+FROM TBL_PV_ValuationGiftwrapTransaction
+WHERE ValuationID IN (
+		SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @ValuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+		)
+	AND GiftStatus <> 'current'
+GROUP BY ValuationID
+	,MatchKey
+	,MatchStatus
+	,MatchComment
+	,Association
+	,PersonID
+	,PersonName
+	,LastName
+	,FirstName
+	,SSN
+	,BirthDate
+	,PersonStatus
+	,DeathDate
+ORDER BY personname
+
+SELECT PersonID
+	,PersonGiftMapID
+	,OrgID
+	,OrgAccount1
+	,GiftDate
+	,GiftType
+	,GiftAmount
+	,MarketValue
+	,MarketValueDate
+	,GiftStatus
+	,GiftKey
+	,AccountClosedDate
+	,Distributions
+FROM TBL_PV_ValuationGiftwrapTransaction
+WHERE ValuationID IN (
+		SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @ValuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+		)
+	AND GiftStatus <> 'current'

@@ -1,0 +1,235 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewOverrideSecurityIncomeDetail]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewOverrideSecurityIncomeDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewOverrideSecurityIncomeDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewOverrideSecurityIncomeDetail]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewOverrideSecurityIncomeDetail    
+** Short Desc:  Save overridden values to Security Income Detail(s) from GUI - Detail View.      
+**    
+** Full Description : Accepts 2 XML documents. XML contain security income details and related information for recalculation.  
+**            
+**    
+** Sample Call 
+  Declare @ReturnStatus Varchar(4000)
+  Declare @XMLDATA XML
+  Declare @HistoryXMLDATA XML
+  Declare @XMLDATAForCalc XML
+  
+  SET @XMLDATA='<SecurityIncomeDetailCollection>
+  <InsertList><SecurityIncomeDetail StagingID="459"  GroupID="1"  CustomerAccountNumber="MLDEC"  SecuritySymbol="ee" CUSIP="test" Quantity="2"  DividendRate="2"  
+  EstimatedIncome="0"  UserID="200017"  UserName="gnazim_test"  />
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList></SecurityIncomeDetailCollection>'  
+  SET @HistoryXMLDATA='<HistoryCollection><InsertList><History GroupID="1"  CustomerAccountNumber="MLDEC"  RunDate="11/15/2007 4:39:11 PM"  
+  ChangedField="Estimated Income"  CurrentValue="0"  PreviousValue="0"  CreatedDate="1/1/0001 12:00:00 AM"  UserName=""  Comments=""  
+  UserID="200017"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></HistoryCollection>' 
+  SET @XMLDATAForCalc='<ImportStagingCollection><InsertList><ImportStaging StagingID="459"  GroupID="1"  CustomerAccountNumber="MLDEC"  
+  RunDate="9/26/2007 12:00:00 AM"  UserID="200017"  UserName="gnazim_test"  /></InsertList><UpdateList></UpdateList>
+  <DeleteList></DeleteList></ImportStagingCollection>'
+  
+  Exec dbo.USP_IE_ReviewOverrideSecurityIncomeDetail    @XMLDATA, @HistoryXMLDATA, @XMLDATAForCalc
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/13/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewOverrideSecurityIncomeDetail] @XMLDATA XML
+	,@HistoryXMLDATA XML
+	,@XMLDATAForCalc XML
+	--	,@ReturnStatus VARCHAR(4000)
+	--OUTPUT 
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --  
+	DECLARE @TBL_SecurityIncomeDetailToBeSaved TABLE (
+		StagingID INT NOT NULL
+		,GroupID INT NULL
+		,CustomerAccountNumber VARCHAR(14) NULL
+		,SecuritySymbol VARCHAR(50) NULL
+		,CUSIP VARCHAR(12) NULL
+		,Quantity FLOAT NULL
+		,DividendRate FLOAT NULL
+		,EstimatedIncome FLOAT NULL
+		,UserID INT NULL
+		,UserName VARCHAR(50)
+		)
+
+	--SET @ReturnStatus = '';
+	-- Body of procedure  --      
+	BEGIN TRY
+		--  Transactions      
+		BEGIN TRANSACTION
+
+		--Insert to temp table  
+		INSERT INTO @TBL_SecurityIncomeDetailToBeSaved (
+			StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,SecuritySymbol
+			,CUSIP
+			,Quantity
+			,DividendRate
+			,EstimatedIncome
+			,UserID
+			,UserName
+			)
+		SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Staging.value('@GroupID[1]', 'int') AS GroupID
+			,XmlInput.Staging.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,XmlInput.Staging.value('@SecuritySymbol[1]', 'varchar(50)') AS SecuritySymbol
+			,XmlInput.Staging.value('@CUSIP[1]', 'varchar(12)') AS CUSIP
+			,XmlInput.Staging.value('@Quantity[1]', 'float') AS Quantity
+			,XmlInput.Staging.value('@DividendRate[1]', 'float') AS DividendRate
+			,XmlInput.Staging.value('@EstimatedIncome[1]', 'float') AS EstimatedIncome
+			,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+			,XmlInput.Staging.value('@UserName[1]', 'varchar(50)') AS UserName
+		FROM @XMLDATA.nodes('//SecurityIncomeDetailCollection/UpdateList/SecurityIncomeDetail') AS XmlInput(Staging)
+
+		-- Update  
+		UPDATE TBL_IE_STG_EstimateDetail
+		SET EstimatedIncome = SaveDet.EstimatedIncome
+		FROM TBL_IE_STG_EstimateDetail EstDet
+		INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+			ON EstDet.StagingID = SaveDet.StagingID
+				AND EstDet.CustomerAccountNumber = SaveDet.CustomerAccountNumber
+				AND EstDet.SecuritySymbol = SaveDet.SecuritySymbol
+
+		--Logging History data   
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_IE_Group Grp
+				INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+					ON Grp.GROUPID = SaveDet.GROUPID
+				WHERE IsOfficial = 1
+				)
+			EXEC USP_IE_ReviewSaveHistoryDetail @ParentScreen = 'Detail View Security Income Override'
+				,@XMLDATA = @HistoryXMLDATA
+
+		--End logging to History Table  
+		--Update 'Estimated Income' in TBL_IE_STG_Estimate table  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_EstimatedIncome = Sub.EstimatedIncome
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN (
+			SELECT EstDtl.StagingID
+				,EstDtl.GroupID
+				,EstDtl.CustomerAccountNumber
+				,SUM(ISNULL(EstDtl.EstimatedIncome, 0)) AS EstimatedIncome
+			FROM TBL_IE_STG_EstimateDetail EstDtl
+			INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+				ON EstDtl.StagingID = SaveDet.StagingID
+			GROUP BY EstDtl.StagingID
+				,EstDtl.GroupID
+				,EstDtl.CustomerAccountNumber
+			) AS Sub
+			ON STGEst.StagingID = Sub.StagingID
+
+		--Gross Income Estimate  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_GrossIncomeEstimate = Ax_EstimatedIncome + Ax_EarnedIncome
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+			ON STGEst.StagingID = SaveDet.StagingID
+
+		--Gross Income Yield on start date  and run date
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_GrossIncomeYieldOnStartDate = CASE 
+				WHEN ISNULL(Ax_FMVOnStartDate, 0) = 0
+					OR Ax_FMVOnStartDate = 0
+					THEN 0
+				ELSE Ax_GrossIncomeEstimate / Ax_FMVOnStartDate
+				END
+			,Ax_GrossIncomeYieldOnRunDate = CASE 
+				WHEN ISNULL(Ax_FMVOnRunDate, 0) = 0
+					OR Ax_FMVOnRunDate = 0
+					THEN 0
+				ELSE Ax_GrossIncomeEstimate / Ax_FMVOnRunDate
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+			ON STGEst.StagingID = SaveDet.StagingID
+
+		--Inv Alloc Gross Yield Variance  & Axys Gross Yield Variance 
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_InvAllocGrossYieldVar = CASE 
+				WHEN ISNULL(PP_InvestmentAllocationYield, 0) = 0
+					OR PP_InvestmentAllocationYield = 0
+					THEN 0
+				ELSE ((Ax_GrossIncomeYieldOnStartDate / (PP_InvestmentAllocationYield)) - 1)
+				END
+			,Ax_AxysPortGrossYieldVar = CASE 
+				WHEN ISNULL(Ax_AxysPortYield, 0) = 0
+					OR Ax_AxysPortYield = 0
+					THEN 0
+				ELSE ((Ax_GrossIncomeYieldOnStartDate / Ax_AxysPortYield) - 1)
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN @TBL_SecurityIncomeDetailToBeSaved SaveDet
+			ON STGEst.StagingID = SaveDet.StagingID
+
+		EXEC USP_IE_ReviewCalcNetIncome @XMLDATA = @XMLDATAForCalc
+		--EXEC USP_IE_ImportSaveDiagnosticResult @XMLDATA = @XMLDATAForCalc
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,143 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftDefaultRequestClientView'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftDefaultRequestClientView;
+
+	PRINT 'DROPPED USP_EX_GetWftDefaultRequestClientView';
+END
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetWftDefaultRequestClientView
+** Old Name:     [sp_wft_get_default_request_client_view]
+** Short Desc:	Lists Donor - Bene details for all accounts.
+**
+** Full Description
+**        This stored proc is used to populate drop down for Request Type.
+**
+** Sample Call [USP_EX_GetWftDefaultRequestClientView] 100115
+   
+**
+** Return values: NONE
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Abhishek Chadha
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	9/08/2009
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+
+** 20-Mar-2014  Yugandhar      EXCREQ9.1 Modified 
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftDefaultRequestClientView]-- 100260
+	@USER_ID INT
+AS
+BEGIN
+	--  Variable Declarations  --  
+	DECLARE @CLIENT_VIEW_ID INT
+	DECLARE @REQUEST_VIEW_ID INT
+
+	IF EXISTS (
+	
+			--SELECT CM.MANAGERCODE
+			--FROM TBL_KS_User USR
+			--INNER JOIN SYN_IT_ContactMaster CM ON USR.InnotrustContactID = CM.ContactID
+			--INNER JOIN SYN_IT_SubContactRoles SCR ON CM.ContactID = SCR.ContactID
+			--INNER JOIN SYN_IT_ContactRoleCodes CRC ON SCR.ContactRoleCode = CRC.ID
+			--WHERE USR.USERID = @User_Id
+			SELECT * FROM 
+                  TBL_KS_User u
+                INNER JOIN SYN_IT_SubContactRoles sub
+                       ON sub.SubContactID = u.InnotrustContactID
+                      INNER JOIN SYN_IT_ContactRoleCodes cr
+                         ON cr.ID = sub.ContactRoleCode
+                                 WHERE cr.ID IN (
+                  2 -- 'Administrator'
+                -- ,3 -- 'Backup Administrator'
+                 -- ,34 --'Relationship Manager'
+                --  ,14 -- Investment Officer'
+                --  ,512 -- 'Backup Relationship Manager'
+                 -- ,26 -- 'Plan Administrator'
+                 -- ,510 -- 'Trust Administrator'
+                --  ,515 -- 'Portfolio Analyst'
+                 -- ,518 -- 'Custody Ops Administrator'
+               --   ,519 -- 'Reporting Analyst'
+                  ) and u.userid=@USER_ID
+
+			)
+	BEGIN
+		EXEC USP_EX_GetListItemID
+		   @LIST_TYPE_NAME = 'Web Request Manager Code View'
+			,@LIST_ITEM_NAME = 'My Primary Clients'
+			,@LIST_ITEM_ID = @CLIENT_VIEW_ID OUTPUT
+	END
+	ELSE
+	--ELSE IF EXISTS (
+	--		SELECT CM.MANAGERCODE
+	--		FROM TBL_KS_User USR
+	--		INNER JOIN SYN_IT_ContactMaster CM ON USR.InnotrustContactID = CM.ContactID
+	--		INNER JOIN SYN_IT_SubContactRoles SCR ON CM.ContactID = SCR.ContactID
+	--		INNER JOIN SYN_IT_ContactRoleCodes CRC ON SCR.ContactRoleCode = CRC.ID
+	--		WHERE USR.USERID = @User_Id
+	--		)
+	--BEGIN
+	--	EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Web Request Manager Code View'
+	--		,@LIST_ITEM_NAME = 'My Backup Clients'
+	--		,@LIST_ITEM_ID = @CLIENT_VIEW_ID OUTPUT
+	--END
+	--ELSE
+	BEGIN
+		EXEC USP_EX_GetListItemID
+		     @LIST_TYPE_NAME = 'Web Request Manager Code View'
+			,@LIST_ITEM_NAME = 'All Clients'
+			,@LIST_ITEM_ID = @CLIENT_VIEW_ID OUTPUT
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TBL_WFT_ProcessingTeamUser
+			WHERE [USER_ID] = @USER_ID
+			)
+	BEGIN
+		EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'WFT Request View'
+			,@LIST_ITEM_NAME = 'My Requests'
+			,@LIST_ITEM_ID = @REQUEST_VIEW_ID OUTPUT
+	END
+	ELSE
+	BEGIN
+		EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'WFT Request View'
+			,@LIST_ITEM_NAME = 'All Requests'
+			,@LIST_ITEM_ID = @REQUEST_VIEW_ID OUTPUT
+	END
+
+	SELECT @CLIENT_VIEW_ID AS 'Client_View_ID'
+		,@REQUEST_VIEW_ID AS 'Request_View_ID'
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftDefaultRequestClientView'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetWftDefaultRequestClientView';
+END

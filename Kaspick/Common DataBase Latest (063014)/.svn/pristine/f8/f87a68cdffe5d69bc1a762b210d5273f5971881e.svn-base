@@ -1,0 +1,97 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_Client]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_Client]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_Client
+* File Name		  : USP_Lookup_Client.SQL      
+* Description     : This SP loads the newly added clients into the Client Look Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+
+CREATE PROCEDURE USP_Lookup_Client( @RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(100) ='TBL_Lookup_Client'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+		
+		--Inserts the Client columns
+		--  which are not existing in Client lookup table
+		INSERT INTO TBL_Lookup_Client(ManagerCode,ContactID)
+		SELECT 	DISTINCT
+					 ACM.ManagerCode
+					,ACM.ContactID								
+		
+		FROM		dbo.SYN_IT_AccountManagerCodes ACM
+		
+		INNER JOIN	dbo.SYN_IT_ContactMaster		CM 
+		ON			ACM.CONTACTID = CM.CONTACTID
+		
+		LEFT JOIN	dbo.TBL_Lookup_Client LP
+		ON			ACM.ManagerCode = LP.ManagerCode 
+		
+		WHERE		LP.ManagerCode IS NULL
+		
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+				
+		--TBL_Lookup_Client_DeletedRecord
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_Client_DeletedRecord'
+		
+		DELETE		 LP
+		OUTPUT		 Deleted.ManagerCode
+					,Deleted.ContactID
+					,Deleted.ClientID
+					,GETDATE() 
+		INTO		TBL_Lookup_Client_DeletedRecord(ManagerCode ,ContactID ,ClientID ,DeletedDate)
+		FROM		dbo.TBL_Lookup_Client	LP
+		LEFT JOIN	dbo.SYN_IT_AccountManagerCodes	T 
+					ON LP.ManagerCode = T.ManagerCode
+		WHERE		T.ManagerCode IS NULL
+		
+		--LOGGING
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - Physical Delete - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+		
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message()
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error'    ,@RunID        
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

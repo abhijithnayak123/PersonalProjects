@@ -1,0 +1,150 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdDTDeliverableItem'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_UpdDTDeliverableItem;
+
+	PRINT 'DROPPED USP_RP_UpdDTDeliverableItem';
+END
+GO
+
+/******************************************************************************   
+** New Name:     USP_RP_UpdDTDeliverableItem  
+                   
+** Name:     USP_EIS_DT_DeliverableItem_UpdProc          
+**    
+** Short Desc: Update the Item Status.    
+**    
+** Full Description: Update the Instance Item Status           
+**    
+** Input Arguments:     
+**         
+** Sample Call     
+EXEC USP_EX_DTDeliverableItemUpdProc    
+ '<DeliverableItemCollection><UpdateList><DeliverableItem DeliverableItemID="50125" FromItemStatusID = "67"  NextItemStatusID = "71" WaitingForNextActionRole="OWNER" /><DeliverableItem DeliverableItemID="50126" FromItemStatusID = "65"  NextItemStatusID = 
+"66" WaitingForNextActionRole="APPROVER1" /></UpdateList></DeliverableItemCollection>', 300029  
+EXEC USP_EX_DTDeliverableItemUpdProc    
+ '<DeliverableItemCollection><UpdateList><DeliverableItem DeliverableItemID="50123" FromItemStatusID = "60"  NextItemStatusID = "61" WaitingForNextActionRole="APPROVER1" /></UpdateList></DeliverableItemCollection>', 300029  
+EXEC USP_EX_DTDeliverableItemUpdProc    
+ '<DeliverableItemCollection><UpdateList><DeliverableItem DeliverableItemID="50123" FromItemStatusID = "60"  NextItemStatusID = "62" WaitingForNextActionRole="APPROVER2" /></UpdateList></DeliverableItemCollection>', 300029  
+**             
+** Return values:     
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara    
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 21-Oct-11                 
+**        
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 10/21/2011   Ashvin  None  SP for auto detect job (new feature)     
+** 03/27/2012   Niveditha     Changes for ERD (updated TBL_DLV_ItemMethodStatus instead of TBL_DLV_DeliverableItem and insert into TBL_DLV_MethodStatusChangeLog)  
+** 04/09/2012   Ashvin    Changes for updating status for taking the status name as parameter.  
+** 04/11/2012   Ashvin    Changing UpdateList to SelectList.  
+** 04/12/2012	Ashvin    Simplefied the SP and removed one perameter and joins.  
+** 07/17/2012	Soorya    Updated for WaitingForNextActionRole.  
+** 27-May-2014	Geervani	Made changes in the table names to refer new KASPICK DB  
+** 10/06/2014   RAJ			SP Name Renamed and Follwed Try Catch DB Tag changes
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_UpdDTDeliverableItem] (
+	@XMLDATA XML = NULL
+	,@StatusUpdateUserID INT = 1	
+	)
+AS
+BEGIN
+	--  Initial Set statements  --                
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;               
+	SET ARITHABORT ON
+
+	DECLARE @DeliverableDefindRole VARCHAR(12)
+
+	BEGIN TRY
+		-- Body of procedure  --     
+		BEGIN
+			BEGIN TRANSACTION
+
+			IF (@XMLDATA IS NOT NULL)
+			BEGIN
+				-- update the TBL_DLV_DeliverableItem table  
+				UPDATE TBL_DLV_DeliverableItem
+				SET WaitingForNextActionRole = CASE 
+						WHEN ISNULL(XMLDoc.item.value('@WaitingForNextActionRole', 'VARCHAR(10)'), '') = ''
+							THEN NULL
+						ELSE XMLDoc.item.value('@WaitingForNextActionRole', 'VARCHAR(10)')
+						END
+				FROM @XMLData.nodes('//DeliverableItemCollection/UpdateList/DeliverableItem') AS XMLDoc(item)
+				INNER JOIN TBL_DLV_DeliverableItem DI ON DI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')
+				INNER JOIN TBL_DLV_ItemMethodStatus IMS ON IMS.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')
+				WHERE DI.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')
+
+				-- update TBL_DLV_ItemMethodStatus table using DeliverableProcessID to generated status if status is not already generated  
+				UPDATE TBL_DLV_ItemMethodStatus
+				SET ModifiedUserID = @StatusUpdateUserID
+					,DeliverableItemStatusID = XMLDoc.item.value('@NextItemStatusID', 'BIGINT')
+				FROM @XMLData.nodes('//DeliverableItemCollection/UpdateList/DeliverableItem') AS XMLDoc(item)
+				INNER JOIN TBL_DLV_ItemMethodStatus IMS ON IMS.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')
+
+				-- insert into TBL_DLV_MethodStatusChangeLog for generated status if doesnot already have an entry for generated  
+				INSERT INTO TBL_DLV_MethodStatusChangeLog
+				SELECT XMLDoc.item.value('@NextItemStatusID', 'BIGINT') AS New_StatusID
+					,XMLDoc.item.value('@FromItemStatusID', 'BIGINT') AS Old_StatusID
+					,XMLDoc.item.value('@Comment', 'Varchar(4000)') AS Comment
+					,@StatusUpdateUserID AS StatusChangeUserID
+					,GETDATE() AS StatusChangeDT
+					,IMS.ItemMethodStatusID
+				FROM @XMLData.nodes('//DeliverableItemCollection/UpdateList/DeliverableItem') AS XMLDoc(item)
+				INNER JOIN TBL_DLV_ItemMethodStatus IMS ON IMS.DeliverableItemID = XMLDoc.item.value('@DeliverableItemID', 'BIGINT')
+			END
+
+			COMMIT TRANSACTION
+		END
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ErrorNumber INT;
+		DECLARE @ErrorState INT;
+		DECLARE @ErrorMessage NVARCHAR(4000); 
+		--SET @ReturnStatus = - 1;
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorNumber = ERROR_NUMBER()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorNumber
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdDTDeliverableItem'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_UpdDTDeliverableItem';
+END

@@ -1,0 +1,115 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_UpdProfilePfa')
+    BEGIN
+        DROP PROCEDURE USP_EX_UpdProfilePfa;
+        PRINT 'DROPPED USP_EX_UpdProfilePfa';
+    END
+GO
+  
+/**************************************************************************    
+* Procedure Name  : USP_EX_UpdProfilePfa  
+* Old Procedure Name  : USP_EIS_EX_PROFILE_PFA_UpdProc    
+* Description     : To Update PFA Details in  TBL_EIS_EX_PROFILE_PFA    
+* Modification Log: Indentation                                                      
+*                                
+* Date         Modified By  Description                                                
+*-------------------------------------------------------------------------    
+* 25-Oct-06    Venugopal B  Created      
+* 2-Nov-06     Saravanan PM  Modified      
+* 18-May-06    Venugopal B  Delete_Flag is removed      
+* 18-Apr-14     Sanath         Program module Cga registration tab for Excreq6.4     
+* 23/05/2014 Mallikarjun  SP name Renamed and Formatted  
+****************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_EX_UpdProfilePfa] @PFA_ID INT  
+ ,@ENTITY_ID VARCHAR(15)  
+ ,@ENTITY_TYPE VARCHAR(20)  
+ ,@CGA_SETUP_ID INT  
+ ,@FORM_DUE DATETIME  
+ ,@FILING_STATUS_TYPE_ID INT  
+ ,@REQUIRED_LATER_DATE DATETIME  
+ ,@USER_ID INT  
+ ,@PAGENAME VARCHAR(100)  
+ ,@FIELDNAME VARCHAR(100)  
+AS  
+BEGIN  
+  BEGIN TRY  
+  BEGIN TRANSACTION  
+  
+  DECLARE @ENTITY_TYPE_ID INT  
+   ,@DISPLAY_NAME VARCHAR(50)  
+  DECLARE @STATUSFLAG BIT  
+  
+  EXEC USP_EX_GetLISTITEMID @LIST_TYPE_NAME = 'ENTITY'  
+   ,@LIST_ITEM_NAME = @ENTITY_TYPE  
+   ,@LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT  
+  
+  SET @DISPLAY_NAME = (  
+    CASE   
+     WHEN @ENTITY_TYPE = 'Manager'  
+      THEN 'Manager'  
+     WHEN @ENTITY_TYPE = 'Alliance'  
+      THEN 'Alliance'  
+     WHEN @ENTITY_TYPE = 'ACCOUNT'  
+      THEN 'Account'  
+     END  
+    ) + ' - PFA'  
+  
+  BEGIN  
+   UPDATE TBL_BR_ProfilePFA  
+   SET CGA_SETUP_ID = @CGA_SETUP_ID  
+    ,FORM_DUE_DATE = @FORM_DUE  
+    ,FILING_STATUS_TYPE_ID = @FILING_STATUS_TYPE_ID  
+    ,MODIFIED_DATE = GETDATE()  
+    ,MODIFIED_USER_ID = @USER_ID  
+   WHERE PFA_ID = @PFA_ID  
+  
+   IF (@@error != 0)  
+   BEGIN  
+    RAISERROR 1000091 '[USP_EX_UpdProfilePfa] : Cannot update  in TBL_BR_ProfilePFA '  
+  
+    ROLLBACK TRANSACTION  
+  
+    RETURN (- 1)  
+   END  
+  END  
+  
+  COMMIT TRANSACTION  
+  END TRY  
+  BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @ProcName VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @ProcName = 'USP_EX_UpdProfilePfa';  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE();  
+  
+  RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );    
+ END CATCH  
+   
+END  
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_UpdProfilePfa') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_UpdProfilePfa';
+	END

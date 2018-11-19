@@ -1,0 +1,97 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminBenereportscommentsDuplicateVal'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetSysadminBenereportscommentsDuplicateVal;
+
+	PRINT 'DROPPED USP_EX_GetSysadminBenereportscommentsDuplicateVal';
+END
+GO
+
+/*******************************************************************************************************  
+** Name : USP_EX_GetSysadminBenereportscommentsDuplicateVal
+** Old Name:     USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_DUPLICATE_ValSelProc  
+** Short Desc: This procedure checks for uniqueness of Portfolio Code.  
+**    If the portfolio code already exists in the database then it returns True   
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+        EXEC USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_DUPLICATE_ValSelProc   
+  @PORTFOLIOCODE = '100% Stocks',    
+  @STATUSFLAG = '0',  
+  @COMMENTID = 297  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: N.R.Amarnath
+** Company   : Kaspick & Company  
+** Project   : IM Profiles  
+** Created DT: 03/16/2007  
+**              
+********************************************************************************************************  
+**       Change History  
+********************************************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**MAR-28-2007  AMARNATH  4671           PROFOLIO CODE WAS NOT UPDATING PROPERLY  
+** 20-Mar-14   Sanath				 EXCREQ3.1  Modified
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+********************************************************************************************************  
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+********************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetSysadminBenereportscommentsDuplicateVal]
+	-- paremeters here        
+	@portfoliocode VARCHAR(39)
+	,@statusflag VARCHAR(2)
+	,@commentid INT
+AS
+-- Checks duplicacy of Portfolio Code and returns True if portfolio code is already there in the database        
+IF (@statusflag = '1') -- IF @STATUSFLAG = 1 MEANS CHECKING DUPLICATE FOR ADDING NEW PROFOLIO         
+BEGIN
+	IF EXISTS (
+			SELECT BenRptCmnt.PortfolioCode
+			FROM TBL_INV_BeneReportComment BenRptCmnt
+			INNER JOIN TBL_INV_BeneReportComment BenRptCment ON BenRptCmnt.brcommentid = BenRptCment.brcommentid
+			WHERE BenRptCmnt.PortfolioCode = @portfoliocode
+			)
+		SELECT 1 [DUPLICATE_STATUS_EXISTS]
+	ELSE
+		SELECT 0 [DUPLICATE_STATUS_NOTEXISTS]
+END
+ELSE IF (@statusflag = '2') --IF @STATUSFLAG = 2 MEANS CHECKING DUPLICATE FOR UPDATING NEW PROFOLIO         
+BEGIN
+	IF EXISTS (
+			SELECT BenRptCmnt.PortfolioCode
+			FROM TBL_INV_BeneReportComment BenRptCmnt
+			INNER JOIN TBL_INV_BeneReportComment BenRptCment ON BenRptCmnt.brcommentid = BenRptCment.brcommentid
+			WHERE BenRptCmnt.PortfolioCode = @portfoliocode
+				AND BenRptCmnt.brcommentid <> @commentid
+			)
+		SELECT 1 [DUPLICATE_STATUS_EXISTS]
+	ELSE
+		SELECT 0 [DUPLICATE_STATUS_NOTEXISTS]
+END
+ELSE
+	SELECT 'NO PROPER STATUS PASSED'
+		-- End of procedure  -- 
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminBenereportscommentsDuplicateVal'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetSysadminBenereportscommentsDuplicateVal';
+END

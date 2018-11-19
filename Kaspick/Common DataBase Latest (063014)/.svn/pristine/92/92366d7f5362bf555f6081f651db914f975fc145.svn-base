@@ -1,0 +1,130 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllTradeError]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllTradeError]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetAllTradeError      
+** Short Desc : To fetch trade errors      
+**      
+** Full Description : To fetech trade errors based on filters - CustomerAccountNumber/EventStatus/TradeDate/SecurittSymbol      
+**              
+**      
+** Sample Call   
+        EXEC USP_TR_GetAllTradeError 'All','SUBMITTED','All','All','All','06/18/2008','07/08/2014'
+        EXEC USP_TR_GetAllTradeError 'All','APPROVED','All','All','All','',''
+        EXEC USP_TR_GetAllTradeError 'All','Complete','All','All','All','06/18/2008','01/01/2010'
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Niveditha Narasimha
+** Company  :		Kaspick & Company      
+** Project  :		T-Rex     
+** Created DT :		July/2/2009      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** Mar-24-2014  Chaithra           Changed the CustomerAccountNumber to  CustodianAccountNumber   
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllTradeError] (
+	@CustomerAccountNumber VARCHAR(14)
+	,@EventStatus VARCHAR(50)
+	,@SLMasterAccount VARCHAR(12)
+	,@TradeStatus VARCHAR(50)
+	,@SecuritySymbol VARCHAR(50)
+	,@TradeFromDate DATETIME
+	,@TradeToDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @SQL AS VARCHAR(MAX)
+	DECLARE @WHERE AS VARCHAR(MAX)
+
+	SELECT AppTrade.TradeID
+		,EvntAcc.CustomerAccountNumber
+		,EvntAcc.SLMasterAccount
+		,ISNULL(EvntAcc.CustodianAccountNumber, 0) CustodianAccountNumber
+		,AccProf.DiscretionaryTrade
+		,AppTrade.SecuritySymbol
+		,AppTrade.TradeType
+		,AppTrade.TradeQuantity
+		,AppTrade.DollarAmount
+		,TradSubm.SubmissionDate
+		,EvntStat.EventStatus
+		,Evnt.Source
+		,TradImprt.TradeStatus
+	FROM TBL_TR_TSheetApprovedTrade AppTrade
+	INNER JOIN TBL_TR_EventACCOUNT EvntAcc ON AppTrade.EventAccountID = EvntAcc.EventAccountID
+	INNER JOIN TBL_TR_Event Evnt ON AppTrade.EVENTID = Evnt.EVENTID
+	INNER JOIN TBL_TR_EventSTATUS EvntStat ON Evnt.EventStatusID = EvntStat.EventStatusID
+	INNER JOIN TBL_TR_TradeImport TradImprt ON TradImprt.TradeIDTRex = AppTrade.TradeID
+	INNER JOIN TBL_TR_TradeSubmission TradSubm ON TradSubm.SubmissionID = TradImprt.SubmissionID
+	INNER JOIN TBL_INV_AccountProfile AccProf ON AccProf.CustomerAccountNumber = EvntAcc.CustomerAccountNumber
+	WHERE (
+			(
+				@CustomerAccountNumber <> 'All'
+				AND EvntAcc.CustomerAccountNumber = @CustomerAccountNumber
+				)
+			OR @CustomerAccountNumber = 'All'
+			)
+		AND (
+			(
+				@EventStatus <> 'Approved'
+				AND AppTrade.TradeDate BETWEEN @TradeFromDate
+					AND @TradeToDate
+				)
+			OR @EventStatus = 'Approved'
+			)
+		AND EvntStat.EventStatus = @EventStatus
+		AND (
+			(
+				@SLMasterAccount <> 'All'
+				AND EvntAcc.SLMasterAccount = @SLMasterAccount
+				)
+			OR @SLMasterAccount = 'All'
+			)
+		AND (
+			(
+				@TradeStatus <> 'All'
+				AND TradImprt.TradeStatus = @TradeStatus
+				)
+			OR @TradeStatus = 'All'
+			)
+		AND (
+			(
+				@SecuritySymbol <> 'All'
+				AND AppTrade.SecuritySymbol = @SecuritySymbol
+				)
+			OR @SecuritySymbol = 'All'
+			)
+END
+GO
+
+

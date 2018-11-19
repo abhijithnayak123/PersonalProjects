@@ -1,0 +1,84 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetSUBDTRole'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetSUBDTRole;
+
+	PRINT 'DROPPED USP_RP_GetSUBDTRole';
+END
+GO
+
+/******************************************************************************                    
+** Old Name: USP_EIS_SUB_DT_Role_SelProc
+
+** New Name: USP_RP_GetSUBDTRole
+                    
+** Short Desc: 
+**                    
+** Full Description: 
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+	EXEC USP_EIS_SUB_DT_Role_SelProc 26,0
+**           
+** Return values: Return Roles 
+**                    
+**                    
+** Standard declarations                   
+**                     
+**                     
+** Created By: Anand  
+** Company   : Kaspick & Company                    
+** Project   : Deliverable Tool                    
+** Created DT: 23-Jan-2012              
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 13-04-2012	Ashvin			Loading Role From V_EIS_USER_ROLE
+** 16-04-2012	Anand			Added DeliverableID Parameter
+** 21-May-2014  Mukesh			Made changes in the table and view names to refer new KASPICK DB
+** 06-Jun-2014	Mukesh			SP Name Renamed and Formatted
+** 08-Aug-2014  Geervani		Changed MasterRoleID to RoleID in Query as view was changed to get RoleID from Innotrust
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_GetSUBDTRole] @DeliverableID BIGINT = 0
+	,@RoleIdentifier INT
+AS
+BEGIN
+	SELECT DISTINCT RoleID AS DDVALUE
+		,RoleFullName AS DDTEXT
+	FROM VW_EX_UserRole VUR
+	LEFT JOIN TBL_DLV_Deliverable DLV ON VUR.MasterRoleID = (
+			CASE @RoleIdentifier
+				WHEN 1
+					THEN DLV.Approver1RoleID
+				WHEN 2
+					THEN DLV.Approver2RoleID
+				ELSE DLV.OwnerRoleID
+				END
+			)
+	--WHERE 
+	--(@DeliverableID =0 ) OR 
+	--(DLV.DELIVERABLEID=@DeliverableID)
+	ORDER BY RoleFullName
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetSUBDTRole'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetSUBDTRole';
+END

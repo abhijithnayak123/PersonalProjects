@@ -1,0 +1,37 @@
+/****** Object:  View [dbo].[VW_KS_ExSysadminKCoStaffPaging]    Script Date: 03/26/2014 18:05:58 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[VW_KS_ExSysadminKCoStaffPaging]')
+		)
+	DROP VIEW [dbo].[VW_KS_ExSysadminKCoStaffPaging]
+GO
+
+/****** Object:  View [dbo].[VW_KS_ExSysadminKCoStaffPaging]    Script Date: 03/26/2014 18:06:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE VIEW [dbo].[VW_KS_ExSysadminKCoStaffPaging]
+AS
+SELECT SFRole.ManagerCode AS ManagerCode
+	,ISNULL(TBUSR.FIRSTNAME, '') + (
+		CASE 
+			WHEN TBUSR.LASTNAME IS NULL
+				THEN ''
+			ELSE ' ' + TBUSR.LASTNAME
+			END
+		) + ' ' AS StaffName
+	,SFROLE.RoleID
+	,ClntRole.FullName AS RoleName
+	,SFROLE.UserID
+	,SFROLE.IsPrimary AS Relationship
+	,SFROLE.StaffRoleID
+FROM dbo.TBL_KS_StaffRole AS SFROLE
+INNER JOIN dbo.TBL_KS_USER AS TBUSR ON TBUSR.USERID = SFROLE.UserID
+INNER JOIN dbo.TBL_KS_ClientRole AS ClntRole ON ClntRole.RoleID = SFROLE.RoleID
+GO
+
+

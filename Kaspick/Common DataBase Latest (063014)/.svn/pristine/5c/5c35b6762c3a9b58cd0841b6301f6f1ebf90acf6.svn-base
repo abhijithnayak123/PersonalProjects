@@ -1,0 +1,84 @@
+
+/****** Object:  UserDefinedFunction [dbo].[FN_GetWithHoldingAmountForTrust]    Script Date: 07/02/2014 15:38:07 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[FN_GetWithHoldingAmountForTrust]') AND type in (N'FN', N'IF', N'TF', N'FS', N'FT'))
+DROP FUNCTION [dbo].[FN_GetWithHoldingAmountForTrust]
+GO
+
+
+/****** Object:  UserDefinedFunction [dbo].[FN_GetWithHoldingAmountForTrust]    Script Date: 07/02/2014 15:38:07 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+/******************************************************************************                      
+** Name:     FN_GetWithHoldingAmountForTrust                      
+** Short Desc: To get withholding amount 
+**                      
+** Full Description: To get withholding amount for Tax Withholding Beneficiary        
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+SELECT dbo.FN_GetWithHoldingAmountForTrust('WMBER',44914,'03/31/2014',2014) AS Withholding  
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti Kalita    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Nov-2013                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 7/2/2014							query corrected to read withholding amount for a schedules trust payment
+** 7/3/2014	Srikanth	16384		Corrected to read per CustomerAccountNumber
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_GetWithHoldingAmountForTrust]  
+(  
+ @CustomerAccountNUmber VARCHAR(14),
+ @ContactID INT,  
+ @PaymentDate DATETIME,  
+ @TaxYear INT  
+)  
+RETURNS Money  
+AS  
+BEGIN  
+ DECLARE @Withholding MONEY
+   
+ SET @Withholding = 0;  
+  
+ 
+  SELECT @Withholding = ISNULL(SUM(ISNULL(bps.ScheduledAmount, 0)),0)  
+	FROM TBL_PP_BeneficiaryPayoutSchedule bps 
+	INNER JOIN dbo.TBL_PP_AccountPayoutSchedule aps ON bps.APScheduleID = aps.APScheduleID   
+ WHERE    
+  DATEDIFF(DAY, bps.PaymentDate, @PaymentDate) = 0 
+  AND bps.TAXYear = @TaxYear 
+  AND aps.CustomerAccountNumber = @CustomerAccountNUmber
+  AND bps.ContactID in 
+  (
+		SELECT PayeeID FROM dbo.SYN_IT_RemittanceInstructions ri
+		INNER JOIN dbo.SYN_IT_BeneficiaryDistributions bd ON ri.instructionid= bd.instructionID
+		WHERE CustomerAccountNumber = @CustomerAccountNUmber
+		AND Contactid= @ContactID AND PayeeID !=@ContactID
+  ) 
+  
+
+ RETURN @Withholding  
+END  
+GO
+
+

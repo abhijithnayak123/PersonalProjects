@@ -1,0 +1,221 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_DonorBeneAddress]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_DonorBeneAddress]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name:  USP_KCo_DonorBeneAddress      
+** Short Desc:       
+**        
+** Full Description        
+      
+**        
+** Sample Call        
+       EXEC USP_KCo_DonorBeneAddress  'ACL','Yes'       
+	   EXEC USP_KCo_DonorBeneAddress  'ACL','No'     
+**        
+** Return values: NONE        
+**        USP_KCo_DonorBeneInformation
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By: Asit Kar        
+** Company   : Kaspick & Company        
+** Project   : BOI: Reports & Queries       
+** Created DT: 23-04-2014        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 
+*******************************************************************************        
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_DonorBeneAddress]
+	-- paremeters here              
+	@ManagerCode AS VARCHAR(20)
+	,@IncludeDeceasedContacts AS VARCHAR(8)
+AS
+SELECT DISTINCT AccMas.ManagerCode
+	,AccMas.CustomerAccountNumber
+	--,AccMas.CustomerShortName AS [AccountName]
+	,RTRIM(CASE 
+				WHEN ISNULL(AccMas.CustomerDescriptionLine1, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMas.CustomerDescriptionLine1) + ' '
+				END + CASE 
+				WHEN ISNULL(AccMas.CustomerDescriptionLine2, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMas.CustomerDescriptionLine2) + ' '
+				END + CASE 
+				WHEN ISNULL(AccMas.CustomerDescriptionLine3, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMas.CustomerDescriptionLine3) + ' '
+				END + ISNULL(AccMas.CustomerDescriptionLine4, '')) AS [AccountName]
+	,AccMas.AccountTypeCode AS [AccountType]
+	,ContRolCds.ContactRoleCodeDesc AS [ContactType]
+	,ContMas.ContactId
+	,ContMas.PrimaryPrefix AS [Salutation]
+	,LTRIM(RTRIM((
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ContMas.PrimaryLastName)), '') = '')
+						THEN ''
+					ELSE (ContMas.PrimaryLastName + ' ')
+					END
+				) + (
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ContMas.PrimaryFirstName)), '') = '')
+						THEN ''
+					ELSE (ContMas.PrimaryFirstName + ' ')
+					END
+				) + ISNULL(ContMas.PrimaryMiddleInitial, ''))) AS [ContactName]
+	,ContMas.PrimaryLastName AS [LastName]
+	,ContMas.PrimaryFirstName AS [FirstName]
+	,ContMas.PrimaryMiddleInitial AS [MiddleInitials]
+	,ContMas.SSN
+	,ContMas.ContactName AS [PaymentName]
+	,ISNULL(ContMas.TaxNameLine1,'') + '' + ISNULL(ContMas.TaxNameLine2,'') AS [TaxName]
+	,ContMas.DateOfBirth AS [BirthDate]
+	,ContMas.DateOfDeath AS [ExpireDate]
+	,ContMas.DomicileStateCode [DomicileCode]
+	,ContAdd.AddressType AS [AddressType]
+	,[AddressBlock] = dbo.Fn_GetFormattedAddress(ContAdd.Address1, ContAdd.Address2, ContAdd.Address3, ContAdd.City, ContAdd.STATE, ContAdd.CountryCode, ContAdd.ZipCode)
+	,[Address1] = ContAdd.Address1
+	,[Address2] = ContAdd.Address2
+	,[Address3] = ContAdd.Address3
+	--,[Mail Stop] = A.MailStop
+	,City = ContAdd.City
+	,STATE = ContAdd.STATE
+	,[ZipCode] = CAST(ContAdd.ZipCode AS VARCHAR(10))
+	,Country = ContAdd.CountryCode
+	,[Fromdate] = ContAdd.FromDate
+	,[Todate] = ContAdd.ToDate
+	,AAPI.FMV
+	,AAPI.Valuation
+	,AccProf.ObjectiveCode AS [ObjectiveCode]
+INTO #Tmp_DonorBeneAddress
+FROM SYN_IT_ContactMaster AS ContMas
+INNER JOIN SYN_IT_ContactAccountRoles ContAcntRol
+	ON ContAcntRol.Contactid = ContMas.ContactId
+		AND ContAcntRol.CONTACTROLECODE IN (
+			10
+			,21
+			,37
+			,24
+			) -- Donor and beneficiary
+INNER JOIN SYN_IT_ContactRoleCodes ContRolCds
+	ON ContRolCds.ID = ContAcntRol.ContactRoleCode
+INNER JOIN SYN_IT_AccountMaster AccMas
+	ON AccMas.CustomerAccountNumber = ContAcntRol.CustomerAccountNumber
+INNER JOIN SYN_IT_ContactAddresses AS ContAdd
+	ON ContMas.ContactId = ContAdd.ContactId
+		AND ContAdd.ActiveFlag = - 1
+LEFT JOIN TBL_PP_AnnualAccountPayoutInfo AAPI
+	ON AccMas.CustomerAccountNumber = AAPI.CustomerAccountNumber
+		AND AAPI.PayoutYear = YEAR(GETDATE())
+LEFT JOIN TBL_INV_AccountProfile AccProf
+	ON AccMas.CustomerAccountNumber = AccProf.CustomerAccountNumber
+WHERE (AccMas.ManagerCode = @ManagerCode)
+	AND (
+		ISNULL(ContMas.DateOfDeath, '01/01/1900') = (
+			CASE 
+				WHEN @IncludeDeceasedContacts = 'Yes'
+					THEN ISNULL(ContMas.DateOfDeath, '01/01/1900')
+				ELSE '01/01/1900'
+				END
+			)
+		)
+ORDER BY ContMas.PrimaryLastName
+	,AccMas.CustomerAccountNumber
+
+SELECT ManagerCode AS 'Client Brief Name'
+	,CustomerAccountNumber AS 'Advent ID'
+	,AccountName AS [Account Name]
+	,AccountType AS [Account Type]
+	,STUFF((
+			SELECT DISTINCT ',' + ContactType
+			FROM #Tmp_DonorBeneAddress ChildDonorBene
+			WHERE PrntDonorBene.ContactID = ChildDonorBene.ContactID
+				AND PrntDonorBene.CustomerAccountNumber = ChildDonorBene.CustomerAccountNumber
+			FOR XML PATH('')
+				,TYPE
+			).value('(./text())[1]', 'varchar(200)'), 1, 1, '') AS [Contact Type]
+	,ContactId
+	,Salutation
+	,ContactName AS [Contact Name]
+	,LastName AS [Last Name]
+	,FirstName AS [First Name]
+	,MiddleInitials AS [Middle Initials]
+	,SSN
+	,PaymentName AS [Payment Name]
+	,TaxName AS [Tax Name]
+	,BirthDate
+	,ExpireDate AS [Expire Date]
+	,DomicileCode [Domicile Code]
+	,AddressType AS [Address Type]
+	,AddressBlock AS [Address Block]
+	,Address1 AS [Address 1]
+	,Address2 AS [Address 2]
+	,Address3 AS [Address 3]
+	,City
+	,STATE
+	,ZipCode AS [Zip Code]
+	,Country
+	,Fromdate AS [From date]
+	,Todate AS [To date]
+	,FMV
+	,Valuation
+	,ObjectiveCode AS [Objective Code]
+FROM #Tmp_DonorBeneAddress PrntDonorBene
+GROUP BY ManagerCode
+	,CustomerAccountNumber
+	,AccountName
+	,AccountType
+	,ContactId
+	,Salutation
+	,ContactName
+	,LastName
+	,FirstName
+	,MiddleInitials
+	,SSN
+	,PaymentName
+	,TaxName
+	,BirthDate
+	,ExpireDate
+	,DomicileCode
+	,AddressType
+	,AddressBlock
+	,Address1
+	,Address2
+	,Address3
+	,City
+	,STATE
+	,ZipCode
+	,Country
+	,Fromdate
+	,Todate
+	,FMV
+	,Valuation
+	,ObjectiveCode
+ORDER BY LastName
+	,CustomerAccountNumber
+GO
+
+

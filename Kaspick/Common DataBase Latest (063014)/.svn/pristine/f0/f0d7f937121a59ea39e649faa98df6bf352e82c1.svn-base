@@ -1,0 +1,80 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_TAGRequest]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_TAGRequest]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_TAGRequest]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_TAGRequest]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_KCo_TAGRequest                      
+** Short Desc: Fetches the WFT Request details for the specified period 
+**                      
+** Full Description: Fetches the WFT Request details for the specified period 
+**      
+**                              
+** Input Arguments:  @SubmittedDateFrom DATETIME
+**	,@SubmittedDateTo DATETIME 		
+**	          
+** Sample Call     
+	  EXEC USP_KCo_TAGRequest  '01/01/2000','01/01/2010' 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_TAGRequest] (
+	@SubmittedDateFrom DATETIME
+	,@SubmittedDateTo DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT WFTReq.request_id 'Request ID'
+		,CONVERT(CHAR(20), WFTReq.submitted_datetime, 22) 'Submitted Date Time'
+		,WFTReq.ManagerCode 'Brief Name'
+		,FrmCtrl.FlowTitle 'Flow Title'
+		,ListItm.ListItemName 'Status'
+	FROM TBL_WFT_Request WFTReq
+	INNER JOIN TBL_WFT_ML_FrmCtrl FrmCtrl
+		ON WFTReq.FormID = FrmCtrl.FormID
+	INNER JOIN TBL_ListItem ListItm
+		ON ListItm.ListItemID = WFTReq.request_status_id
+	WHERE WFTReq.submitted_datetime >= @SubmittedDateFrom
+		AND WFTReq.submitted_datetime <= @SubmittedDateTo
+	ORDER BY WFTReq.Request_Id
+
+	SET NOCOUNT OFF;
+END

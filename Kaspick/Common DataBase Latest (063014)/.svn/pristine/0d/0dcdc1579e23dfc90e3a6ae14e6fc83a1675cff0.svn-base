@@ -1,0 +1,95 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTMenusList'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetDTMenusList;
+
+	PRINT 'DROPPED USP_RP_GetDTMenusList';
+END
+GO
+
+  
+/************************************r******************************************                    
+** New Name:     USP_RP_GetDTMenusList                    
+** Old Name:     USP_EIS_DT_MenusList_SelProc                    
+** Short Desc: To retrieve Filter Section details  
+**                    
+** Full Description: o retrieve Filter Section details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  USP_EIS_DT_MenusList_SelProc 1, ''  
+**  USP_EIS_DT_MenusList_SelProc 5, ''  
+**  USP_EIS_DT_MenusList_SelProc 6, ''   
+**  USP_EIS_DT_MenusList_SelProc 0, 'Activity Console'  
+**  USP_EIS_DT_MenusList_SelProc 0, 'Deliverable Management'  
+**  USP_EIS_DT_MenusList_SelProc 0, 'Diagnostics Console'   
+        
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/24/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- ----,----              
+** 12-Mar-2012 Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.  
+** 14-Mar-2012 Anand Kumar    Changes due to view name tbl_eis_dt_deliverable_type changed to V_EIS_DT_Deliverable.  
+** 14-Mar-2012 Ashvin    Changes for new implementation of context menu.  
+** 04-Apr-2012 Ashvin    Changing @DeliverableName to @DeliverableID for new implementation of context menu.  
+** 14-May-2012 Ashvin    Adding @ModuleName as parameter.  
+** 09-Jun-2014 Abhijith  Sp name renamed as per Kaspick naming convention standard
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/      
+    
+CREATE PROCEDURE USP_RP_GetDTMenusList    
+(    
+    @DeliverableID BigInt,  
+    @ModuleName Varchar(100)  
+)   
+AS    
+BEGIN    
+    SELECT MenuID,    
+           DLV.DeliverableID, -- MN.DeliverableProcessID,    
+           [Name],    
+           [Description],    
+           [ImageResourceConstant],    
+           [GroupSequence],    
+           [DisplaySequence],    
+           [ActionMethod],  
+           [ModuleName]    
+      FROM TBL_DLV_Menu MN   
+   INNER JOIN TBL_DLV_Deliverable DLV on DLV.DeliverableProcessID = MN.DeliverableProcessID  
+   --Inner Join DLV_DeliverableProcess DP On MN.DeliverableProcessID = DP.DeliverableProcessID  
+   --changed for DeliverableID in V_EIS_DT_Deliverable View  
+   --INNER JOIN V_EIS_DT_Deliverable DT on DT.[DeliverableID] = DLV.[DeliverableID]   
+     WHERE (@DeliverableID = 0 Or DLV.DeliverableID = @DeliverableID )  
+   And (@ModuleName = '' or MN.ModuleName = @ModuleName)  
+     Order by MN.[GroupSequence], [Name]  
+    RETURN(0)  
+END    
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTMenusList'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetDTMenusList';
+END

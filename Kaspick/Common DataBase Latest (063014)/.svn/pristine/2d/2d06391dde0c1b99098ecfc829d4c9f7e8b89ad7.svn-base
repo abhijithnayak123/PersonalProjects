@@ -1,0 +1,77 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetGroupAccounts]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetGroupAccounts]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetGroupAccounts]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetGroupAccounts]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_IE_GetGroupAccounts      
+** Short Desc: Gets all accounts created under given group      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_IE_GetGroupAccounts @GroupID = 6
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Soorya      
+** Company   : Kaspick & Company      
+** Project   : Back Office Integration - Income Estimation      
+** Created DT: 07/02/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**    
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetGroupAccounts] @GroupID INT
+AS
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+-- Body of procedure  --      
+SELECT StgEst.StagingID
+	,StgEst.GroupID
+	,StgEst.TaxYear
+	,StgEst.CustomerAccountNumber AS AdventID
+	,StgEst.AccountType
+	,StgEst.CreationDate
+	,CAST('01/01/1900' AS DATETIME) AS MatureDate
+	,StgEst.StatusID
+	,Stat.STATUS
+	,'' AS Change
+FROM TBL_IE_STG_Estimate StgEst
+INNER JOIN TBL_IE_Status Stat ON StgEst.StatusID = Stat.StatusID
+WHERE GroupID = @GroupID
+	AND IsDeleted = 0
+	AND ParentStagingID IS NULL
+ORDER BY StgEst.CustomerAccountNumber
+
+SET NOCOUNT OFF;
+	-- End of procedure  --

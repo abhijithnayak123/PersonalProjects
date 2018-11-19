@@ -1,0 +1,65 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRGiftKeyID')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRGiftKeyID;
+    PRINT 'DROPPED USP_RP_GetBRGiftKeyID';
+END
+GO
+/******************************************************************************        
+** Old Name   :   USP_EIS_BR_EX_GiftKeyID_SelProc       
+** 
+** Name   :   USP_RP_GetBRGiftKeyID
+**  
+** Short Desc :   
+**        
+** Full Description        
+**        
+** Get Gift key details from Giftwrap4.0 synonyms mapped in excelsior db table.   
+**      
+** Sample Call                    
+**  [USP_RP_GetBRGiftKeyID]  
+**  
+** Return values: table        
+**        
+** Created By :  Ravi Belthur   
+** Company  :  Kaspick & Company        
+** Project  :  Reportoire       
+** Created DT :  Sep/8/2012        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:     Author: Bug #  Description:        Rvwd        
+** --------  -------- ------ ------------------------------------------ -------  
+**  Jun-10-2014 Geervani Sp name renamed as per Kaspick naming convention standard
+*******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/   
+CREATE PROCEDURE [dbo].[USP_RP_GetBRGiftKeyID]                             
+AS                        
+BEGIN    
+ SELECT Gift.GIFTKEY as GiftKeyID, PIF.PIFNICKNAME as ADVENTID            
+  FROM  dbo.SYN_GW_TBLGift Gift  
+  INNER JOIN dbo.SYN_GW_TBLGiftDetail GIFTDETAIL ON GIFT.GIFTID = GIFTDETAIL.GIFTID    
+  INNER JOIN dbo.SYN_GW_TBLPIF PIF on gift.Pifid = pif.pifid  
+  INNER JOIN dbo.SYN_GW_TBLPersonGiftMap PERSONGIFTMAP ON GIFT.GIFTID = PERSONGIFTMAP.GIFTID    
+  INNER JOIN dbo.SYN_GW_TBLPerson PERSON ON PERSONGIFTMAP.PERSONID = PERSON.PERSONID AND PERSON.DEATHDATE IS NULL    
+  INNER JOIN dbo.SYN_GW_TBLAssociation ASSOCIATION ON PERSONGIFTMAP.ASSOCIATIONID = ASSOCIATION.ASSOCIATIONID    
+  INNER JOIN dbo.SYN_GW_TBLClient CLIENT ON GIFT.CLIENTID = CLIENT.CLIENTID    
+  WHERE GIFT.ACCOUNTCLOSEDDATE IS NULL AND GIFT.PIFID !=0     
+ AND UPPER(ASSOCIATION.SHORT) NOT IN ('BENE-R', 'BENE-I')    
+ AND UPPER(CLIENT.CLIENTNAME)='KASPICK'    
+  ORDER BY GiftKeyID,ADVENTID  
+END  
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRGiftKeyID')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRGiftKeyID';
+    END

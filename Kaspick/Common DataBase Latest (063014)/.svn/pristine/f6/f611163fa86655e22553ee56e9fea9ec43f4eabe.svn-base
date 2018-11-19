@@ -1,0 +1,107 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTDeliverableInstanceByID')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetBRDTDeliverableInstanceByID;
+        PRINT 'DROPPED USP_RP_GetBRDTDeliverableInstanceByID';
+    END
+GO
+
+/******************************************************************************                      
+** Old Name: USP_EIS_BR_DT_DeliverableInstanceByID_SelProc
+** Name:     USP_RP_GetBRDTDeliverableInstanceByID                      
+** Short Desc: Get the Deliverable Instance      
+**                      
+** Full Description: Get the Deliverable Instance           
+**                              
+** Input Arguments: QueueID    
+**         
+** Sample Call     
+ EXEC USP_RP_GetBRDTDeliverableInstanceByID 206    
+**             
+** Return values: Return Status    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By:     
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 25-Sep-09                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.		
+** Jul 02-2014 Geervani	Changed Table names to refer Kaspick DB and changed SP Name
+** 22-08-2014	RAJ				SET TRANSACTION ISOLATION LEVEL SNAPSHOT; - Removed
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTDeliverableInstanceByID]    
+(    
+ @InstanceID INT    
+)    
+AS    
+    
+BEGIN    
+	--  Initial Set statements  --                
+	SET NOCOUNT ON;                
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds                             
+	SET ARITHABORT ON               
+
+	SELECT     
+	DQ.DeliverableQueueID AS InstanceID,    
+	DQ.DeliverableQueueYear AS InstanceYear,    
+	DQ.DeliverableQueueName AS InstanceName,    
+	DQ.DeliverableQueueBriefName AS InstanceBriefName,    
+	DQS.StatusName AS Status,    
+	DQ.DeliverableEndDate AS AsOfDate,    
+	D.DeliverableID AS TypeID,    
+	D.DeliverableName AS TypeName,     
+	Frequency =   
+	(    
+	CASE       
+	WHEN RTRIM(LTRIM(LI.ListItemName)) = 'Annually' THEN 'Annual'      
+	WHEN RTRIM(LTRIM(LI.ListItemName)) = 'Semi-Annually' THEN 'Semi-Annual'      
+	ELSE RTRIM(LTRIM(LI.ListItemName))      
+	END      
+	),    
+	DQ.CreatedDate,    
+	InstanceOwner =   
+	(  
+		SELECT     
+		(CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')     
+		THEN ''     
+		ELSE (LASTNAME )     
+		END) +     
+		(CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')     
+		THEN ''     
+		ELSE (', ' + FIRSTNAME )     
+		END) +     
+		' ' +     
+		ISNULL(MIDDLENAME, '') FROM TBL_KS_User WHERE [USERID] = DQ.CreatedUserID  
+		)    
+	FROM TBL_DLV_DeliverableQueue DQ    
+	INNER JOIN TBL_DLV_QueueStatus DQS ON DQ.QueueStatusID = DQS.QueueStatusID    
+	INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID    
+	INNER JOIN TBL_DLV_DeliverableFrequency DF ON D.DeliverableID = DF.DeliverableID    
+	INNER JOIN TBL_ListItem LI ON LI.ListItemID = DF.FrequencyID     
+	INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID AND LT.ListTypeName = 'Annual Frequency'   
+	WHERE DQ.DeliverableQueueID = @InstanceID    
+END    
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetBRDTDeliverableInstanceByID') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetBRDTDeliverableInstanceByID';
+	END

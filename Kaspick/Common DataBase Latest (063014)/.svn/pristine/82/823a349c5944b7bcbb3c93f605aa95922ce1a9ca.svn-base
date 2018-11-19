@@ -1,0 +1,339 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_InsBRDTDeliverableInstance')
+BEGIN
+    DROP PROCEDURE USP_RP_InsBRDTDeliverableInstance;
+    PRINT 'DROPPED USP_RP_InsBRDTDeliverableInstance';
+END
+GO
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************                      
+** Old Name:     USP_EIS_BR_DT_DeliverableInstance_InsProc   
+**                         
+** Name: USP_RP_InsBRDTDeliverableInstance  
+**                 
+** Short Desc: To insert Deliverable Items to 'TBL_DLV_DeliverableItem' table      
+**                      
+** Full Description: To insert Deliverable Items           
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+ DECLARE @ReturnStatus INT      
+ DECLARE @ErrorDesc VARCHAR(8000)    
+ EXEC USP_RP_InsBRDTDeliverableInstance    
+  @SSISPath = '',    
+  @SSISConfigPath = '',    
+  @DeliverableName  = 'ACH Beneficiary Information',    
+  @DeliverableFrequency  = 1724,    
+  @DeliverableQueueName  = 'ACH Beneficiary Information20111007',    
+  @DeliverableQueueBriefName = 'TEST',     
+  @DeliverableEndDate = '2011-10-07 00:00:00.000',    
+  @DeliverableQueueYear = 2011,    
+  @UserID = 1,    
+  @ReturnStatus = -1,   
+  @ErrorDesc = ''    
+**             
+** Return values: Return Status    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By:     
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 07-Sep-09                 
+**                                  
+*******************************************************************************                
+** Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 02/18/2009   Venu ET #11362 New paratmeter @DeliverableEndDate added to invoke USP_EIS_BR_DT_DeliverableItems_InsUpdProc   
+** 13-Oct-2011  Soorya  Updated the procedure as per the Deliverable Tool   
+**    requirements - decide the Queue Creation logic based on the DeliverableProcess   
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+** 19-May-2014 Geervani	Made changes in the table names to refer new KASPICK DB  
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_InsBRDTDeliverableInstance   
+(    
+@SSISPath     VARCHAR(MAX),    
+@SSISConfigPath    VARCHAR(MAX),    
+@DeliverableName  VARCHAR(100),    
+@DeliverableFrequency  CHAR(20),    
+@DeliverableQueueName  VARCHAR(100),    
+@DeliverableQueueBriefName VARCHAR(50),     
+@DeliverableEndDate   DATETIME,    
+@DeliverableQueueYear  INT,    
+@UserID      INT,    
+@ReturnStatus    INT = -1 OUTPUT, -- assume SP fails     
+@ErrorDesc     VARCHAR(8000) OUTPUT    
+)    
+AS    
+BEGIN    
+--  Initial Set statements  --                
+SET NOCOUNT ON;                
+SET LOCK_TIMEOUT                30000;   -- 30 seconds                
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;               
+SET ARITHABORT ON               
+
+--  Variable Declarations  --                
+DECLARE @procname    VARCHAR(60);                 
+DECLARE @ErrorNumber     INT;        
+DECLARE @DeliverableQueueID  BIGINT;    
+DECLARE @QueueStatusID   BIGINT;    
+DECLARE @DeliverableID  BIGINT;    
+DECLARE @QueueCreationMethod VARCHAR(100);  
+DECLARE @ITM_COUNT  INT;  
+DECLARE @I    BIGINT;  
+
+--  Variable Data Assignment  --                
+SET @procname = 'USP_RP_InsBRDTDeliverableInstance';                
+SET @ReturnStatus = 0;          
+
+BEGIN TRY      
+	BEGIN TRANSACTION         
+-- Body of procedure  --     
+	BEGIN   
+		-- Get the DeliverableID/DeliverableTypeID using the DeliverableName/DeliverableTypeName  
+		SELECT @DeliverableID = DeliverableID FROM TBL_DLV_Deliverable     
+		WHERE DeliverableName = @DeliverableName    
+
+		DECLARE @DeliverableProcessID INT, @DeliverableItemStatusID INT;  
+		SELECT @DeliverableProcessID = DeliverableProcessID FROM TBL_DLV_Deliverable WHERE DeliverableName = @DeliverableName  
+		SELECT @DeliverableItemStatusID = DeliverableItemStatusID FROM TBL_DLV_DeliverableProcessStatus WHERE DeliverableProcessID = @DeliverableProcessID AND StatusName = 'Scheduled'  
+
+		-- Get the QueueCreationMethod for the Deliverable  
+		SELECT @QueueCreationMethod = RTRIM(LTRIM(LI.ListItemName))   
+		FROM TBL_DLV_Deliverable D  
+		INNER JOIN TBL_DLV_DeliverableProcess DP ON DP.DeliverableProcessID = D.DeliverableProcessID  
+		INNER JOIN TBL_ListItem LI ON LI.ListItemID = DP.QueueCreationMethodID  
+		INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID  
+		WHERE LT.ListTypeName = 'QueueCreationMethod' AND D.DeliverableID = @DeliverableID  
+
+		-- Get The QueueStatusID for the newly created Queue  
+		SELECT @QueueStatusID = QueueStatusID FROM TBL_DLV_QueueStatus WHERE StatusName = 'New'  
+
+	-- If the QueueCreationMethod is 'Custom' follow the Custom Queue Creation logic  
+	-- as implemented for 'Beneficiary Reports' and 'Program Overview Reports'.  
+		IF(@QueueCreationMethod = 'Custom')   
+			BEGIN  
+				-- Create the Deliverable Queue/Instance  
+				INSERT INTO TBL_DLV_DeliverableQueue    
+				(    
+				[DeliverableID],[QueueStatusID],[GenerationMethod],[DeliverableQueueBriefName],[DeliverableQueueName]    
+				,[DeliverableStartDate],[DeliverableEndDate],[DeliverableQueueYear],[ModifiedDate],[ModifiedUserID]    
+				,[CreatedDate],[CreatedUserID], [FrequencyID]  
+				)    
+				VALUES  
+				(     
+				@DeliverableID,@QueueStatusID,NULL,@DeliverableQueueBriefName,@DeliverableQueueName,    
+				@DeliverableEndDate,@DeliverableEndDate,@DeliverableQueueYear,GetDate(),@UserID,    
+				GetDate(),@UserID, CAST(@DeliverableFrequency AS INT)  
+				)     
+
+				-- Get the QueueID for the newly created Queue  
+				SELECT @DeliverableQueueID = IDENT_CURRENT('TBL_DLV_DeliverableQueue')   
+
+				-- Get 'Ending Market Value' in Table 'TBL_EIS_DT_STG_EndingMarketValue'.    
+				IF @DeliverableName LIKE '%Beneficiary Reports'    
+					BEGIN   
+						-- Frequency  
+						SELECT @DeliverableFrequency = (CASE WHEN RTRIM(LTRIM(ListItemName)) = 'Annually' THEN 'A'  
+						WHEN RTRIM(LTRIM(ListItemName)) = 'Semi-Annually' THEN 'S'  
+						WHEN RTRIM(LTRIM(ListItemName)) = 'Quarterly' THEN 'Q'  
+						WHEN RTRIM(LTRIM(ListItemName)) = 'Monthly' THEN 'M'  
+						WHEN RTRIM(LTRIM(ListItemName)) = 'Other' THEN 'O'  
+						END)  
+						FROM TBL_ListItem WHERE ListItemID = CAST(@DeliverableFrequency AS INT)         
+
+						EXEC USP_RP_GetRPTBRSSIS @SSISPath, @SSISConfigPath  
+						
+						BEGIN    
+							EXEC USP_RP_SaveBRDTDeliverableItems    
+							@DeliverableQueueID,    
+							@DeliverableID,     
+							@DeliverableFrequency,    
+							@DeliverableEndDate, --ET #11362    
+							@UserID,    
+							@ReturnStatus,     
+							@ErrorDesc    
+						END    
+						
+						 
+					END    
+			ELSE IF @DeliverableName = 'Program Overview Reports'     
+			BEGIN    
+				EXEC USP_RP_SavePODTDeliverableItems    
+				@DeliverableQueueID,    
+				@UserID,    
+				@ReturnStatus,     
+				@ErrorDesc    
+			END    
+		END   
+		SET @ReturnStatus = 0;  
+		-- If the QueueCreationMethod is 'Subscription' follow the standard Queue Creation logic  
+		-- as implemented for 'Deliverable Tool'    
+	IF(@QueueCreationMethod = 'Subscription')   
+		BEGIN  
+			IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#DT_ITEM]'))      
+					DROP TABLE [DBO].[#DT_ITEM]  
+					CREATE TABLE #DT_ITEM  
+					(  
+					ITEMID INT IDENTITY(1,1),        
+					[Clientid] [VARCHAR](4) NULL,  
+					[AccountID] [int] NULL,  
+					[TrustparticipantID] [int] NULL,  
+					[AccountType] [varchar](20) NULL,  
+					[AdventID] [varchar](8) NULL,  
+					[ClientBriefName] [varchar](20) NULL,  
+					[ReportDate] [datetime] NULL,  
+					[Frequency] [varchar](2) NULL,  
+					[FolderName] [varchar](4000) NULL,  
+					[FILENAME] [varchar](4000) NULL,  
+					[IsReportInaPackage] [bit] NULL,  
+					[ItemStatus] [bigint] NULL,  
+					[Approver1RoleID] [int] NULL,  
+					[Approver1ID] [int] NULL,  
+					[Approver2RoleID] [int] NULL,  
+					[Approver2ID] [int] NULL,  
+					[WaitingForNextActionRole] char(10) NULL,  
+					[OwnerRoleID] [int] NULL,  
+					[OwnerID] [int] NULL   
+					)   
+
+		IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#DT_ID]'))      
+			DROP TABLE [DBO].[#DT_ID]  
+			CREATE TABLE #DT_ID  
+			(  
+			ITEMID INT  
+			)  
+
+		DECLARE @FrequencyID INT;  
+		SET  @FrequencyID = CAST(@DeliverableFrequency AS INT);  
+		SET @ITM_COUNT = 0;  
+
+		EXEC USP_RP_SaveBRDTDeliverableItemsSubscriptionType  
+		@DeliverableQueueID,  
+		@DeliverableID,  
+		@FrequencyID,  
+		@DeliverableEndDate,   
+		@UserID,  
+		@ReturnStatus,  
+		@ErrorDesc  
+
+		SELECT @ITM_COUNT = COUNT(*) FROM #DT_ITEM    
+
+		IF(@ITM_COUNT > 0)  
+			BEGIN     
+			-- Create the Deliverable Queue/Instance  
+				INSERT INTO TBL_DLV_DeliverableQueue    
+				(    
+				[DeliverableID],[QueueStatusID],[GenerationMethod],[DeliverableQueueBriefName],[DeliverableQueueName]    
+				,[DeliverableStartDate],[DeliverableEndDate],[DeliverableQueueYear],[ModifiedDate],[ModifiedUserID]    
+				,[CreatedDate],[CreatedUserID],[FrequencyID]  
+				)    
+				VALUES  
+				(     
+				@DeliverableID,@QueueStatusID,'M',@DeliverableQueueBriefName,@DeliverableQueueName,    
+				@DeliverableEndDate,@DeliverableEndDate,@DeliverableQueueYear,GetDate(),@UserID,    
+				GetDate(),@UserID,CAST(@DeliverableFrequency AS INT)  
+				)  
+
+			SELECT @DeliverableQueueID = IDENT_CURRENT('TBL_DLV_DeliverableQueue')  
+
+			SELECT @I = ISNULL(MAX(DeliverableItemID),0) FROM TBL_DLV_DeliverableItem  
+
+			SET IDENTITY_INSERT TBL_DLV_DeliverableItem ON  
+			INSERT INTO [TBL_DLV_DeliverableItem]  
+			([DeliverableItemID], [DeliverableQueueID] ,[ClientEmployeeID]  ,[ContactID] ,ContactRoleCode  
+			,[GiftKey] ,[ReportType] ,[ModifiedDate] ,[ModifiedUserID] ,[CreatedDate] ,[CreatedUserID]  
+			,[AccountType] ,[CustomerAccountNumber] ,[ManagerCode] ,[ReportDate] ,[Frequency] ,[FolderName] ,[FILENAME]  
+			,[IsReportInaPackage],[Approver1RoleID], [Approver1ID],[Approver2RoleID],[Approver2ID],[WaitingForNextActionRole],  
+			[OwnerRoleID],[OwnerID])  
+			--OUTPUT inserted.DeliverableItemID INTO #DT_ID  
+			SELECT DISTINCT [ITEMID] + @I, @DeliverableQueueID,NULL AS ClientEmployeeID, TrustparticipantID,   
+			NULL AS BeneficiaryID,NULL AS GiftKey, NULL AS ReportType, GETDATE() AS ModifiedDate,  
+			1 AS ModifiedUserID, GETDATE() AS CreatedDate, 1 AS CreatedUserID, AccountType, AdventID,   
+			ClientBriefName,ReportDate, Frequency, FolderName, [FileName],IsReportInaPackage,Approver1RoleID, Approver1ID,Approver2RoleID,  
+			Approver2ID,WaitingForNextActionRole,OwnerRoleID,OwnerID  
+			FROM #DT_ITEM   
+	
+			SET IDENTITY_INSERT TBL_DLV_DeliverableItem OFF 
+		-- Add DeliveryMethodID and DeliverableItemStatusID  
+		-- corresponding to the DeliverableItem  
+		DECLARE @WebPublishedDeliveryMethodID INT, @MailedDeliveryMethodID INT;  
+		SELECT @WebPublishedDeliveryMethodID = DeliveryMethodID FROM TBL_DLV_DeliveryMethod WHERE DeliveryMethodName = 'Web Published'  
+		SELECT @MailedDeliveryMethodID = DeliveryMethodID FROM TBL_DLV_DeliveryMethod WHERE DeliveryMethodName = 'Mailed'  
+
+		INSERT INTO [TBL_DLV_ItemMethodStatus]  
+		([DeliverableItemID]  
+		,[DeliveryMethodID]  
+		,[DeliverableItemStatusID]  
+		,[Comments]  
+		,[CreatedDate]  
+		,[CreatedUserID]  
+		,[ModifiedDate]  
+		,[ModifiedUserID])  
+		SELECT  [ITEMID] + @I  
+		,@WebPublishedDeliveryMethodID  
+		,[ItemStatus]  
+		,''  
+		,GETDATE()  
+		,1  
+		,GETDATE()  
+		,1  
+		FROM #DT_ITEM  
+
+		SET @ReturnStatus = 0;  
+	END  
+		ELSE  
+			BEGIN  
+				SET @ReturnStatus = 1  
+			END  
+	END  
+	COMMIT TRANSACTION
+	END  
+	print 'complete'
+	END TRY    
+	BEGIN CATCH
+
+			ROLLBACK TRANSACTION
+
+			DECLARE @ErrorMessage NVARCHAR(4000);
+			DECLARE @ErrorSeverity INT;
+			DECLARE @ErrorState INT;
+
+			SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+print @ErrorMessage
+			RAISERROR (@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+			END CATCH    
+END  
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_InsBRDTDeliverableInstance')
+    BEGIN
+        PRINT 'CREATED USP_RP_InsBRDTDeliverableInstance';
+    END
+

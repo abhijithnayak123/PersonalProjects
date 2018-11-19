@@ -1,0 +1,95 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllClientAccounts]    Script Date: 06/12/2014 17:43:14 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllClientAccounts]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetAllClientAccounts]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllClientAccounts]    Script Date: 06/12/2014 17:43:14 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************          
+** Name   :   USP_OP_GetAllClientAccounts          
+** Short Desc : Put in Short Description          
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC USP_OP_GetAllClientAccounts 100023      
+   -- parameters          
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By : Tanuj     
+** Company  :  Kaspick & Company          
+** Project  :  BOI - Katana          
+** Created DT :  05/15/2014          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** 05/15/2014   Tanuj             Created 
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_GetAllClientAccounts] @UserID INT
+AS
+BEGIN
+
+DECLARE @UserRole TABLE(ManagerCode VARCHAR(10),contactID INT, ContactName VARCHAR(100), contactrolecode INT, ContactRoleCodeDesc VARCHAR(100),
+userid INT, firstname VARCHAR(50), lastname VARCHAR(50))
+
+INSERT INTO @UserRole EXEC USP_KS_GetUserRole
+
+    
+SELECT AM.ManagerCode AS ManagerCode
+		,RTRIM(LTRIM(AM.CustomerAccountNumber)) AS CustomerAccountNumber
+		,isnull(OpsAdmin.UserID, '') AS PrimaryOperationsCoordinator
+		, CASE WHEN isnull(myClient.UserID, 0)<> 0 THEN 1 ELSE 0 end  AS IsMyClient
+		,CASE 
+			WHEN AM.ActiveFlag = - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsClientActive
+		,CASE 
+			WHEN AM.ActiveFlag = - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsAccountActive
+		,ISNULL(CAST(UTD.TableDesc AS VARCHAR(40)), '') AS SLMasterAccount
+		,AM.AccountTypeCode AS ACCOUNTTYPE
+		,(ISNULL(ClntMngr.FirstName, '') + ' ' + ISNULL(ClntMngr.LastName, '')) AS CLIENTMANAGER
+		,(ISNULL(TrstAdmin.FirstName, '') + ' ' + ISNULL(TrstAdmin.LastName, '')) AS TRUSTADMINISTRATOR
+		,(ISNULL(trdr.FirstName, '') + ' ' + ISNULL(trdr.LastName, '')) AS TRADER
+		,(ISNULL(OpsAdmin.FirstName, '') + ' ' + ISNULL(OpsAdmin.LastName, '')) AS PORTFOLIOADMINISTRATOR
+		,UTD_SO.TableDesc AS ClientServiceOffering
+	FROM SYN_IT_AccountMaster AM
+	INNER JOIN SYN_IT_UDF_AccountMaster UAM ON UAM.CustomerAccountNumber_Key = AM.CustomerAccountNumber
+	LEFT Outer JOIN SYN_IT_ContactMaster CM ON CM.ManagerCode = AM.ManagerCode AND CM.ContactName2='Client'
+	LEFT OUTER JOIN SYN_IT_UDFTableDefinitions UTD ON UTD.TableCode = UAM.UDFAMColumn005
+	LEFT OUTER JOIN SYN_IT_UDFColumnDefinitions UTDF ON UTDF.TableID = UTD.TableID
+	LEFT OUTER JOIN SYN_IT_UDF_ContactMaster UCM ON UCM.ContactID_Key = CM.ContactID
+	LEFT OUTER JOIN SYN_IT_UDFTableDefinitions UTD_SO ON UTD_SO.TableCode = UCM.UDFCMColumn003
+	LEFT OUTER JOIN @UserRole myClient ON myClient.ManagerCode = am.ManagerCode AND myClient.ContactRoleCode IN (2,517,26,34,519,515,510) AND myClient.UserID=@UserID
+	LEFT OUTER JOIN @UserRole ClntMngr ON ClntMngr.ManagerCode = am.ManagerCode AND ClntMngr.ContactRoleCode IN (2)
+	LEFT OUTER JOIN @UserRole TrstAdmin ON TrstAdmin.ManagerCode = am.ManagerCode AND TrstAdmin.ContactRoleCode IN (510)
+	LEFT OUTER JOIN @UserRole trdr ON trdr.ManagerCode = am.ManagerCode AND trdr.ContactRoleCode IN (515)
+	LEFT OUTER JOIN @UserRole OpsAdmin ON OpsAdmin.ManagerCode = am.ManagerCode AND OpsAdmin.ContactRoleCode IN (517)
+	ORDER BY  AM.ManagerCode,AM.CustomerAccountNumber
+
+END
+GO
+
+

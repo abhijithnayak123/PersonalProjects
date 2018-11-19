@@ -1,0 +1,143 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAffectedAccounts'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftAffectedAccounts;
+
+	PRINT 'DROPPED USP_EX_GetWftAffectedAccounts';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetWftAffectedAccounts
+** Old Name: It was not there in old it is new
+** Short Desc:	
+** Full Description
+**        This stored proc is used to populate Affected Accounts
+**
+** Sample Call
+	[USP_EX_GetWftAffectedAccounts] '<root><Item ID="CCGAP         "></Item><Item ID="CCSOS         "></Item></root>',	33562
+	 	[USP_EX_GetWftAffectedAccounts]  '<root><Item ID="CCZIT         " ></Item></root>',2817
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Mallikarjun 
+**	Company	  :	Opteamix
+**	Project	  :	Excelsior TAG
+**	Created DT:	10-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+** 
+*******************************************************************************/
+CREATE PROCEDURE [dbo].USP_EX_GetWftAffectedAccounts  
+	(
+	@AffectedAccountsXML NVARCHAR(4000),
+	@ParticipantID INT
+	)
+AS
+BEGIN
+	BEGIN TRY
+		DECLARE @IDOC INT
+		DECLARE @AffectedAccounts TABLE (
+			ID INT identity(1, 1),
+			AccountID VARCHAR(14)
+			)
+
+		---load and parse the xml document---          
+		EXEC sp_xml_preparedocument @IDOC OUTPUT,
+			@AffectedAccountsXML
+
+		DECLARE @accounts_array VARCHAR(max)
+
+		INSERT INTO @AffectedAccounts (ACCOUNTID)
+		SELECT ID
+		FROM OPENXML(@idoc, '/root/Item', 1) WITH (ID VARCHAR(14))
+    
+		SELECT @accounts_array = ACCOUNTID
+		FROM @AffectedAccounts
+       -- select * from @AffectedAccounts
+		--PRINT @accounts_array
+	     --select * from @accounts_array
+		
+		SELECT '[' + RTRIM(RI.CustomerAccountNumber) + '] ' + AccMstr.CustomerDescriptionLine1 AS AffectedAccounts,
+		CASE 
+			WHEN BD.SeasonalAddressFlag = -1 
+			THEN 'Seasonality'
+			WHEN BD.SeasonalAddressFlag = 0 OR BD.SeasonalAddressFlag IS NULL
+			THEN convert(varchar(14), BD.PayeeAddressID)
+				--THEN ( BD.PayeeAddressID)
+			END AS AddressID
+
+		--,CADD.Address1,CADD.Address2,CADD.Address3,
+		--CADD.State,CADD.ZipCode,CADD.CountryCode
+		--BD.SeasonalAddressFlag, -- Clarification pending
+		FROM SYN_IT_RemittanceInstructions RI
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON RI.CustomerAccountNumber=AccMstr.CustomerAccountNumber
+		INNER JOIN SYN_IT_BeneficiaryDistributions BD ON RI.InstructionID = BD.InstructionID
+		LEFT JOIN SYN_IT_ContactAddresses CADD ON BD.PayeeAddressID = CADD.ID
+		INNER JOIN SYN_IT_ContactMaster ConMstr ON CADD.ContactID = ConMstr.ContactID
+	     --- INNER JOIN FN_SplitString(@accounts_array, '^') A ON RI.CustomerAccountNumber = A.Items
+	      
+  WHERE
+			RI.CustomerAccountNumber IN (
+				SELECT ACCOUNTID
+				FROM @AffectedAccounts
+				) -- '7777654'
+			AND 
+			BD.PayeeID = @ParticipantID
+			
+			
+	END TRY
+
+	BEGIN CATCH
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_GetWftAffectedAccounts';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage,
+				-- Message text.
+				@ErrorSeverity,
+				-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAffectedAccounts'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftAffectedAccounts';
+END

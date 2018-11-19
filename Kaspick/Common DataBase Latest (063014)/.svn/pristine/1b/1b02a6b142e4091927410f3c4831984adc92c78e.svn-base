@@ -1,0 +1,167 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_SaveProfileTaxConditions')
+    BEGIN
+        DROP PROCEDURE USP_EX_SaveProfileTaxConditions;
+        PRINT 'DROPPED USP_EX_SaveProfileTaxConditions';
+    END
+GO 
+
+/*********************************************************************************************************************                                           
+* Procedure Name : USP_EX_SaveProfileTaxConditions
+* Old Procedure Name  : USP_EIS_EX_PROFILE_TAX_CONDITIONS_InsUpdProc   
+* Description     : To INSERT records into Table, TBL_EIS_EX_PROFILE_TAX_CONDITIONS  
+* Input           : '<root><Item CONDITIONID="764" STATUSID="676" STARTYEAR="2000" ENDYEAR="" USERID="69" ADVENTID=""></Item><Item CONDITIONID="765" STATUSID="676" STARTYEAR="" ENDYEAR="" USERID="69" ADVENTID=""></Item><Item CONDITIONID="763" STATUSID="67
+6" STARTYEAR="" ENDYEAR="" USERID="69" ADVENTID=""></Item><Item CONDITIONID="766" STATUSID="676" STARTYEAR="" ENDYEAR="" USERID="69" ADVENTID=""></Item></root>',272  
+* Modification Log: Query Indentation  
+*     For update on Alerts table; modified by and modified date columns are updated.  
+*                              
+* Date         Modified By  Description                                              
+*--------------------------------------------------------------------------------------------------------------------                                           
+* 20-Dec-06  Geetha P   Created
+* 14-Apr-2014 Yugandhar		EXCREQ 6.1    
+*********************************************************************************************************************/            
+  
+CREATE PROCEDURE USP_EX_SaveProfileTaxConditions   
+(  
+ @XMLDOC VARCHAR(4000),  
+ @TAX_ID INT    
+)  
+  
+AS  
+  
+BEGIN  
+ --DECLARE @TAX_ID INT  
+ DECLARE @CONDITION_ID INT  
+ DECLARE @STATUS_ID INT  
+ DECLARE @START_YEAR INT  
+ DECLARE @ADVENT_ID VARCHAR(8)  
+ DECLARE @END_YEAR INT  
+ DECLARE @MODIFIED_USER_ID INT  
+   
+ DECLARE @IDOC int  
+  
+ EXEC sp_xml_preparedocument @IDOC OUTPUT, @XMLDOC  
+  
+ DECLARE CUR_TAX CURSOR FOR  
+ (SELECT * FROM OPENXML (@IDOC, '/root/Item',3)   
+  WITH (CONDITIONID INT,  
+     STATUSID INT,  
+     STARTYEAR INT,  
+     ENDYEAR INT,  
+     USERID INT,  
+     ADVENTID VARCHAR(8)))   
+   
+ OPEN CUR_TAX  
+ FETCH FROM CUR_TAX INTO @CONDITION_ID,@STATUS_ID,@START_YEAR,@END_YEAR,@MODIFIED_USER_ID,@ADVENT_ID  
+  
+ WHILE @@FETCH_STATUS = 0  
+ BEGIN  
+  
+  IF EXISTS (SELECT TAX_ID,CONDITION_ID FROM TBL_BR_ProfileTaxCondition WHERE TAX_ID = @TAX_ID AND CONDITION_ID = @CONDITION_ID)    
+  BEGIN    
+  
+   BEGIN TRAN    
+  
+   UPDATE   
+    TBL_BR_ProfileTaxCondition  
+   SET   
+    STATUS_ID = @STATUS_ID,  
+    START_YEAR = (CASE WHEN (@START_YEAR = 0 OR @START_YEAR IS NULL) THEN NULL ELSE @START_YEAR END),  
+    --COMBINED_ACCOUNT_ADVENT_ID = @ADVENT_ID,  
+    END_YEAR = (CASE WHEN (@END_YEAR = 0 OR @END_YEAR IS NULL) THEN NULL ELSE @END_YEAR END),  
+    MODIFIED_USER_ID = @MODIFIED_USER_ID,  
+    MODIFIED_DATE = GETDATE()     
+   WHERE   
+    TAX_ID = @TAX_ID  
+    AND CONDITION_ID = @CONDITION_ID  
+    
+   IF (@@error!=0)  
+   BEGIN  
+    RAISERROR  1000095 'USP_EX_SaveProfileTaxConditions: Cannot update TBL_BR_ProfileTaxCondition'  
+    ROLLBACK TRAN  
+    RETURN (-1)      
+   END  
+  
+   COMMIT TRAN  
+  END  
+  ELSE  
+  BEGIN  
+   BEGIN TRAN  
+  
+   INSERT INTO TBL_BR_ProfileTaxCondition (  
+    TAX_ID,  
+    CONDITION_ID,  
+    STATUS_ID,   
+    START_YEAR,   
+    END_YEAR,  
+    --COMBINED_ACCOUNT_ADVENT_ID,  
+    MODIFIED_DATE,  
+    MODIFIED_USER_ID,  
+    CREATED_DATE,  
+    CREATED_USER_ID)  
+   VALUES (  
+    @TAX_ID,  
+    @CONDITION_ID,  
+    @STATUS_ID,  
+    (CASE WHEN (@START_YEAR = 0 OR @START_YEAR IS NULL) THEN NULL ELSE @START_YEAR END),  
+    (CASE WHEN (@END_YEAR = 0 OR @END_YEAR IS NULL) THEN NULL ELSE @END_YEAR END),  
+    --@ADVENT_ID,  
+    GETDATE(),  
+    @MODIFIED_USER_ID,  
+    GETDATE(),  
+    @MODIFIED_USER_ID)  
+    
+   IF (@@error!=0)  
+   BEGIN  
+    RAISERROR  1000096 'USP_EX_SaveProfileTaxConditions: Cannot update TBL_BR_ProfileTaxCondition'  
+    ROLLBACK TRAN  
+    RETURN (-1)  
+   END  
+  
+   COMMIT TRAN  
+  END  
+ FETCH NEXT FROM CUR_TAX   
+   INTO @CONDITION_ID,@STATUS_ID,@START_YEAR,@END_YEAR,@MODIFIED_USER_ID,@ADVENT_ID  
+ END--WHILE ENDS  
+  
+ CLOSE CUR_TAX  
+ DEALLOCATE CUR_TAX  
+  
+ ---REMOVE XML DOCUMENT FROM MEMORY---  
+ EXEC SP_XML_REMOVEDOCUMENT @IDOC   
+END  
+
+ GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_SaveProfileTaxConditions') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_SaveProfileTaxConditions';
+	END   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

@@ -1,0 +1,144 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdPGCalcReviewInfo]    Script Date: 01/06/2014 14:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_UpdPGCalcReviewInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_UpdPGCalcReviewInfo]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdPGCalcReviewInfo]    Script Date: 01/06/2014 14:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_UpdPGCalcReviewInfo                      
+** Short Desc: Update review info for manully matched payment data.  
+**  
+** Full Description: Update review info for manully matched payment data.  
+**  
+** Input Arguments:   
+	@XMLDATA XML,  
+	@ReviewedBy INT,    
+	@ReturnStatus INT  OUTPUT  
+**       
+** Sample Call  
+	Declare @XMLDATA XML,  
+	@ReturnStatus INT  
+	SET @XMLDATA='<PGCalcPaymentDataCollection><InsertList></InsertList><UpdateList><PGCalcPaymentData Account1="Account1"  Account2="Account2"  CustomerAccountNumber="ACPIF2        "  ContactID="41999"  GiftDate="1/1/1970 12:00:00 AM"  PayeeName="ELLEN HOWARD"  PaymentAmount="30.31"  PaymentBatch="14433"  PaymentDate="1/28/2014 12:00:00 AM"  PaymentID="0"  PeriodEndDate="1/24/2014 12:00:00 AM"  PersonCode="101910"  PGCalcPaymentID="0"  PIFIncome="122.71"  PIFUnits="50"  PIFValue="6317.76"  SeparateCheck="0"  TaxWithholding="0"  MergedPGCalcPaymentID="996471"  MergedPaymentAmount="0"  UserId="100169"  InstructionID="0"  BeneficiaryDistributionID="0"  ManagerCode=""  RecordVersion="0x0000000000429962"  /></UpdateList><DeleteList></DeleteList></PGCalcPaymentDataCollection>'      
+	EXEC  USP_PP_UpdPGCalcReviewInfo @XMLDATA,100226,@ReturnStatus output  
+	SELECT @ReturnStatus  
+**           
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                                         
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06-Jan-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_UpdPGCalcReviewInfo] (
+	@XMLDATA XML
+	,@ReviewedBy INT
+	,@ReturnStatus INT OUTPUT
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+		--  Variable Data Assignment  --              
+	SET @ReturnStatus = 0;
+
+	CREATE TABLE #TmpPGCalcPayment (
+		ID INT IDENTITY(1, 1)
+		,MergedPGCalcPaymentID INT
+		,RecordVersion VARCHAR(1000)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	BEGIN TRANSACTION
+
+	INSERT INTO #TmpPGCalcPayment (
+		MergedPGCalcPaymentID
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'int')
+		,XMLDATA.item.value('@RecordVersion[1]', 'varchar(1000)')
+	FROM @XMLDATA.nodes('//PGCalcPaymentDataCollection/UpdateList/PGCalcPaymentData') AS XMLDATA(item)
+
+	--Dirty Write Check        
+	-- IF record version is changed PRIOR TO this Update then flag those records WITH ReturnStatus AS -2   
+	UPDATE #TmpPGCalcPayment
+	SET ReturnStatus = - 2
+	FROM #TmpPGCalcPayment TmpPgCalc
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalcPmnt
+		ON PGCalcPmnt.MergedPGCalcPaymentID = TmpPgCalc.MergedPGCalcPaymentID
+	WHERE CONVERT(VARCHAR(20), CAST(PGCalcPmnt.RecordVersion AS VARBINARY(8)), 1) <> TmpPgCalc.RecordVersion
+
+	--- Set ReturnStatus to -2 even if a single record is found with dirty write    
+	IF EXISTS (
+			SELECT 1
+			FROM #TmpPGCalcPayment
+			WHERE ReturnStatus = - 2
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+	ELSE
+	BEGIN
+		UPDATE TBL_PP_PGCalcPaymentDataMerged
+		SET GiftWrapPaymentReviewedBy = @ReviewedBy
+			,GiftWrapPaymentReviewDate = getdate()
+		FROM TBL_PP_PGCalcPaymentDataMerged PGCalcPmnt
+		INNER JOIN #TmpPGCalcPayment TmpPGCalc
+			ON PGCalcPmnt.MergedPGCalcPaymentID = TmpPGCalc.MergedPGCalcPaymentID
+	END
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

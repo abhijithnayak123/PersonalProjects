@@ -1,0 +1,122 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveSTGStatusChange]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewSaveSTGStatusChange]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewSaveSTGStatusChange]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveSTGStatusChange]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewSaveSTGStatusChange    
+** Short Desc:  Updates the status changes for the given staging ids.  
+**    
+** Full Description : Updates the status changes for the given staging ids. 
+**            
+**    
+** Sample Call    
+ DECLARE @Ret int  
+ DECLARE @XMLDATA XML  
+ SET @XMLDATA =   
+        '<StatusChangeCollection>  
+   <StatusChange StagingID="10285"  StatusID="2"  GroupID="39"  CustomerAccountNumber="352K720"  RunDate="10/14/2007 12:00:00 AM"  UserID="200737" />  
+  </StatusChangeCollection>'  
+    EXEC USP_IE_ReviewSaveSTGStatusChange  -- parameters  
+  @XMLDATA, @Ret OUTPUT     
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/13/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewSaveSTGStatusChange]  @XMLDATA XML,  
+ @return_status int OUTPUT  
+AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --     
+	DECLARE @UpdateStaging TABLE (
+		StagingID INT NULL
+		,StatusID INT NULL
+		,UserID INT NULL
+		);
+
+	-- Body of procedure  --  
+	BEGIN TRY
+		BEGIN TRAN
+
+		INSERT INTO @UpdateStaging
+		SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Staging.value('@StatusID[1]', 'int') AS StatusID
+			,XmlInput.Staging.value('@UserID[1]', 'int') AS UserID
+		FROM @XMLDATA.nodes('//StatusChangeCollection/UpdateList/StatusChange') AS XmlInput(Staging)
+
+		UPDATE TBL_IE_STG_Estimate
+		SET StatusID = XmlInput.StatusID
+			,UserID = XmlInput.UserID 
+		--UserID updation is needed,
+		--because the trigger TRG_TBL_IE_STG_Estimate inserts User Id value in the table TBL_IE_History.     
+		FROM @UpdateStaging XmlInput
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = XmlInput.StagingID
+
+	
+	COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @return_status = - 1;
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

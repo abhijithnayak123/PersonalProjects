@@ -1,0 +1,109 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPGCalcPaymentData]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPGCalcPaymentData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPGCalcPaymentData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPGCalcPaymentData]    Script Date: 10/23/2013 16:47:44 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name:     USP_PP_GetPGCalcPaymentData      
+** Short Desc: Procedure to get all the PG Calc data for a batch      
+**      
+** Full Description      
+**        Procedure to get all the PG Calc data for a batch      
+**      
+** Sample Call      
+        EXEC USP_PP_GetPGCalcPaymentData 6      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Bandish Gupta
+** Company   : Kaspick & Company
+** Project   : BackOffice Integration
+** Created DT: 02-Sep-2013
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetPGCalcPaymentData] --7687     
+	-- parameters here      
+	(@PaymentBatch INT)
+AS
+BEGIN
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;
+
+
+	--  Variable Declarations  --      
+	--counters      
+	SELECT CalcPmt.Account1
+		,CalcPmt.Account2
+		,CalcPmt.CustomerAccountNumber
+		,CalcPmt.ContactID
+		,CalcPmt.GiftDate
+		,CalcPmt.PayeeName
+		,CalcPmt.PaymentAmount
+		,CalcPmt.PaymentBatch
+		,CalcPmt.PaymentDate
+		,CalcPmt.PaymentID
+		,CalcPmt.PeriodEndDate
+		,CalcPmt.PersonCode
+		,CalcPmt.MergedPGCalcPaymentID
+		,CalcPmt.PIFIncome
+		,CalcPmt.PIFUnits
+		,CalcPmt.PIFValue
+		,CalcPmt.SeparateCheck
+		,CalcPmt.TaxWithholding
+		,CalcPmt.MatchType
+		,CalcPmt.CreatedBy
+		,(usr.FirstName + '' + usr.LastName) AS GiftWrapPaymentReviewedBy
+		,CalcPmt.GiftWrapPaymentReviewDate
+		,'Posted' = CASE 
+			WHEN isnull(CalcPmt.PaymentId, 0) = 0
+				THEN 'No'
+			ELSE 'Yes'
+			END
+		,
+		-- da.AccountType,  -- Applicaiton had taken care this field (retrived from Innotrust Service).
+		CalcPmt.TaxYear
+		,CalcPmt.RecordVersion AS RecordVersion
+	FROM TBL_PP_PGCalcPaymentDataMerged CalcPmt
+	LEFT OUTER JOIN TBL_KS_USER usr ON CalcPmt.GiftWrapPaymentReviewedBy = usr.UserID
+	WHERE CalcPmt.PaymentBatch = @PaymentBatch
+	ORDER BY CalcPmt.CustomerAccountNumber
+		,CalcPmt.PayeeName
+
+	SET NOCOUNT OFF
+END
+	-- End of procedure  --  
+
+GO
+
+

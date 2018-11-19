@@ -1,0 +1,283 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_DonorBeneficiaryInformation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_DonorBeneficiaryInformation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_DonorBeneficiaryInformation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_DonorBeneficiaryInformation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_KCo_DonorBeneficiaryInformation                      
+** Short Desc: Donor/Beneficiary Information from Paragon  
+**                      
+** Full Description: Donor/Beneficiary Information from Paragon  
+**      
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+
+ EXEC dbo.USP_KCo_DonorBeneficiaryInformation 'ACL', 'Yes'  
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 01-APR-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 08/23/2014 Aashay	16786		Fix for bank name mismatch.
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_DonorBeneficiaryInformation] (
+	@ManagerCode AS CHAR(4)
+	,@IncludeDeceasedContacts AS VARCHAR(8)
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT DISTINCT AccMstr.ManagerCode AS [ManagerCode]
+		,AccMstr.CustomerAccountNumber
+		--,AccMstr.CustomerShortName AS [AccountName]
+		,RTRIM(CASE 
+				WHEN ISNULL(AccMstr.CustomerDescriptionLine1, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMstr.CustomerDescriptionLine1) + ' '
+				END + CASE 
+				WHEN ISNULL(AccMstr.CustomerDescriptionLine2, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMstr.CustomerDescriptionLine2) + ' '
+				END + CASE 
+				WHEN ISNULL(AccMstr.CustomerDescriptionLine3, '') = ''
+					THEN ''
+				ELSE RTRIM(AccMstr.CustomerDescriptionLine3) + ' '
+				END + ISNULL(AccMstr.CustomerDescriptionLine4, '')) AS [AccountName]
+		,AccMstr.AccountTypeCode AS [AccountTypeCode]
+		,ContRolCds.ContactRoleCodeDesc AS [ContactType]
+		,CntctMstr.ContactID AS [ContactID]
+		,UCntctAcctRole.UDFCAColumn011 AS [ManagerBeneficiaryID]
+		,CntctMstr.PrimaryPrefix AS [Salutation]
+		,LTRIM(RTRIM((
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(CntctMstr.PrimaryLastName)), '') = '')
+							THEN ''
+						ELSE (CntctMstr.PrimaryLastName + ' ')
+						END
+					) + (
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(CntctMstr.PrimaryFirstName)), '') = '')
+							THEN ''
+						ELSE (CntctMstr.PrimaryFirstName + ' ')
+						END
+					) + ISNULL(CntctMstr.PrimaryMiddleInitial, ''))) AS [ContactName]
+		,CntctMstr.PrimaryLastName AS [LastName]
+		,CntctMstr.PrimaryFirstName AS [FirstName]
+		,CntctMstr.PrimaryMiddleInitial AS [MiddleInitials]
+		,CntctMstr.SSN AS [SSN]
+		,CntctMstr.ContactName AS [PaymentName]
+		,ISNULL(CntctMstr.TaxNameLine1,'') + '' + ISNULL(CntctMstr.TaxNameLine2,'') AS [TaxName]
+		,CntctMstr.DateOfBirth AS [BirthDate]
+		,CntctMstr.DateOfDeath AS [DateofDeath]
+		,CntctAddrs.AddressType AS [AddressType]
+		,[AddressBlock] = dbo.Fn_GetFormattedAddress(RTRIM(CntctAddrs.Address1), RTRIM(CntctAddrs.Address2), RTRIM(CntctAddrs.Address3), RTRIM(CntctAddrs.City), RTRIM(CntctAddrs.STATE), RTRIM(CntctAddrs.CountryCode), RTRIM(CntctAddrs.ZipCode))
+		,[Address1] = CntctAddrs.Address1
+		,[Address2] = CntctAddrs.Address2
+		,[Address3] = CntctAddrs.Address3
+		-- Obsolete ,[Mail Stop] = CntctAddrs.MailStop
+		,City = CntctAddrs.City
+		,STATE = CntctAddrs.STATE
+		,[ZipCode] = CAST(CntctAddrs.ZipCode AS VARCHAR(10))
+		--,CntctAddrs.CountryCode
+		,CountryCode = CntryCod.CountryDescription 
+		,[Fromdate] = CAST(MONTH(CntctAddrs.FromDate) AS VARCHAR(2)) +'/'+ CAST(DAY(CntctAddrs.FromDate) AS VARCHAR(2))+'/'+CAST(YEAR(GETDATE()) AS VARCHAR(4))
+		,[Todate] = CAST(MONTH(CntctAddrs.ToDate) AS VARCHAR(2)) +'/'+ CAST(DAY(CntctAddrs.ToDate) AS VARCHAR(2))+'/'+CAST(YEAR(GETDATE()) AS VARCHAR(4))
+		,AccntPayInf.FMV
+		,AccntPayInf.Valuation
+		,AccntPrfl.ObjectiveCode AS [ObjectiveCode]
+		,CntctMstr.PrimaryGender AS 'Gender'
+		,CASE 
+			WHEN ContPaymtMeth.PaymentType = 'Jrnl'
+				THEN 'JOURNAL'
+			ELSE ContPaymtMeth.PaymentType
+			END AS 'PaymentMethod'
+		,ABANumCod.ABABankName AS 'BankName'
+		,ABANumCod.ABANumberCode AS 'ABANumber'
+		,ContPaymtMeth.CreditAcctNumber AS 'Account'
+		,ContPaymtMeth.AccountType AS 'AccountType'
+		,CASE BenDest.FixedOrPercentageFlag
+			WHEN - 1
+				THEN 'Fixed'
+			WHEN 0
+				THEN 'Percent'
+			WHEN 2
+				THEN 'TBD'
+			WHEN 3
+				THEN 'Charitable - Deficiency'
+			WHEN 4
+				THEN 'Charitable - No Deficiency'
+			END AS 'DistributionType'
+		,BenDest.BeneficiaryAmount AS 'Distribution'
+	INTO #Tmp_DonorBeneInformaion
+	FROM SYN_IT_ContactMaster AS CntctMstr
+	INNER JOIN SYN_IT_ContactAccountRoles CntctAcctRole
+		ON CntctAcctRole.Contactid = CntctMstr.ContactId
+			AND CntctAcctRole.CONTACTROLECODE IN (
+				10
+				,21
+				,37
+				,24
+				) -- Donor and beneficiary
+	INNER JOIN SYN_IT_ContactRoleCodes ContRolCds
+		ON ContRolCds.ID = CntctAcctRole.ContactRoleCode
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = CntctAcctRole.CustomerAccountNumber
+	INNER JOIN TBL_INV_AccountProfile AccntPrfl
+		ON AccntPrfl.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	LEFT OUTER JOIN SYN_IT_ContactAddresses AS CntctAddrs
+		ON CntctMstr.ContactId = CntctAddrs.ContactId
+			AND CntctAddrs.ActiveFlag = - 1
+	LEFT OUTER JOIN SYN_IT_UDF_ContactAccountRole UCntctAcctRole
+		ON UCntctAcctRole.CustomerAccountNumber_Key = CntctAcctRole.CustomerAccountNumber
+	LEFT OUTER JOIN SYN_IT_CountryCodes CntryCod
+		ON CntryCod.CountryCode = CntctAddrs.CountryCode
+	LEFT OUTER JOIN TBL_PP_AnnualAccountPayoutInfo AccntPayInf
+		ON AccMstr.CustomerAccountNumber = AccntPayInf.CustomerAccountNumber
+			AND AccntPayInf.PayoutYear = YEAR(GETDATE())
+	LEFT OUTER JOIN SYN_IT_BeneficiaryDistributions BenDest
+		ON BenDest.PayeeID = CntctMstr.ContactID
+	LEFT OUTER JOIN SYN_IT_ContactPaymentMethods ContPaymtMeth
+		ON ContPaymtMeth.ID = BenDest.PayeePaymentMethodID
+	LEFT OUTER JOIN SYN_IT_ABANumberCodes ABANumCod
+		ON ABANumCod.ABANumberCode = ContPaymtMeth.ABANumberCode
+	WHERE (AccMstr.ManagerCode = @ManagerCode)
+		AND (
+			ISNULL(CntctMstr.DateOfDeath, '01/01/1900') = (
+				CASE 
+					WHEN @IncludeDeceasedContacts = 'Yes'
+						THEN ISNULL(CntctMstr.DateOfDeath, '01/01/1900')
+					ELSE '01/01/1900'
+					END
+				)
+			)
+	ORDER BY CntctMstr.PrimaryLastName
+		,AccMstr.CustomerAccountNumber
+
+	SELECT DISTINCT [ManagerCode] AS [Client Brief Name]
+		,CustomerAccountNumber AS [Advent ID]
+		,AccountName AS [Account Name]
+		,AccountTypeCode AS [Account Type]
+		,STUFF((
+				SELECT DISTINCT ',' + ContactType
+				FROM #Tmp_DonorBeneInformaion ChildDonorBene
+				WHERE PrntDonorBene.ContactID = ChildDonorBene.ContactID
+					AND PrntDonorBene.CustomerAccountNumber = ChildDonorBene.CustomerAccountNumber
+				FOR XML PATH('')
+					,TYPE
+				).value('(./text())[1]', 'varchar(200)'), 1, 1, '') AS [Contact Type]
+		,[ContactID]
+		,[ManagerBeneficiaryID] AS [Client Beneficiary ID]
+		,Salutation
+		,ContactName
+		,[LastName] AS [Last Name]
+		,[FirstName] AS [First Name]
+		,[MiddleInitials] AS [Middle Initials]
+		,dbo.Fn_GetFormatSSN(SSN) as SSN
+		,PaymentName AS[Payment Name]
+		,TaxName AS [Tax Name]
+		,[BirthDate] AS [Birth Date]
+		,[DateofDeath] AS [Date of Death]
+		,[AddressType] AS [Address Type]  
+		,[AddressBlock] AS [Address Block]
+		,[Address1] AS [Address 1]
+		,[Address2] AS [Address 2]
+		,[Address3] AS [Address 3]
+		,City
+		,STATE
+		,[ZipCode] AS [Zip Code]
+		,[CountryCode] AS [Country Code]
+		,[Fromdate] AS [From date]
+		,[Todate] AS [To date]
+		,FMV
+		,Valuation
+		,[ObjectiveCode] AS [Objective Code]
+		,Gender
+		,[PaymentMethod] AS [Payment Method]
+		,[BankName] AS [Bank Name]
+		,[ABANumber] AS [ABA Number]
+		,Account
+		,[AccountType] AS [Account Type]
+		,[DistributionType] AS [Distribution Type]
+		,Distribution
+	FROM #Tmp_DonorBeneInformaion PrntDonorBene
+	GROUP BY [ManagerCode]
+		,CustomerAccountNumber
+		,AccountName
+		,AccountTypeCode
+		,ContactType
+		,[ContactID]
+		,[ManagerBeneficiaryID]
+		,Salutation
+		,ContactName
+		,[LastName]
+		,[FirstName]
+		,[MiddleInitials]
+		,SSN
+		,PaymentName
+		,TaxName
+		,[BirthDate]
+		,[DateofDeath]
+		,[AddressType]
+		,[AddressBlock]
+		,[Address1]
+		,[Address2]
+		,[Address3]
+		,City
+		,STATE
+		,[ZipCode]
+		,[CountryCode]
+		,[Fromdate]
+		,[Todate]
+		,FMV
+		,Valuation
+		,[ObjectiveCode]
+		,Gender
+		,[PaymentMethod]
+		,[BankName]
+		,[ABANumber]
+		,Account
+		,[AccountType]
+		,[DistributionType]
+		,Distribution
+	ORDER BY [LastName]
+		,CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

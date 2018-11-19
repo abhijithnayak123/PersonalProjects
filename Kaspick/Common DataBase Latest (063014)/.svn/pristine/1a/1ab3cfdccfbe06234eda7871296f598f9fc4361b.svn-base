@@ -1,0 +1,128 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummaryHeader]    Script Date: 01/29/2014 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentSummaryHeader]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummaryHeader]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummaryHeader]    Script Date: 01/29/2014 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentSummaryHeader                      
+** Short Desc:  Procedure to generate Payment summary report 
+**                      
+** Full Description:   Procedure to generate Payment summary report header section
+**					               
+**        
+**                              
+** Input Arguments:    @CustomerAccountNumber VARCHAR(14)  
+,@TaxYear INT
+**         
+** Sample Call     
+
+EXEC USP_PP_ReportGetPaymentSummaryHeader  'ACSPE',2013     
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-JAN-14                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+** 04-Apr-2014	Saravanan		Added Additional Parameter and Added Sub SPs execution as per the Report generation service requirement.
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummaryHeader]
+	-- paremeters here                                
+	@CustomerAccountNumber VARCHAR(14)
+	,@TaxYear INT
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	---Declare Variable
+	DECLARE @varAccountTypeCode VARCHAR(20)
+	DECLARE @varPayoutPercentage FLOAT
+	DECLARE @varDateOpened DATETIME
+	DECLARE @varFullName VARCHAR(100)
+	DECLARE @varTrustAccountNumber VARCHAR(20)
+	DECLARE @varFixedPayment BIT
+	DECLARE @varProjectedAccountCloseDate DATETIME
+	DECLARE @TrustType VARCHAR(200)
+
+	SELECT @varAccountTypeCode = AccntMstr.AccountTypeCode
+		,@varPayoutPercentage = CTAccntDtls.PayoutPercentage
+		,@varDateOpened = AccntMstr.DateOpened
+		,@varFullName = Isnull(AccntMstr.CustomerDescriptionLine1, '') + ' ' + Isnull(AccntMstr.CustomerDescriptionLine2, '') + ' ' + Isnull(AccntMstr.CustomerDescriptionLine3, '') + ' ' + Isnull(AccntMstr.CustomerDescriptionLine4, '')
+		,@varTrustAccountNumber = AccntMstr.TrustAccountNumber
+		,@varProjectedAccountCloseDate = AccntMstr.ProjectedAccountCloseDate
+	FROM SYN_IT_AccountMaster AccntMstr
+	INNER JOIN SYN_IT_CTAccountDetails CTAccntDtls
+		ON AccntMstr.CustomerAccountNumber = CTAccntDtls.CustomerAccountNumber
+			AND AccntMstr.CustomerAccountNumber = @CustomerAccountNumber
+
+	IF @CustomerAccountNumber = @varTrustAccountNumber
+	BEGIN
+		SET @varTrustAccountNumber = ''
+	END
+	--05-feb-2014-Salih: Account Type mapping changes
+	IF @varAccountTypeCode = 'CRUT'
+		OR @varAccountTypeCode = 'GLUT' --CurrentTrustType  
+		OR @varAccountTypeCode = 'NLUT'
+	BEGIN
+		SET @TrustType = cast(@varPayoutPercentage AS VARCHAR) + '% Standard Trust ' + '(' + @varAccountTypeCode + ')'
+	END
+	ELSE --05-feb-2014-Salih: Account Type mapping changes
+		IF @varAccountTypeCode = 'CRAT'
+			OR @varAccountTypeCode = 'GLAT'
+			OR @varAccountTypeCode = 'NLAT'
+		BEGIN
+			SET @TrustType = 'Annuity Trust ' + '(' + @varAccountTypeCode + ')'
+		END
+		ELSE
+		BEGIN
+			SET @TrustType = cast(@varPayoutPercentage AS VARCHAR) + '% Net-Income Trust ' + '(' + @varAccountTypeCode + ')'
+		END
+
+	SELECT @varFullName AS NameOfTrust
+		,@CustomerAccountNumber AS CustomerAccountNumber
+		,@varTrustAccountNumber AS TrustAccountNumber
+		,@TrustType AS TrustType
+		,convert(VARCHAR, @varDateOpened, 101) AS CreatedDate
+		,convert(VARCHAR, @varProjectedAccountCloseDate, 101) AS TerminatedDate
+		,convert(VARCHAR, @varProjectedAccountCloseDate, 101) AS MatureDate
+		,@varAccountTypeCode AS AccountType
+		
+		--Adding Sub Stored procedures execution as per the New Report Generation service requirement (supports only one Sp execution.
+		EXEC USP_PP_ReportGetPaymentSummarySubReport1  @CustomerAccountNumber,@TaxYear
+		EXEC USP_PP_ReportGetPaymentSummarySubReport2  @CustomerAccountNumber,@TaxYear
+		EXEC USP_PP_ReportGetPaymentSummarySubReport3  @CustomerAccountNumber,@TaxYear  
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

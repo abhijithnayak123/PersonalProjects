@@ -1,0 +1,193 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdWftAutopouplateBankpymtchg'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdWftAutopouplateBankpymtchg;
+
+	PRINT 'DROPPED USP_EX_UpdWftAutopouplateBankpymtchg';
+END
+GO
+
+/*************************************************************************************************************
+* Procedure Name : USP_EX_UpdWftAutopouplateBankpymtchg
+* Old Procedure Name  : sp_wft_autopouplate_bankpymtchg
+* Description     : This stored procedure is for workflow to update TRUST PARTICIPANT information
+	  
+** Sample Call
+
+* Modification Log                                             
+*                            
+* Date         Modified By		Description                                            
+*-------------------------------------------------------------------------------------------------------------
+* 30-April-10	Tanuj 			Create
+* 22-Mar-2014   Abhijith     EXCREQ9.1 Modified
+* 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted																																					
+**************************************************************************************************************/
+/* create the USP_EX_UpdWftAutopouplateBankpymtchg */
+CREATE PROCEDURE [dbo].[USP_EX_UpdWftAutopouplateBankpymtchg] @request_id INT
+	,@user_id INT
+AS
+BEGIN
+	BEGIN TRY --Start the Try Block..  
+		--BEGIN TRANSACTION -- Start the transaction..  
+		DECLARE @splitcheckflag TINYINT
+			,@pymtmethod VARCHAR(15)
+			,@participantid INT
+			,@accountid INT
+			,@accounts_array VARCHAR(max)
+			,@bankacctnum VARCHAR(20)
+			,@bankaccttype VARCHAR(10)
+			,@bankid INT
+			,@newaba VARCHAR(15)
+			,@newbankname VARCHAR(100)
+			,@prenote TINYINT
+			,@address1 VARCHAR(50)
+			,@address2 VARCHAR(50)
+			,@address3 VARCHAR(50)
+			,@city VARCHAR(30)
+			,@state VARCHAR(2)
+			,@zipcode VARCHAR(10)
+			,@country VARCHAR(25)
+			,@FromMonth INT
+			,@ToMonth INT
+		DECLARE @accountaffected TABLE (accountid INT)
+		DECLARE @nextaddressid INT
+		DECLARE @to_day INT
+			,@from_day INT
+		DECLARE @endmonth DATETIME
+
+		SET @frommonth = 1
+		SET @tomonth = 12
+		SET @from_day = 1
+		SET @endmonth = cast(cast(year(getdate()) AS VARCHAR(10)) + '-' + cast(@tomonth AS VARCHAR(2)) + '-01' AS DATETIME)
+
+		SELECT @to_day = CASE 
+				WHEN isnull(@endmonth, '') = ''
+					THEN 31
+				ELSE day(dateadd(mm, datediff(mm, 30, @endmonth), 30))
+				END
+
+		SELECT @participantid = ContactID
+			,@pymtmethod = payment_method
+			,@bankacctnum = bank_account_number
+			,@bankaccttype = account_type
+			,@accounts_array = accts_array
+			,@newbankname = institution_ach_name
+			,@newaba = aba_number
+			,@address1 = institution_split_check_name
+			,@address2 = institution_attn_name
+			,@address3 = institution_address
+			,@city = institution_city
+			,@state = institution_state
+			,@zipcode = institution_zip_code
+			,@country = institution_country
+		FROM [TBL_WFT_BankPaymentChange]
+		WHERE guid = (
+				SELECT guid
+				FROM TBL_WFT_Request
+				WHERE request_id = @request_id
+					AND formid = 94
+				)
+
+		IF @pymtmethod = 'Split Check'
+			SET @pymtmethod = 'SPLITCHECK'
+
+		INSERT INTO @accountaffected
+		SELECT AccMstr.CustomerAccountNumber --,'['+AccMstr.adventid+'] '+AccMstr.fullname as accountsdetail   
+		FROM dbo.FN_SplitString(@accounts_array, '^') a
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = a.items
+
+		IF NOT @participantid = 0
+		BEGIN
+			IF @pymtmethod = 'splitcheck'
+			BEGIN
+				IF (
+						@country = 'usa'
+						OR @country = 'u.s.a'
+						OR @country = 'u.s.a.'
+						OR @country = 'us'
+						OR @country = 'u.s'
+						OR @country = 'u.s.'
+						OR @country = 'united states'
+						)
+				BEGIN
+					SET @country = 'USA'
+				END
+
+				IF (
+						isnull(@address1, '') = ''
+						AND isnull(@address2, '') = ''
+						AND isnull(@address3, '') <> ''
+						)
+				BEGIN
+					SET @address1 = @address3;
+					SET @address2 = '';
+					SET @address3 = ''
+				END
+				ELSE IF (
+						isnull(@address1, '') = ''
+						AND isnull(@address2, '') <> ''
+						AND isnull(@address3, '') = ''
+						)
+				BEGIN
+					SET @address1 = @address2;
+					SET @address2 = '';
+					SET @address3 = ''
+				END
+				ELSE IF (
+						isnull(@address1, '') = ''
+						AND isnull(@address2, '') <> ''
+						AND isnull(@address3, '') <> ''
+						)
+				BEGIN
+					SET @address1 = @address2;
+					SET @address2 = @address3;
+					SET @address3 = ''
+				END
+				ELSE IF (
+						isnull(@address1, '') <> ''
+						AND isnull(@address2, '') = ''
+						AND isnull(@address3, '') <> ''
+						)
+				BEGIN
+					SET @address2 = @address3;
+					SET @address3 = ''
+				END
+			END
+		END
+				--COMMIT TRANSACTION -- Transaction Success!  
+	END TRY
+
+	BEGIN CATCH
+		--ROLLBACK TRANSACTION
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdWftAutopouplateBankpymtchg'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_UpdWftAutopouplateBankpymtchg';
+END

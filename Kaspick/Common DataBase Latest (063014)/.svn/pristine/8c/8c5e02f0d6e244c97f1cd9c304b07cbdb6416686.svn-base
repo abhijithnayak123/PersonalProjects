@@ -1,0 +1,353 @@
+  IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc')
+BEGIN
+    DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc;
+    PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc';
+END
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc]    Script Date: 06/25/2014 11:30:06 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc                  
+** Short Desc: Retrieves number of Unexpected payments for deliverable items. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+    DECLARE @XMLDeliverableItems XML
+	SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection>
+	<InsertList></InsertList><UpdateList></UpdateList>
+	<DeleteList></DeleteList><SelectList>
+	<DeliverableItemsDataToValidate AccountID="104974"  BeneficiaryID="123559"  ClientEmployeeID="0"  ClientID="100130"  DeliverableItemID="12280"  DeliverableQueueID="1"  DonorID="118730"  TrustparticipantID="123421"  DeliverableFrequency="A"  GiftKey="0"  />
+	</SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc
+	@XMLDeliverableItems
+	
+	--TUFISC  
+ DECLARE @XMLDeliverableItems XML    
+ SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection>    
+ <InsertList></InsertList><UpdateList></UpdateList>    
+ <DeleteList></DeleteList><SelectList>    
+ <DeliverableItemsDataToValidate AccountID="102850"  BeneficiaryID="110270"  ClientEmployeeID="0"  ClientID="100066"  DeliverableItemID="44690"  DeliverableQueueID="52"  DonorID="103237"  TrustparticipantID="111083"  DeliverableFrequency="A"  GiftKey="0" />    
+ </SelectList></DeliverableItemsDataToValidateCollection>'     
+ EXEC USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc    
+ @XMLDeliverableItems 
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 08/11/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 09/07/2009    Venugopal  ET #10308 Updated to check with Expected Mature Date 
+   09/24/2009	Venugopal   ET #10308 Updated to check missed beneficiary payments.
+   09/27/2009	Venugopal             Added condition to validate schedules only 
+										if the distribution % is greater than zero.
+   11/27/2009	Venugopal	ET#10868	SP updated to trigger this rule when all the payments for the tax year are deleted.
+   01/17/2009	Venugopal   ET #11127  Updated to consider payments from the table BenPayment.
+   11/18/2013	Niveditha	Stanford 12/31 changes	Modified the procedure to consider the proxy beneficiaries
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+--  Initial Set statements  --      
+--SET NOCOUNT ON;      
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+--  Variable Declarations  --      
+DECLARE @procname VARCHAR(60);
+DECLARE @ErrorDesc VARCHAR(1000);
+DECLARE @ErrorNumber INT;
+DECLARE @PaymentSummary INT;
+DECLARE @SpecialIncomeEstim INT;
+-- Variables used for error handling - uncomment if needed      
+DECLARE @val1 VARCHAR(30);
+DECLARE @val2 VARCHAR(30);
+--  Temp tables, Cursors, Table Variables  --      
+DECLARE @DeliverableItemData TABLE (
+	DeliverableItemID INT
+	,AccountID INT
+	,BeneficiaryID INT
+	,DeliverableQueueID INT
+	);
+DECLARE @ScheduledPaymentsNumber TABLE (
+	AccountID INT
+	,BeneficiaryID INT
+	,PmtCount INT
+	)
+ -- 11/18/2013	Niveditha	Modified the procedure to consider the proxy beneficiaries 
+DECLARE @K1ScheduledPaymentsNumber TABLE (
+	AccountID INT
+	,BeneficiaryID INT
+	,PmtCount INT
+	)
+DECLARE @PaymentsNumber TABLE (
+	AccountID INT
+	,BeneficiaryID INT
+	,PmtCount INT
+	)
+-- 11/18/2013	Niveditha	Modified the procedure to consider the proxy beneficiaries 
+DECLARE @K1PaymentsNumber TABLE (
+	AccountID INT
+	,BeneficiaryID INT
+	,PmtCount INT
+	)
+DECLARE @DistinctAccountID TABLE (
+	AccountID INT
+	,BeneficiaryID INT
+	,ProxyBeneficiaryID INT
+	,DeliverableQueueYear INT
+	)
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc';
+
+-- Body of procedure  --      
+BEGIN TRY
+	SELECT @PaymentSummary = policydimensionid
+	FROM policydimension
+	WHERE fullname = 'Payment Summary'
+
+	SELECT @SpecialIncomeEstim = policydimensionid
+	FROM policydimension
+	WHERE fullname = 'Special income estim'
+
+	INSERT INTO @DeliverableItemData
+	SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+		,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+		,XMLdoc.DeliverableItemData.value('@BeneficiaryID[1]', 'int') AS BeneficiaryID
+		,XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID
+	FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+	JOIN DEFERREDGIFTACCOUNT DGA ON DGA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')
+	JOIN TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT DGAS ON DGAS.ACCOUNTID = DGA.ACCOUNTID
+	JOIN V_EIS_LIST_ITEMS VLI ON VLI.LIST_ITEM_ID = DGAS.CALCULATION_METHOD_ID
+	JOIN policyitem PSPI ON PSPI.ownerid = DGA.ACCOUNTID
+		AND PSPI.PolicyLevel = 300
+		AND PSPI.policydimensionid = @PaymentSummary
+	JOIN policyitem RIEPI ON RIEPI.ownerid = DGA.ACCOUNTID
+		AND RIEPI.PolicyLevel = 300
+		AND RIEPI.policydimensionid = @SpecialIncomeEstim
+	INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON VTT.BeneficiaryId = XMLdoc.DeliverableItemData.value('@BeneficiaryID[1]', 'int')
+		AND VTT.PARTICIPANT_TYPE LIKE ('%Beneficiary Active%')
+	WHERE XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar') = 'A'
+		AND DGA.AccountType <> 'PIF'
+		AND (
+			ISNULL(DGA.ExpectedMatureDate, 0) = 0
+			OR DATEDIFF(DAY, dateadd(year, 1, getdate()), DGA.ExpectedMatureDate) >= 0
+			)
+		AND PSPI.LogicalValue <> 0
+		AND (
+			VLI.LIST_ITEM_NAME <> 'Other'
+			OR RIEPI.LogicalValue <> 0
+			OR ISNULL(AnnuityAmount, 0) <> 0
+			)
+
+	INSERT INTO @DistinctAccountID
+	SELECT DISTINCT DID.AccountID
+		,DID.BeneficiaryID
+		,Proxy.BeneficiaryID
+		,DQ.DeliverableQueueYear
+	FROM @DeliverableItemData DID
+	INNER JOIN TBL_EIS_DT_DELIVERABLE_QUEUE DQ ON DID.DeliverableQueueID = DQ.DeliverableQueueID
+	LEFT JOIN Beneficiary Proxy ON Proxy.k1BeneficiaryID = DID.BeneficiaryID
+		AND DID.BeneficiaryID > 0
+
+	INSERT INTO @ScheduledPaymentsNumber
+	SELECT DA.AccountID
+		,DA.BeneficiaryID
+		,COUNT(*)
+	FROM BenPayoutSchedule BPS
+	JOIN Beneficiary B ON B.BeneficiaryID = BPS.BeneficiaryID
+	JOIN @DistinctAccountID DA ON DA.AccountID = B.AccountID
+		AND DA.BeneficiaryID = B.BeneficiaryID
+		AND BPS.TaxYear = DA.DeliverableQueueYear + 1
+	INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON VTT.BeneficiaryId = B.BeneficiaryID
+		AND VTT.PARTICIPANT_TYPE LIKE ('%Beneficiary Active%')
+	WHERE IsNull(BPS.PaymentId, 0) = 0
+		AND ISNULL(B.PercentOfPayments, 0) > 0
+	GROUP BY DA.AccountID
+		,DA.BeneficiaryID
+
+	--  11/18/2013	Niveditha	Stanford 12/31 changes	added below code to consider proxy for paymentID null or zero
+	INSERT INTO @K1ScheduledPaymentsNumber
+	SELECT DA.AccountID
+		,DA.BeneficiaryID
+		,COUNT(*)
+	FROM BenPayoutSchedule BPS
+	JOIN Beneficiary B ON B.BeneficiaryID = BPS.BeneficiaryID
+	JOIN @DistinctAccountID DA ON DA.AccountID = B.AccountID
+		AND DA.ProxyBeneficiaryID = B.BeneficiaryID
+		AND BPS.TaxYear = DA.DeliverableQueueYear + 1
+	INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTTP ON VTTP.BeneficiaryId = DA.ProxyBeneficiaryID
+		AND VTTP.PARTICIPANT_TYPE = 'Beneficiary Proxy'
+	WHERE IsNull(BPS.PaymentId, 0) = 0
+		AND ISNULL(B.PercentOfPayments, 0) > 0
+	GROUP BY DA.AccountID
+		,DA.BeneficiaryID
+
+	MERGE @ScheduledPaymentsNumber AS target
+	USING @K1ScheduledPaymentsNumber AS source
+		ON target.beneficiaryid = source.beneficiaryid
+	WHEN MATCHED
+		THEN
+			UPDATE
+			SET PmtCount = CASE 
+					WHEN target.PmtCount = source.PmtCount
+						THEN target.PmtCount
+					ELSE target.PmtCount + source.PmtCount
+					END
+	WHEN NOT MATCHED
+		THEN
+			INSERT (
+				accountid
+				,beneficiaryid
+				,Pmtcount
+				)
+			VALUES (
+				source.accountid
+				,source.beneficiaryid
+				,source.Pmtcount
+				);
+
+	INSERT INTO @PaymentsNumber
+	SELECT DA.AccountID
+		,DA.BeneficiaryID
+		,COUNT(*)
+	FROM BenPayment BPS --#11127
+	JOIN Payment PMT ON PMT.PaymentID = BPS.PaymentID
+	JOIN Beneficiary B ON B.BeneficiaryID = BPS.BeneficiaryID
+	JOIN @DistinctAccountID DA ON DA.AccountID = B.AccountID
+		AND DA.BeneficiaryID = B.BeneficiaryID
+		AND PMT.TaxYear = DA.DeliverableQueueYear + 1
+	INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTT ON VTT.BeneficiaryId = B.BeneficiaryID
+		AND VTT.PARTICIPANT_TYPE LIKE ('%Beneficiary Active%')
+	WHERE ISNULL(PMT.VoidDate, 0) = 0
+		AND ISNULL(B.PercentOfPayments, 0) > 0
+	GROUP BY DA.AccountID
+		,DA.BeneficiaryID
+		
+	--  11/18/2013	Niveditha	Stanford 12/31 changes	added below code to consider proxy for not voided payments
+	INSERT INTO @K1PaymentsNumber
+	SELECT DA.AccountID
+		,DA.BeneficiaryID
+		,COUNT(*)
+	FROM BenPayment BPS --#11127  
+	JOIN Payment PMT ON PMT.PaymentID = BPS.PaymentID
+	JOIN Beneficiary B ON B.BeneficiaryID = BPS.BeneficiaryID
+	JOIN @DistinctAccountID DA ON DA.AccountID = B.AccountID
+		AND DA.ProxyBeneficiaryID = B.BeneficiaryID
+		AND PMT.TaxYear = DA.DeliverableQueueYear + 1
+	INNER JOIN V_EIS_EX_TRUSTPARTICIPANT_TYPE VTTP ON VTTP.BeneficiaryId = DA.ProxyBeneficiaryID
+		AND VTTP.PARTICIPANT_TYPE = 'Beneficiary Proxy'
+	WHERE ISNULL(PMT.VoidDate, 0) = 0
+		AND ISNULL(B.PercentOfPayments, 0) > 0
+	GROUP BY DA.AccountID
+		,DA.BeneficiaryID
+
+	MERGE @PaymentsNumber AS target
+	USING @K1PaymentsNumber AS source
+		ON target.beneficiaryid = source.beneficiaryid
+	WHEN MATCHED
+		THEN
+			UPDATE
+			SET PmtCount = CASE 
+					WHEN target.PmtCount = source.PmtCount
+						THEN target.PmtCount
+					ELSE target.PmtCount + source.PmtCount
+					END
+	WHEN NOT MATCHED
+		THEN
+			INSERT (
+				accountid
+				,beneficiaryid
+				,Pmtcount
+				)
+			VALUES (
+				source.accountid
+				,source.beneficiaryid
+				,source.Pmtcount
+				);
+
+	UPDATE @ScheduledPaymentsNumber
+	SET PmtCount = ISNULL(SPM.PmtCount, 0) + ISNULL(PN.PmtCount, 0)
+	FROM @ScheduledPaymentsNumber SPM
+	JOIN @PaymentsNumber PN ON SPM.AccountID = PN.AccountID
+		AND SPM.BeneficiaryID = PN.BeneficiaryID
+
+	INSERT INTO @ScheduledPaymentsNumber
+	SELECT PN.AccountID
+		,PN.BeneficiaryID
+		,PN.PmtCount
+	FROM @PaymentsNumber PN
+	LEFT JOIN @ScheduledPaymentsNumber SPM ON PN.AccountID = SPM.AccountID
+		AND PN.BeneficiaryID = SPM.BeneficiaryID
+	WHERE ISNULL(SPM.AccountID, 0) = 0
+		AND ISNULL(SPM.BeneficiaryID, 0) = 0
+
+	SELECT DeliverableItemID
+		,1 AS RuleID
+		,'UnexpectedPaymentsNumber' AS Attribute
+		,ISNULL(CE.AnnualFrequency, 0) - ISNULL(SPN.PmtCount, 0) AS ActualValue
+		,'' AS DisplayMessage
+	FROM @DeliverableItemData DID
+	LEFT JOIN CyclicEvent CE ON CE.AccountID = DID.AccountID
+		AND CE.EventType = 'P'
+		AND ISNULL(CE.AnnualFrequency, 0) > 0
+	LEFT JOIN @ScheduledPaymentsNumber SPN ON SPN.AccountID = DID.AccountID
+		AND SPN.BeneficiaryID = DID.BeneficiaryID
+END TRY
+
+BEGIN CATCH
+	SET @ErrorDesc = ERROR_MESSAGE();
+	SET @ErrorNumber = ERROR_NUMBER();
+	SET @val1 = '';
+	SET @val2 = '';
+
+	EXEC dbo.spSYS_ErrorHandler @codename = @procname
+		,@errmsg = @ErrorDesc
+		,@errnbr = @ErrorNumber
+		,@val1 = ''
+		,@val1str = 'USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc: Cannot Select.'
+		,@val2 = ''
+		,@val2str = '';
+END CATCH
+	-- End of procedure  -- 
+END
+
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc')
+    BEGIN
+        PRINT 'CREATED USP_EIS_RPT_BR_VE_DR_UnexpectedPaymentsNumber_SelProc';
+    END

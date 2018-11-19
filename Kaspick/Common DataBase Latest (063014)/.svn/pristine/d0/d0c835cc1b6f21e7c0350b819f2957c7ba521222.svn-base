@@ -1,0 +1,784 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingTodayForwardLf'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradingTodayForwardLf;
+
+	PRINT 'DROPPED USP_EX_GetTradingTodayForwardLf';
+END
+GO
+
+/******************************************************************************      
+** Name : USP_EX_GetTradingTodayForwardLf
+** Old Name:     USP_EIS_EX_TRADING_TodayForward_LFSelProc      
+** Short Desc: THIS SP TO FETCH THE DETAILS OF ALERT EVENT BY SEARCH CRITIRIA ON TODAY AND FORWARD DATES    
+**      
+** Full Description      
+**       SEARCH CRITIRIA WILL PASSED AS PARAMETER TO THE SP, DEPENDING UPON IT SEARCHED VALUE WILL BE RETURNED    
+   FROM ALERT TABLE    
+**      
+** Sample Call      
+  USP_EX_GetTradingTodayForwardLf     
+ @startrow = 1,    
+ @endrow = 19,    
+ @SearchColumnName = 'ADVENT_ID',    
+ @SearchCriteria = 0,    
+ @strSearch = '',    
+ @Filtercolumnname = '',    
+ @strFilter = '',    
+ @sortcolumnname = 'ADVENT_ID',    
+ @SortOrder = 'ASC',    
+ @StatusValue = 'p'    
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       Set NOCOUNT             ON      
+**       Set LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: N.R.AMARNATH    
+** Company   : Kaspick & Company      
+** Project   : Excelsior  -- IM PROFILE    
+** Created DT: <03/23/2007>      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 20-Mar-14  Sanath   INVREQ3.1  Modified   
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted   
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradingTodayForwardLf] (
+	@startrow INT
+	,-- start row for the page    
+	@endrow INT
+	,-- end row for the page    
+	@searchcolumnname VARCHAR(100)
+	,-- this will be used when user wants to search a string within a column.    
+	-- ''    
+	@searchcriteria TINYINT
+	,-- 0-Begins with, 1-Contains    
+	@strsearch VARCHAR(255)
+	,-- search string that will be located in column provided above.    
+	@filtercolumnname VARCHAR(100)
+	,-- Column on which the default filtering will be done    
+	@strfilter VARCHAR(255)
+	,-- for filtering the char/varchar, which will work on filter control    
+	@sortcolumnname VARCHAR(100)
+	,-- column on which the sorting should work    
+	@sortorder VARCHAR(5)
+	,-- ASC or DESC     
+	@statusvalue VARCHAR(50)
+	)
+AS
+--  Variable Declarations  --    
+DECLARE @totalpagecount INT
+
+IF (@sortorder = '')
+	SET @sortorder = 'ASC'
+
+CREATE TABLE #TradingTaskListValue (
+	alertid INT
+	,adventid VARCHAR(50)
+	,duedate DATETIME
+	,STATUS VARCHAR(75)
+	,assignedto VARCHAR(50)
+	,cause VARCHAR(100)
+	,comments VARCHAR(254)
+	)
+
+DECLARE @tradingtaskfiltervalue TABLE (
+	alertid INT
+	,adventid VARCHAR(50)
+	,duedate DATETIME
+	,STATUS VARCHAR(75)
+	,assignedto VARCHAR(50)
+	,cause VARCHAR(100)
+	,comments VARCHAR(254)
+	)
+DECLARE @tradetasksearchvalue TABLE (
+	alertid INT
+	,adventid VARCHAR(50)
+	,duedate DATETIME
+	,STATUS VARCHAR(75)
+	,assignedto VARCHAR(50)
+	,cause VARCHAR(100)
+	,comments VARCHAR(254)
+	)
+
+INSERT INTO #TradingTaskListValue (
+	alertid
+	,adventid
+	,duedate
+	,STATUS
+	,assignedto
+	,cause
+	,comments
+	)
+SELECT BrAlrtEvnt.alertid
+	,AccPrfile.CustomerAccountNumber [advent_id]
+	,BrAlrtEvnt.alertdate [due date]
+	,BrAlrtEvnt.alertstatus [status]
+	,KsUsr.UserID [assigned to]
+	,BrAlrtEvnt.alertcause [cause]
+	,BrAlrtEvnt.alertcomment [alert comment]
+FROM TBL_BR_AlertEvent BrAlrtEvnt
+INNER JOIN TBL_INV_AccountProfile AccPrfile ON BrAlrtEvnt.CustomerAccountNumber = AccPrfile.CustomerAccountNumber
+INNER JOIN TBL_KS_User KsUsr ON BrAlrtEvnt.assignedto = KsUsr.UserID
+
+-- DUE DATE GREATER THAN OR EQUAL TO TODAY'S DATE    
+BEGIN
+	INSERT INTO @tradetasksearchvalue (
+		alertid
+		,adventid
+		,duedate
+		,STATUS
+		,assignedto
+		,cause
+		,comments
+		)
+	SELECT alertid
+		,adventid
+		,duedate
+		,STATUS
+		,assignedto
+		,cause
+		,comments
+	FROM #TradingTaskListValue
+	WHERE convert(DATETIME, convert(VARCHAR(10), duedate, 101)) >= convert(DATETIME, convert(VARCHAR(10), getdate(), 101))
+		AND STATUS LIKE @statusvalue + '%'
+END
+
+IF @strfilter <> ''
+BEGIN
+	IF @strfilter <> '123'
+	BEGIN
+		INSERT INTO @tradingtaskfiltervalue (
+			alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			)
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+		FROM @tradetasksearchvalue
+		WHERE adventid LIKE @strfilter + '%'
+	END
+	ELSE
+	BEGIN
+		INSERT INTO @tradingtaskfiltervalue (
+			alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			)
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+		FROM @tradetasksearchvalue
+		WHERE adventid LIKE '[0-9]%'
+	END
+END
+ELSE
+BEGIN
+	INSERT INTO @tradingtaskfiltervalue (
+		alertid
+		,adventid
+		,duedate
+		,STATUS
+		,assignedto
+		,cause
+		,comments
+		)
+	SELECT alertid
+		,adventid
+		,duedate
+		,STATUS
+		,assignedto
+		,cause
+		,comments
+	FROM @tradetasksearchvalue
+END
+
+-- Calculate total page count.    
+SELECT @totalpagecount = count(*)
+FROM @tradingtaskfiltervalue
+
+IF @startrow <> - 1
+BEGIN
+	--If selected records are to be displayed    
+	--Sorting on Portfoliocode    
+	--Added to order by duedate and adventid    
+	IF @sortcolumnname = ''
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY duedate
+							,adventid ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY duedate
+				,adventid ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY duedate
+							,adventid DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY duedate
+				,adventid DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'ADVENT_ID'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY adventid ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY adventid ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY adventid DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY adventid DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'DUEDATE'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY duedate ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY duedate ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY duedate DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY duedate DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'STATUS'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY STATUS ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY STATUS ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY STATUS DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY STATUS DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'ASSIGNEDTO'
+	BEGIN
+		IF @SORTORDER = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY assignedto ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY assignedto ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY assignedto DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY assignedto DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'CAUSE'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY cause ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY cause ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY cause DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY cause DESC
+		END
+	END
+	ELSE IF @sortcolumnname = 'COMMENTS'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY comments ASC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue value
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY comments ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT alertid
+					,adventid
+					,duedate
+					,STATUS
+					,assignedto
+					,cause
+					,comments
+					,row_number() OVER (
+						ORDER BY comments DESC
+						) AS rownumber
+					,isnull(@totalpagecount, 0) AS [totalcount]
+				FROM @tradingtaskfiltervalue
+				) AS universe
+			WHERE rownumber >= @startrow
+				AND rownumber <= @endrow
+			ORDER BY comments DESC
+		END
+	END
+END
+ELSE IF @sortcolumnname = ''
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY duedate
+			,adventid ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY duedate
+			,adventid DESC
+	END
+END
+ELSE IF @sortcolumnname = 'ADVENT_ID'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY adventid ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY adventid DESC
+	END
+END
+ELSE IF @sortcolumnname = 'DUEDATE'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY duedate ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY duedate DESC
+	END
+END
+ELSE IF @sortcolumnname = 'STATUS'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY STATUS ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY STATUS DESC
+	END
+END
+ELSE IF @sortcolumnname = 'ASSIGNEDTO'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY assignedto ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY assignedto DESC
+	END
+END
+ELSE IF @sortcolumnname = 'CAUSE'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY cause ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY cause DESC
+	END
+END
+ELSE IF @sortcolumnname = 'COMMENTS'
+BEGIN
+	IF @sortorder = 'ASC'
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY comments ASC
+	END
+	ELSE
+	BEGIN
+		SELECT alertid
+			,adventid
+			,duedate
+			,STATUS
+			,assignedto
+			,cause
+			,comments
+			,0 AS rownumber
+			,isnull(@totalpagecount, 0) AS [totalcount]
+		FROM @tradingtaskfiltervalue
+		ORDER BY comments DESC
+	END
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingTodayForwardLf'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTradingTodayForwardLf';
+END

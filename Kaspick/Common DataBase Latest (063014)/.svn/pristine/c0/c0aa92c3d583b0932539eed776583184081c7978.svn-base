@@ -1,0 +1,86 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestHeaderDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftRequestHeaderDetails;
+
+	PRINT 'DROPPED USP_EX_GetWftRequestHeaderDetails';
+END
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetWftRequestHeaderDetails
+** Old Name:     sp_wft_get_request_header_details
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to fetch the audit trail for the given requestid.
+**
+** Sample Call
+   sp_wft_get_request_header_details 584
+**
+** Return values: NONE
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Abhishek
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	8/3/2009
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+
+** 21-Mar-2014  Yugandhar EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftRequestHeaderDetails] --6 
+	-- paremeters here  
+	@request_id INT
+AS
+SELECT WftRqst.request_id
+,WftRqst.ManagerCode AS clientid
+,WftFrmCtrlExtn.form_abbrev
+,WftRqst.submitted_datetime
+,LstItm.ListItemName AS requestStatus
+,AccMgrCds.ManagerCode + '- ' + AccMgrCds.ManagerName AS ClientName
+,AccMstr.CustomerAccountNumber AS AccountID
+,AccMstr.CustomerAccountNumber + '- ' + isnull(AccMstr.CustomerDescriptionLine1, '') AS Accountname
+,ConMstr.ContactID
+,rtrim(ltrim(isnull(ConMstr.PrimaryFirstName, '') + ' ' + isnull(ConMstr.PrimaryMiddleInitial, '') + ' ' + isnull(ConMstr.PrimarylastName, ''))) AS ContactName
+,SubConRol.SubContactID AS Employeeid
+,rtrim(ltrim(isnull(ConMstr1.PrimaryFirstName, '') + ' ' + isnull(ConMstr1.PrimaryMiddleInitial, '') + ' ' + isnull(ConMstr1.PrimarylastName, ''))) AS SubmittedBy
+,ISNULL(ConAdres.eMail, '') AS submitter_email_mail
+FROM TBL_WFT_Request WftRqst
+LEFT JOIN SYN_IT_AccountMaster AccMstr ON WftRqst.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+LEFT JOIN SYN_IT_AccountManagerCodes AccMgrCds ON WftRqst.ManagerCode = AccMgrCds.ManagerCode
+LEFT JOIN SYN_IT_ContactMaster ConMstr ON WftRqst.ContactID = ConMstr.ContactID
+LEFT JOIN SYN_IT_SubContactRoles SubConRol ON SubConRol.SubContactID = WftRqst.submitted_employee_id AND SubConRol.ContactId = ConMstr.ContactId AND SubConRol.ContactRoleCode = 550
+LEFT JOIN SYN_IT_ContactMaster ConMstr1 ON SubConRol.SubContactID = ConMstr1.ContactID
+LEFT JOIN TBL_ListItem LstItm ON WftRqst.request_status_id = LstItm.ListItemID
+LEFT JOIN SYN_IT_ContactAddresses ConAdres ON WftRqst.ContactID = ConAdres.ContactID AND ConAdres.AddressType ='eMail'
+LEFT JOIN TBL_WFT_ML_FrmCtrlExtn WftFrmCtrlExtn ON WftRqst.FormID = WftFrmCtrlExtn.FormID
+WHERE WftRqst.request_id = @request_id
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestHeaderDetails'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftRequestHeaderDetails';
+END

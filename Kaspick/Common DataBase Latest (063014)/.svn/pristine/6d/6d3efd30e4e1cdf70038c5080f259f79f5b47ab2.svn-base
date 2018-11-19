@@ -1,0 +1,111 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportGetDiagnosticResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportGetDiagnosticResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportGetDiagnosticResult    
+** Short Desc:  Retrieves the diagnostic result for the given StagingIDs with respect to Diagnostic category.
+**    
+** Full Description : Retrieves the diagnostic result for the given StagingIDs with respect to Diagnostic category.
+**            
+**    
+** Sample Call    
+        EXEC USP_IE_ImportGetDiagnosticResult  -- parameters
+		'<ImportStagingCollection><InsertList>
+			<ImportStaging StagingID="811" />
+			<ImportStaging StagingID="812" />
+			<ImportStaging StagingID="813" />
+			</InsertList><UpdateList></UpdateList><DeleteList></DeleteList>
+		</ImportStagingCollection>', 'Income Estimate' 
+		
+		EXEC USP_IE_ImportGetDiagnosticResult  -- parameters
+		'<ImportStagingCollection><InsertList>
+			<ImportStaging StagingID="811" />
+			<ImportStaging StagingID="812" />
+			<ImportStaging StagingID="813" />
+			</InsertList><UpdateList></UpdateList><DeleteList></DeleteList>
+		</ImportStagingCollection>', 'CRT Review' 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/08/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportGetDiagnosticResult] @XMLDATA XML
+	,@DiagnosticCategory VARCHAR(20)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --
+	IF OBJECT_ID(N'TEMPDB.[DBO].[#Tmp_AccountsToBeImported') IS NOT NULL
+	BEGIN
+		DROP TABLE [DBO].[#Tmp_AccountsToBeImported]
+	END
+
+	CREATE TABLE #Tmp_AccountsToBeImported (StagingID INT)
+
+	--	Body of procedure  --
+	INSERT INTO #Tmp_AccountsToBeImported
+	SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+	FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+	
+	-- Retrieves the diagnostic result for the diagnostic category.
+	SELECT DiagRslt.CustomerAccountNumber AS AdventID
+		,DiagRslt.UserName
+		,DiagRslt.CreatedDate
+		,Diag.DiagnosticLevel
+		,Diag.DiagnosticType
+		,DiagRslt.DiagnosticResult
+		,DiagRslt.SecurityType
+		,DiagRslt.SecuritySymbol
+		,DiagRslt.CUSIP
+	FROM TBL_IE_Diagnostic Diag
+	INNER JOIN TBL_IE_DiagnosticResult DiagRslt
+		ON Diag.DiagnosticID = DiagRslt.DiagnosticID
+			AND DiagnosticCategory = @DiagnosticCategory
+	INNER JOIN #Tmp_AccountsToBeImported Accnt
+		ON DiagRslt.StagingID = Accnt.StagingID
+	ORDER BY DiagRslt.CustomerAccountNumber
+		,Diag.DiagnosticLevel
+		,Diag.DiagnosticType
+		,DiagRslt.SecurityType
+		,DiagRslt.SecuritySymbol
+		,DiagRslt.CUSIP
+
+	SET NOCOUNT OFF;
+END

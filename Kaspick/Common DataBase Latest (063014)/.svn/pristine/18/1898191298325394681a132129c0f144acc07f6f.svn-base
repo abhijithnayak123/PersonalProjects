@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportDelSTGJanOneHolding]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportDelSTGJanOneHolding]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportDelSTGJanOneHolding]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportDelSTGJanOneHolding]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportDelSTGJanOneHolding    
+** Short Desc: Deletes all holdings with the staging ids    
+**    
+** Full Description :  Deletes all holdings with the staging ids
+**            
+**    
+** Sample Call    
+  DECLARE @XMLDATA XML
+	SET @XMLDATA = '<StgHoldingCollection><InsertList></InsertList><UpdateList></UpdateList>
+	<DeleteList>
+		<StgHolding StagingID="813"  />
+		<StgHolding StagingID="452"  />
+	</DeleteList></StgHoldingCollection>'
+
+EXEC USP_IE_ImportDelSTGJanOneHolding @XMLDATA  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/07/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportDelSTGJanOneHolding] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DELETE
+	FROM TBL_IE_STG_JanOneHolding
+	WHERE StagingID IN (
+			SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			FROM @XMLDATA.nodes('//StgHoldingCollection/DeleteList/StgHolding') AS XmlInput(Item)
+			)
+
+	SET NOCOUNT OFF;
+END

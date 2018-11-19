@@ -1,0 +1,122 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsPaymentPublishProcessLogDetail]    Script Date: 05/21/2013 12:14:02 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsPaymentPublishProcessLogDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsPaymentPublishProcessLogDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[TBL_PP_PaymentPublishProcessLogDetail]    Script Date: 05/21/2013 12:14:02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                      
+** Name:     USP_PP_InsPaymentPublishProcessLogDetail                     
+** Short Desc: To INSERT the ProcessID and corresponding Process Descriptions, Start DateTime and End Date Time from application
+**                      
+** Full Description: To INSERT the ProcessID and corresponding Process Descriptions, Start DateTime and End Date Time
+**                              
+** Input Arguments:  
+ 			@ProcessID - Process ID key value from PaymentPublishProcessLog table
+*			@Description - Description for each step. Please refer to below example
+*			@Error - Error descriptive column
+*			@StartTime - Start Datetime
+*			@EndTime - End Datetime
+**         
+** Sample Call     
+EXEC USP_PP_InsPaymentPublishProcessLogDetail '<ProcessLogCollection><ProcessLog ProcessID="1" Description="Fetching template data and generating flat files" Error="" StartTime="9/27/2013" EndTime="9/27/2013" ></ProcessLog></ProcessLogCollection>'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Sep-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsPaymentPublishProcessLogDetail] @ProcessLogXML XML
+AS
+SET NOCOUNT ON
+
+BEGIN TRY
+	
+	INSERT INTO dbo.TBL_PP_PaymentPublishProcessLogDetail (
+		 ProcessID
+		,[Description]
+		,Error
+		,StartTime
+		,EndTime
+		)
+	SELECT XMLDoc.item.value('@ProcessID[1]', 'INT') AS ProcessID
+		,XMLDoc.item.value('@Description[1]', 'VARCHAR(200)') AS [Description]
+		,XMLDoc.item.value('@Error[1]', 'VARCHAR(200)') AS Error
+		,XMLDoc.item.value('@StartTime[1]', 'datetime') AS StartTime
+		,XMLDoc.item.value('@EndTime[1]', 'datetime') AS StartTime
+	FROM @ProcessLogXML.nodes('//ProcessLogCollection/ProcessLog') AS XMLDoc(item)
+
+	DECLARE @NoOfFileProcessed int, 
+			@ProcessID int, 
+			@Status VARCHAR(50)
+			
+	SELECT @ProcessID = XMLDoc.item.value('@ProcessID[1]', 'INT')
+	FROM @ProcessLogXML.nodes('//ProcessLogCollection/ProcessLog') AS XMLDoc(item)
+	
+	SELECT @NoOfFileProcessed = COUNT(FlatFileName) from  TBL_PP_FlatFile where ProcessID = @ProcessID
+	
+	IF EXISTS (SELECT 1 FROM TBL_PP_PaymentPublishProcessLogDetail WHERE ProcessID = @ProcessID AND [Error] IS NOT NULL AND [Error] <> '' )
+		SET @Status = 'Failure'
+	ELSE
+		SET @Status = 'Success'
+	
+	UPDATE TBL_PP_PaymentPublishProcessLog 
+	SET ProcessStatus = @Status
+		,NoOfFilesProcessed = @NoOfFileProcessed 
+		,EndTime = GETDATE()
+	WHERE ProcessID = @ProcessID
+	
+END TRY
+
+BEGIN CATCH
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+

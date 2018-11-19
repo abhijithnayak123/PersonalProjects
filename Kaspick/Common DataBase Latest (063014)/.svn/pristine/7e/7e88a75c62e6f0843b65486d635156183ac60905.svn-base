@@ -1,0 +1,131 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetVendorExpense]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetVendorExpense]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_PP_ReportGetVendorExpense    
+** Short Desc: Procedure to get data for the Vendor expense report    
+**      
+**      
+** Sample Call      
+        EXEC USP_PP_ReportGetVendorExpense 'ACL','01/01/2008','12/31/2014',1
+       EXEC USP_PP_ReportGetVendorExpense 'PF','01/01/2008','12/31/2014',0,'ACBAD'
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Asit   
+** Company   : Kaspick & Company       
+** Project   : Paragon - Reports and queries      
+** Created DT: 04/29/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetVendorExpense] @ManagerCode CHAR(4)
+	,@FromDate DATETIME = NULL
+	,--	From date            
+	@ToDate DATETIME = NULL
+	,--	To date            
+	@OptInclude INT
+	,@CustomerAccountNumber CHAR(14) = NULL -- Added for Kaspick Website Payments
+AS
+--  Variable Declarations  --
+SELECT DISTINCT AccMas.CustomerAccountNumber AS AdventID
+	,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS AccountName
+	,BenPaymt.VoidDate AS Voiddate
+	,BenPaymt.PaymentID
+	,BenPaymt.PayeeName
+	,BenPaymt.PaymentAmount
+	,CONVERT(VARCHAR, BenPaymt.PaymentDate, 101) AS PaymentDate
+	,CASE 
+		WHEN BenPaymt.PaymentMethod = 'ACH'
+			THEN 'ACH'
+		ELSE (upper(left(lower(BenPaymt.PaymentMethod), 1)) + substring(lower(BenPaymt.PaymentMethod), 2, len(BenPaymt.PaymentMethod)))
+		END AS PaymentMethod
+	,convert(VARCHAR, CashDstn.DocumentNumber) AS CheckNumber
+	,BenPaymt.Memo
+FROM SYN_IT_AccountMaster AccMas
+INNER JOIN TBL_PP_Beneficiarypayment BenPaymt ON AccMas.CustomerAccountNumber = BenPaymt.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_CashTransaction CashTran ON CashTran.CustomerAccountNumber = AccMas.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_CashDisbursements CashDstn ON CashTran.TransactionNumber = CashDstn.TransactionNumber
+WHERE (
+		(
+			(
+				(@FromDate IS NULL)
+				OR (
+					@FromDate IS NOT NULL
+					AND BenPaymt.PaymentDate >= @FromDate
+					)
+				)
+			AND (
+				(@ToDate IS NULL)
+				OR (
+					@ToDate IS NOT NULL
+					AND BenPaymt.PaymentDate <= @ToDate
+					)
+				)
+			AND (
+				CASE 
+					WHEN @OptInclude = 1
+						THEN (
+								CASE 
+									WHEN BenPaymt.PaymentMethod IS NULL
+										THEN 'x'
+									WHEN BenPaymt.PaymentMethod IS NOT NULL
+										THEN NULL
+									END
+								)
+					WHEN @OptInclude = 2
+						THEN (
+								CASE 
+									WHEN BenPaymt.PaymentMethod IS NULL
+										THEN NULL
+									WHEN BenPaymt.PaymentMethod IS NULL
+										THEN 'y'
+									END
+								)
+					WHEN (@OptInclude = 3)
+						THEN 'z'
+					END
+				) IS NOT NULL
+			)
+		AND (AccMas.ManagerCode = @ManagerCode)
+		)
+	AND BenPaymt.VoidDate IS NULL
+	AND (
+		@CustomerAccountNumber IS NULL
+		OR (
+			@CustomerAccountNumber IS NOT NULL
+			AND AccMas.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		)
+ORDER BY AccMas.CustomerAccountNumber ASC
+	,BenPaymt.PayeeName
+GO
+
+

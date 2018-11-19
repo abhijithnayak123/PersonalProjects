@@ -1,0 +1,79 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_UpdMarkEventsReconciled]    Script Date: 05/28/2014 12:12:49 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_UpdMarkEventsReconciled]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_UpdMarkEventsReconciled]
+GO
+
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_UpdMarkEventsReconciled]    Script Date: 05/28/2014 12:12:49 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_UpdMarkEventsReconciled      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call 
+EXEC USP_OP_UpdMarkEventsReconciled  -- parameters      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		T-Rex     
+** Created DT :		July/9/2009      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** July/9/2009                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_UpdMarkEventsReconciled]
+(@RunUser int )
+AS
+BEGIN
+		   
+UPDATE TBL_TR_Event 
+      SET EventStatusID=5
+      ,LastModifiedUserID=@RunUser 
+      ,LastModifiedDate=GetDate()  
+      FROM    
+      tbl_tr_event ev  
+      inner join   
+      (   
+	 select apt1.eventID, sum(abs((case when isnull(te.tradeid,0)=0 then apt1.tradequantity else apt1.submittedquantitytilldate end))) TotalTradeCount   
+      FROM TBL_TR_TSheetApprovedTrade  apt1  
+      inner join tbl_tr_event ev1 on ev1.EventID=apt1.EventID and ev1.EventStatusID=4 
+	  left outer join TBL_TR_TradeError te on te.tradeid=apt1.tradeid
+      group by apt1.eventid)  AllApprovedTrades   on AllApprovedTrades.EventID=ev.EventID  
+      inner join   
+      (   
+      select apt2.eventID, sum(abs(ti.TradeQuantity)) SubmittedOrErroredTradeCount   
+      FROM dbo.TBL_TR_TradeImport ti  
+	  inner join TBL_TR_TSheetApprovedTrade  apt2  on ti.TradeIDTRex=apt2.TradeID
+      inner join tbl_tr_event ev2 on ev2.EventID=apt2.EventID and ev2.EventStatusID=4  
+	  left outer join TBL_TR_TradeError te on te.tradeid=ti.TradeIDTRex
+      where TradeStatus='reconciled' or isnull(te.Tradeid,0)<>0
+      group by apt2.eventid) as SubmittedOrErroredTrades  on SubmittedOrErroredTrades.EventID=ev.EventID  
+      and round((abs(AllApprovedTrades.TotalTradeCount)-abs(SubmittedOrErroredTrades.SubmittedOrErroredTradeCount)),3)=0 
+      where ev.EventStatusID=4 
+
+END
+GO
+
+

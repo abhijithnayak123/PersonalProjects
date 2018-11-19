@@ -1,0 +1,177 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentCondition]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentCondition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentCondition]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_KCo_PaymentCondition                      
+** Short Desc: Get the TSheet details from table TBL_TR_Event for the specified EventID
+**                      
+** Full Description: Get the TSheet details from table TBL_TR_Event for the specified EventID
+**      
+**                              
+** Input Arguments:   
+**	
+**	            
+** Sample Call     
+
+ EXEC USP_KCo_PaymentCondition 'Beneficiary'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentCondition] (@EntityType VARCHAR(15))
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	DECLARE @EntityTypeID INT
+	DECLARE @EntityID INT
+
+	SELECT @EntityID = ListTypeID
+	FROM TBL_ListType
+	WHERE ListTypeName = 'Entity'
+
+	IF @EntityType = 'Client'
+	BEGIN
+		SELECT @EntityTypeID = ListItemID
+		FROM TBL_ListItem
+		WHERE ListItemName = 'Manager'
+			AND ListTypeID = @EntityID
+
+		SELECT DISTINCT CntctMstr.ManagerCode AS 'Manager Code'
+			,CntctMstr.ContactName AS LegalName
+			,CASE 
+				WHEN AccMgr.ActiveFlag = - 1
+					THEN 'Active'
+				ELSE 'Inactive'
+				END AS ClientStatus
+			,PymtCond.AccountType AS AccountType
+			,isnull(PymtCond.Comments, '') AS PaymentNotes
+			,StaffCM.StaffName AS CM
+			,staffTA.StaffName AS TA
+		FROM TBL_PP_PaymentCondition PymtCond
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgr
+			ON PymtCond.ManagerCode = AccMgr.ManagerCode
+		INNER JOIN SYN_IT_ContactMaster CntctMstr
+			ON AccMgr.ContactID = CntctMstr.ContactID
+		INNER JOIN TBL_ListItem ListItm
+			ON ListItm.ListItemID = PymtCond.StatusID
+				AND ListItm.ListItemName = 'Active'
+		LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffCM
+			ON StaffCM.ManagerCode = CntctMstr.ManagerCode
+				AND StaffCM.RoleCode = 14 -- 'Client Manager'
+		LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffTA
+			ON StaffTA.ManagerCode = CntctMstr.ManagerCode
+				AND StaffTA.RoleCode = 510 -- 'Trust Administrator'
+		WHERE PymtCond.EntityTypeId = @EntityTypeID
+	END
+	ELSE
+		IF @EntityType = 'Account'
+		BEGIN
+			SELECT @EntityTypeID = ListItemID
+			FROM TBL_ListItem
+			WHERE ListItemName = 'Account'
+				AND ListTypeID = @EntityID
+
+			SELECT PymtCond.ManagerCode AS 'Manager Code'
+				,PymtCond.CustomerAccountNumber AS 'Customer Account Number'
+				,CASE 
+					WHEN AccMas.ActiveFlag = - 1
+						AND AccMas.ClosedFlag <> - 1
+						THEN 'Active'
+					ELSE 'Inactive'
+					END AS 'Account Status'
+				,isnull(PymtCond.Comments, '') AS 'Payment Notes'
+				,StaffCM.StaffName AS CM
+				,StaffTA.StaffName AS TA
+			FROM TBL_PP_PaymentCondition PymtCond
+			INNER JOIN SYN_IT_AccountMaster AccMas
+				ON AccMas.CustomerAccountNumber = PymtCond.CustomerAccountNumber
+			INNER JOIN TBL_ListItem ListItm
+				ON ListItm.ListItemID = PymtCond.StatusID
+					AND ListItm.ListItemName = 'Active'
+			LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffCM
+				ON StaffCM.ManagerCode = PymtCond.ManagerCode
+					AND StaffCM.RoleCode = 14 -- 'Client Manager'
+			LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffTA
+				ON StaffTA.ManagerCode = PymtCond.ManagerCode
+					AND StaffTA.RoleCode = 510 -- 'Trust Administrator'
+			WHERE PymtCond.EntityTypeId = @EntityTypeID
+		END
+		ELSE
+			IF @EntityType = 'Beneficiary'
+			BEGIN
+				SELECT @EntityTypeID = ListItemID
+				FROM TBL_ListItem
+				WHERE ListItemName = 'Contact'
+					AND ListTypeID = @EntityID
+
+				SELECT PymntCond.ManagerCode AS 'Manager Code'
+					,PymntCond.CustomerAccountNumber AS 'Customer Account Number'
+					,PymntCond.ContactID AS 'Contact ID'
+					,PymntCond.ContactRoleCode AS 'Contact Role Code'
+					,isnull(CntctMstr.PrimaryPrefix, '') AS Salutation
+					,isnull(CntctMstr.PrimaryFirstName, '') AS FirstName
+					,isnull(CntctMstr.PrimaryLastName, '') AS LastName
+					,isnull(CntctMstr.PrimaryMiddleInitial, '') AS MiddleInitials
+					,isnull(convert(VARCHAR(10), CntctMstr.DateOfBirth, 101), '') AS DOB
+					,isnull(convert(VARCHAR(10), CntctMstr.DateOfDeath, 101), '') AS DOD
+					,CntRolCod.ContactRoleCodeDesc AS ContactType
+					,isnull(PymntCond.Comments, '') AS PaymentNotes
+					,staffCM.StaffName AS CM
+					,staffTA.StaffName AS TA
+				FROM TBL_PP_PaymentCondition PymntCond
+				INNER JOIN SYN_IT_ContactMaster CntctMstr
+					ON CntctMstr.ContactID = PymntCond.ContactID
+				INNER JOIN SYN_IT_ContactRoleCodes CntRolCod
+					ON PymntCond.ContactRoleCode = CntRolCod.ID
+				INNER JOIN TBL_ListItem LIConditionStatus
+					ON LIConditionStatus.ListItemID = PymntCond.StatusID 
+						AND LIConditionStatus.ListItemName = 'Active'
+				LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffCM
+					ON StaffCM.ManagerCode = CntctMstr.ManagerCode
+						AND StaffCM.RoleCode = 14 -- 'Client Manager'
+				LEFT OUTER JOIN VW_KS_SysAdminKCoStaffPaging StaffTA
+					ON StaffTA.ManagerCode = CntctMstr.ManagerCode
+						AND StaffTA.RoleCode = 510 -- 'Trust Administrator'
+				WHERE PymntCond.EntityTypeId = @EntityTypeID
+			END
+
+	SET NOCOUNT OFF;
+END

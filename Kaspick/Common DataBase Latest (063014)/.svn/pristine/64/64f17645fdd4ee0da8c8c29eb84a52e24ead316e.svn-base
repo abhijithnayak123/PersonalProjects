@@ -1,0 +1,63 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetDataImportByImportDate]    Script Date: 05/29/2014 16:08:44 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetDataImportByImportDate]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetDataImportByImportDate]
+GO
+
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetDataImportByImportDate]    Script Date: 05/29/2014 16:08:44 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+/******************************************************************************      
+** Name   :   USP_OP_GetDataImportByImportDate      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**      
+** Sample Call 
+	EXEC USP_OP_GetDataImportByImportDate '01-01-2013','12-01-2013'
+
+** Return values: NONE      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana     
+** Created DT :		
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** July/9/2009                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_GetDataImportByImportDate]
+(
+	@FromDate DateTime,
+	@ToDate DateTime
+)
+AS
+
+BEGIN
+SET NOCOUNT ON
+
+select di.* , u.Loginname as RunUserName
+from TBL_OP_DataImport  di
+inner join dbo.TBL_KS_User u on di.RunUserID=u.userid
+WHERE  convert(varchar(10), RunDate, 110) between convert(varchar(10), @FromDate, 110) AND convert(varchar(10), @ToDate   , 110)
+
+
+END
+GO
+
+

@@ -1,0 +1,213 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineAdminPaymentProcess]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveValidationEngineAdminPaymentProcess]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveValidationEngineAdminPaymentProcess]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveValidationEngineAdminPaymentProcess]    Script Date: 08/14/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SaveValidationEngineAdminPaymentProcess                      
+**
+** Short Desc: To update payment posting Process details
+**                      
+** Full Description:To update payment posting Process details and return the next process log id          
+**        
+**                              
+** Input Arguments: 
+	@XMLData xml  
+
+**         
+** Sample Call     
+	DECLARE @ret INT                
+	EXEC USP_PP_SaveValidationEngineAdminPaymentProcess            
+		'<PaymentProcessCollection> 	
+				<InsertList>
+				 <PaymentProcess ProcessStartDateTime="2013-04-22 03:00:29.000" Status="Completed Successfully" />
+				</InsertList>			
+			   <UpdateList>   
+				<PaymentProcess PaymentPostingProcessLogID="1988" ProcessStartDateTime="2013-04-22 03:00:29.000" 
+				ProcessEndDateTime="2013-04-22 03:02:07.000" Status="Terminated" FailureDescription="ABC" 
+				PaymentsValidated="1825" PaymentsFailed="0" PaymentsNotPosted="160" />  
+				</UpdateList>            
+		</PaymentProcessCollection>'
+	,@ret output                
+	SELECT @ret
+	
+	         	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 01/29/2014 Salih					Changed table variables with temp tables
+** 06/03/2014 Saravanan				Added Set No count off statement
+** 06/04/2014 Salih                 Modified for the XML Seperation
+** 07/03/2014 Anand					Modified posted payments update
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveValidationEngineAdminPaymentProcess] @XMLData XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000 -- 30 seconds              
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpAddUpdateProcess]') IS NOT NULL
+		DROP TABLE [#TmpAddUpdateProcess]
+
+	--  Variable Declarations  --                
+	DECLARE @Running VARCHAR(100)
+	DECLARE @CompletedWithErrors VARCHAR(100)
+	DECLARE @TerminatedAbnormally VARCHAR(100)
+	DECLARE @InputStatus VARCHAR(100)
+	DECLARE @ProcessStatus VARCHAR(100)
+
+	--  Variable Data Assignment  --                
+	SET @ReturnStatus = 0
+	SET @Running = 'Running';
+	SET @CompletedWithErrors = 'Completed with Errors';
+	SET @TerminatedAbnormally = 'Terminated Abnormally';
+
+	--  Temp tables, Table Variables  --              
+	CREATE TABLE #TmpAddUpdateProcess (
+		PaymentPostingProcessLogID INT
+		,ProcessEndDateTime DATETIME NULL
+		,STATUS VARCHAR(100) NULL
+		,FailureDescription VARCHAR(4000) NULL
+		,PaymentsValidated INT NULL
+		,PaymentsFailed INT NULL
+		,PaymentsNotPosted INT NULL
+		
+		)
+
+	-- Body of procedure  --                
+	BEGIN TRANSACTION
+
+	-- 06/04/2014 - Salih : Modified for the XML Seperation
+	INSERT INTO TBL_PP_PaymentPostingProcessLog (
+		ProcessStartDateTime
+		,STATUS
+		)
+	SELECT XmlData.Item.value('@ProcessStartDateTime[1]', 'DateTime') AS ProcessStartDateTime
+		,XmlData.Item.value('@Status', 'VARCHAR(100)') AS STATUS
+	FROM @XMLDATA.nodes('//PaymentProcessCollection/InsertList/PaymentProcess') AS XmlData(Item)
+
+	SELECT @ReturnStatus = max(PaymentPostingProcessLogID)
+	FROM TBL_PP_PaymentPostingProcessLog
+
+	----Inserting input data into temp table            
+	INSERT INTO #TmpAddUpdateProcess (
+		PaymentPostingProcessLogID
+		,ProcessEndDateTime
+		,STATUS
+		,FailureDescription
+		,PaymentsValidated
+		,PaymentsFailed
+		,PaymentsNotPosted
+		
+		)
+	SELECT XmlData.Item.value('@PaymentPostingProcessLogID[1]', 'INT') AS PaymentPostingProcessLogID
+		,XmlData.Item.value('@ProcessEndDateTime', 'DateTime') AS ProcessEndDateTime
+		,XmlData.Item.value('@Status', 'VARCHAR(100)') AS STATUS
+		,XmlData.Item.value('@FailureDescription', 'VARCHAR(4000)') AS FailureDescription
+		,XmlData.Item.value('@PaymentsValidated', 'INT') AS PaymentsValidated
+		,XmlData.Item.value('@PaymentsFailed', 'INT') AS PaymentsFailed
+		,XmlData.Item.value('@PaymentsNotPosted', 'INT') AS PaymentsNotPosted
+		
+	FROM @XMLDATA.nodes('//PaymentProcessCollection/UpdateList/PaymentProcess') AS XmlData(Item)
+
+	----Update
+	SELECT @InputStatus = STATUS
+	FROM #TmpAddUpdateProcess
+
+	SELECT @ProcessStatus = ProcessLog.STATUS
+	FROM dbo.TBL_PP_PaymentPostingProcessLog ProcessLog
+	JOIN #TmpAddUpdateProcess TmpAddUpd
+		ON ProcessLog.PaymentPostingProcessLogID = TmpAddUpd.PaymentPostingProcessLogID
+
+	IF (
+			(
+				@InputStatus = @TerminatedAbnormally
+				AND @ProcessStatus = @Running
+				)
+			OR (@InputStatus = @CompletedWithErrors)
+			OR (@InputStatus <> @TerminatedAbnormally)
+			)
+	BEGIN
+		UPDATE TBL_PP_PaymentPostingProcessLog
+		SET ProcessEndDateTime = TmpAddUpd.ProcessEndDateTime
+			,STATUS = TmpAddUpd.STATUS
+			,PaymentsValidated = TmpAddUpd.PaymentsValidated
+			,PaymentsFailed = TmpAddUpd.PaymentsFailed
+			,FailureDescription = CASE 
+				WHEN @InputStatus = @CompletedWithErrors
+					THEN TmpAddUpd.FailureDescription
+				ELSE NULL
+				END
+			,PaymentsNotPosted = isnull(ProcessLog.PaymentsNotPosted, 0) + TmpAddUpd.PaymentsNotPosted --before call to this sp, USP_EIS_PP_AutoPost_InsertPayment will update this column  
+			--with the payments count that have not been posted because of OnHold status of respective Payments
+
+		FROM TBL_PP_PaymentPostingProcessLog ProcessLog
+		JOIN #TmpAddUpdateProcess TmpAddUpd
+			ON ProcessLog.PaymentPostingProcessLogID = TmpAddUpd.PaymentPostingProcessLogID
+	END
+
+	COMMIT TRANSACTION;
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpAddUpdateProcess]') IS NOT NULL
+		DROP TABLE [#TmpAddUpdateProcess]
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+
+SET NOCOUNT OFF;

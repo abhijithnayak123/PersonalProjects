@@ -1,0 +1,159 @@
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineEmailRule]    Script Date: 04/14/2014 17:53:17 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineEmailRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		DROP PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineEmailRule]
+		PRINT 'Dropped USP_WFT_GetEmailRuleEngineEmailRule Procedure'
+	End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineEmailRule]    Script Date: 04/14/2014 17:53:17 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:     USP_WFT_GetEmailRuleEngineEmailRule                  
+** Short Desc: Get the active EmailRules associated to a set of RequestID and RequestType. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**	
+	USP_WFT_GetEmailRuleEngineEmailRule '<root><request><id>3067</id><type>N</type></request><request><id>3065</id><type>N</type></request><request><id>1</id><type>N</type></request></root>'
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Soorya
+** Company   : Kaspick & Company                  
+** Project   : EmailRuleEngine                  
+** Created DT: 04/16/2010                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 04/14/2014		Tanuj			Procedure modified based on KaspickDB table structure	
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineEmailRule] (@RequestXML XML)
+AS
+--  Initial Set statements  --      
+--SET NOCOUNT ON;      
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+--  Temp tables, Cursors, Table Variables  --
+DECLARE @XmlRequestInfo TABLE (
+	ID INT IDENTITY(1, 1)
+	,request_id INT
+	,request_type CHAR(1)
+	,form_id INT
+	)
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_WFT_GetEmailRuleEngineEmailRule';
+
+-- Body of procedure  --
+BEGIN TRY
+	INSERT INTO @XmlRequestInfo (
+		request_id
+		,request_type
+		,form_id
+		)
+	SELECT req.value('id[1]', 'int') AS request_id
+		,req.value('type[1]', 'char(1)') AS request_type
+		,r.FormID
+	FROM @RequestXML.nodes('//request') AS a(req)
+	INNER JOIN TBL_WFT_Request r ON r.request_id = req.value('id[1]', 'int')
+
+	SELECT RI.request_id
+		,ER.[email_rule_id]
+		,[email_rule_name]
+		,[email_rule_description]
+		,[FormID]
+		,[new_or_modified]
+		,[execution_order]
+		,[database_name]
+		,[stored_procedure_name]
+		,[email_template_rule_id]
+		,[send_to]
+		,[from_email_address]
+		,[reply_to_email_address]
+		,[bounce_back_email_address]
+		,[to_email_address]
+		,[cc_email_address]
+		,[bcc_email_address]
+		,[is_active]
+		,[email_rule_attribute_id]
+		,[attribute_name]
+		,[expected_value]
+		,[evaluation_order]
+		,[operation_type]
+		,[datatype]
+	FROM TBL_WFT_EmailRule ER
+	INNER JOIN @XmlRequestInfo RI ON RI.form_id = ER.FormID
+		AND RI.request_type = ER.new_or_modified
+	LEFT OUTER JOIN TBL_WFT_EmailRuleAttribute ERA ON ERA.[email_rule_id] = ER.[email_rule_id]
+	WHERE ER.is_active = 1
+	ORDER BY RI.request_id
+		,ER.email_rule_id
+		,ER.execution_order
+END TRY
+
+BEGIN CATCH
+	
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'Error with USP_WFT_GetEmailRuleEngineEmailRule Procedure'
+END CATCH
+	-- End of procedure  -- 
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineEmailRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		PRINT 'Created USP_WFT_GetEmailRuleEngineEmailRule Procedure.'
+	End
+GO

@@ -1,0 +1,268 @@
+IF EXISTS (SELECT *
+   FROM   sysobjects 
+   WHERE  type = 'TR'
+		  AND name = 'TRG_EX_AudPolicyItem')
+BEGIN
+	DROP TRIGGER TRG_EX_AudPolicyItem;
+	PRINT 'DROPPED TRIGGER TRG_EX_AudPolicyItem';
+END
+GO  
+
+/****** Object:  Trigger [dbo].[TRG_EX_AudPolicyItem]    Script Date: 06/23/2014 14:32:58 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name : TRG_EX_AudPolicyItem
+** Old Trigger Name: 	Did'nt exist
+** Table Name  :	TBL_BR_ReportIndiceManagementVersion
+** Action	   :	Insert, Update, Delete
+** 
+** Description : 	Writes data changes to the audit table
+**
+**				
+**	Created By :	by Mallikarjun
+**	Company	   :	Opteamix
+**	Project	   :	Excelsior Prime
+**	Created DT :	6/24/2014
+**
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+** 6/24/2014 Mallikarjun created for TBL_POLICYITEM table
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+
+CREATE TRIGGER [dbo].[TRG_EX_AudPolicyItem]
+   ON [dbo].[TBL_POLICYITEM]
+   AFTER INSERT,UPDATE,DELETE
+AS 
+
+--  Variable Declarations  --
+Declare @trgname					varchar(60);
+Declare @errmsg						varchar(1000);
+Declare @errnbr						int;
+Declare @ReportIndexMgmtVersionID				int;
+
+
+-- Variables used for error handling - uncomment if needed
+Declare @val1						varchar(30);
+--Declare @val2						varchar(30);
+
+--  Temp tables, Cursors, Table Variables  --
+
+--  Variable Data Assignment  --
+
+Set @trgname = 'TRG_EX_AudPolicyItem';
+
+--	Body of trigger  --
+
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the rowcount from Deleted > 0, then get the data from the
+-- Deleted table for recording the old values in the audit table.
+
+BEGIN TRY
+
+	DECLARE @UNKNOWN_ID INT
+	SELECT @UNKNOWN_ID = USERID FROM TBL_KS_USER WHERE upper(LOGINNAME) = 'UNKNOWN'
+
+	If (Select count(*) from Deleted) > 0 and (select count(*) from Inserted) > 0 
+	BEGIN
+
+	INSERT INTO TBL_Audit_PolicyItem
+				(AuditUserID ,
+				 AuditDateTime,
+				 AuditFlag,
+				 AuditTable,
+				 AuditDetail,
+				 PolicyItemID,
+				PolicyDimensionID,
+				PolicyLevel,
+				OwnerID,
+				NumericValue,
+				TextValue,
+				LogicalValue,
+				DateValue,
+				PolicyDropDownID,
+				Comment,
+				ModifiedDate,
+				ModifiedUserID,
+				CreatedDate,
+				CreatedUserID,
+				DeletedUserID
+				)
+		SELECT
+				D.ModifiedUserId, 
+				GETDATE(), 
+				'U',
+				'TBL_POLICYITEM',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.PolicyItemID,
+				D.PolicyDimensionID,
+				D.PolicyLevel,
+				D.OwnerID,
+				D.NumericValue,
+				D.TextValue,
+				D.LogicalValue,
+				D.DateValue,
+				D.PolicyDropDownID,
+				D.Comment,
+				D.ModifiedDate,
+				D.ModifiedUserID,
+				D.CreatedDate,
+				D.CreatedUserID,
+				D.DeletedUserID
+		From Deleted D inner join inserted I on D.PolicyDimensionID = I.PolicyDimensionID and D.PolicyLevel=I.PolicyLevel 
+		AND D.PolicyDropDownID=I.PolicyDropDownID
+		AND D.PolicyDimensionID IN (108,251,205,252,253,257,258,259,260,206,264,265,105,107,109,272,110,273,
+		111,271,261,263,262,267,270,266,177,213,216,217,210,209,211,237,238,166,197,244,169,187,249,250,171,236,243)
+
+	END
+	ELSE
+	IF (select count(*) from Inserted) > 0 
+	BEGIN
+
+		insert into TBL_Audit_PolicyItem
+				(AuditUserID ,
+				 AuditDateTime,
+				 AuditFlag,
+				 AuditTable,
+				 AuditDetail,
+				 PolicyItemID,
+				PolicyDimensionID,
+				PolicyLevel,
+				OwnerID,
+				NumericValue,
+				TextValue,
+				LogicalValue,
+				DateValue,
+				PolicyDropDownID,
+				Comment,
+				ModifiedDate,
+				ModifiedUserID,
+				CreatedDate,
+				CreatedUserID,
+				DeletedUserID
+				)
+
+		SELECT
+				ISNULL(I.CreatedUserId, @UNKNOWN_ID),
+				GETDATE(), 
+				'I',
+				'TBL_POLICYITEM',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				I.PolicyItemID,
+				I.PolicyDimensionID,
+				I.PolicyLevel,
+				I.OwnerID,
+				I.NumericValue,
+				I.TextValue,
+				I.LogicalValue,
+				I.DateValue,
+				I.PolicyDropDownID,
+				I.Comment,
+				I.ModifiedDate,
+				I.ModifiedUserID,
+				I.CreatedDate,
+				I.CreatedUserID,
+				I.DeletedUserID
+		From Inserted I 
+		WHERE I.PolicyDimensionID IN (108,251,205,252,253,257,258,259,260,206,264,265,105,107,109,272,110,273,
+		111,271,261,263,262,267,270,266,177,213,216,217,210,209,211,237,238,166,197,244,169,187,249,250,171,236,243)
+	END
+	ELSE
+	If (Select count(*) from Deleted) > 0 
+	BEGIN
+		insert into TBL_Audit_PolicyItem
+				(
+				AuditUserID ,
+				 AuditDateTime,
+				 AuditFlag,
+				 AuditTable,
+				 AuditDetail,
+				 PolicyItemID,
+				PolicyDimensionID,
+				PolicyLevel,
+				OwnerID,
+				NumericValue,
+				TextValue,
+				LogicalValue,
+				DateValue,
+				PolicyDropDownID,
+				Comment,
+				ModifiedDate,
+				ModifiedUserID,
+				CreatedDate,
+				CreatedUserID,
+				DeletedUserID
+				)
+
+		SELECT
+				ISNULL(D.DeletedUserId, @UNKNOWN_ID),
+				GETDATE(), 
+				'D',
+				'TBL_POLICYITEM',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.PolicyItemID,
+				D.PolicyDimensionID,
+				D.PolicyLevel,
+				D.OwnerID,
+				D.NumericValue,
+				D.TextValue,
+				D.LogicalValue,
+				D.DateValue,
+				D.PolicyDropDownID,
+				D.Comment,
+				D.ModifiedDate,
+				D.ModifiedUserID,
+				D.CreatedDate,
+				D.CreatedUserID,
+				D.DeletedUserID   
+		From Deleted D 
+		WHERE D.PolicyDimensionID IN (108,251,205,252,253,257,258,259,260,206,264,265,105,107,109,272,110,273,
+		  111,271,261,263,262,267,270,266,177,213,216,217,210,209,211,237,238,166,197,244,169,187,249,250,171,236,243)
+		--AND 
+		--(
+		--	CASE  
+		--	WHEN PolicyLevel = 300 THEN D.PolicyDimensionID  IN (236,243)
+		--    END
+		--) 
+
+	END
+  END TRY
+  BEGIN CATCH
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SET @ProcName = 'TRG_EX_AudPolicyItem';
+
+	DECLARE @ErrorNumber INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE(),
+		@ErrorSeverity = ERROR_SEVERITY(),
+		@ErrorState = ERROR_STATE(),
+		@ErrorNumber = ERROR_NUMBER();
+
+	RAISERROR (
+			@ErrorMessage,
+			-- Message text.
+			@ErrorSeverity,
+			-- Severity.
+			@ErrorState -- State.
+			);
+  END CATCH
+GO
+
+IF EXISTS (	SELECT * FROM sysobjects
+		    WHERE type = 'TR' AND name = 'TRG_EX_AudPolicyItem')
+BEGIN
+	PRINT 'CREATED TRIGGER TRG_EX_AudPolicyItem';
+END 

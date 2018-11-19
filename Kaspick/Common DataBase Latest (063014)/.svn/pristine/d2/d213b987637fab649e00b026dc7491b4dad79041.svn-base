@@ -1,0 +1,35 @@
+
+-- This script deletes the duplicate InnoTrust combination records from the respective Lookup Table
+	
+		;WITH cte
+	    AS (SELECT ROW_NUMBER() OVER (PARTITION BY ContactID,CustomerAccountNumber,RoleCode, PaidForContactID, BeneficiaryDistributionID
+									       ORDER BY ( SELECT 0)) RN
+	         FROM   $(KaspickDB)..TBL_Lookup_Beneficiary)
+		DELETE FROM cte
+		WHERE  RN > 1
+	
+		go
+		
+
+		DELETE FROM   $(KaspickDB)..TBL_Lookup_Beneficiary 
+		WHERE  BeneficiaryDistributionID IS NULL AND K1BeneficiaryID IS NOT NULL
+
+	
+	
+		GO
+		
+		;WITH cte
+	     AS (SELECT ROW_NUMBER() OVER (PARTITION BY CustomerAccountNumber,ContactID,ContactRoleCode
+									       ORDER BY ( SELECT 0)) RN
+	         FROM   $(KaspickDB)..TBL_Lookup_RemaindermanDesignation)
+		DELETE FROM cte
+		WHERE  RN >1
+		
+		GO
+		
+		;WITH cte
+	    AS (SELECT ROW_NUMBER() OVER (PARTITION BY CustomerAccountNumber,ContactID,ContactRoleCode
+									       ORDER BY ( SELECT 0)) RN
+	         FROM   $(KaspickDB)..TBL_Lookup_Trustee)
+		DELETE FROM cte
+		WHERE  RN > 1

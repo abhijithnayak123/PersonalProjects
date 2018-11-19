@@ -1,0 +1,255 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveActivityConsoleWireStatus]    Script Date: 07/15/2013 14:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveActivityConsoleWireStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveActivityConsoleWireStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveActivityConsoleWireStatus]    Script Date: 07/15/2013 14:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SaveActivityConsoleWireStatus                      
+** Short Desc: To update Wire payment related data
+**                      
+** Full Description:   To update Wire payment related data in TBL_PP_BeneficiaryPayoutSchedule/TBL_PP_PGCalcPaymentDataMerged/TBL_PP_BeneficiaryPayment
+					   based on Status input          
+**        
+**                              
+** Input Arguments:
+		@ConsoleXml			Xml,        
+		@StatusName			VARCHAR(100  
+
+**         
+** Sample Call              
+ Declare @Ret INT              
+ EXEC USP_PP_SaveActivityConsoleWireStatus      
+			'<ActivityConsolePaymentsCollection><InsertList></InsertList><UpdateList><ActivityConsolePayments ScheduleID="0"  UserID="1"  PaymentID="1199383"  MergedPGCalcPaymentID="0"  PDFFileName=""  RecordVersion="0x0000000000D83BFB"  /></UpdateList><DeleteList></DeleteList></ActivityConsolePaymentsCollection>'
+,'Wire Submitted',@Ret output  
+Select @Ret
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 31-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 5/26/2014	Saravanan			Added 'Wire Submitted' section and Removed Schedule related table uddates
+***5/27/2014	Saravanan			Added User Name for the column AuthorizedB in select statement
+** 6/12/2014	Anand				Added PDFFileName in select statement
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveActivityConsoleWireStatus] @ConsoleXml XML
+	,@StatusName VARCHAR(100)
+	,@ReturnStatus INT
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+	--  Variable Data Assignment  --            
+SET @ReturnStatus = 0;
+
+-- Body of procedure  --            
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	DECLARE @TmpConsoleCondition TABLE (
+		ID INT IDENTITY(1, 1)
+		,ScheduleID INT
+		,UserID INT
+		,PaymentID INT
+		,MergedPGCalcPaymentID INT
+		,PDFFileName VARCHAR(100)
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table	        
+	INSERT INTO @TmpConsoleCondition (
+		ScheduleID
+		,UserID
+		,PaymentID
+		,MergedPGCalcPaymentID
+		,PDFFileName
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		,XMLDATA.item.value('@UserID[1]', 'INT') AS UserID
+		,XMLDATA.item.value('@PaymentID[1]', 'INT') AS PaymentID
+		,XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'INT') AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@PDFFileName[1]', 'VARCHAR(200)') AS PDFFileName
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @ConsoleXml.nodes('//ActivityConsolePaymentsCollection/UpdateList/ActivityConsolePayments') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpCndn.ScheduleID
+	WHERE TmpCndn.ScheduleID <> 0
+		AND TmpCndn.PaymentID = 0
+		AND CONVERT(varchar(20),CAST(BenPay.RecordVersion AS varbinary(8)),1) <> TmpCndn.RecordVersion
+
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+		ON PGCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+	WHERE TmpCndn.MergedPGCalcPaymentID <> 0
+		AND TmpCndn.PaymentID = 0
+		AND CONVERT(varchar(20),CAST(PGCalc.RecordVersion AS varbinary(8)),1) <> TmpCndn.RecordVersion
+
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpCndn.PaymentID
+	WHERE TmpCndn.PaymentID <> 0
+		AND CONVERT(varchar(20),CAST(BenPmnt.RecordVersion AS varbinary(8)),1) <> TmpCndn.RecordVersion
+
+	--- Set ReturnStatus to -2 even if a single record is found with dirty write		
+	IF EXISTS (
+			SELECT 1
+			FROM @TmpConsoleCondition
+			WHERE ReturnStatus = - 2
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+
+	IF @ReturnStatus <> - 2
+	BEGIN
+		--Wire Authorized      
+		IF (@StatusName = 'Wire Authorized')
+		BEGIN
+			UPDATE TBL_PP_BeneficiaryPayment
+			SET WireAuthorizedDate = GETDATE()
+				,WireAuthorizedBy = TmpCndn.UserID
+				,ModifiedDate = GETDATE()
+				,ModifiedBy = TmpCndn.UserID
+			FROM @TmpConsoleCondition TmpCndn
+			INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+				ON BenPmnt.PaymentID = TmpCndn.PaymentID
+			WHERE TmpCndn.PaymentID <> 0
+		END
+
+		--Reset Wire Request      
+		IF (@StatusName = 'Wire Submitted')
+		BEGIN
+			UPDATE TBL_PP_BeneficiaryPayment
+			SET WireSubmitted = GETDATE()
+				,WireSubmittedBy = TmpCndn.UserID
+				,ModifiedDate = GETDATE()
+				,ModifiedBy = TmpCndn.UserID
+			FROM TBL_PP_BeneficiaryPayment BenPmnt
+			INNER JOIN @TmpConsoleCondition TmpCndn
+				ON BenPmnt.PaymentID = TmpCndn.PaymentID
+			WHERE TmpCndn.PaymentID <> 0
+		END
+
+		--Reset Wire Request      
+		IF (@StatusName = 'Reset Wire Request')
+		BEGIN
+			UPDATE TBL_PP_BeneficiaryPayment
+			SET 
+			WirePDFFileName = TmpCndn.PDFFileName
+			,WirePDFFileCreationDate = GETDATE()	
+				,WireAuthorizedDate = NULL
+				,WireAuthorizedBy = NULL
+				,ModifiedDate = GETDATE()
+				,ModifiedBy = TmpCndn.UserID
+			FROM TBL_PP_BeneficiaryPayment BenPmnt
+			INNER JOIN @TmpConsoleCondition TmpCndn
+				ON BenPmnt.PaymentID = TmpCndn.PaymentID
+			WHERE TmpCndn.PaymentID <> 0
+		END
+	END
+
+	--End Of Loop
+	SELECT TmpCndn.ScheduleID
+		,TmpCndn.PaymentID
+		,TmpCndn.MergedPGCalcPaymentID
+		,NULL AS WireAuthorizedDate
+		,NULL AS WireAuthorizedBy
+		,NULL AS WireSubmitted
+		,NULL AS WireSubmittedBy
+		,NULL AS RecordVersion
+		,TmpCndn.ReturnStatus
+		,TmpCndn.PDFFileName
+	FROM @TmpConsoleCondition TmpCndn
+	WHERE ReturnStatus = - 2
+	
+	UNION ALL
+	
+	SELECT TmpCndn.ScheduleID
+		,TmpCndn.PaymentID
+		,TmpCndn.MergedPGCalcPaymentID
+		,WireAuthorizedDate
+		,(AuthorizedBy.FirstName + ' ' + AuthorizedBy.LastName) AS WireAuthorizedBy
+		,BenPmnt.WireSubmitted
+		,(SubmittedBy.FirstName + ' ' + SubmittedBy.LastName) AS WireSubmittedBy
+		,BenPmnt.RecordVersion
+		,TmpCndn.ReturnStatus
+		,TmpCndn.PDFFileName
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpCndn.PaymentID
+	LEFT OUTER JOIN TBL_KS_User SubmittedBy
+		ON SubmittedBy.UserID = BenPmnt.WireSubmittedBy
+	LEFT OUTER JOIN TBL_KS_User AuthorizedBy
+		ON AuthorizedBy.UserID = BenPmnt.WireAuthorizedBy
+	WHERE TmpCndn.PaymentID != 0
+		AND ReturnStatus <> - 2
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+
+SET NOCOUNT OFF

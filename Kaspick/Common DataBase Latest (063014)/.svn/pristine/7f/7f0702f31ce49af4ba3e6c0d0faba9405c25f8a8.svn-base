@@ -1,0 +1,842 @@
+/****** Object:  View [dbo].[VW_ListItem]    Script Date: 01/17/2014 12:36:36 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[VW_ListItem]')
+		)
+	DROP VIEW [dbo].[VW_ListItem]
+GO
+
+/****** Object:  View [dbo].[VW_ListItem]    Script Date: 01/17/2014 12:36:43 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE VIEW [dbo].[VW_ListItem]
+AS
+SELECT ListType.ListTypeName
+	,ListType.ListTypeID
+	,ListType.Keycode
+	,ListType.Description
+	,ListType.IsMutable AS TypeIsMutable
+	,ListItem.ListItemID
+	,ListItem.ListItemName
+	,ListItem.DisplaySequence
+	,ListItem.IsMutable AS ItemIsMutable
+	,ListItem.Abbrev
+	,ListItem.IvanValue
+	,ListType.IvanTableName
+FROM TBL_ListItem AS ListItem
+INNER JOIN TBL_ListType AS ListType
+	ON ListItem.ListTypeID = ListType.ListTypeID
+GO
+
+/****** Object:  View [dbo].[VW_WB_DeliverableCategory]    Script Date: 01/17/2014 12:34:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[VW_WB_DeliverableCategory]')
+		)
+	DROP VIEW [dbo].[VW_WB_DeliverableCategory]
+GO
+
+/****** Object:  View [dbo].[VW_WB_DeliverableCategory]    Script Date: 01/17/2014 12:34:23 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE VIEW [dbo].[VW_WB_DeliverableCategory]
+AS
+SELECT ListItemID AS DeliverableCategoryID
+	,ListItemName AS DeliverableCategoryName
+	,DisplaySequence AS DisplaySequence
+FROM VW_ListItem
+WHERE ListTypeName = 'Deliverable Category List'
+GO
+
+/****** Object:  View [dbo].[VW_WB_DeliverableType]    Script Date: 01/17/2014 12:33:17 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[VW_WB_DeliverableType]')
+		)
+	DROP VIEW [dbo].[VW_WB_DeliverableType]
+GO
+
+/****** Object:  View [dbo].[VW_WB_DeliverableType]    Script Date: 01/17/2014 12:33:24 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE VIEW [dbo].[VW_WB_DeliverableType]
+AS
+SELECT Dlvrbl.DeliverableID AS DeliverableID
+	,Dlvrbl.DeliverableDisplayName AS DeliverableName
+	,Dlvrbl.DeliverableCategoryListID AS DeliverableCategoryListID
+	,CASE 
+		WHEN UPPER(AccountRequired.ListItemName) = 'YES'
+			THEN 'Y'
+		ELSE 'N'
+		END AS AccountRequired
+	,CASE 
+		WHEN UPPER(ContactRequired.ListItemName) = 'YES'
+			THEN 'Y'
+		ELSE 'N'
+		END AS ContactRequired
+	,ISNULL(DlvrblWebsiteOption.ExpiryYears, 0) AS ExpirationYears
+	,ISNULL(DlvrblWebsiteOption.ExpiryMonths, 0) AS ExpirationMonths
+	,ISNULL(DlvrblWebsiteOption.ExpiryDays, 0) AS ExpirationDays
+	,CASE 
+		WHEN UPPER(ExDateOverride.ListItemName) = 'YES'
+			THEN 1
+		ELSE 0
+		END AS AllowExpirationDateOverride
+	,DlvrblWebsiteOption.MaximumFileSize AS MaxFileSizeInKB
+	,DlvrblWebsiteOption.UploadEmailTemplateID AS UploadEmailTemplateID
+	,DlvrblWebsiteOption.ReplaceEmailTemplateID AS ReplaceEmailTemplateID
+FROM TBL_DLV_Deliverable Dlvrbl
+INNER JOIN VW_ListItem VLICategory
+	ON Dlvrbl.DeliverableCategoryListID = VLICategory.ListItemID
+INNER JOIN VW_ListItem VLIWebUpload
+	ON Dlvrbl.UploadToWebsite = VLIWebUpload.ListItemID
+		AND VLIWebUpload.ListTypeName = 'Logical Value'
+		AND UPPER(VLIWebUpload.ListItemName) = 'YES' --UploadToWebsite is YES 18, NO 19
+LEFT OUTER JOIN TBL_DLV_DeliverableWebsiteOption DlvrblWebsiteOption
+	ON Dlvrbl.DeliverableID = DlvrblWebsiteOption.DeliverableID
+INNER JOIN VW_ListItem AccountRequired
+	ON DlvrblWebsiteOption.AccountRequired = AccountRequired.ListItemID
+INNER JOIN VW_ListItem ContactRequired
+	ON DlvrblWebsiteOption.ContactRequired = ContactRequired.ListItemID
+INNER JOIN VW_ListItem DestinationRequired
+	ON DlvrblWebsiteOption.WebsiteDestinationID = DestinationRequired.ListItemID
+		AND DestinationRequired.ListTypeName = 'Website Destination'
+		AND DestinationRequired.ListItemName = 'Report Center'
+INNER JOIN VW_ListItem ExDateOverride
+	ON DlvrblWebsiteOption.AllowExpirationDateOverride = ExDateOverride.ListItemID
+WHERE Dlvrbl.DeliverableLevel = 1
+	AND Dlvrbl.IsActive = 1
+GO
+
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_IT_ProfileInfo'
+		)
+BEGIN
+	DROP VIEW VW_IT_ProfileInfo
+END
+GO
+
+/******************************************************************************                      
+** Name:     VW_IT_ProfileInfo                      
+** Short Desc: To fetch Profile info from InnoTrust
+**                      
+** Full Description: To fetch Profile info from InnoTrust
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_IT_ProfileInfo
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Venkatesham Devardesee 
+** Company   : Kaspick & Company                      
+** Project   : Paragon                      
+** Created DT: 06-Sep-2013                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW [dbo].[VW_IT_ProfileInfo]
+AS
+SELECT AM.CustomerAccountNumber
+	,AM.CustomerShortName AS AccountName
+	,AM.AccountTypeCode
+	,AM.AllianceNumber
+	,AN.AllianceDesc
+	,AM.ManagerCode
+	,AMC.ManagerName AS ManagerDescription
+	,CAR.ContactID
+	,CAR.ContactRoleCode
+	,CM.ContactName
+FROM SYN_IT_AccountMaster AM
+INNER JOIN SYN_IT_AllianceNumbers AN ON AN.AllianceNumber = AM.AllianceNumber
+INNER JOIN SYN_IT_AccountManagerCodes AMC ON AMC.ManagerCode = AM.ManagerCode
+LEFT OUTER JOIN SYN_IT_ContactAccountRoles CAR ON AM.CustomerAccountNumber = CAR.CustomerAccountNumber
+INNER JOIN SYN_IT_ContactMaster CM ON CM.ContactID = CAR.ContactID;
+GO
+
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_ReportIndicesManagement'
+		)
+BEGIN
+	DROP VIEW VW_EX_ReportIndicesManagement;
+END
+GO
+
+/******************************************************************************                      
+** Name:    VW_EX_ReportIndicesManagement                      
+** Short Desc: Used in Reporting Tab of Account Module
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_EX_ReportIndicesManagement
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Abhijith  
+** Company   : Opteamix                     
+** Project   : ExcelsiorPrime                      
+** Created DT: 09-Apr-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW VW_EX_ReportIndicesManagement
+AS
+SELECT RptIdcMgmtVer.ReportIndexMgmtVersionID
+	,RptIdcMgmtVer.ManagerCode AS ClientID
+	,RptIdcMgmtVer.VersionNo
+	,RptIdcMgmtVer.MultiAssetBM
+	,RptIdcMgmt.ReportIndexMgmtID
+	,RptIdcMgmt.IndexNo
+	,RptIdcMgmt.IndexID
+FROM TBL_BR_ReportIndiceManagementVersion RptIdcMgmtVer
+INNER JOIN TBL_BR_ReportIndiceManagement RptIdcMgmt ON RptIdcMgmtVer.ReportIndexMgmtVersionID = RptIdcMgmt.ReportIndexMgmtVersionID
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_UserRole'
+		)
+BEGIN
+	DROP VIEW VW_EX_UserRole;
+END
+GO
+
+/******************************************************************************                        
+** Name:     VW_EX_UserRole                        
+** Short Desc: Retrieves data for ClientUser and Non-ClientUser with Roles  
+**                        
+** Full Description: Retrieves data for ClientUser and Non-ClientUser with Roles  
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+          
+select * from   VW_EX_UserRole  
+**               
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Sanath      
+** Company   : Opteamix                        
+** Project   : ExcelsiorPrime                        
+** Created DT: 26-Feb-2014                  
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:      Author:  Bug #     Description:                             
+** --------  --------  ------    --------------------------------------   
+
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE VIEW VW_EX_UserRole
+AS
+SELECT RlMstr.MasterRoleID
+	,RlMstr.RoleBriefName
+	,RlMstr.RoleFullName
+	,Usr.UserID
+	,isnull(LastName, '') + CASE 
+		WHEN LastName IS NULL
+			THEN ''
+		ELSE ', '
+		END + FirstName AS USER_NAME
+	,1 AS IsClientLevel
+	,Usr.IsActive AS IsActive
+FROM TBL_KS_RoleMaster RlMstr
+INNER JOIN TBL_KS_ClientRole ClnRol ON RlMstr.MasterRoleID = ClnRol.MasterRoleID
+INNER JOIN TBL_KS_StaffRole StfRole ON StfRole.RoleID = ClnRol.RoleID
+INNER JOIN TBL_KS_User Usr ON Usr.UserID = StfRole.UserID
+
+UNION
+
+SELECT RolMstr.MasterRoleID
+	,RoleBriefName
+	,RoleFullName
+	,KsUsr.UserID
+	,isnull(LastName, '') + CASE 
+		WHEN LastName IS NULL
+			THEN ''
+		ELSE ', '
+		END + firstname AS USER_NAME
+	,0 AS IsClientLevel
+	,KsUsr.IsActive AS IsActive
+FROM TBL_KS_RoleMaster RolMstr
+INNER JOIN TBL_KS_UserRole UlRole ON RolMstr.MasterRoleID = UlRole.RoleID
+INNER JOIN TBL_BR_StaffRoleNonClient SRoleNc ON RolMstr.MasterRoleID = SRoleNc.Master_Role_ID
+INNER JOIN TBL_KS_USER KsUsr ON UlRole.UserID = KsUsr.UserID
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_ListItem'
+		)
+BEGIN
+	DROP VIEW VW_EX_ListItem;
+END
+GO
+
+/******************************************************************************                      
+** Name:     VW_EX_ListItem                      
+** Short Desc: Retrieves data for TBl_ListType and TBL_ListItem
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_EX_ListItem
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mallikarjun  
+** Company   : Opteamix                      
+** Project   : ExcelsiorPrime                      
+** Created DT: 21-Feb-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW VW_EX_ListItem
+AS
+SELECT LstTyp.ListTypeName
+	,LstTyp.ListTypeID
+	,LstTyp.KEYCODE
+	,LstTyp.DESCRIPTION
+	,LstTyp.IsMutable AS TYPE_IS_MUTABLE
+	,LstItm.ListItemID
+	,LstItm.ListItemName
+	,LstItm.DisplaySequence
+	,LstItm.IsMutable AS ITEM_IS_MUTABLE
+	,LstItm.ABBREV
+	,LstItm.IvanValue
+	,LstTyp.IvanTableName
+FROM dbo.TBL_ListItem AS LstItm
+INNER JOIN dbo.TBL_ListType AS LstTyp ON LstItm.ListTypeID = LstTyp.ListTypeID
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_GetRequestFlowDetail'
+		)
+BEGIN
+	DROP VIEW VW_EX_GetRequestFlowDetail;
+END
+GO
+
+/******************************************************************************                      
+** Name:     VW_EX_GetRequestFlowDetail                      
+** Short Desc: Retrieves Web Request Page
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_EX_GetRequestFlowDetail
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Abhijith  
+** Company   : Opteamix                      
+** Project   : ExcelsiorPrime                     
+** Created DT: 21-Mar-2014                  
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW VW_EX_GetRequestFlowDetail
+AS
+SELECT DISTINCT WftRqst.Request_id
+	,WftRqst.GUID
+	,WftRqst.FormID
+	,WftRqst.ManagerCode AS ClientID
+	,WftRqst.CustomerAccountNumber AS AccountID
+	,WftRqst.ContactID AS ParticipantID
+	,WftRqst.submitted_employee_id
+	,WftRqst.submitted_datetime
+	,WftRqst.request_status_id
+	,WftRqst.status_datetime
+	,WftRqst.status_user_id
+	,Usr.loginname AS status_user_name
+	,WftRqst.workflow_form_url
+	,WftRqst.im_authorization_type
+	,WftRqst.ta_authorization_type
+	,FCtrlExt.form_abbrev
+	,FCtrlExt.number_of_flows
+	,Flow1.form_flow_id AS form_flow_id1
+	,Flow1.flow_id AS flow_id1
+	,Flow1.flow_name AS flow_name1
+	,Flow1.flow_status_abbrev AS flow_status_abbrev1
+	,Flow1.flow_status_id AS flow_status_id1
+	,Flow1.flow_number AS flow_number1
+	,Flow1.flow_status_datetime AS flow_status_datetime1
+	,Flow1.flow_status_user_id AS flow_status_user_id1
+	,Flow1.login_name AS flow_status_user_name1
+	,Flow1.flow_status_comment AS flow_status_comment1
+	,Flow2.form_flow_id AS form_flow_id2
+	,Flow2.flow_id AS flow_id2
+	,Flow2.flow_name AS flow_name2
+	,Flow2.flow_status_abbrev AS flow_status_abbrev2
+	,Flow2.flow_status_id AS flow_status_id2
+	,Flow2.flow_number AS flow_number2
+	,Flow2.flow_status_datetime AS flow_status_datetime2
+	,Flow2.flow_status_user_id AS flow_status_user_id2
+	,Flow2.login_name AS flow_status_user_name2
+	,Flow2.flow_status_comment AS flow_status_comment2
+	,Flow3.form_flow_id AS form_flow_id3
+	,Flow3.flow_id AS flow_id3
+	,Flow3.flow_name AS flow_name3
+	,Flow3.flow_status_abbrev AS flow_status_abbrev3
+	,Flow3.flow_status_id AS flow_status_id3
+	,Flow3.flow_number AS flow_number3
+	,Flow3.flow_status_datetime AS flow_status_datetime3
+	,Flow3.flow_status_user_id AS flow_status_user_id3
+	,Flow3.login_name AS flow_status_user_name3
+	,Flow3.flow_status_comment AS flow_status_comment3
+FROM TBL_WFT_Request WftRqst
+INNER JOIN TBL_WFT_ML_FrmCtrl FCtrl ON WftRqst.formid = FCtrl.formid
+INNER JOIN TBL_WFT_ML_FrmCtrlExtn FCtrlExt ON FCtrl.formid = FCtrlExt.formid
+INNER JOIN TBL_WFT_FormFlow FrmFlw ON WftRqst.Formid = FrmFlw.formid
+INNER JOIN TBL_WFT_Flow Flw ON FrmFlw.flow_id = Flw.flow_id
+INNER JOIN TBL_WFT_FormFlowStage FrmFlwS ON FrmFlw.form_flow_id = FrmFlwS.form_flow_id
+INNER JOIN TBL_WFT_FlowStatus FlSt ON FrmFlwS.flow_status_id = FlSt.flow_status_id
+INNER JOIN TBL_WFT_RequestFlow RqstFlw ON WftRqst.request_id = RqstFlw.request_id
+LEFT JOIN (
+	SELECT DISTINCT WftRqst.formid
+		,WftRqst.Request_id
+		,Flw.flow_name
+		,FrmFlwS.processing_team_id
+		,FrmFlw.form_flow_id
+		,FrmFlw.flow_number
+		,FrmFlw.flow_id
+		,FlSt.flow_status_id
+		,flow_status_abbrev
+		,flow_status_datetime
+		,flow_status_user_id
+		,Usr.loginname AS login_name
+		,flow_status_comment
+	FROM TBL_WFT_Request WftRqst
+	INNER JOIN TBL_WFT_ML_FrmCtrl FCtrl ON WftRqst.formid = FCtrl.formid
+	INNER JOIN TBL_WFT_ML_FrmCtrlExtn FCtrlExt ON FCtrl.formid = FCtrlExt.formid
+	INNER JOIN TBL_WFT_FormFlow FrmFlw ON WftRqst.Formid = FrmFlw.formid
+	INNER JOIN TBL_WFT_Flow Flw ON FrmFlw.flow_id = Flw.flow_id
+	INNER JOIN TBL_WFT_FormFlowStage FrmFlwS ON FrmFlw.form_flow_id = FrmFlwS.form_flow_id
+	INNER JOIN TBL_WFT_FlowStatus FlSt ON FrmFlwS.flow_status_id = FlSt.flow_status_id
+	INNER JOIN TBL_WFT_RequestFlow RqstFlw ON WftRqst.request_id = RqstFlw.request_id
+		AND FrmFlwS.form_flow_id = RqstFlw.form_flow_id
+		AND FrmFlwS.flow_status_id = RqstFlw.flow_status_id
+	LEFT JOIN TBL_KS_User Usr ON RqstFlw.flow_status_user_id = Usr.userid
+	WHERE FrmFlw.flow_id = 1
+	) Flow1 ON WftRqst.formid = Flow1.formid
+	AND WftRqst.Request_id = Flow1.Request_id
+LEFT JOIN (
+	SELECT DISTINCT WftRqst.formid
+		,WftRqst.Request_id
+		,Flw.flow_name
+		,FrmFlwS.processing_team_id
+		,FrmFlw.form_flow_id
+		,FrmFlw.flow_number
+		,FrmFlw.flow_id
+		,FlSt.flow_status_id
+		,flow_status_abbrev
+		,flow_status_datetime
+		,flow_status_user_id
+		,Usr.loginname AS login_name
+		,flow_status_comment
+	FROM TBL_WFT_Request WftRqst
+	INNER JOIN TBL_WFT_ML_FrmCtrl FCtrl ON WftRqst.formid = FCtrl.formid
+	INNER JOIN TBL_WFT_ML_FrmCtrlExtn FCtrlExt ON FCtrl.formid = FCtrlExt.formid
+	INNER JOIN TBL_WFT_FormFlow FrmFlw ON WftRqst.Formid = FrmFlw.formid
+	INNER JOIN TBL_WFT_Flow Flw ON FrmFlw.flow_id = Flw.flow_id
+	INNER JOIN TBL_WFT_FormFlowStage FrmFlwS ON FrmFlw.form_flow_id = FrmFlwS.form_flow_id
+	INNER JOIN TBL_WFT_FlowStatus FlSt ON FrmFlwS.flow_status_id = FlSt.flow_status_id
+	INNER JOIN TBL_WFT_RequestFlow RqstFlw ON WftRqst.request_id = RqstFlw.request_id
+		AND FrmFlwS.form_flow_id = RqstFlw.form_flow_id
+		AND FrmFlwS.flow_status_id = RqstFlw.flow_status_id
+	LEFT JOIN TBL_KS_User Usr ON RqstFlw.flow_status_user_id = Usr.userid
+	WHERE FrmFlw.flow_id = 2
+	) Flow2 ON WftRqst.formid = Flow2.formid
+	AND WftRqst.Request_id = Flow2.Request_id
+LEFT JOIN (
+	SELECT DISTINCT WftRqst.formid
+		,WftRqst.Request_id
+		,Flw.flow_name
+		,FrmFlwS.processing_team_id
+		,FrmFlw.form_flow_id
+		,FrmFlw.flow_number
+		,FrmFlw.flow_id
+		,FlSt.flow_status_id
+		,flow_status_abbrev
+		,flow_status_datetime
+		,flow_status_user_id
+		,Usr.loginname AS login_name
+		,flow_status_comment
+	FROM TBL_WFT_Request WftRqst
+	INNER JOIN TBL_WFT_ML_FrmCtrl FCtrl ON WftRqst.formid = FCtrl.formid
+	INNER JOIN TBL_WFT_ML_FrmCtrlExtn FCtrlExt ON FCtrl.formid = FCtrlExt.formid
+	INNER JOIN TBL_WFT_FormFlow FrmFlw ON WftRqst.Formid = FrmFlw.formid
+	INNER JOIN TBL_WFT_Flow Flw ON FrmFlw.flow_id = Flw.flow_id
+	INNER JOIN TBL_WFT_FormFlowStage FrmFlwS ON FrmFlw.form_flow_id = FrmFlwS.form_flow_id
+	INNER JOIN TBL_WFT_FlowStatus FlSt ON FrmFlwS.flow_status_id = FlSt.flow_status_id
+	INNER JOIN TBL_WFT_RequestFlow RqstFlw ON WftRqst.request_id = RqstFlw.request_id
+		AND FrmFlwS.form_flow_id = RqstFlw.form_flow_id
+		AND FrmFlwS.flow_status_id = RqstFlw.flow_status_id
+	LEFT JOIN TBL_KS_User Usr ON RqstFlw.flow_status_user_id = Usr.userid
+	WHERE FrmFlw.flow_id = 3
+	) Flow3 ON WftRqst.formid = Flow3.formid
+	AND WftRqst.Request_id = Flow3.Request_id
+LEFT JOIN TBL_KS_User Usr ON WftRqst.status_user_id = Usr.userid
+GO
+
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_Account'
+		)
+BEGIN
+	DROP VIEW VW_EX_Account;
+END
+GO
+
+/******************************************************************************                      
+** Name:     VW_EX_Account                      
+** Short Desc: Retrieves Account Details
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_EX_Account
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mallikarjun  
+** Company   : Opteamix                      
+** Project   : ExcelsiorPrime                      
+** Created DT: 21-Feb-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW VW_EX_Account
+AS
+SELECT AlnNbr.AllianceNumber
+	,PrgConMstr.ContactName AS PROGRAM_FULLNAME
+	,AlnNbr.AllianceNumber AS PROGRAM_BRIEFNAME
+	,AccMstr.CustomerAccountNumber AS ACCOUNTID
+	,AccMstr.CustomerAccountNumber AS ADVENTID
+	,ltrim(rtrim(ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, ''))) AS ACCOUNT_FULLNAME
+	,AccMstr.CustomerAccountNumber AS ACCOUNT_BRIEFNAME
+	,AccMgrCds.ManagerCode AS CLIENTID
+	,ClntfnConMstr.ContactName AS CLIENT_FULLNAME
+	,AccMgrCds.ManagerCode AS CLIENT_BRIEFNAME
+	,AccMgrCds.ActiveFlag AS CLIENT_STATUS_ID
+	--,PrgAccMstr.ActiveFlag AS PROGRAM_STATUS_ID --Need to identify the corresponding column
+	,AccMstr.ActiveFlag AS ACCOUNT_STATUS_ID
+	,AccTypCds.AccountTypeCode AS ACCOUNTTYPE
+	,AccMstr.TaxIDNumber AS TAXID
+	,AccMstr.AccountFundedDate
+	,UdfAccMstr.UDFAMColumn030
+	,AccMstr.ActiveFlag AS ACCOUNT_STATUS
+	,AccTypCds.AccountTypeCode AS ACCOUNT_TYPE
+	,0 AS ENABLE_CLIENTBENEFICIARY_ID
+FROM SYN_IT_AccountMaster AccMstr
+--INNER JOIN SYN_IT_AccountMaster PrgAccMstr ON AccMstr.AllianceNumber=PrgAccMstr.AllianceNumber --Need to identify the corresponding join
+INNER JOIN SYN_IT_AllianceNumbers AlnNbr
+	ON AlnNbr.AllianceNumber = AccMstr.AllianceNumber
+INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds
+	ON AccMstr.ManagerCode = AccMgrCds.ManagerCode
+INNER JOIN SYN_IT_ContactMaster PrgConMstr
+	ON AlnNbr.ContactID = PrgConMstr.ContactID
+--INNER JOIN SYN_IT_ContactMaster AccConMstr ON PrgConMstr.ContactID = AccConMstr.ContactID
+INNER JOIN SYN_IT_ContactMaster ClntfnConMstr
+	ON AccMgrCds.ContactID = ClntfnConMstr.ContactID
+INNER JOIN SYN_IT_AccountTypeCodes AccTypCds
+	ON AccTypCds.AccountTypeCode = AccMstr.AccountTypeCode
+INNER JOIN SYN_IT_UDF_AccountMaster UdfAccMstr
+	ON AccMstr.CustomerAccountNumber = UdfAccMstr.CustomerAccountNumber_Key
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'V'
+			AND NAME = 'VW_EX_TrustParticipantType'
+		)
+BEGIN
+	DROP VIEW VW_EX_TrustParticipantType;
+END
+GO
+
+/******************************************************************************                      
+** Name:     VW_EX_TrustParticipantType                      
+** Short Desc: Retrieves TrustParticipant Details
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select * from   VW_EX_TrustParticipantType
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Abhijith  
+** Company   : Opteamix                     
+** Project   : ExcelsiorPrime                       
+** Created DT: 22-Mar-2014                  
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE VIEW [dbo].[VW_EX_TrustParticipantType]
+AS
+SELECT ConMstr.ContactId AS ParticipantID
+	,ConMstr.PrimaryPrefix as Salutation
+	,ConMstr.PrimaryFirstName AS FirstName
+	,ConMstr.PrimaryLastName AS LastName
+	,ConMstr.PrimaryMiddleInitial AS MiddleInitials
+	,ConMstr.TaxNameLine1 + '' + ConMstr.TaxNameLine2 AS TaxName	
+	,ConMstr.ContactName as PaymentName
+	,ConMstr.DateOfBirth AS BirthDate
+	,ConMstr.DateOfDeath
+	,ConMstr.SSN AS TaxID
+	,CASE 
+		WHEN ConMstr.SSNFLag = - 1
+			THEN 'SSN'
+		ELSE 'ITIN'
+		END AS TaxIDType
+	,ConMstr.DomicileStateCode AS DomicileCode
+	,ConMstr.PrimaryGender
+	,SubContRoles.SubContactId AS SPOUSE_ID
+	,CASE 
+		WHEN ConAccRole.ContactRoleCode = ConRolCd.id
+			THEN ConMstr.ActiveFlag
+		ELSE NULL
+		END AS PROXY_STATUS_ID
+	,ConAccRole.ContactRoleCode AS PARTICIPANT_TYPE_ID
+	,AlliNbr.AllianceNumber AS ProgramID
+	,AccMstr.ManagerCode AS ClientID
+	,AccMstr.CustomerAccountNumber AS CustomerAccountNumber
+	,ConRoleCds.ContactRoleCodeDesc AS PARTICIPANT_TYPE
+	,AccMstr.ActiveFlag AS ACCOUNT_STATUS
+	,LTRIM(RTRIM((
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryLastName)), '') = '')
+						THEN ''
+					ELSE (ConMstr.PrimaryLastName + ' ')
+					END
+				) + (
+				CASE 
+					WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryFirstName)), '') = '')
+						THEN ''
+					ELSE (ConMstr.PrimaryFirstName + ' ')
+					END
+				) + ISNULL(ConMstr.PrimaryMiddleInitial, ''))) AS PARTICIPANTNAME
+	,CASE 
+		WHEN ConMstr.SSNFLag = - 1
+			THEN 'SSN'
+		ELSE 'ITIN'
+		END AS TAX_TYPE_ID
+	,DonConAccRole.ContactID AS DONORID
+	,BenConAccRole.ContactID AS BENEFICIARYID
+	,ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, '') AS ACCOUNT_FULLNAME 
+	,AccMstr.AccountTypeCode AS AccountType
+	,AlliNbr.AllianceNumber AS PROGRAM_BRIEFNAME
+	,PrgContMstr.ContactName AS PROGRAM_FULLNAME
+	,AccMgrCodes.ManagerCode AS CLIENT_BRIEFNAME
+	,MgrContMstr.ContactName AS CLIENT_FULLNAME
+	,ConRoleCds.ID AS TRUSTPARTICIPANT_TYPE_ID
+	,UDFAccMstr.UDFAMColumn039 AS SpigotAccount
+FROM SYN_IT_ContactMaster AS ConMstr
+INNER JOIN SYN_IT_ContactAccountRoles ConAccRole ON ConAccRole.Contactid = ConMstr.ContactId
+INNER JOIN SYN_IT_ContactRoleCodes ConRoleCds ON ConRoleCds.ID = ConAccRole.ContactRoleCode
+	AND ConRoleCds.ContactRoleCodeDesc IN (
+		'Proxy Recipient'
+		,'Beneficiary'
+		,'Donor'
+		,'Contingent Beneficiary'
+		)
+INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = ConAccRole.CustomerAccountNumber
+LEFT JOIN dbo.SYN_IT_SUBCONTACTROLES AS SubContRoles ON ConMstr.ContactId = SubContRoles.ContactID
+	AND SubContRoles.CONTACTROLECODE = (
+		SELECT ID
+		FROM SYN_IT_ContactRoleCodes
+		WHERE ContactRoleCodeDesc IN ('Spouse')
+		)
+LEFT JOIN dbo.SYN_IT_ContactAccountRoles DonConAccRole ON DonConAccRole.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	AND ConMstr.ContactId = DonConAccRole.ContactID
+	AND DonConAccRole.ContactRoleCode = (
+		SELECT ID
+		FROM SYN_IT_ContactRoleCodes
+		WHERE ContactRoleCodeDesc IN ('Donor')
+		)		
+LEFT JOIN dbo.SYN_IT_ContactAccountRoles BenConAccRole ON BenConAccRole.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+	AND ConMstr.ContactId = BenConAccRole.ContactID
+	AND BenConAccRole.ContactRoleCode in (
+		SELECT ID
+		FROM SYN_IT_ContactRoleCodes
+		WHERE ContactRoleCodeDesc IN ('Proxy Recipient'
+		,'Beneficiary'		
+		,'Contingent Beneficiary')
+		)
+LEFT JOIN SYN_IT_ContactRoleCodes ConRolCd ON ConRolCd.id = ConAccRole.contactrolecode 
+	AND ConRolCd.ContactRoleCodeDesc = 'Proxy Recipient'
+INNER JOIN dbo.SYN_IT_UDF_AccountMaster AS UDFAccMstr ON UDFAccMstr.CustomerAccountNumber_Key = AccMstr.CustomerAccountNumber
+INNER JOIN dbo.SYN_IT_ALLIANCENUMBERs AS AlliNbr ON AlliNbr.ALLIANCENUMBER = AccMstr.ALLIANCENUMBER
+INNER JOIN dbo.SYN_IT_ACCOUNTMANAGERCODES AS AccMgrCodes ON AccMgrCodes.ManagerCode = AccMstr.ManagerCode
+INNER JOIN dbo.SYN_IT_ContactMaster AS MgrContMstr ON AccMgrCodes.ContactId = MgrContMstr.ContactId
+INNER JOIN SYN_IT_ContactMaster AS PrgContMstr ON PrgContMstr.ContactID = AlliNbr.ContactID
+
+
+GO
+
+
+--- Added View for MVD 
+
+/****** Object:  View [dbo].[Client]    Script Date: 01/17/2014 12:36:36 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[Client]')
+		)
+	DROP VIEW [dbo].[Client]
+GO
+
+/****** Object:  View [dbo].[Client]    Script Date: 01/17/2014 12:36:43 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE VIEW [dbo].[Client]
+AS
+
+SELECT ClntLkup.ClientID AS ClientID
+	,ContMstr.ContactName AS FullName
+	,AccMgrCod.ManagerCode AS BriefName
+	,ContMstr.SSN AS TaxID
+	,UDFContMstr.UDFCMColumn001 AS ACHText
+FROM SYN_IT_AccountManagerCodes AccMgrCod
+INNER JOIN SYN_IT_ContactMaster ContMstr
+	ON ContMstr.ContactID = AccMgrCod.ContactID
+LEFT OUTER JOIN TBL_LookUp_Client ClntLkup
+	ON ClntLkup.ManagerCode = AccMgrCod.ManagerCode
+LEFT OUTER JOIN SYN_IT_UDF_ContactMaster UDFContMstr
+	ON UDFContMstr.ContactID_Key = ContMstr.ContactID
+
+GO

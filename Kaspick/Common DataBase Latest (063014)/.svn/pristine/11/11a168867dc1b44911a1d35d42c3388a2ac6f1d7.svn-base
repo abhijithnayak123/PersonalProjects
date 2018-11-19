@@ -1,0 +1,61 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetItemName'
+		)
+BEGIN
+	DROP FUNCTION FN_GetItemName;
+
+	PRINT 'DROPPED FUNCTION FN_GetItemName';
+END
+GO
+
+/******************************************************************************      
+** Name:    FN_GetItemName    
+** Short Desc: To get Item Name    
+**      
+** Full Description: To get Item Name based on the item_id passed as parameter    
+**            
+**      
+** Sample Call      
+  FN_GetItemName    
+**      
+** Return values:    
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Yugandhar    
+** Company   : Opteamix      
+** Project   : ExcelsiorPrime      
+** Created DT: 4-Apr-2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**     
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION FN_GetItemName (@list_item_id INT)
+RETURNS VARCHAR(100)
+AS
+BEGIN
+	DECLARE @list_item_name VARCHAR(100)
+
+	SELECT @list_item_name = ivanvalue
+	FROM TBL_ListItem
+	WHERE listitemid = @list_item_id
+
+	RETURN @list_item_name
+END
+GO
+
+SET NOCOUNT OFF;
+

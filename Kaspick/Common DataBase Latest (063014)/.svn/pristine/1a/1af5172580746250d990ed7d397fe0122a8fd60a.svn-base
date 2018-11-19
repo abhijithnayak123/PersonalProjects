@@ -1,0 +1,289 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveRptReportIndicesManagement'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveRptReportIndicesManagement;
+
+	PRINT 'DROPPED USP_EX_SaveRptReportIndicesManagement';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO 
+/******************************************************************************                    
+** Name: USP_EX_SaveRptReportIndicesManagement
+** Old Name:     USP_EIS_RPT_REPORT_INDICES_MANAGEMENT_InsUpdProc                    
+** Short Desc: To Insert/Update the Profile Reporting Indices Management for the particular Entity              
+**                    
+** Full Description: To Insert/Update the Profile Reporting Indices Management for the particular Entity              
+**                            
+** Input Arguments: @USERID  : user who is Updating/Inserting/Deleting the Indices Management.        
+**     @CondtionXML: This xml contains  Indices Management Version No, MBM Status, IndexNo and IndexID  
+** Sample Call                    
+**  EXEC USP_EIS_RPT_REPORT_INDICES_MANAGEMENT_InsUpdProc  
+   @USERID = 1 ,   
+   @CLIENTID = 100153,  
+   @IndicesMgmtXML = '<INDICESMANAGEMENTS>  
+        <INDMGMT VersionNo="1" MultiAssetBM="1" IndexNo="1" IndexID="14"/>  
+        <INDMGMT VersionNo="1" MultiAssetBM="1" IndexNo="2" IndexID="13"/>  
+        <INDMGMT VersionNo="2" MultiAssetBM="0" IndexNo="1" IndexID="8"/>  
+        <INDMGMT VersionNo="2" MultiAssetBM="0" IndexNo="2" IndexID="9"/>  
+        <INDMGMT VersionNo="2" MultiAssetBM="0" IndexNo="3" IndexID="7"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="1" IndexID="14"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="2" IndexID="11"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="3" IndexID="2"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="4" IndexID="3"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="5" IndexID="4"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="6" IndexID="10"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="7" IndexID="15"/>  
+        <INDMGMT VersionNo="3" MultiAssetBM="0" IndexNo="8" IndexID="13"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="1" IndexID="14"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="2" IndexID="10"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="3" IndexID="15"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="4" IndexID="5"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="5" IndexID="13"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="6" IndexID="6"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="7" IndexID="12"/>  
+        <INDMGMT VersionNo="4" MultiAssetBM="0" IndexNo="8" IndexID="1"/>  
+       </INDICESMANAGEMENTS>'  
+**           
+** Return values: NONE                    
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Saravanan P Muthu             
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 09/08/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 04/09/2013 Abhijith          EXCREQ 5.4 
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveRptReportIndicesManagement] (
+	@IndicesMgmtXML XML
+	,@CLIENTID VARCHAR(15)
+	,--entity id
+	@USERID INT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EX_SaveRptReportIndicesManagement';
+
+	DECLARE @INDICES_MANAGEMENT TABLE (
+		VersionNo INT
+		,MultiAssetBM BIT
+		,IndexNo INT
+		,IndexID INT
+		,ReportIndexMgmtVersionID INT NULL
+		,UniqueRowID VARCHAR(100) NULL
+		,FLAG VARCHAR(1) DEFAULT 'I'
+		)
+	DECLARE @INDICES_MANAGEMENT_VERSION TABLE (
+		VersionNo INT
+		,MultiAssetBM BIT
+		,FLAG VARCHAR(1) DEFAULT 'I'
+		)
+
+	BEGIN TRY
+		--BEGIN TRANSACTION
+
+		--Parsing values from XML to Table variable  
+		INSERT INTO @INDICES_MANAGEMENT (
+			VersionNo
+			,MultiAssetBM
+			,IndexNo
+			,IndexID
+			)
+		SELECT XMLDATA.ID.value('@VersionNo[1]', 'VARCHAR(10)') AS VersionNo
+			,XMLDATA.ID.value('@MultiAssetBM[1]', 'VARCHAR(10)') AS MultiAssetBM
+			,XMLDATA.ID.value('@IndexNo[1]', 'VARCHAR(10)') AS IndexNO
+			,XMLDATA.ID.value('@IndexID[1]', 'VARCHAR(20)') AS IndexID
+		FROM @IndicesMgmtXML.nodes('/INDICESMANAGEMENTS/INDMGMT') AS XMLDATA(ID)
+
+		--Inserting distinct versionno  to management Version table variable  
+		INSERT INTO @INDICES_MANAGEMENT_VERSION (
+			VersionNo
+			,MultiAssetBM
+			)
+		SELECT DISTINCT VersionNo
+			,MultiAssetBM
+		FROM @INDICES_MANAGEMENT
+
+		--Update Version Flag coloumn  
+		UPDATE @INDICES_MANAGEMENT_VERSION
+		SET FLAG = 'U'
+		FROM @INDICES_MANAGEMENT_VERSION IM
+		INNER JOIN TBL_BR_ReportIndiceManagementVersion RptIndMgmtVer ON IM.VersionNo = RptIndMgmtVer.VersionNo
+		WHERE RptIndMgmtVer.ManagerCode = @CLIENTID
+
+		--Delete Indices Management Row if the Index value is 0  
+		DELETE
+		FROM @INDICES_MANAGEMENT
+		WHERE IndexID = '0'
+
+		--Update Index Flag coloum  
+		UPDATE @INDICES_MANAGEMENT
+		SET ReportIndexMgmtVersionID = VwRptIndMgmt.ReportIndexMgmtVersionID
+			,UniqueRowID = CAST(VwRptIndMgmt.ReportIndexMgmtVersionID AS VARCHAR(50)) + '-' + CAST(IM.IndexNo AS VARCHAR(10))
+			,FLAG = 'U'
+		FROM @INDICES_MANAGEMENT IM
+		INNER JOIN VW_EX_ReportIndicesManagement VwRptIndMgmt ON IM.VersionNo = VwRptIndMgmt.VersionNo
+			AND IM.IndexNo = VwRptIndMgmt.IndexNo
+		WHERE VwRptIndMgmt.ClientID = @CLIENTID
+
+		---Insert into Indices Management Version Table  
+		INSERT INTO TBL_BR_ReportIndiceManagementVersion (
+			ManagerCode
+			,VersionNo
+			,MultiAssetBM
+			,MODIFIED_DATE
+			,MODIFIED_USER_ID
+			,CREATED_DATE
+			,CREATED_USER_ID
+			)
+		SELECT DISTINCT @CLIENTID
+			,VersionNo
+			,MultiAssetBM
+			,GETDATE()
+			,@USERID
+			,GETDATE()
+			,@USERID
+		FROM @INDICES_MANAGEMENT_VERSION
+		WHERE FLAG = 'I'
+
+		--Update Indices Management Version table  
+		UPDATE TBL_BR_ReportIndiceManagementVersion
+		SET MultiAssetBM = IM.MultiAssetBM
+			,MODIFIED_DATE = GETDATE()
+			,MODIFIED_USER_ID = @USERID
+		FROM TBL_BR_ReportIndiceManagementVersion RptIndMgmtVer
+		INNER JOIN @INDICES_MANAGEMENT_VERSION IM ON IM.VERSIONNO = RptIndMgmtVer.VERSIONNO
+		WHERE IM.FLAG = 'U'
+			AND IM.MultiAssetBM <> RptIndMgmtVer.MultiAssetBM
+			AND RptIndMgmtVer.ManagerCode = @CLIENTID
+
+		--Delete Indices management Index  
+		DECLARE @ReportIndexMgmtID TABLE (ReportIndexMgmtID INT)
+
+		INSERT INTO @ReportIndexMgmtID (ReportIndexMgmtID)
+		SELECT ReportIndexMgmtID
+		FROM TBL_BR_ReportIndiceManagement
+		WHERE ReportIndexMgmtVersionID IN (
+				SELECT ReportIndexMgmtVersionID
+				FROM TBL_BR_ReportIndiceManagementVersion
+				WHERE ManagerCode = @CLIENTID
+				)
+			AND (CAST(ReportIndexMgmtVersionID AS VARCHAR(50)) + '-' + CAST(IndexNo AS VARCHAR(10))) NOT IN (
+				SELECT UniqueRowID
+				FROM @INDICES_MANAGEMENT
+				)
+
+
+		UPDATE TBL_BR_ReportIndiceManagement
+		SET DELETED_USER_ID = @USERID
+			,MODIFIED_DATE = GETDATE()
+			,MODIFIED_USER_ID = @USERID
+		WHERE ReportIndexMgmtID IN (
+				SELECT ReportIndexMgmtID
+				FROM @ReportIndexMgmtID
+				)
+	
+		DELETE
+		FROM TBL_BR_ReportIndiceManagement
+		WHERE ReportIndexMgmtID IN (
+				SELECT ReportIndexMgmtID
+				FROM @ReportIndexMgmtID
+				)
+
+		--Insert into Indices Management Table  
+		INSERT INTO TBL_BR_ReportIndiceManagement (
+			ReportIndexMgmtVersionID
+			,IndexNo
+			,IndexID
+			,MODIFIED_DATE
+			,MODIFIED_USER_ID
+			,CREATED_DATE
+			,CREATED_USER_ID
+			)
+		SELECT RptIndMgmtVer.ReportIndexMgmtVersionID
+			,IM.IndexNo
+			,IM.IndexID
+			,GETDATE()
+			,@USERID
+			,GETDATE()
+			,@USERID
+		FROM TBL_BR_ReportIndiceManagementVersion RptIndMgmtVer
+		INNER JOIN @INDICES_MANAGEMENT IM ON RptIndMgmtVer.VersionNo = IM.VersionNo
+		WHERE IM.FLAG = 'I'
+			AND RptIndMgmtVer.ManagerCode = @CLIENTID
+
+		
+		--Update Indices Management Table  
+		UPDATE TBL_BR_ReportIndiceManagement
+		SET IndexID = TEMP.IndexID
+			,MODIFIED_DATE = GETDATE()
+			,MODIFIED_USER_ID = @USERID
+		FROM TBL_BR_ReportIndiceManagement IM
+		INNER JOIN @INDICES_MANAGEMENT TEMP ON TEMP.ReportIndexMgmtVersionID = IM.ReportIndexMgmtVersionID
+			AND TEMP.IndexNo = IM.IndexNo
+		WHERE TEMP.FLAG = 'U'
+			AND IM.IndexID <> TEMP.IndexID
+
+		
+
+		--COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		--ROLLBACK TRANSACTION
+
+		--DECLARE @ErrorMessage VARCHAR(1000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveRptReportIndicesManagement'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveRptReportIndicesManagement';
+END

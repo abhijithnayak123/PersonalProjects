@@ -1,0 +1,136 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc';
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc                  
+** Short Desc: Retrieves the difference between Report Date and Termination Date for deliverable items. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  BeneficiaryID="645"  ClientEmployeeID="0"  ClientID="1"  DeliverableItemID="3"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="27"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="104456"  BeneficiaryID="119953"  ClientEmployeeID="0"  ClientID="100089"  DeliverableItemID="2352"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="120019"  DeliverableFrequency="A"  />
+</SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc
+    @XMLDeliverableItems
+	
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 08/25/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 09/11/2009    Vengopal ET #10318   Updated the condtion to check with ExpectedMatureDate.
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+	--  Variable Declarations  --      
+	DECLARE @procname VARCHAR(60);
+	DECLARE @errmsg VARCHAR(1000);
+	DECLARE @errnbr INT;
+	DECLARE @PriorPeriodAdjustmentFlag BIT;
+	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		,DeliverableQueueID INT
+		);
+
+	--  Variable Data Assignment  --      
+	SET @procname = 'USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc';
+
+	-- Body of procedure  --      
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,XMLdoc.DeliverableItemData.value('@DeliverableQueueID[1]', 'int') AS DeliverableQueueID
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		WHERE XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar') = 'A'
+
+		SELECT DID.DeliverableItemID
+			,46 AS RuleID
+			,'TerminationReportDateDifference' AS Attribute
+			,DATEDIFF(DAY, DGA.ExpectedMatureDate, dateadd(year, 1, DQ.DeliverableEndDate)) AS ActualValue
+			,('Termination Date = ' + CAST(DGA.ExpectedMatureDate AS VARCHAR) + ' And Report Date = ' + CAST(DQ.DeliverableEndDate AS VARCHAR)) AS DisplayMessage
+		FROM @DeliverableItemData DID
+		INNER JOIN DEFERREDGIFTACCOUNT DGA ON DID.ACCOUNTID = DGA.ACCOUNTID
+		INNER JOIN TBL_EIS_DT_Deliverable_Queue DQ ON DID.DeliverableQueueID = DQ.DeliverableQueueID
+		WHERE ISNULL(DGA.ExpectedMatureDate, 0) <> 0
+			AND ISNULL(DQ.DeliverableEndDate, 0) <> 0
+	END TRY
+
+	BEGIN CATCH
+		SET @errmsg = ERROR_MESSAGE();
+		SET @errnbr = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @errmsg
+			,@errnbr = @errnbr
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  -- 
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_DQ_FixedTerminationDateWithinOneyear_SelProc';
+END

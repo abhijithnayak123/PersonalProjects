@@ -1,0 +1,135 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport3]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentSummarySubReport3]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport3]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport3]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentSummarySubReport3                      
+** Short Desc:  Procedure to generate Payment summary report 
+**                      
+** Full Description:   Procedure to generate Payment summary report section3 
+**					               
+**        
+**                              
+** Input Arguments:    @CustomerAccountNumber VARCHAR(14) ,@TaxYear INT
+**         
+** Sample Call     
+
+EXEC USP_PP_ReportGetPaymentSummarySubReport3  '353C134', 2013   
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-JAN-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport3]
+	-- paremeters here                                
+	@CustomerAccountNumber VARCHAR(14)
+	,@TaxYear INT
+AS
+--  Initial Set statements  --        
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+-- Body of procedure  --        
+BEGIN TRY
+	---Variable declaration 
+	SELECT convert(VARCHAR, BenPayoutSch.PaymentDate, 101) AS PaymentDate
+		,BenPayoutSch.PaymentDate AS PmtDate
+		,BenPayoutSch.ScheduledAmount
+		,CASE isnull(BenPayoutSch.PaymentID, 0)
+			WHEN 0
+				THEN ''
+			ELSE 'Paid'
+			END AS Paid
+		,(
+			CASE isnull(BenPayoutSch.PaymentID, 0)
+				WHEN 0
+					THEN (
+							CASE 
+								WHEN Len(paidtocontactname) > 0
+									THEN paidtocontactname
+								ELSE ContMstr.contactname
+								END
+							)
+				ELSE BenPymt.payeename
+				END
+			) AS Payee
+		,BenPayoutSch.ContactID
+		,BenPayoutSch.ContactRoleCode
+		,AccPayoutSch.CustomerAccountNumber
+		,BenPymt.VoidDate
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPayoutSch
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccPayoutSch
+		ON AccPayoutSch.APScheduleID = BenPayoutSch.APScheduleID
+	LEFT OUTER JOIN TBL_PP_BeneficiaryPayment BenPymt
+		ON BenPayoutSch.PaymentID = BenPymt.PaymentID
+	LEFT OUTER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+		ON BeneDist.BeneficiaryDistributionID = BenPayoutSch.BeneficiaryDistributionID
+	LEFT OUTER JOIN SYN_IT_ContactMaster ContMstr
+		ON BenPayoutSch.ContactID = ContMstr.ContactID
+	WHERE AccPayoutSch.CustomerAccountNumber = @CustomerAccountNumber
+		AND BenPayoutSch.TaxYear = @TaxYear
+		AND (
+			BenPymt.VoidDate IS NULL
+			OR isnull(ReissueAs, 0) <> 0
+			)
+	
+	UNION ALL -- union to include reissued payments      -- added "ALL" - for Ticket : 4237 CR# 09418  
+	
+	SELECT convert(VARCHAR, PaymentDate, 101) AS PaymentDate
+		,PaymentDate AS PmtDate
+		,-- included for order by        
+		PaymentAmount
+		,'Paid' AS Paid
+		,PayeeName AS Payee
+		,ContactID
+		,ContactRoleCode
+		,CustomerAccountNumber
+		,-- included for order by        
+		voiddate
+	FROM TBL_PP_BeneficiaryPayment
+	WHERE isnull(ReissueAs, 0) <> 0
+		AND TaxYear = @taxyear
+		AND CustomerAccountNumber = @CustomerAccountNumber
+		AND voiddate IS NULL
+	ORDER BY BenPayoutSch.PaymentDate ASC
+		,BenPayoutSch.ContactID
+		,BenPayoutSch.ContactRoleCode
+		,AccPayoutSch.CustomerAccountNumber
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

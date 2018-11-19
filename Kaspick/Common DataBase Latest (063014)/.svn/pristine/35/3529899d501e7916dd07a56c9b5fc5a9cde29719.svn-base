@@ -1,0 +1,79 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsertInterfaceFileGenerationLog]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_InsertInterfaceFileGenerationLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_InsertInterfaceFileGenerationLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsertInterfaceFileGenerationLog]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_InsertInterfaceFileGenerationLog
+** Short Desc: Insert log into TBL_SIT_InterfaceFileGenerationLog table
+** Full Description: Insert log into TBL_SIT_InterfaceFileGenerationLog table
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_InsertInterfaceFileGenerationLog 10,'EBR','8/26/2014',1,'Comments'
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_InsertInterfaceFileGenerationLog (
+	@valuationID INT
+	,@fileType VARCHAR(100)
+	,@fileGenerationDateTime DATETIME
+	,@fileGenerationUserID INT
+	,@comment VARCHAR(256)
+	)
+AS
+BEGIN
+	DECLARE @fileTypeID INT
+
+	SELECT @fileTypeID = FileTypeID
+	FROM TBL_SIT_FileType
+	WHERE FileTypeName = @fileType
+
+	INSERT INTO TBL_SIT_InterfaceFileGenerationLog (
+		ValuationID
+		,FileTypeID
+		,FileGenerationDateTime
+		,FileGenerationUserID
+		,Comment
+		)
+	VALUES (
+		@valuationID
+		,@fileTypeID
+		,@fileGenerationDateTime
+		,@fileGenerationUserID
+		,@comment
+		)
+END

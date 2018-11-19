@@ -1,0 +1,29 @@
+REM --  This gets the Environments Variable set in the nested batch bat using SET
+REM ----------------------
+
+@echo off
+
+set DB_USER=%DB_USER%
+set DB_PASSWORD=%DB_PASSWORD%
+set DB_NAME=%DB_NAME%
+set DB_SERVER=%DB_SERVER%
+
+
+
+Rem ******** Function *****************
+
+for /f "delims=" %%f in ('dir /b ..\..\KaspickDB_ApplicationScripts\Reportoire\Functions\') do (SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME%  -i ..\..\KaspickDB_ApplicationScripts\Reportoire\Functions\%%f -o ..\..\DeploymentBatchScripts\BackOfficeIntegration\Log\Reportoire\%%f.log)
+
+Rem ******** Migration *****************
+
+for /f "delims=" %%f in ('dir /b ..\..\KaspickDB_ApplicationScripts\Reportoire\Migration\') do (SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME%  -i ..\..\KaspickDB_ApplicationScripts\Reportoire\Migration\%%f -o ..\..\DeploymentBatchScripts\BackOfficeIntegration\Log\Reportoire\%%f.log)
+
+Rem ******** StoredProcedures*****************
+
+for /f "delims=" %%f in ('dir /b ..\..\KaspickDB_ApplicationScripts\Reportoire\StoredProcedures\') do (SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME%  -i ..\..\KaspickDB_ApplicationScripts\Reportoire\StoredProcedures\%%f -o ..\..\DeploymentBatchScripts\BackOfficeIntegration\Log\Reportoire\%%f.log)
+
+Rem ******** Triggers*****************
+
+for /f "delims=" %%f in ('dir /b ..\..\KaspickDB_ApplicationScripts\Reportoire\Triggers\') do (SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME%  -i ..\..\KaspickDB_ApplicationScripts\Reportoire\Triggers\%%f -o ..\..\DeploymentBatchScripts\BackOfficeIntegration\Log\Reportoire\%%f.log)
+
+

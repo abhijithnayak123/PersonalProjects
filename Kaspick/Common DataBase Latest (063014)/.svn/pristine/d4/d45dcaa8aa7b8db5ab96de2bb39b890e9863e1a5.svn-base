@@ -1,0 +1,147 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPODTManagementConsole'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetPODTManagementConsole;
+
+	PRINT 'DROPPED USP_RP_GetPODTManagementConsole';
+END
+GO
+
+/******************************************************************************                  
+** Old Name: USP_EIS_PO_DT_ManagementConsole_SelProc
+
+** New Name: USP_RP_GetPODTManagementConsole
+
+** Short Desc: To fetch data for Management Console
+**                  
+** Full Description: To fetch data for Management Console  
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+  EXEC USP_EIS_PO_DT_ManagementConsole_SelProc '1,2','0','0','','','0'
+
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Ashvin Mandowara
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 23-Nov-2011
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 03/12/2012     Anand Kumar		Changes for Adding Comments as per Stored Procedure standard template.
+** 03/14/2012	  Anand Kumar       ERD changes implemetation.  
+** 05/09/2012	  Ashvin		    Adding @DeliverableID as one more parameter.  
+** 22-May-2014    Mukesh			Made changes in the table names to refer new KASPICK DB
+** 06-Jun-2014	  Mukesh			SP Name Renamed and Formatted 
+** 14-Jul-2014	  Mukesh            Updated SP to use view for client manager, report analyst,relationship manager 
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_GetPODTManagementConsole] 
+(
+	@DeliverableID BigInt = 0,
+	@DeliverableQueueIDs VARCHAR(4000) = '0',
+	@StatusIDs VARCHAR(4000) = '0',
+	@ClientIDs VARCHAR(4000) = '0',
+	@FromDate DATETIME,
+	@ToDate DATETIME,
+	@ReportOwners BIGINT = 0
+)
+AS
+BEGIN
+	DECLARE @SourceTable TABLE (
+		DeliverableName VARCHAR(150),
+		QueueName VARCHAR(150),
+		ClientManagerUsers VARCHAR(150),
+		RelationshipManagerUsers VARCHAR(150), 
+		ClientBriefName VARCHAR(20),
+		ReportAnalystUsers VARCHAR(150), 
+		DeliverableQueueID INT,
+		DeliverableItemID INT,
+		DeliverableItemStatusID INT,
+		statusname VARCHAR(100)
+	)
+		
+	INSERT INTO @SourceTable 
+	SELECT 
+		DT.DeliverableName,
+		DQ.DeliverableQueueName,
+		ClientManagerUsers = (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LastName)),'')='') THEN '' ELSE (LastName ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FirstName)),'')='') THEN '' ELSE (', ' + FirstName ) END) + ' '+ ISNULL(MiddleName,''))  from TBL_KS_User where UserID = SRClientManager.userid ), 
+		RelationshipManagerUsers = (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LastName)),'')='') THEN '' ELSE (LastName ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FirstName)),'')='') THEN '' ELSE (', ' + FirstName ) END) + ' '+ ISNULL(MiddleName,''))  from TBL_KS_User where UserID = SRRelationshipManager.userid ),
+		AccMgrCds.ManagerCode AS ClientBriefName,
+		ReportAnalystUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LastName)),'')='') THEN '' ELSE (LastName ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FirstName)),'')='') THEN '' ELSE (', ' + FirstName ) END) + ' '+ ISNULL(MiddleName,''))  from TBL_KS_User where UserID = SRReportAnalyst.userid ),
+		DQ.DeliverableQueueID,
+		DI.DeliverableItemID,
+		IMS.DeliverableItemStatusID,
+		DIS.statusname
+	FROM TBL_DLV_DeliverableQueue DQ 
+		INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID 
+		INNER JOIN TBL_DLV_DeliverableItem DI ON DQ.DeliverableQueueID = DI.DeliverableQueueID          
+		INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID		
+		INNER JOIN TBL_DLV_Deliverable DT ON DQ.DeliverableID = DT.DeliverableID
+		INNER JOIN TBL_DLV_DeliverableMethod TM ON IMS.DeliveryMethodID = TM.DeliveryMethodID AND TM.IsPrimary = 1  
+				AND TM.DeliverableID IN (SELECT DeliverableID FROM TBL_DLV_DeliverableQueue WHERE ( @DeliverableQueueIDs = '0' OR ( CHARINDEX( ',' + CONVERT(VARCHAR(10), DeliverableQueueID) + ',', ',' + @DeliverableQueueIDs + ',' ) > 0  ) )) -- TO get Primary Record
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON DI.ManagerCode = AccMgrCds.ManagerCode 	
+		LEFT OUTER JOIN VW_EX_UserRole SRRelationshipManager ON SRRelationshipManager.ManagerCode = AccMgrCds.ManagerCode AND SRRelationshipManager.RoleID = 14
+		LEFT OUTER JOIN VW_EX_UserRole SRReportAnalyst ON SRReportAnalyst.ManagerCode = AccMgrCds.ManagerCode AND SRReportAnalyst.RoleID = 519
+		LEFT OUTER JOIN VW_EX_UserRole SRClientManager ON SRClientManager.ManagerCode = AccMgrCds.ManagerCode AND SRClientManager.RoleID = 2 
+	WHERE ( @DeliverableID = 0 OR DT.DeliverableID = @DeliverableID ) 
+		AND ( @DeliverableQueueIDs = '0' OR ( CHARINDEX( ',' + CONVERT(VARCHAR(10), DQ.DeliverableQueueID) + ',', ',' + @DeliverableQueueIDs + ',' ) > 0  ) )
+		AND ( @StatusIDs ='0' OR ( CHARINDEX( ',' + CONVERT(VARCHAR(10), DQ.QueueStatusID) + ',', ',' + @StatusIDs + ',' ) > 0  ) )
+		AND ( @ClientIDs ='0' OR( CHARINDEX( ',' + CONVERT(VARCHAR(10), AccMgrCds.ManagerCode) + ',', ',' + @ClientIDs + ',' ) > 0 ) )
+		AND (DATEDIFF(day,@FromDate,'01/01/1900') = 0 OR DQ.DeliverableEndDate >= @FromDate )
+		AND (DATEDIFF(day,@ToDate,'01/01/1900') = 0 OR DQ.DeliverableEndDate <= @ToDate )
+		AND (@ReportOwners = 0 OR SRReportAnalyst.UserID = @ReportOwners)
+	
+	SELECT * FROM ( 
+	SELECT
+		DeliverableQueueID,
+		DeliverableName,
+		QueueName,
+		ClientManagerUsers,	
+		RelationshipManagerUsers,
+		ClientBriefName,
+		ReportAnalystUsers,
+		Scheduled,
+		Generated,
+		Published,
+		Cancelled,
+		Mailed,
+		[On Hold] AS 'OnHold',
+		Scheduled+Error+Generated+Published+Cancelled+[Web Published]+Printed+Reviewed+Mailed AS 'TotalOfReports'
+	FROM @SourceTable
+		PIVOT (            
+			COUNT (DeliverableItemID)            
+			FOR statusname IN (Scheduled,Error,Generated,Published,Cancelled,[Web Published],Printed,Reviewed,Mailed,[On Hold],[Release From Hold])           
+		) AS pvt
+	        
+	) MgMtConsole
+	ORDER BY RelationshipManagerUsers,ClientManagerUsers,ReportAnalystUsers
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPODTManagementConsole'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetPODTManagementConsole';
+END

@@ -1,0 +1,111 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProfileTaxCascade')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProfileTaxCascade;
+        PRINT 'DROPPED USP_EX_GetProfileTaxCascade';
+    END
+GO 
+
+  
+ /*********************************************************************************************************************                                                       
+* Procedure Name  : USP_EX_GetProfileTaxCascade
+* Old Procedure Name  : USP_EIS_EX_PROFILE_TAX_CASCADE_selProc              
+* Description     : USP_EIS_EX_PROFILE_TAX_CASCADE_selProc             
+* Input           :               
+* Modification Log: Query Indentation              
+*     For update on Alerts table; modified by and modified date columns are updated.  
+*       exec USP_EIS_EX_PROFILE_TAX_CASCADE_selProc   @ENTITYID= 105309 ,@ENTITY_TYPE='ACCOUNT',@NEW_FASCIMILESIGNEREMPID=null,  
+@NEW_FASCIMILESIGNERFLAG =null,  
+ @NEW_BENEFICIARYTAXFORMID =null,  
+ @NEW_TAXRETURNID  =null,  
+ @NEW_TAX10989ID    =null,                 
+ @NEW_TAX1099RID=null  
+*                                          
+* Date         Modified By  Description                                                          
+*--------------------------------------------------------------------------------------------------------------------                                                       
+* 23-Jul-07  Saravanan PM  Created             
+* 05-Mar-08  Deepa     Modifed as per ET 7314 by adding Fascimile_Signer_flag  
+* 14-Apr-2014 Yugandhar		EXCREQ 6.1    
+*********************************************************************************************************************/                            
+    
+CREATE PROCEDURE USP_EX_GetProfileTaxCascade       
+ @ENTITYID VARCHAR(14),    
+ @ENTITY_TYPE VARCHAR(35),    
+ @NEW_FASCIMILESIGNEREMPID INT OUTPUT,  
+ @NEW_FASCIMILESIGNERFLAG INT OUTPUT,   --ADDED BY DEEPA  
+ @NEW_BENEFICIARYTAXFORMID INT OUTPUT,  
+ @NEW_TAXRETURNID  INT OUTPUT,  
+ @NEW_TAX10989ID    INT OUTPUT,                  
+ @NEW_TAX1099RID    INT OUTPUT  
+AS      
+BEGIN     
+   
+ SET @NEW_FASCIMILESIGNEREMPID = NULL  
+ SET @NEW_FASCIMILESIGNERFLAG = NULL  --ADDED BY DEEPA  
+ SET @NEW_BENEFICIARYTAXFORMID = NULL  
+ SET @NEW_TAXRETURNID = NULL  
+ SET @NEW_TAX10989ID = NULL  
+ SET @NEW_TAX1099RID = NULL  
+  
+ IF  (@ENTITY_TYPE = 'ALLIANCE')  
+ BEGIN  
+  SELECT   
+   @NEW_FASCIMILESIGNEREMPID = PrflTax.EmployeeContactID,  
+   @NEW_FASCIMILESIGNERFLAG = PrflTax.FASCIMILE_SIGNER_FLAG,  --ADDED BY DEEPA  
+   @NEW_BENEFICIARYTAXFORMID = PrflTax.BENEFICIARY_TAX_FORM_ID,  
+   @NEW_TAXRETURNID = PrflTax.TAX_RETURN_ID,  
+   @NEW_TAX10989ID  = PrflTax.TAX_10989_ID,                  
+   @NEW_TAX1099RID  = PrflTax.TAX_1099R_ID   
+  FROM  
+   TBL_IRS_PROFILETAX PrflTax   
+   INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.ManagerCode  = PrflTax.ManagerCode  
+  WHERE   
+   AccMstr.Alliancenumber = @ENTITYID  
+ END  
+ ELSE IF (@ENTITY_TYPE = 'ACCOUNT')  
+ BEGIN  
+  SELECT   
+   @NEW_FASCIMILESIGNEREMPID = PrflTax.EmployeeContactID,  
+            @NEW_FASCIMILESIGNERFLAG = PrflTax.FASCIMILE_SIGNER_FLAG,  
+   @NEW_BENEFICIARYTAXFORMID = PrflTax.BENEFICIARY_TAX_FORM_ID,  
+   @NEW_TAXRETURNID = PrflTax.TAX_RETURN_ID,  
+   @NEW_TAX10989ID  = PrflTax.TAX_10989_ID,                  
+   @NEW_TAX1099RID  = PrflTax.TAX_1099R_ID  
+  FROM  
+   TBL_IRS_PROFILETAX PrflTax   
+   INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.Alliancenumber = PrflTax.AllianceNumber  
+  WHERE   
+   AccMstr.CustomerAccountNumber = @ENTITYID  
+ END  
+ ELSE IF (@ENTITY_TYPE = 'CONTACT')  
+ BEGIN  
+  SELECT   
+   @NEW_FASCIMILESIGNEREMPID = PrflTax.EmployeeContactID,  
+   @NEW_FASCIMILESIGNERFLAG = PrflTax.FASCIMILE_SIGNER_FLAG,  
+   @NEW_BENEFICIARYTAXFORMID = PrflTax.BENEFICIARY_TAX_FORM_ID,  
+   @NEW_TAXRETURNID = PrflTax.TAX_RETURN_ID,  
+   @NEW_TAX10989ID  = PrflTax.TAX_10989_ID,                  
+   @NEW_TAX1099RID  = PrflTax.TAX_1099R_ID  
+  FROM  
+   TBL_IRS_PROFILETAX PrflTax   
+    INNER JOIN SYN_IT_ContactAccountRoles ConAccRol ON ConAccRol.CustomerAccountNumber=PrflTax.CustomerAccountNumber
+	INNER JOIN	SYN_IT_AccountMaster AccMstr ON  AccMstr.CustomerAccountNumber=ConAccRol.CustomerAccountNumber
+	INNER JOIN	SYN_IT_ContactRoleCodes	ConRolCds ON ConAccRol.ContactRoleCode = ConRolCds.ID
+	INNER JOIN	SYN_IT_AccountManagerCodes AccMgrCds ON AccMgrCds.ManagerCode=AccMstr.ManagerCode
+	WHERE		ConRolCds.ID IN (10, 21, 37)and
+    ConRolCds.ID = @ENTITYID  
+ END   
+END         
+
+
+ GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProfileTaxCascade') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProfileTaxCascade';
+	END  

@@ -1,0 +1,444 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminBenereportcommentsLf'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetSysadminBenereportcommentsLf;
+
+	PRINT 'DROPPED USP_EX_GetSysadminBenereportcommentsLf';
+END
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetSysadminBenereportcommentsLf
+** Old Name:     USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_LFSELPROC
+** Short Desc:	Put in Short Description
+**
+** Full Description
+**        More detailed description if necessary
+**
+** Sample Call
+        USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_LFSELPROC 
+*	@startrow  =1,
+*	@endrow    =19,
+*	@SearchColumnName ='PortfolioCode',
+*	@SearchCriteria	  =0,
+*	@strSearch ='',
+*	@Filtercolumnname ='', 
+*	@strFilter ='',		
+*	@sortcolumnname ='PortfolioCode', 
+*	@SortOrder =''
+
+**
+** Return values: NONE
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: V. Madhuri
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior -- IM PROFILE
+**	Created DT:	03/15/2007
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:           Bug #     Description:                           Rvwd
+** --------     --------         ------    -------------------------------------- --------
+** 28-Mar-2007  Amarnath.N.R      4674          Sorting was happening Decsending by Default
+** 20-March-2014 Sanath			EXCREQ 3.1   Modified
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetSysadminBenereportcommentsLf] (
+	@startrow INT
+	,-- start row for the page    
+	@endrow INT
+	,-- end row for the page    
+	@searchcolumnname VARCHAR(100)
+	,-- this will be used when user wants to search a string within a column.    
+	-- 'Portfolio Code'/'Portfolio Label'    
+	@searchcriteria TINYINT
+	,-- 0-Begins with, 1-Contains    
+	@strsearch VARCHAR(255)
+	,-- search string that will be located in column provided above.    
+	@filtercolumnname VARCHAR(100)
+	,-- Column on which the default filtering will be done    
+	@strfilter VARCHAR(255)
+	,-- for filtering the char/varchar, which will work on filter control    
+	@sortcolumnname VARCHAR(100)
+	,-- column on which the sorting should work    
+	@sortorder VARCHAR(5) -- ASC or DESC     
+	)
+AS
+--  Variable Declarations  --    
+DECLARE @totalpagecount INT;
+DECLARE @strsearchval VARCHAR(255);
+DECLARE @strsearchval2 VARCHAR(255);
+
+--Added to Handle Ascending order by default    
+IF (@sortorder = '')
+	SET @sortorder = 'ASC'
+
+--Added to Handle the Wild key Chars    
+SELECT @strsearchval = Replace(@strsearch, '%', '[%]');
+
+SELECT @strsearchval2 = Replace(@strsearchval, '_', '[_]');
+
+--Declare @strsearch varchar(255);    
+SET @strsearch = @strsearchval2;
+
+--  Temp tables, Cursors, Table Variables  --    
+DECLARE @accstatus TABLE (
+	commentid INT
+	,notactive BIT
+	)
+DECLARE @benecomment TABLE (
+	commentid INT
+	,portfoliocode VARCHAR(39)
+	,portfoliolabel VARCHAR(39)
+	,notactive BIT
+	)
+DECLARE @comment_search TABLE (
+	commentid INT
+	,portfoliocode VARCHAR(39)
+	,portfoliolabel VARCHAR(39)
+	,notactive BIT
+	)
+DECLARE @comment_filtered TABLE (
+	commentid INT
+	,portfoliocode VARCHAR(39)
+	,portfoliolabel VARCHAR(39)
+	,notactive BIT
+	)
+
+--  Variable Data Assignment  --    
+INSERT INTO @accstatus (
+	commentid
+	,notactive
+	)
+SELECT DISTINCT BenRptCmnt.BRCOMMENTID AS 'COMMENTID'
+	,1
+FROM TBL_INV_BeneReportComment BenRptCmnt
+INNER JOIN TBL_INV_BeneReportComment BenRptCment ON BenRptCmnt.brcommentid = BenRptCment.brcommentid
+INNER JOIN TBL_BR_CommentLinkage CmntLnkg ON BenRptCment.brcommentid = CmntLnkg.commentid
+INNER JOIN SYN_IT_AccountMaster AccMstr ON CmntLnkg.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+WHERE AccMstr.ClosedFlag = - 1
+
+INSERT INTO @benecomment (
+	commentid
+	,portfoliocode
+	,portfoliolabel
+	,notactive
+	)
+SELECT BenRptCmnt.brcommentid AS 'Commentid'
+	,BenRptCmnt.portfoliocode AS 'Portfoliocode'
+	,BenRptCmnt.portfoliolabel AS 'Portfoliolabel'
+	,ISNULL(AccSttus.notactive, 0)
+FROM TBL_INV_BeneReportComment BenRptCmnt
+INNER JOIN TBL_INV_BeneReportComment BenRptCment ON BenRptCmnt.brcommentid = BenRptCment.brcommentid
+LEFT JOIN @accstatus AccSttus ON BenRptCmnt.brcommentid = AccSttus.commentid
+
+-- CONDITION HANDLED FOR SELECTION OF PORTFOLIOCODE COLUMN AND CONTAINS SEARCH    
+IF (@strSearch = '')
+BEGIN
+	INSERT INTO @comment_search (
+		commentid
+		,portfoliocode
+		,portfoliolabel
+		,notactive
+		)
+	SELECT commentid
+		,portfoliocode
+		,portfoliolabel
+		,notactive
+	FROM @benecomment
+END
+ELSE
+BEGIN
+	-- For all comments with search on PortFolioCode column    
+	IF @searchcolumnname = 'PORTFOLIOCODE'
+	BEGIN
+		-- For all Comments with search on PortFolioCode column - begins with    
+		IF @searchcriteria = 0
+		BEGIN
+			INSERT INTO @comment_search (
+				commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				)
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+			FROM @benecomment
+			WHERE portfoliocode LIKE @strsearch + '%'
+		END
+		ELSE
+			-- For all Comments with search on PortFolioCode column - contains    
+		BEGIN
+			INSERT INTO @comment_search (
+				commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				)
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+			FROM @benecomment
+			WHERE portfoliocode LIKE '%' + @strsearch + '%'
+		END
+	END
+	ELSE
+	BEGIN
+		-- For all Comments with search on PortFolioLabel column - begins with    
+		IF @searchcriteria = 0
+		BEGIN
+			INSERT INTO @comment_search (
+				commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				)
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+			FROM @benecomment
+			WHERE portfoliolabel LIKE @strsearch + '%'
+		END
+		ELSE
+			-- For all Comments with search on PortFolioCode column - contains    
+		BEGIN
+			INSERT INTO @comment_search (
+				commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				)
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+			FROM @benecomment
+			WHERE portfoliolabel LIKE '%' + @strsearch + '%'
+		END
+	END
+END
+
+-- Search for Filter    
+IF @strfilter <> ''
+BEGIN
+	IF @strfilter <> '123'
+	BEGIN
+		INSERT INTO @comment_filtered (
+			commentid
+			,portfoliocode
+			,portfoliolabel
+			,notactive
+			)
+		SELECT commentid
+			,portfoliocode
+			,portfoliolabel
+			,notactive
+		FROM @comment_search
+		WHERE portfoliocode LIKE @strfilter + '%'
+	END
+	ELSE
+	BEGIN
+		INSERT INTO @comment_filtered (
+			commentid
+			,portfoliocode
+			,portfoliolabel
+			,notactive
+			)
+		SELECT commentid
+			,portfoliocode
+			,portfoliolabel
+			,notactive
+		FROM @comment_search
+		WHERE portfoliocode LIKE '[0-9]%'
+	END
+END
+ELSE
+BEGIN
+	INSERT INTO @comment_filtered (
+		commentid
+		,portfoliocode
+		,portfoliolabel
+		,notactive
+		)
+	SELECT commentid
+		,portfoliocode
+		,portfoliolabel
+		,notactive
+	FROM @comment_search
+END
+
+-- Calculate total page count.    
+SELECT @totalpagecount = count(*)
+FROM @COMMENT_FILTERED
+
+-- @startrow will be passed as -1  only if options are Print/Excel     
+IF @startrow <> - 1
+BEGIN
+	--if Selected records are to be displayed    
+	--Sorting on Portfoliocode    
+	IF @sortcolumnname = 'PORTFOLIOCODE'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT commentid
+					,portfoliocode
+					,portfoliolabel
+					,notactive
+					,Row_number() OVER (
+						ORDER BY portfoliocode ASC
+						) AS RowNumber
+					,isnull(@totalpagecount, 0) AS [TotalCount]
+				FROM @comment_filtered
+				) AS Universe
+			WHERE RowNumber >= @startrow
+				AND RowNumber <= @endrow
+			ORDER BY portfoliocode ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT commentid
+					,portfoliocode
+					,portfoliolabel
+					,notactive
+					,Row_number() OVER (
+						ORDER BY portfoliocode DESC
+						) AS RowNumber
+					,isnull(@totalpagecount, 0) AS [TotalCount]
+				FROM @comment_filtered
+				) AS Universe
+			WHERE RowNumber >= @startrow
+				AND RowNumber <= @endrow
+			ORDER BY portfoliocode DESC
+		END
+	END
+
+	--Sorting on PortFolioLabel    
+	IF @sortcolumnname = 'PORTFOLIOLABEL'
+	BEGIN
+		IF @sortorder = 'ASC'
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT commentid
+					,portfoliocode
+					,portfoliolabel
+					,notactive
+					,Row_number() OVER (
+						ORDER BY PORTFOLIOLABEL ASC
+						) AS RowNumber
+					,isnull(@totalpagecount, 0) AS [TotalCount]
+				FROM @comment_filtered
+				) AS Universe
+			WHERE RowNumber >= @startrow
+				AND RowNumber <= @endrow
+			ORDER BY portfoliolabel ASC
+		END
+		ELSE
+		BEGIN
+			SELECT *
+			FROM (
+				SELECT commentid
+					,portfoliocode
+					,portfoliolabel
+					,notactive
+					,Row_number() OVER (
+						ORDER BY PORTFOLIOLABEL DESC
+						) AS RowNumber
+					,isnull(@totalpagecount, 0) AS [TotalCount]
+				FROM @comment_filtered
+				) AS Universe
+			WHERE RowNumber >= @startrow
+				AND RowNumber <= @endrow
+			ORDER BY portfoliolabel DESC
+		END
+	END
+END
+ELSE
+BEGIN
+	--To display all records for Print/Export options    
+	--Sorting on Portfoliocode    
+	IF @sortcolumnname = 'PORTFOLIOCODE'
+	BEGIN
+		IF @SortOrder = 'ASC'
+		BEGIN
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				,0 AS RowNumber
+				,isnull(@totalpagecount, 0) AS [TotalCount]
+			FROM @comment_filtered
+			ORDER BY portfoliocode ASC
+		END
+		ELSE
+		BEGIN
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				,0 AS RowNumber
+				,isnull(@totalpagecount, 0) AS [TotalCount]
+			FROM @comment_filtered
+			ORDER BY portfoliocode DESC
+		END
+	END
+
+	--Sorting on PortFolioLabel    
+	IF @sortcolumnname = 'PORTFOLIOLABEL'
+	BEGIN
+		IF @SortOrder = 'ASC'
+		BEGIN
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				,0 AS RowNumber
+				,isnull(@totalpagecount, 0) AS [TotalCount]
+			FROM @comment_filtered
+			ORDER BY portfoliolabel ASC
+		END
+		ELSE
+		BEGIN
+			SELECT commentid
+				,portfoliocode
+				,portfoliolabel
+				,notactive
+				,0 AS RowNumber
+				,isnull(@totalpagecount, 0) AS [TotalCount]
+			FROM @comment_filtered
+			ORDER BY portfoliolabel DESC
+		END
+	END
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetSysadminBenereportcommentsLf'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetSysadminBenereportcommentsLf';
+END

@@ -1,0 +1,239 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.triggers
+		WHERE object_id = OBJECT_ID(N'[dbo].[TRG_TR_AudTradeImport]')
+		)
+	DROP TRIGGER [dbo].[TRG_TR_AudTradeImport]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name: 	TRG_TR_AudTradeImport
+** Table Name:		TBL_TR_TradeImport
+** Action			Insert, Update, Delete
+**
+** Description: 	Writes data changes to the audit table
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE TRIGGER [dbo].[TRG_TR_AudTradeImport] ON [dbo].[TBL_TR_TradeImport]
+AFTER INSERT
+	,UPDATE
+	,DELETE
+AS
+--  Variable Declarations  --
+DECLARE @trgname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @TradeID INT;
+-- Variables used for error handling - uncomment if needed
+DECLARE @val1 VARCHAR(30);
+
+--Declare @val2						varchar(30);
+--  Temp tables, Cursors, Table Variables  --
+--  Variable Data Assignment  --
+SET @trgname = 'TRG_TR_AudTradeImport';
+
+--	Body of trigger  --
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the row is a Delete and rowcount from Deleted > 0 and Inserted > 0 or Inserted <> 0, 
+-- then get the data from the Deleted table for recording the old values in the audit table.
+BEGIN TRY
+	IF (
+			SELECT count(*)
+			FROM Deleted
+			) > 0
+		AND (
+			SELECT count(*)
+			FROM Inserted
+			) > 0
+	BEGIN
+		INSERT INTO TBL_TR_AUDIT_TradeImport (
+			TradeID
+			,FSITypeCode
+			,TradeIDEnfu
+			,SchwabMasterID
+			,CustodialAccount
+			,CustomerAccountNumber
+			,SecuritySymbol
+			,TradeType
+			,DollarTradeAmt
+			,TradeQuantity
+			,ApprovedDate
+			,FileGenDate
+			,ReconcileDate
+			,TradeDate
+			,SettleDate
+			,UserID
+			,Source
+			,TradeStatus
+			,SecurityType
+			,TradeIDTRex
+			,ExecutionPrice
+			,Broker
+			,SubmissionID
+			)
+		SELECT D.TradeID
+			,D.FSITypeCode
+			,D.TradeIDEnfu
+			,D.SchwabMasterID
+			,D.CustodialAccount
+			,D.CustomerAccountNumber
+			,D.SecuritySymbol
+			,D.TradeType
+			,D.DollarTradeAmt
+			,D.TradeQuantity
+			,D.ApprovedDate
+			,D.FileGenDate
+			,D.ReconcileDate
+			,D.TradeDate
+			,D.SettleDate
+			,D.UserID
+			,D.Source
+			,D.TradeStatus
+			,D.SecurityType
+			,D.TradeIDTRex
+			,D.ExecutionPrice
+			,D.Broker
+			,D.SubmissionID
+		FROM Deleted D
+	END
+	ELSE
+		IF (
+				SELECT count(*)
+				FROM Inserted
+				) > 0
+		BEGIN
+			INSERT INTO TBL_TR_AUDIT_TradeImport (
+				TradeID
+				,FSITypeCode
+				,TradeIDEnfu
+				,SchwabMasterID
+				,CustodialAccount
+				,CustomerAccountNumber
+				,SecuritySymbol
+				,TradeType
+				,DollarTradeAmt
+				,TradeQuantity
+				,ApprovedDate
+				,FileGenDate
+				,ReconcileDate
+				,TradeDate
+				,SettleDate
+				,UserID
+				,Source
+				,TradeStatus
+				,SecurityType
+				,TradeIDTRex
+				,ExecutionPrice
+				,Broker
+				,SubmissionID
+				)
+			SELECT I.TradeID
+				,I.FSITypeCode
+				,I.TradeIDEnfu
+				,I.SchwabMasterID
+				,I.CustodialAccount
+				,I.CustomerAccountNumber
+				,I.SecuritySymbol
+				,I.TradeType
+				,I.DollarTradeAmt
+				,I.TradeQuantity
+				,I.ApprovedDate
+				,I.FileGenDate
+				,I.ReconcileDate
+				,I.TradeDate
+				,I.SettleDate
+				,I.UserID
+				,I.Source
+				,I.TradeStatus
+				,I.SecurityType
+				,I.TradeIDTRex
+				,I.ExecutionPrice
+				,I.Broker
+				,I.SubmissionID
+			FROM Inserted I
+		END
+		ELSE
+			IF (
+					SELECT count(*)
+					FROM Deleted
+					) > 0
+			BEGIN
+				INSERT INTO TBL_TR_AUDIT_TradeImport (
+					TradeID
+					,FSITypeCode
+					,TradeIDEnfu
+					,SchwabMasterID
+					,CustodialAccount
+					,CustomerAccountNumber
+					,SecuritySymbol
+					,TradeType
+					,DollarTradeAmt
+					,TradeQuantity
+					,ApprovedDate
+					,FileGenDate
+					,ReconcileDate
+					,TradeDate
+					,SettleDate
+					,UserID
+					,Source
+					,TradeStatus
+					,SecurityType
+					,TradeIDTRex
+					,ExecutionPrice
+					,Broker
+					,SubmissionID
+					)
+				SELECT D.TradeID
+					,D.FSITypeCode
+					,D.TradeIDEnfu
+					,D.SchwabMasterID
+					,D.CustodialAccount
+					,D.CustomerAccountNumber
+					,D.SecuritySymbol
+					,D.TradeType
+					,D.DollarTradeAmt
+					,D.TradeQuantity
+					,D.ApprovedDate
+					,D.FileGenDate
+					,D.ReconcileDate
+					,D.TradeDate
+					,D.SettleDate
+					,D.UserID
+					,D.Source
+					,D.TradeStatus
+					,D.SecurityType
+					,D.TradeIDTRex
+					,D.ExecutionPrice
+					,D.Broker
+					,D.SubmissionID
+				FROM Deleted D
+			END
+END TRY
+
+BEGIN CATCH
+	SET @errmsg = ERROR_MESSAGE();
+	SET @errnbr = ERROR_NUMBER();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+GO
+
+

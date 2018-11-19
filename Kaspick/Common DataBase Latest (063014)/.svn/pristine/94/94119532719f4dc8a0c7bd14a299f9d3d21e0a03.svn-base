@@ -1,0 +1,173 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbInputParam')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbInputParam;
+        PRINT 'DROPPED USP_EX_GetRptFasbInputParam';
+    END
+GO
+
+
+          
+/******************************************************************************                    
+** Name : USP_EX_GetRptFasbInputParam  
+** Old Name   :   USP_EIS_RPT_FASB_Input_Param_SelProc                    
+** Short Desc : Selects FASB input params        
+**                    
+** Full Description                    
+**                        
+**                    
+** Return values: NONE                    
+**             
+** Sample Call          
+**              
+** EXEC USP_EX_GetRptFasbInputParam 012                   
+**                     
+** Created By : Ganapati              
+** Company  :  Kaspick & Company                    
+** Project  :  FASB                    
+** Created DT :  Sep/18/2012                    
+**                                
+*******************************************************************************                    
+**       Change History                    
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------     -------- ------    -------------------------------------- --------                    
+**  Sep/18/2012   Ganapati           Created    
+** Apr/12/2014    Mallikarjun  EXCREQ5.4      Modified      
+** 23/05/2014 Mallikarjun  SP Name Renamed and Formatted     
+******************************************************************************                    
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/               
+          
+Create PROCEDURE [dbo].[USP_EX_GetRptFasbInputParam] --0       
+ @FASB_InstanceID int           
+AS        
+      
+BEGIN       
+    BEGIN TRY  
+  BEGIN TRANSACTION  
+ DECLARE  @tempTrustType  table (LabelID int, TrustType varchar(100))      
+ INSERT INTO @tempTrustType    
+ SELECT Main.LabelID,Left(Main.Items,Len(Main.Items)-1) as TrustType       
+ FROM( SELECT distinct ST2.LabelID,                   
+       (Select ST1.ListItemName + ', ' AS [text()]                  
+        FROM ( select FsbTrstTypLblMp.labelID,FsbTrstTypLblMp.List_Item_ID, LstItm.LISTITEMNAME     
+          from TBL_BR_FASBTrustTypeLabelMap FsbTrstTypLblMp     
+           inner join TBL_ListItem LstItm on FsbTrstTypLblMp.List_Item_ID = LstItm.ListItemID) ST1                  
+        Where ST1.LabelID = ST2.LabelID                   
+        ORDER BY ST1.LabelID                   
+        For XML PATH ('')) [Items]            
+   From (select FsbTrstTypLblMp.labelID,FsbTrstTypLblMp.List_Item_ID, LstItm.LISTITEMNAME     
+     from TBL_BR_FASBTrustTypeLabelMap FsbTrstTypLblMp     
+      inner join TBL_ListItem LstItm on FsbTrstTypLblMp.List_Item_ID = LstItm.ListItemID) ST2)  [Main]       
+    
+ --For Default value for Calc Method & Rate of Rtn Type     
+ DECLARE  @tempInputParamDefaultValue  table  (LabelID int, CalculationMethod int,RateOf_ReturnType int)      
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(1 ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'CRU')    
+    ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(2 ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'CRAT')    
+    ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(3 ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'CLAT')    
+    ,(SELECT  ListItemID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(4 ,(SELECT LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'CLU')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(5 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'PIF')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(6 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'PIF')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(7 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'PIF')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(8 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'PIF')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(9 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'CGA')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'IRS Discount Rate'))    
+ INSERT INTO @tempInputParamDefaultValue(  LabelID,CalculationMethod,RateOf_ReturnType)    
+ VALUES(10 ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Calculation Method' AND LISTITEMNAME = 'PIF')    
+    ,(SELECT  LISTITEMID FROM VW_EX_ListItem WHERE LISTTYPENAME = 'Rate of Return Type' AND LISTITEMNAME = 'PIF Highest 3 Yrs'))    
+    
+        
+ IF(@FASB_InstanceID = 0)       
+ BEGIN      
+  SELECT      
+   TmpTrstTyp.LabelID,      
+   TmpTrstTyp.TrustType,      
+   FasbInptPrm.Input_ParamID,      
+   FasbInptPrm.FASB_InstanceID,      
+   FasbInptPrm.DisplaySequence,      
+   FasbInptPrm.TrustTypeLabel,      
+   FasbInptPrm.IsReporting_Req,      
+   ISNULL(FasbInptPrm.CalculationMethod,tdefault.CalculationMethod) AS CalculationMethod ,      
+   ISNULL(FasbInptPrm.RateOf_ReturnType,tdefault.RateOf_ReturnType) AS RateOf_ReturnType ,      
+   FasbInptPrm.MortalityTable,      
+   ISNULL(FasbInptPrm.IsRun_ByRestriction,0) AS IsRun_ByRestriction,      
+   FasbInptPrm.RateOfReturn,      
+   FasbInptPrm.Comment      
+  FROM @tempTrustType TmpTrstTyp     
+   LEFT OUTER JOIN TBL_BR_FASBInputParam FasbInptPrm  on TmpTrstTyp.LabelID = FasbInptPrm.TrustTypeLabel AND FasbInptPrm.FASB_InstanceID = 0    
+   LEFT OUTER JOIN @tempInputParamDefaultValue as tdefault on tdefault.LabelID = TmpTrstTyp.LabelID    
+  ORDER BY LabelID         
+ END      
+ ELSE      
+ BEGIN      
+  SELECT      
+   TmpTrstTyp.LabelID,      
+   TmpTrstTyp.TrustType,      
+   FasbInptPrm.Input_ParamID,      
+   FasbInptPrm.FASB_InstanceID,      
+   FasbInptPrm.DisplaySequence,      
+   FasbInptPrm.TrustTypeLabel,      
+   FasbInptPrm.IsReporting_Req,      
+   ISNULL(FasbInptPrm.CalculationMethod,tdefault.CalculationMethod) AS CalculationMethod ,      
+   ISNULL(FasbInptPrm.RateOf_ReturnType,tdefault.RateOf_ReturnType) AS RateOf_ReturnType ,      
+   FasbInptPrm.MortalityTable,      
+   ISNULL(FasbInptPrm.IsRun_ByRestriction,0) AS IsRun_ByRestriction,      
+   FasbInptPrm.RateOfReturn,      
+   FasbInptPrm.Comment      
+  FROM @tempTrustType TmpTrstTyp     
+   LEFT OUTER JOIN TBL_BR_FASBInputParam FasbInptPrm on TmpTrstTyp.LabelID = FasbInptPrm.TrustTypeLabel and  FasbInptPrm.FASB_InstanceID = @FASB_InstanceID      
+   LEFT OUTER JOIN @tempInputParamDefaultValue as tdefault on tdefault.LabelID = TmpTrstTyp.LabelID    
+  ORDER BY LabelID      
+ END      
+      
+    COMMIT TRANSACTION  
+    END TRY  
+      
+    BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @ProcName VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @ProcName = 'USP_EX_GetRptFasbInputParam';  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE();  
+   
+ END CATCH  
+End       
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbInputParam') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbInputParam';
+	END

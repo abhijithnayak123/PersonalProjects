@@ -1,0 +1,142 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleConditionRecordVersion]    Script Date: 01/10/2013 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetActivityConsoleConditionRecordVersion]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetActivityConsoleConditionRecordVersion]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleConditionRecordVersion]    Script Date: 01/10/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                          
+** Name   : USP_PP_GetActivityConsoleConditionRecordVersion                          
+** Short Desc: Dirty Write Check    
+**                          
+** Full Description: IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2             
+**            
+**                                  
+** Input Arguments: @ConsoleXml
+    
+**             
+** Sample Call         
+    
+ Declare @Ret INT                
+ EXEC USP_PP_GetActivityConsoleConditionRecordVersion          
+'<ActivityConsolePaymentCollection><InsertList><ActivityConsolePayment ScheduleID="0"  UserID="100336"  Condition="Void"  PaymentID="1065708"  PGCalcPaymentID="0"  RecordVersion="0x00000000003AD57S"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ActivityConsolePaymentCollection>'    
+ ,@Ret output      
+ Select @Ret           
+    
+    
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Debajyoti kalita       
+** Company   : Kaspick & Company                          
+** Project   : BackOffice Integration                          
+** Created DT: 10-Jan-14                    
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:      Author:  Bug #     Description:                               
+** --------  --------  ------    --------------------------------------     
+**     
+***    
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetActivityConsoleConditionRecordVersion] @ConsoleXml XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds   
+	--  Variable Data Assignment  --      
+SET @Returnstatus = 0
+
+-- Body of procedure  --        
+BEGIN TRY
+	--    
+	DECLARE @TmpConsoleCondition TABLE (
+		ID INT IDENTITY(1, 1)
+		,ScheduleID INT
+		,Condition VARCHAR(20)
+		,UserID INT
+		,PaymentID INT
+		,MergedPGCalcPaymentID INT
+		,RecordVersion VARCHAR(1000)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table	   
+	INSERT INTO @TmpConsoleCondition (
+		ScheduleID
+		,Condition
+		,UserID
+		,PaymentID
+		,MergedPGCalcPaymentID
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		,XMLDATA.item.value('@Condition[1]', 'VARCHAR(20)') AS Condition
+		,XMLDATA.item.value('@UserID[1]', 'INT') AS UserID
+		,XMLDATA.item.value('@PaymentID[1]', 'INT') AS PaymentID
+		,XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'INT') AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @ConsoleXml.nodes('//ActivityConsolePaymentCollection/InsertList/ActivityConsolePayment') AS XMLDATA(item)
+
+	-- Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpCndn.ScheduleID
+	WHERE ScheduleID <> 0
+		AND TmpCndn.PaymentID = 0
+		AND CONVERT(VARCHAR(20), CAST(BenPay.RecordVersion AS VARBINARY(8)), 1) <> TmpCndn.RecordVersion
+
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+		ON PGCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+	WHERE TmpCndn.MergedPGCalcPaymentID <> 0
+		AND TmpCndn.PaymentID = 0
+		AND CONVERT(VARCHAR(20), CAST(PGCalc.RecordVersion AS VARBINARY(8)), 1) <> TmpCndn.RecordVersion
+
+	UPDATE @TmpConsoleCondition
+	SET ReturnStatus = - 2
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpCndn.PaymentID
+	WHERE TmpCndn.PaymentID <> 0
+		AND CONVERT(VARCHAR(20), CAST(BenPmnt.RecordVersion AS VARBINARY(8)), 1) <> TmpCndn.RecordVersion
+
+	--- Set ReturnStatus to -2 even if a single record is found with dirty write		
+	IF EXISTS (
+			SELECT 1
+			FROM @TmpConsoleCondition
+			WHERE ReturnStatus = - 2
+			)
+	BEGIN
+		SET @ReturnStatus = - 2
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

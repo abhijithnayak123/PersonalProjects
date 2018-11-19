@@ -1,0 +1,549 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_SavePolicyitems')
+    BEGIN
+        DROP PROCEDURE USP_EX_SavePolicyitems;
+        PRINT 'DROPPED USP_EX_SavePolicyitems';
+    END
+GO      
+
+
+/******************************************************************************                      
+** Name : USP_EX_SavePolicyitems
+** Old Name:     USP_EIS_EX_POLICYITEM_InsUpdProc                       
+** Short Desc: To Insert/Update the POLICYITEM table for a particular dimension.                
+**                      
+** Full Description: To Insert/Update the POLICYITEM table for a particular dimension.                
+**                              
+** @POLICYDIMENSIONNAME: for which record has to be added in POLICYITEM.                
+@LIST_ITEM_ID: used to fetch the DROPDOWNTEXT or BIT value to save for DATATYPE [LIST/LOGICAL].                
+@POLICYLEVEL: for which record has to be added in POLICYITEM.                
+@OWNERID INT: for which record has to be added in POLICYITEM.                
+@SCALARVALUE: is value tobe saved for DATATYPE [DATE/NUMERIC].          
+@USERID: user who is Updating/Inserting/Deleting the policy.          
+@POLICYCATEGORY: is a optional parameter which takes special care for 'Reporting' PolicyCategory.                
+** Sample Call                      
+EXEC USP_EIS_EX_POLICYITEM_InsUpdProc  'Income Accrual Pol',18,100,100002,18                
+**                      
+** Return values: NONE                      
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: VShivhare                      
+** Company   : Kaspick & Company                      
+** Project   : Excelsior                      
+** Created DT: 05/18/2007                      
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+05/22/2007   CParekh            Modified the cases of 'Logical' &                 
+       'List' type of PolicyDimensions.         
+07/05/2007  Vishivhare modified for cascading upd proc     
+07/11/2007  Vishivhare modified for cascading ins proc     
+07/13/2007  Vshivhare  modified for Identity feed in PolicyItem table    
+05/10/2007  Madhuri    modified to optimize the SP    
+03/18/2008 Saravanan PM Modified  && Updating Billing Information of TA - ET# 6274 - Only Acount Level BillingProfile    
+03/24/2008 Saravanan PM To avoid duplicate entry to Audit table for "Check Request TA2 Threshold" Policy.     
+08/11/2009 Saravanan PM KCBP Quickbase #4 - Added Reporting Cascade Insert/Update sub SP for POLICYCATEGORY='REPORTING NON OTHER' to "Date" Datatype    
+14/04/2014 Yugandhar	EXCREQ 6.1
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+
+--Sample Call
+EXEC USP_EX_SavePolicyitems '1099R Media',0,200
+*******************************************************************************/                      
+CREATE PROCEDURE USP_EX_SavePolicyitems                    
+(                      
+ @POLICYDIMENSIONNAME VARCHAR(100),                
+ @LIST_ITEM_ID INT,                
+ @POLICYLEVEL INT,                
+ @OWNERID VARCHAR(14),                
+ @SCALARVALUE VARCHAR(100),                
+ @USERID INT=NULL,            
+ @POLICYCATEGORY VARCHAR(20)= 'OTHER THAN REPORTING'            
+)                
+AS                
+BEGIN                
+ --BEGIN TRY                
+ -- BEGIN TRAN    
+    
+  DECLARE @VALUE VARCHAR(100), @POLICYDIMENSIONID INT,@DATATYPE VARCHAR(20),                
+  @LOGICALDATA BIT,@NUMERICDATA FLOAT,@INTDATA INT,@DATEDATA DATETIME,@POLICYITEMID INT,                  
+  @DROPDOWNTEXT VARCHAR(100),                
+  @ENTITY_TYPE VARCHAR(100)    
+    
+  DECLARE @return_value INT    
+    
+  SELECT @ENTITY_TYPE=LEVELNAME FROM TBL_PolicyLevel WHERE POLICYLEVEL=@POLICYLEVEL     
+    
+  SELECT @DATATYPE=DATATYPE,@POLICYDIMENSIONID=POLICYDIMENSIONID     
+  FROM TBL_PolicyDimension                
+  WHERE FULLNAME =@POLICYDIMENSIONNAME                
+    
+  SET @VALUE = (CASE @DATATYPE WHEN 'LOGICAL' THEN                
+  (SELECT IVANVALUE FROM TBL_LISTITEM WHERE LISTITEMID=@LIST_ITEM_ID)                
+  WHEN 'LIST' THEN                
+  (SELECT POLICYDROPDOWNID FROM TBL_PolicyDropDown                 
+  WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID                 
+  AND DROPDOWNTEXT = (SELECT IVANVALUE FROM TBL_LISTITEM                 
+  WHERE LISTITEMID=@LIST_ITEM_ID))END)                
+    
+  IF((@VALUE IS NULL)AND(@SCALARVALUE IS NOT NULL))                
+  BEGIN                
+   SET @VALUE = @SCALARVALUE                
+  END      
+    
+--- 25Sep2007 : Start: Getting the existing DB value to compare with the new value    
+  DECLARE @PVALUE VARCHAR(100)    
+  SET @PVALUE =     
+   (CASE @DATATYPE     
+    WHEN 'LOGICAL' THEN                
+                    (SELECT CAST(logicalvalue as varchar(100)) FROM TBL_policyitem WHERE policylevel= @policylevel and ownerid = @ownerid and policydimensionid = @POLICYDIMENSIONID)                
+    WHEN 'Numeric' THEN                
+     (SELECT CAST(NumericValue as varchar(100))  FROM TBL_policyitem WHERE policylevel= @policylevel and ownerid = @ownerid and policydimensionid = @POLICYDIMENSIONID)                
+    WHEN 'Date' THEN                
+     (SELECT CAST(DateValue as varchar(100))  FROM TBL_policyitem WHERE policylevel= @policylevel and ownerid = @ownerid and policydimensionid = @POLICYDIMENSIONID)                
+    WHEN 'LIST' THEN                
+     (SELECT CAST(PolicyDropDownID as varchar(100))  FROM TBL_policyitem WHERE policylevel= @policylevel and ownerid = @ownerid and policydimensionid = @POLICYDIMENSIONID)                
+    WHEN 'Text' THEN                
+     (SELECT CAST(TextValue as varchar(100))  FROM TBL_policyitem WHERE policylevel= @policylevel and ownerid = @ownerid and policydimensionid = @POLICYDIMENSIONID)                
+   END)    
+    
+  --To avoid duplicate entry to Audit table for "Check Request TA2 Threshold" Policy.     
+  --Modified by Saravanan PM on 24 Mar 2008    
+  IF(@POLICYDIMENSIONID = 179)    
+  BEGIN    
+   IF(CHARINDEX('.',@PVALUE) = 0)    
+    SET @PVALUE = @PVALUE + '.00'    
+  END    
+  --End here    
+    
+  If (@PVALUE IS NULL OR @VALUE IS NULL OR ISNULL(@PVALUE,0) <> ISNULL(@VALUE,0))    
+  BEGIN    
+    
+   --Check for nullability                
+   IF(@POLICYCATEGORY<>'REPORTING NON OTHER' AND @VALUE IS NULL)                
+   BEGIN                
+    EXEC USP_EX_DelPolicyitemCascade    
+     @POLICYDIMENSIONID = @POLICYDIMENSIONID,     
+     @ENTITY_TYPE=@ENTITY_TYPE,     
+     @ENTITY_ID=@OWNERID,    
+     @USERID=@USERID    
+    RETURN 1                
+   END     
+   --KCBP Quickbase #4 - Start here    
+   ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER' AND @VALUE IS NULL AND @ENTITY_TYPE = 'ACCOUNT')                
+   BEGIN                
+    EXEC USP_EX_DelPolicyitemReportingCascade    
+     @NEW_VALUE = @VALUE,    
+     @POLICYDIMENSIONID = @POLICYDIMENSIONID,     
+     @ENTITY_TYPE=@ENTITY_TYPE,     
+     @ENTITY_ID=@OWNERID,    
+     @USERID=@USERID    
+    RETURN 1       
+   END       
+   --KCBP Quickbase #4 - End here               
+   IF(@DATATYPE='LOGICAL')                
+   BEGIN                
+    SET @LOGICALDATA=CAST(@VALUE AS BIT)                      
+    IF NOT EXISTS(SELECT POLICYITEMID FROM TBL_PolicyItem WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND                      
+    POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID)                      
+    BEGIN                         
+     --Get the new policyitem id from sp                      
+         
+     INSERT INTO TBL_policyitem( POLICYDIMENSIONID, POLICYLEVEL, OWNERID, NUMERICVALUE, TEXTVALUE, LOGICALVALUE, DATEVALUE, POLICYDROPDOWNID, COMMENT,MODIFIEDDATE,MODIFIEDUSERID, CREATEDDATE, CREATEDUSERID, DELETEDUSERID)                      
+     VALUES( @POLICYDIMENSIONID, @POLICYLEVEL, @OWNERID,0,NULL,@LOGICALDATA,NULL,0,NULL,GETDATE(), @USERID, GETDATE(),@USERID,NULL)                
+     SET @POLICYITEMID=IDENT_CURRENT('TBL_POLICYITEM')    
+            
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+       EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      EXEC USP_EX_InsPolicyitemReportingCascade    
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID     
+     END    
+    END                
+    ELSE                      
+    BEGIN     
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --Call cascade update proc     
+      EXEC USP_EX_UpdPolicyItemCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --call reporting cascade update proc    
+      EXEC USP_EX_UpdPolicyItemReportingCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+         
+     UPDATE TBL_POLICYITEM            
+     SET  MODIFIEDDATE=GETDATE(),            
+     MODIFIEDUSERID=@USERID            
+     WHERE POLICYITEMID=            
+     (SELECT POLICYITEMID FROM TBL_policyitem             
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND OWNERID=@OWNERID AND POLICYLEVEL=@POLICYLEVEL)      
+         
+     UPDATE TBL_policyitem                      
+     SET LOGICALVALUE=@LOGICALDATA                      
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID             
+    
+    
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --call cascade ins proc     
+        EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID      
+     END      
+    END                      
+   END                      
+   ELSE IF(@DATATYPE='NUMERIC')                      
+   BEGIN          
+    SET @NUMERICDATA=CAST(@VALUE AS FLOAT)                      
+    IF NOT EXISTS(SELECT POLICYITEMID FROM TBL_policyitem WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND                      
+    POLICYLEVEL=@POLICYLEVEL AND                      
+    OWNERID=@OWNERID)                      
+    BEGIN          
+     --Get the new policyitem id from sp                      
+    
+     INSERT INTO TBL_policyitem( POLICYDIMENSIONID, POLICYLEVEL, OWNERID, NUMERICVALUE, TEXTVALUE, LOGICALVALUE, DATEVALUE, POLICYDROPDOWNID, COMMENT,MODIFIEDDATE, MODIFIEDUSERID, CREATEDDATE, CREATEDUSERID, DELETEDUSERID)                      
+     VALUES( @POLICYDIMENSIONID, @POLICYLEVEL, @OWNERID,@NUMERICDATA,NULL,0,NULL,0,NULL,GETDATE(), @USERID, GETDATE(),@USERID,NULL)                      
+     SET @POLICYITEMID=IDENT_CURRENT('TBL_POLICYITEM')    
+                   
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+       EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      EXEC USP_EX_InsPolicyitemReportingCascade    
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID     
+     END    
+    END                
+    ELSE                      
+    BEGIN       
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --Call cascade update proc     
+      EXEC USP_EX_UpdPolicyItemCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --call reporting cascade update proc    
+      EXEC USP_EX_UpdPolicyItemReportingCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END      
+    
+         
+     UPDATE TBL_POLICYITEM
+     SET  MODIFIEDDATE=GETDATE(),            
+     MODIFIEDUSERID=@USERID            
+     WHERE POLICYITEMID=            
+     (SELECT POLICYITEMID FROM TBL_policyitem             
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND OWNERID=@OWNERID AND POLICYLEVEL=@POLICYLEVEL)     
+    
+             
+     UPDATE TBL_policyitem                      
+     SET NUMERICVALUE=@NUMERICDATA                      
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID                      
+    
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --call cascade ins proc     
+        EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID      
+     END      
+    END                
+   END                      
+   ELSE IF(@DATATYPE='LIST')                      
+   BEGIN                      
+    SET @INTDATA=CAST(@VALUE AS INT)                      
+    IF NOT EXISTS(SELECT POLICYITEMID FROM TBL_policyitem WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND             
+    POLICYLEVEL=@POLICYLEVEL AND                      
+    OWNERID=@OWNERID)                      
+    BEGIN                     
+     --Get the new policyitem id from sp                      
+     --EXEC GetNextUniqueID 'POLICYITEM',@POLICYITEMID OUTPUT                      
+     INSERT INTO TBL_policyitem( POLICYDIMENSIONID, POLICYLEVEL, OWNERID, NUMERICVALUE, TEXTVALUE, LOGICALVALUE, DATEVALUE, POLICYDROPDOWNID, COMMENT,MODIFIEDDATE,MODIFIEDUSERID, CREATEDDATE, CREATEDUSERID, DELETEDUSERID)          
+     VALUES( @POLICYDIMENSIONID, @POLICYLEVEL, @OWNERID,0,NULL,0,NULL,@INTDATA,NULL,GETDATE(), @USERID, GETDATE(),@USERID,NULL)                      
+     SET @POLICYITEMID=IDENT_CURRENT('TBL_policyitem')    
+   IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+       EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      EXEC USP_EX_InsPolicyitemReportingCascade    
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID     
+     END    
+    END                
+    ELSE                
+    BEGIN          
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --Call cascade update proc     
+      EXEC USP_EX_UpdPolicyItemCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --call reporting cascade update proc    
+      EXEC USP_EX_UpdPolicyItemReportingCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END     
+    
+         
+     UPDATE TBL_POLICYITEM            
+     SET  MODIFIEDDATE=GETDATE(),            
+     MODIFIEDUSERID=@USERID            
+     WHERE POLICYITEMID=            
+     (SELECT POLICYITEMID FROM TBL_policyitem             
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND OWNERID=@OWNERID AND POLICYLEVEL=@POLICYLEVEL)    
+    
+    UPDATE TBL_policyitem                
+     SET POLICYDROPDOWNID=@INTDATA                
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID             
+    
+            
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --call cascade ins proc     
+        EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID      
+     END     
+    END                
+   END                      
+   ELSE IF(@DATATYPE='TEXT')                
+   BEGIN                      
+    IF NOT EXISTS(SELECT POLICYITEMID FROM TBL_policyitem WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND                      
+    POLICYLEVEL=@POLICYLEVEL AND                      
+    OWNERID=@OWNERID)                      
+    BEGIN                      
+    --Get the new policyitem id from sp                      
+     INSERT INTO TBL_policyitem( POLICYDIMENSIONID, POLICYLEVEL, OWNERID, NUMERICVALUE, TEXTVALUE, LOGICALVALUE, DATEVALUE, POLICYDROPDOWNID, COMMENT,MODIFIEDDATE,MODIFIEDUSERID, CREATEDDATE, CREATEDUSERID, DELETEDUSERID)                      
+     VALUES( @POLICYDIMENSIONID, @POLICYLEVEL, @OWNERID,0,@VALUE,0,NULL,0,NULL,GETDATE(), @USERID, GETDATE(),@USERID,NULL)     
+     SET @POLICYITEMID=IDENT_CURRENT('TBL_POLICYITEM')           
+         
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+       EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      EXEC USP_EX_InsPolicyitemReportingCascade    
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID     
+     END    
+    END   
+    ELSE                      
+    BEGIN         
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --Call cascade update proc     
+      EXEC USP_EX_UpdPolicyItemCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --call reporting cascade update proc    
+      EXEC USP_EX_UpdPolicyItemReportingCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END     
+    
+     UPDATE TBL_POLICYITEM            
+     SET  MODIFIEDDATE=GETDATE(),            
+     MODIFIEDUSERID=@USERID            
+     WHERE POLICYITEMID=            
+     (SELECT POLICYITEMID FROM TBL_policyitem             
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND OWNERID=@OWNERID AND POLICYLEVEL=@POLICYLEVEL)      
+                   
+     UPDATE TBL_policyitem                      
+     SET TEXTVALUE=@VALUE                      
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID              
+         
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --call cascade ins proc     
+        EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID      
+     END     
+    END                      
+   END                      
+   ELSE IF(@DATATYPE='DATE')                      
+   BEGIN                      
+    SET @DATEDATA=CAST(@VALUE AS DATETIME)                      
+    IF NOT EXISTS(SELECT POLICYITEMID FROM TBL_policyitem WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND                
+    POLICYLEVEL=@POLICYLEVEL AND                
+    OWNERID=@OWNERID)                
+    BEGIN                      
+     --Get the new policyitem id from sp                      
+     INSERT INTO TBL_policyitem( POLICYDIMENSIONID, POLICYLEVEL, OWNERID, NUMERICVALUE, TEXTVALUE, LOGICALVALUE, DATEVALUE, POLICYDROPDOWNID, COMMENT,MODIFIEDDATE,MODIFIEDUSERID, CREATEDDATE, CREATEDUSERID, DELETEDUSERID)                      
+     VALUES( @POLICYDIMENSIONID, @POLICYLEVEL, @OWNERID,0,NULL,0,@DATEDATA,0,NULL, GETDATE(), @USERID, GETDATE(),@USERID,NULL)     
+     SET @POLICYITEMID=IDENT_CURRENT('POLICYITEM')               
+     
+         
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+       EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --KCBP Quickbase #4 - Start here    
+      EXEC USP_EX_InsPolicyitemReportingCascade    
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID     
+      --KCBP Quickbase #4 - End here    
+     END    
+    END                
+   ELSE                
+   BEGIN       
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --Call cascade update proc     
+      EXEC USP_EX_UpdPolicyItemCascade    
+      @NEW_VALUE=@VALUE,     
+      @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+      @ENTITY_TYPE=@ENTITY_TYPE,     
+      @ENTITY_ID=@OWNERID,     
+      @USERID=@USERID       
+     END    
+     ELSE IF(@POLICYCATEGORY='REPORTING NON OTHER')    
+     BEGIN    
+      --call reporting cascade update proc    
+      --KCBP Quickbase #4 - Start here    
+      EXEC USP_EX_UpdPolicyItemReportingCascade    
+       @NEW_VALUE=@VALUE,     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,     
+       @USERID=@USERID       
+      --KCBP Quickbase #4 - End here    
+     END    
+                
+         
+     UPDATE TBL_POLICYITEM            
+     SET  MODIFIEDDATE=GETDATE(),            
+     MODIFIEDUSERID=@USERID            
+     WHERE POLICYITEMID=            
+     (SELECT POLICYITEMID FROM TBL_policyitem             
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND OWNERID=@OWNERID AND POLICYLEVEL=@POLICYLEVEL)      
+                     
+     UPDATE TBL_policyitem                
+     SET DATEVALUE=@DATEDATA                      
+     WHERE POLICYDIMENSIONID=@POLICYDIMENSIONID AND POLICYLEVEL=@POLICYLEVEL AND OWNERID=@OWNERID    
+    
+                   
+    
+     IF(@POLICYCATEGORY<>'REPORTING NON OTHER')    
+     BEGIN    
+      --call cascade ins proc     
+        EXEC USP_EX_InsPolicyitemCascade     
+       @POLICYDIMENTISON=@POLICYDIMENSIONNAME,     
+       @ENTITY_TYPE=@ENTITY_TYPE,     
+       @ENTITY_ID=@OWNERID,    
+       @USERID=@USERID      
+     END     
+   END                
+   END     
+  END    
+          
+                
+END
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_SavePolicyitems') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_SavePolicyitems';
+	END     

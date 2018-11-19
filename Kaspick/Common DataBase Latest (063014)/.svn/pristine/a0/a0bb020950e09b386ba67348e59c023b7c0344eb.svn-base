@@ -1,0 +1,102 @@
+  IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftDonorBeneNameChangeDetail')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetWftDonorBeneNameChangeDetail;
+        PRINT 'DROPPED USP_EX_GetWftDonorBeneNameChangeDetail';
+    END
+    GO
+
+/******************************************************************************  
+** Name :  USP_EX_GetWftDonorBeneNameChangeDetail
+** Old Name:  [sp_wft_get_DonorBene_Name_Change_detail]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate DonorBene Name Change detail  
+**  
+** Sample Call  
+ [USP_EX_GetWftDonorBeneNameChangeDetail]  'AB948AFE-36F4-4071-8A4B-591ABE7E6EA2'
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 04-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- -------- 
+** 29-May-2014	Mallikarjun     	Made changes in the table names to refer new KASPICK DB   
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftDonorBeneNameChangeDetail]  
+(  
+@GUID varchar(255)  
+)    
+AS   
+BEGIN
+	DECLARE @accounts_array VARCHAR(MAX)  
+	DECLARE @participant_id INT  
+
+	SELECT   
+	@accounts_array=accts_affected,  
+	@participant_id=ContactID  
+	FROM  TBL_WFT_NameChange  
+	WHERE GUID = @GUID  
+
+	SELECT  [notification_date]  
+	,[submitted_by]  
+	,[im_authorization_level]  
+	,[ta_authorization_level]  
+	,[pxy_username]  
+	,[ManagerCodeName]  
+	,[donor_bene_name]  
+	,[donor_bene_ssn_ein]  
+	,[ContactID]
+	, VwTrstPrtcpnt.Participant_Type  
+	,[accts_array]  
+	,[accts_affected]  
+	,WftNmChg.[comments]  
+	,[donor_bene_salutation]  
+	,[donor_bene_first_name]  
+	,[donor_bene_middle_name]  
+	,[donor_bene_last_name]  
+	,[donor_bene_suffix]  
+	,[payment_name]  
+	,[client_manager]  
+	,[trust_administrator]  
+	FROM  TBL_WFT_NameChange WftNmChg  
+	INNER JOIN VW_EX_TrustParticipantType VwTrstPrtcpnt on VwTrstPrtcpnt.ParticipantID = WftNmChg.ContactID  
+	WHERE GUID = @GUID  
+
+	SELECT AcctProf.CustomerAccountNumber,'['+ AcctProf.CustomerAccountNumber+'] '+ '' as AccountsDetail   --AcctProf.fullname
+	FROM dbo.FN_SplitString(@accounts_array,'^') A  
+	INNER JOIN TBL_INV_AccountProfile AcctProf ON CHARINDEX(ltrim(rtrim(AcctProf.CustomerAccountNumber)), A.items )> 0 
+
+	SELECT VwTrstPrtcpnt.CustomerAccountNumber,'['+VwTrstPrtcpnt.CustomerAccountNumber+'] '+VwTrstPrtcpnt.ACCOUNT_FULLNAME as AccountsDetail  
+	FROM VW_EX_TrustParticipantType VwTrstPrtcpnt  
+	LEFT OUTER JOIN dbo.FN_SplitString(@accounts_array,'^') A ON CHARINDEX(ltrim(rtrim(VwTrstPrtcpnt.CustomerAccountNumber)), A.items )> 0  
+	WHERE ParticipantID= @participant_id and A.items IS NULL  
+END
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftDonorBeneNameChangeDetail')
+    BEGIN
+        PRINT 'CREATED USP_EX_GetWftDonorBeneNameChangeDetail';
+    END

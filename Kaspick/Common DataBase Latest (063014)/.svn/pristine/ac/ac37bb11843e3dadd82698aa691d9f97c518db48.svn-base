@@ -1,0 +1,206 @@
+/****** Object:  StoredProcedure [dbo].[USP_IT_GetAccountManagerCode]    Script Date: 04/29/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IT_GetAccountManagerCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IT_GetAccountManagerCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IT_GetAccountManagerCode]    Script Date: 04/29/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_IT_GetAccountManagerCode                      
+** Short Desc: To get Account Manger Codes from InnoTrust Repl database based on Loged in User
+**                      
+** Full Description: To get Account Manger Codes from InnoTrust Repl database based on Loged in User           
+**        
+**                              
+** Input Arguments:  
+	 @UserID	INT
+**         
+** Sample Call     
+   EXEC USP_IT_GetAccountManagerCode  100019
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-Apr-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**6/13/2014   Saravanan				Implemented Active Flag CR ET16260
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+** 08-Aug-14   Saravanan		Modified Manager Desc to Contact Name and AllianceDesc to Contact Name. As per the other implementation
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IT_GetAccountManagerCode] @UserID INT
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds   
+
+-- Body of procedure  --        
+BEGIN TRY
+	DECLARE @TmpAccountManagerCode TABLE (
+		ManagerCode VARCHAR(4)
+		,ManagerDescription VARCHAR(250)
+		,[Level] VARCHAR(15)
+		,ActiveFlag VARCHAR(15)
+		)
+
+	--1.0 Get Manager Code collection
+	--1.1 Insert Primary & Back-up Managers
+	INSERT INTO @TmpAccountManagerCode (
+		ManagerCode
+		,ManagerDescription
+		,[Level]
+		,ActiveFlag
+		)
+	SELECT DISTINCT ActMngCode.ManagerCode
+		,ContMstr.ContactName
+		,(
+			CASE -- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+				WHEN ContRoleCode.ID = 2 -- 'Administrator'
+					OR ContRoleCode.ID = 14 -- Investment Officer <-- 'Relationship Manager'
+					THEN 'Primary'
+				WHEN ContRoleCode.ID = 3 -- 'Backup Administrator'
+					OR ContRoleCode.ID = 512 -- 'Backup Relationship Manager'
+					THEN 'Secondary'
+				WHEN ContRoleCode.ID = 26 -- 'Plan Administrator'
+					OR ContRoleCode.ID = 510 -- 'Trust Administrator'
+					OR ContRoleCode.ID = 515 -- 'Portfolio Analyst'
+					OR ContRoleCode.ID = 518 -- 'Custody Ops Administrator'
+					OR ContRoleCode.ID = 519 --'Reporting Analyst'
+					THEN 'Both'
+				END
+			) AS [Level]
+		--Implemented Active Flag CR ET16260
+		,(
+			CASE 
+				WHEN ActMngCode.ActiveFlag = - 1
+					THEN 'Active'
+				ELSE 'InActive'
+				END
+			) AS ActiveFlag
+	FROM TBL_KS_User usr
+	INNER JOIN SYN_IT_SubContactRoles subContRole
+		ON subContRole.SubContactID = usr.InnotrustContactID
+	INNER JOIN SYN_IT_ContactRoleCodes ContRoleCode
+		ON ContRoleCode.ID = subContRole.ContactRoleCode
+	INNER JOIN SYN_IT_AccountManagerCodes ActMngCode
+		ON ActMngCode.ContactID = subContRole.ContactID
+	INNER JOIN SYN_IT_CONTACTMASTER ContMstr
+		ON ContMstr.ContactID = ActMngCode.ContactID
+	WHERE ContRoleCode.ID IN (
+			2 -- 'Administrator'
+			,3 -- 'Backup Administrator'
+			,14 -- Investment Officer <-- 'Relationship Manager'
+			,512 -- 'Backup Relationship Manager'
+			,26 -- 'Plan Administrator'
+			,510 -- 'Trust Administrator'
+			,515 -- 'Portfolio Analyst'
+			,518 -- 'Custody Ops Administrator'
+			,519 -- 'Reporting Analyst'
+			)
+		AND UserID = @UserID
+
+	--1.2 Insert All Managers (except Primary & Backu-up)
+	INSERT INTO @TmpAccountManagerCode (
+		ManagerCode
+		,ManagerDescription
+		,[Level]
+		,ActiveFlag
+		)
+	SELECT DISTINCT ActMngCode.ManagerCode
+		,ContMstr.ContactName
+		,'All' AS [Level]
+		--Implemented Active Flag CR ET16260
+		,(
+			CASE 
+				WHEN ActMngCode.ActiveFlag = - 1
+					THEN 'Active'
+				ELSE 'InActive'
+				END
+			) AS ActiveFlag
+	FROM SYN_IT_AccountManagerCodes ActMngCode
+	LEFT OUTER JOIN @TmpAccountManagerCode TempAM
+		ON ActMngCode.ManagerCode = TempAM.ManagerCode
+	INNER JOIN SYN_IT_CONTACTMASTER ContMstr
+		ON ContMstr.ContactID = ActMngCode.ContactID
+	WHERE TempAM.ManagerCode IS NULL
+
+	SELECT ManagerCode
+		,ManagerDescription
+		,[Level]
+		,ActiveFlag
+	FROM @TmpAccountManagerCode
+	ORDER BY ManagerCode
+
+	--2.0 Get Account Collection
+	SELECT ActMstr.ManagerCode
+		,ActMngCodeContact.ContactName AS ManagerDescription
+		,ActMstr.AllianceNumber
+		,AllianceContact.ContactName AS AllianceDescription
+		,ActMstr.CustomerAccountNumber
+		,ActMstr.CustomerShortName AS AccountName
+		,ActMstr.AccountTypeCode
+		--Implemented Active Flag CR ET16260
+		,(
+			CASE 
+				WHEN ActMstr.ActiveFlag = - 1
+					AND ActMstr.ClosedFlag = 0
+					THEN 'Active'
+				ELSE 'InActive'
+				END
+			) AS ActiveFlag
+	FROM SYN_IT_AccountMaster ActMstr
+	LEFT OUTER JOIN SYN_IT_AccountManagerCodes ActMngCode
+		ON ActMstr.ManagerCode = ActMngCode.ManagerCode
+	INNER JOIN SYN_IT_CONTACTMASTER ActMngCodeContact
+		ON ActMngCodeContact.ContactID = ActMngCode.ContactID
+	LEFT OUTER JOIN SYN_IT_AllianceNumbers Alliance
+		ON ActMstr.AllianceNumber = Alliance.AllianceNumber
+	INNER JOIN SYN_IT_CONTACTMASTER AllianceContact
+		ON AllianceContact.ContactID = Alliance.ContactID
+	ORDER BY ActMstr.CustomerAccountNumber
+END TRY
+
+BEGIN CATCH
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+

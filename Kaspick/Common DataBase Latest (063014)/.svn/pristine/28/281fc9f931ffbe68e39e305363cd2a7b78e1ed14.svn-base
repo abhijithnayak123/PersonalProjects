@@ -1,0 +1,104 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_DeleteGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_DeleteGroup]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_DeleteGroup      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+ DECLARE @GroupXML XML 
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(MAX) 
+ SET  @GroupXML = '<AccountGroupCollection> 
+						<Groups>
+							<AccountGroup  GroupName="AMcorpus1" />
+							</Groups>
+						</AccountGroupCollection>' 
+  EXEC USP_TR_DeleteGroup @GroupXML ,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+  Select @ReturnStatus,@ErrorDesc
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :	Chaithra	
+** Company  :	Kaspick & Company      
+** Project  :	Back Office Integration (T-Rex)	
+** Created DT :	Feb/27/2014	
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** Feb/27/2014  Chaithra           Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_DeleteGroup] @GroupXML AS XML
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @DeleteGroupTRAN AS VARCHAR(15)
+
+	SET @DeleteGroupTRAN = 'DeleteGroupTRAN'
+
+	BEGIN TRANSACTION @DeleteGroupTRAN
+
+	BEGIN TRY
+		DELETE StgAcntGrp
+		FROM TBL_TR_STG_AccountGroup StgAcntGrp
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@GroupName[1]', 'varchar(30)') AS GroupName
+			FROM @GroupXML.nodes('//AccountGroupCollection/Groups/AccountGroup') AS XMLDATA(item)
+			) AcntGrp ON StgAcntGrp.GroupName = AcntGrp.GroupName
+
+		DELETE GrpAcnt
+		FROM TBL_TR_GroupXAccount GrpAcnt
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@GroupName[1]', 'varchar(30)') AS GroupName
+			FROM @GroupXML.nodes('//AccountGroupCollection/GroupAccounts/GroupAccount') AS XMLDATA(item)
+			) AcntGrp ON GrpAcnt.GroupName = AcntGrp.GroupName
+
+		COMMIT TRANSACTION @DeleteGroupTRAN
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION @DeleteGroupTRAN;
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+

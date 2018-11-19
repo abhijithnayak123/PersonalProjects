@@ -1,0 +1,108 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchYTDPaymentData]    Script Date: 05/21/2013 16:45:00 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsArchYTDPaymentData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsArchYTDPaymentData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchYTDPaymentData]    Script Date: 05/21/2013 16:45:00 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsArchYTDPaymentData                      
+** Short Desc: Insert all values into TBL_PP_ARCH_YTDPAYMENTDATA from TBL_PP_STG_YTDPAYMENTDATA 
+**                      
+** Full Description: Insert all values into TBL_PP_ARCH_YTDPAYMENTDATA from TBL_PP_STG_YTDPAYMENTDATA         
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsArchYTDPaymentData     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsArchYTDPaymentData]
+AS
+SET NOCOUNT ON
+INSERT INTO dbo.TBL_PP_ARCH_YTDPaymentData (
+	PaymentID
+	,CustomerAccountNumber
+	,AccountType
+	,ContactID
+	,ContactRoleCode
+	,GrossAmount
+	,Withholding
+	,PaymentAmount
+	,PaymentDate
+	,TaxYear
+	,YTDGross
+	,YTDWithholding
+	,YTDAmount
+	,PaymentStatus
+	,ProcessedByMiddleware
+	,ProcessDateMiddleware
+	,IsPrintedOnCheck
+	,PrintedDates
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+	)
+SELECT PaymentID
+	,CustomerAccountNumber
+	,AccountType
+	,ContactID
+	,ContactRoleCode
+	,GrossAmount
+	,Withholding
+	,PaymentAmount
+	,PaymentDate
+	,TaxYear
+	,YTDGross
+	,YTDWithholding
+	,YTDAmount
+	,'P' AS PaymentStatus
+	,1 AS ProcessedByMiddleware
+	,CreatedDate AS ProcessDateMiddleware
+	,1 AS IsPrintedOnCheck
+	,CreatedDate AS PrintedDates
+	,0 AS IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+FROM TBL_PP_STG_YTDPaymentData
+GO
+
+

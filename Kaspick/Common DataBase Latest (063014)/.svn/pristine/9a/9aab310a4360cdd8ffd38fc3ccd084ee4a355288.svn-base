@@ -1,0 +1,11 @@
+
+-- This script updates the BeneficiaryDistributionID and PaidForContactID from the BeneficiaryDistributions table
+
+	update		Bene
+	set			 Bene.BeneficiaryDistributionID=BD.BeneficiaryDistributionID
+				,Bene.PaidForContactID=BD.ContactID 
+	from		$(MappingDB)..TBL_BeneficiaryLookup	 Bene 
+	left Join	$(MappingDB)..TBL_BeneficiaryLookup k1 on Bene.K1BeneficiaryID=k1.BeneficiaryID 
+	left Join	$(InnotrustDB)..BeneficiaryDistributions bd on Bene.contactid=PayeeID and bd.contactid=(case when Bene.RoleCode=10 then k1.contactid else bd.contactid end)
+	left Join	$(InnotrustDB)..RemittanceInstructions   RI on bd.InstructionID = RI.InstructionID AND Bene.CustomerAccountNumber=RI.CustomerAccountNumber
+	where		Bene.rolecode in(10,21)--Proxy Recipient/Beneficiary

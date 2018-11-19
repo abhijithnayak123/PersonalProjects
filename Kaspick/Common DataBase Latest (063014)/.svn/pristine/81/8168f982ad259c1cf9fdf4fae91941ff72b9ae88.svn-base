@@ -1,0 +1,67 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetRPTClient'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetRPTClient;
+
+	PRINT 'DROPPED USP_RP_GetRPTClient';
+END
+GO
+
+/************************************r******************************************                  
+** OLD Name:     USP_EIS_RPT_Client_SelProc
+
+** New Name: USP_RP_GetRPTClient
+                  
+** Short Desc: To retrieve Clients
+**                  
+** Full Description: To retrieve Clients
+**                          
+** Input Arguments: 
+**					
+** Sample Call                  
+**		[USP_EIS_RPT_Client_SelProc]
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Soorya
+** Company   : Kaspick & Company                  
+** Project   : Program Overview                  
+** Created DT: 09/29/2010                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- ----,----            
+** 10-Jun-2014	Mukesh			SP Name Renamed and Formatted                                  
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_GetRPTClient]
+AS
+BEGIN
+	SELECT Managercode AS ClientID
+		,Managercode AS BriefName
+	FROM dbo.SYN_IT_AccountManagerCodes
+	ORDER BY BriefName ASC
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetRPTClient'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetRPTClient';
+END

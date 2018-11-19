@@ -1,0 +1,150 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_GetTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetTSheet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetTSheet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_TR_GetTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_TR_GetTSheet                      
+** Short Desc: Get the TSheet details from table TBL_TR_Event for the specified EventID
+**                      
+** Full Description: Get the TSheet details from table TBL_TR_Event for the specified EventID
+**      
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(MAX)           
+ EXEC dbo.USP_TR_GetTSheet 11479,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+  Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetTSheet] (
+	@EventID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  --            
+	BEGIN TRY
+		SELECT TTradePrpsl.EventID
+			,Evnt.EventTrancheRate
+			,Evnt.RecordVersion AS EventRecordVersion
+			,Evnt.Comments
+			,Evnt.TradeComment AS UpdatedComments
+			,TTradePrpsl.EventAccountID
+			,TTradePrpsl.SecurityTypeCode
+			,TTradePrpsl.SecurityTypeDescription
+			,TTradePrpsl.SecurityDescription
+			,TTradePrpsl.SecurityTypeOrder
+			,TTradePrpsl.SecuritySymbol
+			,TTradePrpsl.TSheetTradeForReview
+			,TTradePrpsl.AssetClass
+			,TTradePrpsl.TargetPercentage
+			,TTradePrpsl.AdjustedPercentage
+			,TTradePrpsl.TotalDollarChange
+			,TTradePrpsl.TrancheDollarChange
+			,TTradePrpsl.TradeProposedDollarAmount
+			,TTradePrpsl.TradeProposedQuantity
+			,TTradePrpsl.TPlusOne
+			,TTradePrpsl.TPlusTwo
+			,TTradePrpsl.TPlusThree
+			,TTradePrpsl.SubmissionType
+			,TTradePrpsl.RecordVersion AS ProposalRecordVersion
+			,TTradePrpsl.LastModifiedUserID AS ProposalLastModifiedUser
+			,TTradePrpsl.LastModifiedDate ProposalLastModifiedDate
+			,TTradePrpsl.SellAll
+			,TTradePrpsl.IsAdd
+			,TTradePrpsl.IsSubstitute
+			,TTradePrpsl.IsExclude
+			,TTradePrpsl.IsAboveTheLine
+			,SLot.TSheetLotID
+			,SLot.LotID
+			,SLot.Industry
+			,SLot.CostBasis
+			,SLot.PortfolioCode
+			,SLot.UnitCost
+			,SLot.AquisitionDate
+			,SLot.SharePrice
+			,SLot.Marketvalue
+			,SLot.Quantity
+			,SLot.UnrealizedGainLossDollars
+			,SLot.UnrealizedGainLossPercentage
+			,SLot.TSheetTradeForReview
+			,SLot.RecordVersion AS LotRecordVersion
+			,SLot.LastModifiedUserID AS LotLastModifiedUser
+			,SLot.LastModifiedDate AS LotLastModifiedDate
+			,AssetClassLabel = (
+				CASE 
+					WHEN TTradePrpsl.AssetClass = 'e'
+						THEN 'Equity'
+					WHEN TTradePrpsl.AssetClass = 'f'
+						THEN 'Fixed Income'
+					WHEN TTradePrpsl.AssetClass = 'c'
+						THEN 'Cash'
+					END
+				)
+		FROM TBL_TR_Event Evnt
+		INNER JOIN TBL_TR_TSheetTradeProposal TTradePrpsl ON Evnt.EventID = TTradePrpsl.EventID
+			AND TTradePrpsl.TSheetTradeForReview = 0
+		INNER JOIN TBL_TR_Audit_Event AudEvnt ON Evnt.EVENTID = AudEvnt.EventID
+			AND AudEvnt.AuditFlag = 'I'
+		LEFT OUTER JOIN TBL_TR_TSheetLot SLot ON TTradePrpsl.EventID = SLot.EventID
+			AND TTradePrpsl.SecurityTypeCode = SLot.SecurityTypeCode
+			AND TTradePrpsl.SecuritySymbol = SLot.SecuritySymbol
+			AND TTradePrpsl.EventAccountID = SLot.EventAccountID
+			AND SLot.TSheetTradeForReview = 0
+		WHERE Evnt.EventID = @EventID
+
+		SET @ReturnStatus = 0;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = error_message();
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

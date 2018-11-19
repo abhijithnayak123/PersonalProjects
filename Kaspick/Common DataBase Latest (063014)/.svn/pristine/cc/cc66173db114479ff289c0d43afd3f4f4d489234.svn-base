@@ -1,0 +1,75 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserID]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetUserID]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetUserID]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserID]    Script Date: 05/10/2013 14:33:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_KS_GetUserID                      
+** Short Desc	:	This SP is used to get the UserID from TBL_EIS_USER table based  on the LoginName       
+**                  
+**                      
+** Full Description: This SP is used to get the UserID from TBL_EIS_USER table based on the LoginName 
+	and returns -1 if LOGIN_NAME does not exists.      
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+	 EXEC USP_KS_GetUserID 'AMitchell'
+	 EXEC USP_KS_GetUserID 'CLIENTTRANSITION'
+	 EXEC USP_KS_GetUserID null
+	 EXEC USP_KS_GetUserID 'test'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 02-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetUserID] (@LoginName AS VARCHAR(50))
+AS
+BEGIN
+	DECLARE @UserID INT
+
+	SELECT @UserID = CASE 
+			WHEN IsActive = 1
+				THEN UserID
+			WHEN IsActive = 0
+				THEN - 1
+			ELSE 0
+			END
+	FROM TBL_KS_User
+	WHERE LoginName = @LoginName
+
+	SELECT isnull(@UserID, 0) AS 'UserID'
+END

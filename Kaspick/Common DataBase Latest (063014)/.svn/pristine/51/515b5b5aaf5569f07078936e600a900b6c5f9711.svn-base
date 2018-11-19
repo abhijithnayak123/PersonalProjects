@@ -1,0 +1,109 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingOtherDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradingOtherDetail;
+
+	PRINT 'DROPPED USP_EX_GetTradingOtherDetail';
+END
+GO
+
+/******************************************************************************    
+** Name:     USP_EX_GetTradingOtherDetail 
+** Old Name : USP_EIS_EX_TRADING_OTHER_DTLSelProc
+** Short Desc:   
+** Full Description    
+**        
+**    
+** Sample Call    
+  USP_EX_GetTradingOtherDetail   
+ @alertid = 42  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: N.R.AMARNATH  
+** Company   : Kaspick & Company    
+** Project   : Excelsior  -- IM PROFILE  
+** Created DT: <03/23/2007>    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 16-Apr-2007   Amarnath  4970    Assigned To was changed to User Login Name  
+** 26-Apr-2007   Amar      5143    Change request to set order by duedate adventid  
+** 12-jul-07    Sandesh             Concurrency Check    
+** 2-Apr-2014    Sanath             Other tab in Trading task 
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradingOtherDetail] (@alertid AS INT)
+AS
+--  Variable Declarations  --    
+DECLARE @procname VARCHAR(60);
+DECLARE @ErrorMessage VARCHAR(1000);
+DECLARE @ErrorNumber INT;
+-- Variables used for error handling -     
+DECLARE @val1 VARCHAR(Max);
+DECLARE @val2 VARCHAR(30);
+
+--  Variable Data Assignment  --    
+SET @procname = 'USP_EX_GetTradingOtherDetail';
+
+BEGIN
+	---Checking Record is deleted or not..  
+	DECLARE @STATUSFLAG BIT
+
+	EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_BR_AlertEvent'
+		,@FIELD_NAME = 'AlertID'
+		,@FIELD_VALUE = @alertid
+		,@STATUS = @STATUSFLAG OUTPUT
+
+	IF (@STATUSFLAG = 1)
+	BEGIN
+		RAISERROR 50002 'RECORD DELETED'
+
+		RETURN
+	END
+
+	BEGIN TRY
+		SELECT AlertDetail
+			,CashNeeds
+		FROM TBL_BR_AlertEvent
+		WHERE AlertID = @alertid
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = @alertid;
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'Alert ID';
+	END CATCH;
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingOtherDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTradingOtherDetail';
+END

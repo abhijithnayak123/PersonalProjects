@@ -1,0 +1,101 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftRequestDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftRequestDetail';
+END
+GO
+
+/****************************************************************************** 
+** Name: USP_EX_GetWftRequestDetail
+** Old Name:     sp_wft_get_request_detail  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to fetch webform request details loaded via website.  
+**  
+** Sample Call  
+   sp_wft_get_request_detail 3072  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Abhishek Chadha  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 7/22/2009  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**  19/Feb/2010	Tanuj	Excelsior-4	Get RequesType to open forms based on the Requst Type
+**  04/30/2010	Tanuj	Excelsior-4	Added Auto_Populate_Excelsior
+**  05/21/2012	Tanuj	Excelsior-Tag	Added TagFolderLocation Column
+** 21-Mar-2014  Abhijith EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftRequestDetail]
+	-- paremeters here    
+	@requestid INT
+AS
+BEGIN
+	SELECT r.Request_id
+		,r.formid
+		,r.workflow_form_url
+		,fx.number_of_flows
+		,vwft.form_flow_id1
+		,vwft.flow_number1
+		,vwft.flow_status_id1
+		,vwft.flow_status_abbrev1
+		,vwft.flow_status_user_name1
+		,vwft.flow_status_datetime1
+		,vwft.flow_status_comment1
+		,vwft.form_flow_id2
+		,vwft.flow_number2
+		,vwft.flow_status_id2
+		,vwft.flow_status_abbrev2
+		,vwft.flow_status_user_name2
+		,vwft.flow_status_datetime2
+		,vwft.flow_status_comment2
+		,vwft.form_flow_id3
+		,vwft.flow_number3
+		,vwft.flow_status_id3
+		,vwft.flow_status_abbrev3
+		,vwft.flow_status_user_name3
+		,vwft.flow_status_datetime3
+		,vwft.flow_status_comment3
+		,vwft.form_abbrev AS RequestType
+		,r.priority_flag
+		,r.GUID
+		,r.Auto_Populate_Excelsior
+		,NULL AS 'TagFolderLocation'
+	FROM TBL_WFT_Request r
+	LEFT JOIN VW_EX_GetRequestFlowDetail vwft ON r.Request_id = vwft.Request_id
+	LEFT JOIN TBL_WFT_ML_FrmCtrlExtn fx ON r.formid = fx.formid
+	WHERE r.Request_id = @requestid
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetWftRequestDetail';
+END

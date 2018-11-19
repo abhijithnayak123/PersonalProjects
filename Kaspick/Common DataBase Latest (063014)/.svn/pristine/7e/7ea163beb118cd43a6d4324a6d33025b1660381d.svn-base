@@ -1,0 +1,67 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetGroupManagerCode]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportGetGroupManagerCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportGetGroupManagerCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportGetGroupManagerCode]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportGetGroupManagerCode    
+** Short Desc: Retrieves all distinct manager codes within a given group   
+**    
+** Full Description : Retrieves all distinct manager codes within a given group  
+**            
+**    
+** Sample Call    
+  Declare @status int    
+        EXEC USP_IE_ImportGetGroupManagerCode  2
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/08/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportGetGroupManagerCode] @GroupID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	-- Body of procedure   
+	SELECT DISTINCT ManagerCode AS BriefName
+	FROM TBL_IE_STG_Estimate
+	WHERE GroupID = @GroupID
+		AND IsDeleted = 0
+	ORDER BY ManagerCode;
+
+	SET NOCOUNT OFF;
+END

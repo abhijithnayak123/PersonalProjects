@@ -1,0 +1,31 @@
+-- TBL_DataLog
+IF EXISTS (
+		SELECT 1
+		FROM $(MappingDB).sys.tables
+		WHERE Name ='TBL_DataLog'
+		)
+BEGIN
+	DROP TABLE $(MappingDB)..TBL_DataLog
+END
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM $(MappingDB).sys.tables
+		WHERE Name ='TBL_DataLog'
+		)
+BEGIN
+ CREATE TABLE $(MappingDB)..[TBL_DataLog] (
+	[DataLogID] INT NOT NULL IDENTITY(1, 1)
+	,[TableName] VARCHAR(100) NOT NULL
+	,[ColumnName] VARCHAR(200) NOT NULL
+	,[ColumnID] VARCHAR(200) NOT NULL
+	,[Comment] VARCHAR(200) NOT NULL
+	)
+
+
+ ALTER TABLE $(MappingDB)..[TBL_DataLog] ADD CONSTRAINT [PK_TBL_DataLog_DataLogID] PRIMARY KEY CLUSTERED ([DataLogID] ASC)
+
+ CREATE NONCLUSTERED INDEX [IX_TBL_DataLog_TableName] ON $(MappingDB)..[TBL_DataLog] ([TableName] ASC)
+ 
+END
+

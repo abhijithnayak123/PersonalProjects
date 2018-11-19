@@ -1,0 +1,116 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetPPListItem')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetPPListItem;
+        PRINT 'DROPPED USP_RP_GetPPListItem';
+    END
+GO
+  
+  
+/*********************************************************************************************************************                                                   
+* New Name  : USP_RP_GetPPListItem           
+* Old Name  : USP_EIS_PP_LIST_ITEM_DDLSelProc           
+* Description   : To retrieve the list items to populate the dropdown list.          
+* Input           : @LIST_TYPE_NAME : List type name for what the list is to be fetched.          
+*                                      
+* Modification log: Indentation                     
+     If condition removed;                                           
+*                                      
+* Date   Modified BY  Description                                                      
+*--------------------------------------------------------------------------------------------------------------------                                                   
+* 14-Jul-06  Chirag P  Created          
+* 30-Oct-06  Saravanan P M  Modified         
+* 31-Oct-06  Manjiri C  Modified       
+* 27-Apr-07  Saravanan PM   Modified && Changed Order by condition       
+*10-Jul-07   Vshivhare modified for one more if condition for State Situs field    
+*11-Dec-2007 Saravanan PM Modified && Country list Order by List Item Name    
+*15-FEB-2008 ASHWATH   MODIFIED && ET7131 (Issues Type Order by List Item Name)   
+*05-Mar-2008 Jithesh Taken the copy of  USP_EIS_EX_LIST_ITEM_DDLSelProc to restrict the value of method ACH and splitcheck  
+*08-May-2008 Rahul  Added condition for Payment Type as per ET #8641  
+*09-Jun-2014 Abhijith  Sp name renamed as per Kaspick naming convention standard 
+*********************************************************************************************************************/          
+CREATE PROCEDURE USP_RP_GetPPListItem
+(            
+ @LIST_TYPE_NAME VARCHAR(100)          
+)            
+AS            
+BEGIN          
+      
+ IF(LOWER(@LIST_TYPE_NAME) in('salutation','country','Issue Type'))     
+ BEGIN      
+  SELECT             
+   ListItemID DDVALUE,  
+   ListItemName DDTEXT  
+  FROM             
+   TBL_ListItem I           
+   INNER JOIN TBL_ListType T ON I.ListTypeID = T.ListTypeID     
+  WHERE           
+   LOWER(ListTypeName) = LOWER(@LIST_TYPE_NAME)            
+  ORDER BY           
+   ListItemName        
+ END    
+ ELSE IF(LOWER(@LIST_TYPE_NAME)='state situs')    
+ BEGIN    
+  SELECT  
+	ListItemID DDVALUE,      
+    IvanValue DDTEXT      
+  FROM       
+   TBL_ListItem I     
+   INNER JOIN TBL_ListType T ON I.ListTypeID = T.ListTypeID      
+  WHERE     
+   LOWER(ListTypeName) = LOWER(@LIST_TYPE_NAME)      
+  ORDER BY     
+   IvanValue    
+ END  
+--Added on 05/07/2008  
+ELSE IF(LOWER(@LIST_TYPE_NAME)='Payment code')      
+ BEGIN      
+  SELECT  ListItemID DDVALUE,        
+   ListItemName + isnull(': ' + EC.DESCRIPTION,'') DDTEXT       
+  FROM         
+   TBL_ListItem I       
+   INNER JOIN TBL_ListType T ON I.ListTypeID = T.ListTypeID     
+   INNER JOIN EXPENSECODE EC ON EC.EXPENSECODE = I.IvanValue    -- join with "EXPENSECODE" has to be changed after client reply
+  WHERE       
+   LOWER(ListTypeName) = LOWER(@LIST_TYPE_NAME)       
+  ORDER BY       
+   DisplaySequence      
+ END       
+ ELSE IF(LOWER(@LIST_TYPE_NAME)='state')        
+ BEGIN        
+  SELECT  ListItemID DDVALUE,          
+    IvanValue DDTEXT          
+  FROM           
+   TBL_ListItem I         
+   INNER JOIN TBL_ListType T ON I.ListTypeID = T.ListTypeID          
+  WHERE         
+   LOWER(ListTypeName) = LOWER(@LIST_TYPE_NAME)          
+  ORDER BY         
+   DisplaySequence        
+ END                   
+ ELSE      
+ BEGIN      
+  SELECT             
+   ListItemID DDVALUE,            
+   ListItemName DDTEXT          
+  FROM             
+   TBL_ListItem I           
+   INNER JOIN TBL_ListType T ON I.ListTypeID = T.ListTypeID            
+  WHERE           
+   LOWER(ListTypeName) = LOWER(@LIST_TYPE_NAME)  
+  -- AND     LIST_ITEM_NAME NOT IN ('ACH', 'SPLITCHECK')       
+  ORDER BY           
+   DisplaySequence         
+  END      
+        
+END    
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetPPListItem') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetPPListItem';
+	END  

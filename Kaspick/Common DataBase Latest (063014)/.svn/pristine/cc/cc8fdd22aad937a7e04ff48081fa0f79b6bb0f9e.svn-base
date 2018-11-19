@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetEBRTOC]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetEBRTOC]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetEBRTOC]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetEBRTOC]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetEBRTOC    
+** Short Desc:  Get All Client and PIF Accounts associated to the Client.    
+**    
+** Full Description : Get All Client and PIF Accounts associated to the Client. 
+**            
+**    
+** Sample Call    
+    EXEC USP_SIT_GetEBRTOC  13600, '2014-09-01'
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Ashvin Mandowara
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetEBRTOC (
+	@ValuationID INT
+	,@PeriodEndDate DATETIME
+	)
+AS
+BEGIN
+	DECLARE @enddate DATETIME
+	DECLARE @startdate DATETIME
+
+	SET @enddate = @PeriodEndDate
+	SET @startdate = CAST((STR(YEAR(@enddate)) + '/' + STR(MONTH(@enddate)) + '/1') AS DATETIME)
+
+	SELECT LTRIM(RTRIM(ISNULL(DGA.CustomerDescriptionLine1, '') + '' + ISNULL(DGA.CustomerDescriptionLine2, '') + '' + ISNULL(DGA.CustomerDescriptionLine3, '') + '' + ISNULL(DGA.CustomerDescriptionLine4, ''))) AS AccountFullName
+		,VAL.AccountType
+		,DGA.ExternalCustomerID AS CustomerAccountNumber
+		,@startdate AS StartDate
+		,@enddate AS EndDate
+	FROM SYN_IT_AccountMaster DGA
+	INNER JOIN TBL_PV_Valuation VAL ON DGA.CustomerAccountNumber = VAL.CustomerAccountNumber
+	WHERE VAL.ValuationID = @ValuationID
+		--and VAL.ValuationDate BETWEEN @startdate AND @enddate  
+END

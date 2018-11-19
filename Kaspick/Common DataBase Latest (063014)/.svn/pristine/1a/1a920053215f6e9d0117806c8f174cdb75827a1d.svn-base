@@ -1,0 +1,96 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_LeadTrustAnalysisReport]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_LeadTrustAnalysisReport]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_LeadTrustAnalysisReport  
+** Short Desc: Generate report for the account information for lead trusts
+**    
+** Full Description    
+**      Generate report for the account information for lead trusts  
+**    
+** Sample Call    
+EXEC USP_KCo_LeadTrustAnalysisReport NULL, 2014 , NULL
+EXEC USP_KCo_LeadTrustAnalysisReport 'TMC', 2013 , NULL
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries      
+** Created DT: 24-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_LeadTrustAnalysisReport] @ManagerCode CHAR(4) = NULL
+	,@PayoutYear INT = NULL
+	,@InvestmentTaxStatusCode VARCHAR(50) = NULL
+AS
+BEGIN
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,AccMas.ManagerCode
+		,TInvAccProf.DiscretionaryTrade
+		,AccMas.ProjectedAccountCloseDate AS ExpectedMatureDate
+		,TAnlAccPInf.EstAnnualPayout
+		,TAnlAccPInf.PayoutYear
+		,AccMas.AccountTypeCode AS AccountType
+		,AccMas.ActiveFlag AS AccountStatusCode
+		,TInvAccProf.InvestmentTaxStatusCode AS InvestmentTaxStatus
+		,TInvAccProf.ObjectiveCode
+		,TInvAccProf.InvestmentTypeCode
+		,TInvAccProf.TradeStatusCode
+		,CONVERT(VARCHAR(8000), TInvAccProf.InvestmentComment) AS InvestmentComment
+	FROM SYN_IT_AccountMaster AccMas
+	LEFT OUTER JOIN TBL_INV_AccountProfile TInvAccProf ON TInvAccProf.CustomeraccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_PP_AnnualAccountPayoutInfo TAnlAccPInf ON TAnlAccPInf.CustomeraccountNumber = AccMas.CustomerAccountNumber
+	WHERE (
+			@PayOutYear IS NULL
+			OR (
+				@PayOutYear IS NOT NULL
+				AND TAnlAccPInf.PayoutYear = @PayOutYear
+				)
+			)
+		AND (
+			@ManagerCode IS NULL
+			OR (
+				@ManagerCode IS NOT NULL
+				AND AccMas.ManagerCode = @ManagerCode
+				)
+			)
+		AND (
+			@InvestmentTaxStatusCode IS NULL
+			OR (
+				@InvestmentTaxStatusCode IS NOT NULL
+				AND TInvAccProf.InvestmentTaxStatusCode = @InvestmentTaxStatusCode
+				)
+			)
+
+	SET NOCOUNT OFF;
+END

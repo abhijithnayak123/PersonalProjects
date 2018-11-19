@@ -1,0 +1,100 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetDTDeliverableQueue')
+BEGIN
+    DROP PROCEDURE USP_RP_GetDTDeliverableQueue;
+    PRINT 'DROPPED USP_RP_GetDTDeliverableQueue';
+END
+GO
+
+/******************************************************************************                      
+** Old Name:     USP_EIS_DT_List_DeliverableQueue  
+**
+** Name  : USP_RP_GetDTDeliverableQueue
+**                    
+** Short Desc: Select Deliverable Queue from  'TBL_DLV_DeliverableQueue' table      
+**                      
+** Full Description: Get Deliverable Queues from TBL_DLV_DeliverableQueue for the given Deliverable  
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+       
+ EXEC USP_RP_GetDTDeliverableQueue  
+ @DeliverableID = 1  
+**             
+** Return values: Return No of record  
+**  
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**  
+** Created By: Ashvin Mandowara  
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 18-Nov-11                 
+**  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 12-Mar-2012 Anand Kumar		Changes for Adding Comments as per Stored Procedure standard template.  
+** 14-Mar-2012 Anand Kumar		Changes for column name changed IN TBL_DLV_DeliverableQueue table.  
+** 29-Jun-2012 Anand Kumar		Updated for QueueCreationEnabled validation   
+** 19-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB  
+  
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [USP_RP_GetDTDeliverableQueue] (@DeliverableID INT) 
+AS 
+  BEGIN 
+      --  Initial Set statements  --                 
+      SET nocount ON; 
+      SET lock_timeout 30000; -- 30 seconds                 
+      SET TRANSACTION isolation level snapshot; 
+      SET arithabort ON 
+
+      --DECLARE @QueueCreationEnabled INT   
+      --SELECT @QueueCreationEnabled = ListItemID FROM v_eis_list_items WHERE LIST_TYPE_NAME ='Logical Value' AND ListItemName = 'Yes'   
+      IF @DeliverableID = 0 
+        BEGIN 
+            SELECT DelQue.deliverablequeueid   AS DDVALUE, 
+                   DelQue.deliverablequeuename AS DDTEXT 
+            FROM   TBL_DLV_DeliverableQueue DelQue 
+                   -- cahnged from DeliverableTypeID to DeliverableId in TBL_DLV_DeliverableQueue   
+                   INNER JOIN TBL_DLV_Deliverable DlvDel 
+                           ON DelQue.deliverableid = DlvDel.deliverableid 
+                   INNER JOIN TBL_DLV_DeliverableType DelTyp 
+                           ON DelTyp.deliverabletypeid = DlvDel.deliverabletypeid 
+                   INNER JOIN TBL_DLV_DeliverableProcess DelProc 
+                           ON DelProc.DeliverableProcessID = DlvDel.DeliverableProcessID 
+                   INNER JOIN TBL_ListItem LIQC 
+                           ON LIQC.ListItemID = DelProc.queuecreationmethodid 
+            WHERE  DelTyp.deliverabletypename IN ( 'Report', 'Report Package' ) 
+                   AND DlvDel.isactive = 1 
+                   AND LIQC.ListItemName = 'subscription' 
+            --AND DlvDel.QueueCreationEnabled = @QueueCreationEnabled    
+            ORDER  BY deliverablestartdate 
+        END 
+      ELSE 
+        BEGIN 
+            SELECT DeliverableQueueID   AS DDVALUE, 
+                   DeliverableQueueName AS DDTEXT 
+            FROM   TBL_DLV_DeliverableQueue 
+            WHERE  DeliverableID = @DeliverableID 
+            ORDER  BY DeliverableStartDate 
+        END 
+  END
+  
+  
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetDTDeliverableQueue')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetDTDeliverableQueue';
+    END 

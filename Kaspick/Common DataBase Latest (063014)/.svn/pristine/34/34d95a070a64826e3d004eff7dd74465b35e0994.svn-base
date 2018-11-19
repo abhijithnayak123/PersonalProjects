@@ -1,0 +1,124 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveSTGJanOneHolding]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportSaveSTGJanOneHolding]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportSaveSTGJanOneHolding]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveSTGJanOneHolding]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportSaveSTGJanOneHolding    
+** Short Desc: Imports Jan One Axys Holdings into Holdings staging table TBL_IE_STG_JanOneHolding.    
+**    
+** Full Description : Imports Jan One Axys Holdings into Holdings staging table TBL_IE_STG_JanOneHolding.
+**            
+**    
+** Sample Call    
+DECLARE @XMLDATA XML
+	SET @XMLDATA = 
+'<StgHoldingsCollection><InsertList>
+<StgHoldings StagingID="1" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="CSRI.X" CUSIP=""  Quantity="188.716"  Price="10870.0416"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+<StgHoldings StagingID="2" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="IRFI.X" CUSIP=""  Quantity="264.715"  Price="5363.1259"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+<StgHoldings StagingID="3" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="DFIG.X" CUSIP=""  Quantity="2045.025"  Price="22986.081"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+<StgHoldings StagingID="4" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="DFUS.X" CUSIP=""  Quantity="440.736"  Price="5297.64672"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+<StgHoldings StagingID="5" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="DODG.X" CUSIP=""  Quantity="29.108"  Price="4808.05944"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+<StgHoldings StagingID="6" HoldingID="0"  GroupID="1"  RunDate="1/1/2007 12:00:00 AM"  CustomerAccountNumber="CPREN"  SecuritySymbol="PFOR.X" CUSIP=""  Quantity="2793"  Price="27930"  ImportDate="10/1/2007 6:33:49 PM"  UserID="1"  UserName="Administrator"  />
+</InsertList><UpdateList></UpdateList><DeleteList></DeleteList></StgHoldingsCollection>'
+
+EXEC USP_IE_ImportSaveSTGJanOneHolding @XMLDATA   
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/14/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportSaveSTGJanOneHolding] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO [TBL_IE_STG_JanOneHolding] (
+			[StagingID]
+			,[GroupID]
+			,[RunDate]
+			,[CustomerAccountNumber]
+			,[SecuritySymbol]
+			,[CUSIP]
+			,[Quantity]
+			,[Price]
+			,[ImportDate]
+			,[UserID]
+			,[UserName]
+			)
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@GroupID[1]', 'int') AS GroupID
+			,XmlInput.Item.value('@RunDate[1]', 'datetime') AS RunDate
+			,XmlInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,XmlInput.Item.value('@SecuritySymbol[1]', 'varchar(50)') AS SecuritySymbol
+			,XmlInput.Item.value('@CUSIP[1]', 'varchar(12)') AS CUSIP
+			,XmlInput.Item.value('@Quantity[1]', 'float') AS Quantity
+			,XmlInput.Item.value('@Price[1]', 'float') AS Price
+			,XmlInput.Item.value('@ImportDate[1]', 'datetime') AS ImportDate
+			,XmlInput.Item.value('@UserID[1]', 'int') AS UserID
+			,XmlInput.Item.value('@UserName[1]', 'varchar(50)') AS UserName
+		FROM @XMLDATA.nodes('//StgHoldingsCollection/InsertList/StgHoldings') AS XmlInput(Item)
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,185 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc';
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                    
+** Name:     USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc                    
+** Short Desc: Retrieves Error Codition for deliverable items.   
+**                    
+** Full Description:   
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**    
+ DECLARE @XMLDeliverableItems XML  
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate   
+AccountID="101899"  BeneficiaryID="105959"  ClientEmployeeID="0"  ClientID="100048"  DeliverableItemID="1472"  DeliverableQueueID="8"  DonorID="0"  TrustparticipantID="107080"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate   
+AccountID="104456"  BeneficiaryID="119953"  ClientEmployeeID="0"  ClientID="100089"  DeliverableItemID="2352"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="120019"  DeliverableFrequency="A"  />  
+</SelectList></DeliverableItemsDataToValidateCollection>'   
+ EXEC USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc  
+    @XMLDeliverableItems  
+   
+   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/24/2009                    
+**                                
+**************************************    *****************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 09/10/2009   Venugopal ET #10317   Corrected the TBL_EIS_RPT_REPORT_CONDITIONS.Report_Type_ID association  
+              with list_item table.  
+** 01/20/2010   VENU           Value for DisplayMessage is updated.  
+** 01/29/2010   Venu. B    ET #11320 Updated to result Error if either the client or account   
+           is set to Yes.    
+** 10/27/2010   Ruchira    3.6. Report Error/ Warning condition Validation rule in KCO FS Bene Reports 2 - Sprint 1.doc   
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc]
+	-- paremeters here        
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --        
+	--SET NOCOUNT ON;        
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @AccountEntityID INT;
+	DECLARE @ErrorID INT;
+	DECLARE @ClientEntityID INT;
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --        
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,ClientID INT
+		,AccountID INT
+		,DeliverableFrequency VARCHAR(10)
+		);
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc';
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@ClientID[1]', 'int') AS ClientID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,XMLdoc.DeliverableItemData.value('@DeliverableFrequency[1]', 'varchar(10)') AS DeliverableFrequency
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+
+		SELECT @AccountEntityID = LIST_ITEM_ID
+		FROM v_eis_list_items
+		WHERE LIST_TYPE_NAME = 'Entity'
+			AND LIST_ITEM_NAME = 'Account';
+
+		SELECT @ClientEntityID = LIST_ITEM_ID
+		FROM v_eis_list_items
+		WHERE LIST_TYPE_NAME = 'Entity'
+			AND LIST_ITEM_NAME = 'Client';
+
+		SELECT @ErrorID = LIST_ITEM_ID
+		FROM v_eis_list_items
+		WHERE LIST_TYPE_NAME = 'Report Type'
+			AND LIST_ITEM_NAME = 'Error';
+
+		SELECT DID.DeliverableItemID
+			,40 AS RuleID
+			,'ClientErrorCondition' AS Attribute
+			,ISNULL(ClientRCLI.LIST_ITEM_NAME, 'Null') AS ActualValue
+			,CASE 
+				WHEN ClientRCLI.LIST_ITEM_NAME = 'No'
+					THEN ''
+				ELSE + ClientRC.Comments
+				END AS DisplayMessage
+		FROM @DeliverableItemData DID
+		LEFT JOIN TBL_EIS_RPT_REPORT_CONDITIONS ClientRC ON DID.ClientID = ClientRC.ClientID
+			AND ClientRC.Entity_Type_ID = @ClientEntityID
+			AND ClientRC.Report_Type_ID = @ErrorID
+			AND dbo.FN_EIS_RetrieveFrequency(ClientRC.FrequencyID) = DID.DeliverableFrequency
+		LEFT JOIN v_eis_list_items ClientRCLI ON ClientRCLI.LIST_ITEM_ID = ClientRC.Status_ID
+		--where dbo.FN_EIS_RetrieveFrequency(ClientRC.FrequencyID) = DID.DeliverableFrequency   
+		
+		UNION
+		
+		SELECT DID.DeliverableItemID
+			,40 AS RuleID
+			,'AccountErrorCondition' AS Attribute
+			,ISNULL(AccountRCLI.LIST_ITEM_NAME, 'Null') AS ActualValue
+			,CASE 
+				WHEN AccountRCLI.LIST_ITEM_NAME = 'No'
+					THEN ''
+				ELSE + AccountRC.Comments
+				END AS DisplayMessage
+		FROM @DeliverableItemData DID
+		LEFT JOIN TBL_EIS_RPT_REPORT_CONDITIONS AccountRC ON DID.AccountID = AccountRC.AccountID
+			AND AccountRC.Entity_Type_ID = @AccountEntityID
+			AND AccountRC.Report_Type_ID = @ErrorID
+			AND dbo.FN_EIS_RetrieveFrequency(AccountRC.FrequencyID) = DID.DeliverableFrequency
+		LEFT JOIN v_eis_list_items AccountRCLI ON AccountRCLI.LIST_ITEM_ID = AccountRC.Status_ID
+			--where dbo.FN_EIS_RetrieveFrequency(AccountRC.FrequencyID) = DID.DeliverableFrequency       
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_DQ_ErrorCondition_SelProc';
+END

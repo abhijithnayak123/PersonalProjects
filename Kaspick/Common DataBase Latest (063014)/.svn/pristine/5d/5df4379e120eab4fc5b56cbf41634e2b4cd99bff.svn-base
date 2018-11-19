@@ -1,0 +1,74 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentByGOPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentByGOPayment]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_PaymentByGOPayment  
+** Short Desc: Generate report for the payment information in terms of startdate, enddate and tax year  
+**    
+** Full Description    
+**      Generate report for the payment information in terms of startdate, enddate and tax year  
+**    
+** Sample Call    
+EXEC USP_KCo_PaymentByGOPayment '1995-10-10 00:00:00.000'
+	,'2014-04-04 00:00:00.000', 2010
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries   
+** Created DT: 21-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentByGOPayment] @BeginDate AS DATETIME
+	,@EndDate AS DATETIME
+	,@TaxYear INT
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT DISTINCT CustomerAccountNumber
+		,ContactID
+		,PaymentAmount
+		,PaymentDate
+	FROM TBL_PP_Beneficiarypayment
+	WHERE (
+			PaymentDate >= @BeginDate
+			AND PaymentDate <= @EndDate
+			)
+		AND VoidDate IS NULL
+		AND TaxYear = @TaxYear
+
+	SET NOCOUNT OFF;
+END

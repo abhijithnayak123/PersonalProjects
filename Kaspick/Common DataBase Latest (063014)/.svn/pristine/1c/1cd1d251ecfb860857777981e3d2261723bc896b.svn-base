@@ -1,0 +1,59 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetMissingSymbolsForRunID]    Script Date: 05/29/2014 15:35:11 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetMissingSymbolsForRunID]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetMissingSymbolsForRunID]
+GO
+
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetMissingSymbolsForRunID]    Script Date: 05/29/2014 15:35:11 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetMissingSymbolsForRunID      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_OP_GetMissingSymbolsForRunID 46
+**      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Manjiri 
+** Company  :		Kaspick & Company      
+** Project  :		Katana      
+** Created DT :		 
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05/29/2014   Tanuj		        Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/      
+CREATE PROCEDURE [dbo].[USP_OP_GetMissingSymbolsForRunID] 
+	@RunID int
+AS       
+	
+BEGIN
+
+select sym.*,  status.StatusName
+from TBL_OP_CustodialDataImportMissingSymbols sym
+Inner join TBL_OP_MissingSymbolsStatus status on sym.MissingStatus=status.StatusID
+ WHERE sym.RunID = @RunID
+
+End
+GO
+
+

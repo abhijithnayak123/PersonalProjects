@@ -1,0 +1,1759 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportSaveDiagnosticResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportSaveDiagnosticResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportSaveDiagnosticResult    
+** Short Desc:     
+**    
+** Full Description : 
+**            
+**    
+** Sample Call    
+      EXEC USP_IE_ImportSaveDiagnosticResult  -- parameters  
+ '<ImportStagingCollection>  
+  <InsertList>  
+   <ImportStaging StagingID="86" UserID="1" UserName="admin" />  
+   <ImportStaging StagingID="87" UserID="1" UserName="admin" />  
+   <ImportStaging StagingID="88" UserID="1" UserName="admin" />  
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>  
+ </ImportStagingCollection>'     
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/09/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportSaveDiagnosticResult] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	DECLARE @TaxYear INT;
+	DECLARE @ReviewStatusID INT;
+	DECLARE @ErrorStatusID INT;
+	DECLARE @DiagnosticID INT;
+	DECLARE @DiagnosticResult VARCHAR(1000);
+
+	--  Temp tables, Cursors, Table Variables  --  
+	CREATE TABLE #Tmp_AccountsToBeImported (
+		StagingID INT
+		,UserID INT
+		,UserName VARCHAR(50)
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO #Tmp_AccountsToBeImported
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@UserID[1]', 'int') AS UserID
+			,XmlInput.Item.value('@UserName[1]', 'varchar(50)') AS UserName
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+		--get Tax year from Groups table  
+		SELECT @TaxYear = TaxYear
+		FROM (
+			SELECT grp.TaxYear
+				,Row_number() OVER (
+					ORDER BY ImpAcc.StagingID
+					) RowNum
+			FROM TBL_IE_STG_Estimate STGEst
+			INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+				ON STGEst.StagingID = ImpAcc.StagingID
+			INNER JOIN TBL_IE_Group grp
+				ON STGEst.GroupID = grp.GroupID
+			) TYear
+		WHERE RowNum = 1
+
+		SELECT @ReviewStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'Review IPM';
+
+		SELECT @ErrorStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'Data Error IPM';
+
+		--clear all old entries for the staging ids  
+		DELETE
+		FROM TBL_IE_DiagnosticResult
+		WHERE StagingID IN (
+				SELECT StagingID
+				FROM #Tmp_AccountsToBeImported
+				)
+
+		UPDATE TBL_IE_STG_Estimate
+		SET DIAGNOSTICERROR = 0
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported imp_acc
+			ON STGEst.StagingID = imp_acc.StagingID
+
+		--No Forecasted Income  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'No Forecasted Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,EstDet.CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_EstimateDetail EstDet
+			ON ImpAcc.StagingID = EstDet.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON EstDet.securitysymbol = STGSec.symbol
+		WHERE EstDet.EstimatedIncome = 0
+			AND STGSec.type NOT IN (
+				'caus'
+				,'stus'
+				,'tbus'
+				,'mmus'
+				)
+			AND STGSec.DividendRateInterestRate <> 0
+
+		--No Dividend Rate  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'No Dividend Rate'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE (
+				STGSec.DividendRateInterestRate IS NULL
+				OR STGSec.DividendRateInterestRate = 0
+				)
+			AND STGSec.type NOT IN (
+				'caus'
+				,'stus'
+				,'tbus'
+				)
+			AND STGSec.symbol <> 'tca'
+
+		-- NO YTD INCOME-- ?
+		--Trust Termination Type = Fixed date  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Term Trust'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_TerminationRule = 'T'
+
+		--Flip Provision  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Flip Provision'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_FlipProvision = 1
+
+		--New Gifts & Additions to account within past 18 months of Run Date  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'New Gifts & Additions'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_NewGiftsAndAdditions IS NOT NULL
+
+		--  18
+		--Pays Actual NI = Yes  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays Actual Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_PayActualNI = 1
+
+		--Pays SGD as Income = Yes  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays SGD as Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_PaysSTGDAsIncome = 1
+
+		--Pays Cap Gains as Income  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays Cap Gains as Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_PayCapGainsAsIncome = 1
+
+		--Holds Real Estate  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Holds Real Estate'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.type = 'rpus'
+
+		--Holds Zero Coupon Bond  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Holds Zero Coupon Bond'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.type = 'stus'
+
+		--Holds Significant Unusual Asset  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Holds Significant Unusual Asset'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT DISTINCT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.type IN (
+				'oaus'
+				,'pnus'
+				,'vaus'
+				)
+			AND STGHld.price / STGEst.Ax_FMVOnRunDate >= 0.1
+			AND ISNULL(STGEst.Ax_FMVOnRunDate, 0) <> 0
+
+		--Holds Maturing Bond  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Bond Matures in Forecast Period'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT DISTINCT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.MaturityDateNextPaymentDate <= CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear))
+			AND STGSec.type IN (
+				'gbus'
+				,'gaus'
+				,'cbus'
+				,'ibus'
+				,'jbus'
+				,'mbus'
+				,'cmus'
+				,'stus'
+				,'gtus'
+				,'cdus'
+				,'cvus'
+				,'anus'
+				,'cfus'
+				,'teus'
+				,'fmus'
+				,'gmus'
+				,'fhus'
+				,'tbus'
+				)
+
+		--Bond Maturity within 24 mos.  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Bond Maturity within 24 mos.'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT DISTINCT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.MaturityDateNextPaymentDate BETWEEN STGEst.RunDate
+				AND DATEADD(MONTH, 24, STGEst.RunDate)
+			AND STGSec.type IN (
+				'gbus'
+				,'gaus'
+				,'cbus'
+				,'ibus'
+				,'jbus'
+				,'mbus'
+				,'cmus'
+				,'stus'
+				,'gtus'
+				,'cdus'
+				,'cvus'
+				,'anus'
+				,'cfus'
+				,'teus'
+				,'fmus'
+				,'gmus'
+				,'fhus'
+				,'tbus'
+				)
+
+		--Holds Maturing Unusual Asset  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Holds Maturing Unusual Asset'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT DISTINCT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.MaturityDateNextPaymentDate <= CONVERT(DATETIME, '12/31/' + CONVERT(VARCHAR(4), @TaxYear))
+			AND STGSec.type IN (
+				'rpus'
+				,'oaus'
+				,'pnus'
+				,'vaus'
+				)
+
+		--Custom AA  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Custom AA'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.EP_InvestmentType = 'C' --custom 
+
+		--Tranching  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Tranching'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.EP_TranchingStatus IN (
+				'Tranching to Target'
+				,'Addition'
+				)
+
+		--Holds Restricted Assets  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Holds Restricted or Substitute Assets'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE (
+				STGEst.KDB_HoldsRestrictedAssets = 1
+				OR KDB_HoldsSubstitutes = 1
+				)
+
+		--Income Accrual Policy = Yes  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays Accrued Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.IT_IsIncomeAccrual = 1
+
+		--Amortization Policy= Yes or Accretion = Yes or Promissory Note Amortization = Income  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Account Amortizes/Accretes'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		LEFT OUTER JOIN (
+			SELECT DISTINCT ImpAcc.StagingID
+				,STGSec.type
+			FROM #Tmp_AccountsToBeImported ImpAcc
+			INNER JOIN TBL_IE_STG_Estimate STGEst
+				ON STGEst.StagingID = ImpAcc.StagingID
+			INNER JOIN TBL_IE_STG_JanOneHolding JanHld
+				ON JanHld.StagingID = ImpAcc.StagingID
+			INNER JOIN TBL_IE_STG_Securities STGSec
+				ON JanHld.securitysymbol = STGSec.symbol
+			WHERE STGSec.type = 'pnus'
+			) AS sub
+			ON ImpAcc.StagingID = sub.StagingID
+		WHERE STGEst.IT_IsAmortization = 1
+			OR STGEst.IT_IsAccretion = 1
+			OR (
+				STGEst.IT_IsPromNoteAmort = 1
+				AND sub.type = 'pnus'
+				)
+
+		--Pays Monthly   
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays Monthly'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT DISTINCT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN (
+			SELECT RemitInst.CustomerAccountNumber
+				,'P' AS EventType
+				,CASE 
+					WHEN SchCode.ScheduleCode = 'ANNUAL'
+						THEN 1
+					WHEN SchCode.ScheduleCode = 'SEMI'
+						THEN 2
+					WHEN SchCode.ScheduleCode IN (
+							'QMJSD'
+							,'QFMJN'
+							,'QJAJO'
+							,'QJAJS'
+							,'QMJSD'
+							)
+						THEN 4
+					WHEN SchCode.ScheduleCode = 'MONTH'
+						THEN 12
+					ELSE 0
+					END AS AnnualFrequency
+			FROM SYN_IT_RemittanceInstructions RemitInst
+			INNER JOIN SYN_IT_ScheduledEvents SchEvent
+				ON RemitInst.InstructionID = SchEvent.EventID
+					AND SchEvent.EventType = 'S'
+			INNER JOIN SYN_IT_ScheduleCodes SchCode
+				ON SchEvent.ScheduleCode = SchCode.ScheduleCode
+			INNER JOIN SYN_IT_AccountMaster AccMstr
+				ON AccMstr.CustomerAccountNumber = RemitInst.CustomerAccountNumber
+			) TblAccFreqDet
+			ON STGEst.CustomerAccountNumber = TblAccFreqDet.CustomerAccountNumber
+		WHERE TblAccFreqDet.AnnualFrequency = 12
+			AND TblAccFreqDet.Eventtype = 'P'
+
+		--missing security price on jan 1  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Price on Jan 1'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,JanHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_JanOneHolding JanHld
+			ON JanHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON JanHld.securitysymbol = STGSec.symbol
+		WHERE JanHld.price IS NULL
+
+		--missing security price on run date  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Price on Run Date'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGHld.price IS NULL
+
+		--missing security interest rate  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Interest Rate'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.type IN (
+				'gbus'
+				,'gaus'
+				,'cbus'
+				,'ibus'
+				,'jbus'
+				,'mbus'
+				,'cmus'
+				,'stus'
+				,'gtus'
+				,'cdus'
+				,'cvus'
+				,'fmus'
+				,'gmus'
+				,'fhus'
+				,'pnus'
+				,'anus'
+				,'ctus'
+				,'teus'
+				)
+			AND STGSec.DividendRateInterestRate IS NULL
+
+		--missing security reclass %  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Reclass %'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		LEFT OUTER JOIN TBL_IE_SecurityReclass rec
+			ON STGHld.securitysymbol = rec.securitysymbol
+		WHERE STGSec.type IN (
+				'reus'
+				,'rius'
+				)
+			AND rec.reclasspercentage IS NULL
+
+		--missing Investment Allocation Yield  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Investment Allocation Yield'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.EP_InvestmentType = 'M'
+			AND STGEst.PP_InvestmentAllocationYield IS NULL
+
+		--Inv. Alloc. Variance (Gross) (Yield on Gross Income vs Investment Allocation Yield)  
+		--'=(((gross income/beginning of year fair market value)/(investment allocation yield/100))-1)*100  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Inv. Alloc. Variance (Gross) (Yield on Gross Income vs Investment Allocation Yield)'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE ABS(Ca_InvAllocGrossYieldVar) > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE settingid = 1
+				)
+
+		--Axys Variance (Gross) (Yield on Gross Income vs Axys Yield)  
+		--'=(((gross income/beginning of year fair market value)/(axys yield/100))-1)*100  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Axys Variance (Gross)(Yield on Gross Income vs Axys Yield)'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE ABS(Ax_AxysPortGrossYieldVar) > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE settingid = 2
+				)
+
+		--Validation  
+		--Estimated Trust Horizon is Null  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Estimated Trust Horizon is Null'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.Ca_TrustLifeExpectancy IS NULL
+
+		--No Actual Income  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'No Actual Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.Ax_EarnedIncome IS NULL
+			OR STGEst.Ax_EarnedIncome = 0
+
+		--No Estimated Income  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'No Estimated Income'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.Ax_EstimatedIncome IS NULL
+			OR STGEst.Ax_EstimatedIncome = 0
+
+		--Asset in Asset Yield has Record Date on Run Date  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Asset in Asset Yield has Record Date on Run Date'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		INNER JOIN TBL_IE_AssetYield ay
+			ON STGHld.securitysymbol = ay.securitysymbol
+		WHERE STGSec.type NOT IN (
+				'caus'
+				,'mmus'
+				)
+			AND ay.recorddate = STGEst.RunDate
+
+		--missing security payment frequency  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Payment Frequency'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.PaymentFrequencyCouponFrequency IS NULL
+			AND STGSec.type NOT IN (
+				'caus'
+				,'mmus'
+				,'stus'
+				,'tbus'
+				)
+			AND STGSec.symbol <> 'tca'
+			AND STGSec.DividendRateInterestRate <> 0
+
+		--SP11 - begin code change
+		--Unitrust Amount caps Net Income Estimated Used for Payment
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Unitrust Amount caps Net Income Estimated Used for Payment'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = ImpAcc.StagingID
+		WHERE STGEst.AccountType IN (
+				'NIMU'
+				,'NICT'
+				,'CRUT'
+				,'GLUT'
+				,'NLUT'
+				)
+			AND PP_UnitrustAmount < Ca_NetIncomeEstimateUsedForPmt
+
+		--SP11 - end code change
+		--missing security maturity date  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Security Maturity or Payment Date'
+			AND DiagnosticCategory = 'Income Estimate'
+
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,STGSec.type
+			,STGSec.symbol
+			,STGHld.CUSIP AS CUSIP
+			,ImpAcc.UserID
+			,ImpAcc.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #Tmp_AccountsToBeImported ImpAcc
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON ImpAcc.StagingID = STGEst.StagingID
+		INNER JOIN TBL_IE_STG_Holding STGHld
+			ON STGHld.StagingID = ImpAcc.StagingID
+		INNER JOIN TBL_IE_STG_Securities STGSec
+			ON STGHld.securitysymbol = STGSec.symbol
+		WHERE STGSec.type IN (
+				'gbus'
+				,'gaus'
+				,'cbus'
+				,'ibus'
+				,'jbus'
+				,'mbus'
+				,'cmus'
+				,'stus'
+				,'gtus'
+				,'cdus'
+				,'cvus'
+				,'fmus'
+				,'gmus'
+				,'fhus'
+				,'pnus'
+				,'anus'
+				,'ctus'
+				,'teus'
+				)
+			AND STGSec.symbol <> 'tca'
+			AND STGSec.MaturityDateNextPaymentDate IS NULL
+			AND STGSec.DividendRateInterestRate <> 0
+
+		UPDATE TBL_IE_STG_Estimate
+		SET DIAGNOSTICERROR = 1
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported imp_acc
+			ON STGEst.StagingID = imp_acc.StagingID
+		INNER JOIN TBL_IE_DiagnosticResult diag
+			ON STGEst.StagingID = diag.StagingID
+
+		-------------------Statusing--------------------------------  
+		UPDATE TBL_IE_STG_Estimate
+		SET StatusID = @ErrorStatusID
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported imp_acc
+			ON STGEst.StagingID = imp_acc.StagingID
+		WHERE STGEst.StagingID IN (
+				SELECT diag.StagingID
+				FROM TBL_IE_DiagnosticResult diag
+				INNER JOIN #Tmp_AccountsToBeImported imp
+					ON diag.StagingID = imp.StagingID
+				WHERE DiagnosticID IN (
+						SELECT DiagnosticID
+						FROM TBL_IE_Diagnostic
+						WHERE DiagnosticType = 'Error'
+						)
+				)
+
+		UPDATE TBL_IE_STG_Estimate
+		SET StatusID = @ReviewStatusID
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported imp_acc
+			ON STGEst.StagingID = imp_acc.StagingID
+		WHERE STGEst.StagingID NOT IN (
+				SELECT diag.StagingID
+				FROM TBL_IE_DiagnosticResult diag
+				INNER JOIN #Tmp_AccountsToBeImported imp
+					ON diag.StagingID = imp.StagingID
+				WHERE DiagnosticID IN (
+						SELECT DiagnosticID
+						FROM TBL_IE_Diagnostic
+						WHERE DiagnosticType = 'Error'
+						)
+				)
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	-- End of procedure  --
+	SET NOCOUNT OFF;
+END

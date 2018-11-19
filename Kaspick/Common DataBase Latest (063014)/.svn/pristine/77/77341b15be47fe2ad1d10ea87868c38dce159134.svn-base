@@ -1,0 +1,415 @@
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]    Script Date: 05/14/2014 18:07:41 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		DROP PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]
+		PRINT 'Dropped USP_WFT_GetEmailRuleEngineTemplateAttributeDetails Procedure.'
+	End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]    Script Date: 05/14/2014 18:07:41 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name:     [USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]
+** Short Desc:	
+**
+** Full Description
+**        
+**
+** Sample Call
+	[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails] '<root><templateRule><ID>10</ID><param1>3063</param1><param2>16</param2><param3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>1</ID><param1>1</param1><param2>1</param2><param3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>27</ID><param1>3065</param1><param2>35</param2><param3></param3><param4></param4><param5></param5></templateRule></root>'
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Abhishek
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	20-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails] @emailTemplateXML XML
+AS
+BEGIN
+	DECLARE @XmlRequestInfo TABLE (
+		ID INT IDENTITY(1, 1)
+		,emailTemplateRuleid INT
+		,request_id INT
+		,emailruleid INT
+		,param3 VARCHAR(255)
+		,param4 VARCHAR(255)
+		,param5 VARCHAR(255)
+		,[guid] VARCHAR(255)
+		,formid INT
+		)
+
+	INSERT INTO @XmlRequestInfo (
+		emailTemplateRuleid
+		,request_id
+		,emailruleid
+		,param3
+		,param4
+		,param5
+		,[guid]
+		,formid
+		)
+	SELECT nref.value('ID[1]', 'int') AS emailTemplateRuleid
+		,nref.value('param1[1]', 'int') AS requestid
+		,nref.value('param2[1]', 'int') AS param2
+		,nref.value('param3[1]', 'varchar(255)') AS param3
+		,nref.value('param4[1]', 'varchar(255)') AS param4
+		,nref.value('param5[1]', 'varchar(255)') AS param5
+		,r.guid
+		,r.formid
+	FROM @emailTemplateXML.nodes('//templateRule') AS a(nref)
+	INNER JOIN wft_request r ON r.request_id = nref.value('param1[1]', 'int')
+
+	--select * from @XmlRequestInfo
+	--select * from wft_request where request_id =3063
+	--form_id = 89
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN tt.account_name
+			WHEN etra.attribute_name = 'donor_beneficiary_name'
+				THEN tt.beneficiary_name
+					--when etra.attribute_name ='action_on_account' then tt.action_on_account
+			WHEN etra.attribute_name = 'advent_id'
+				THEN tt.adventid
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_trust_termination tt ON r.guid = tt.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	--form_id = 91 templateruleid = 1
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,nc.donor_bene_name AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_name_change nc ON r.guid = nc.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 92
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,ac.donor_bene_name AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_address_change ac ON r.guid = ac.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 93
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,tpc.donor_bene_name AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_third_party_change tpc ON r.guid = tpc.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	--form_id = 94
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,bpc.donor_bene_name AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_bank_payment_change bpc ON r.guid = bpc.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 128
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN cr.account_name
+			WHEN etra.attribute_name = 'amount_requested'
+				THEN CONVERT(VARCHAR(100), CAST(cr.payment_amount AS DECIMAL(38, 2))) --cast(cr.payment_amount as varchar)
+			WHEN etra.attribute_name = 'make_check_payable_to'
+				THEN cr.check_payable_to
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_Check_Request cr ON r.guid = cr.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 132, templateruleid- 
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN mb.account_name
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_multiple_beneficiaries mb ON r.guid = mb.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 133
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN nti.account_name
+			WHEN etra.attribute_name = 'completed_by'
+				THEN nti.submitted_by
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			WHEN etra.attribute_name = 'trustee_name'
+				THEN nti.client_name
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_New_Trust_Info nti ON r.guid = nti.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 152
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN ada.account_name
+			WHEN etra.attribute_name = 'total_gift_value'
+				THEN cast(ada.total_asset_value AS VARCHAR)
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			WHEN etra.attribute_name = 'advent_id'
+				THEN ada.advent_id
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_additional_donated_asssets ada ON r.guid = ada.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 153
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN att.account_name
+			WHEN etra.attribute_name = 'advent_id'
+				THEN att.advent_id
+			WHEN etra.attribute_name = 'asset_type1'
+				THEN ISNULL(att.asset_type1, '')
+			WHEN etra.attribute_name = 'asset_type2'
+				THEN ISNULL(att.asset_type2, '')
+			WHEN etra.attribute_name = 'asset_type3'
+				THEN ISNULL(att.asset_type3, '')
+			WHEN etra.attribute_name = 'asset_type4'
+				THEN ISNULL(att.asset_type4, '')
+			WHEN etra.attribute_name = 'completed_by'
+				THEN att.submitted_by
+			WHEN etra.attribute_name = 'gift_date'
+				THEN cast(att.gift_date AS VARCHAR)
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			WHEN etra.attribute_name = 'total_gift_value'
+				THEN cast(att.total_gift_value AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_addition_to_trust att ON r.guid = att.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 154
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN pgda.account_name
+			WHEN etra.attribute_name = 'donor_beneficiary_name'
+				THEN isnull(pgda.bene1_first_name, '') + '' + isnull(bene1_last_name, '')
+			WHEN etra.attribute_name = 'advent_id'
+				THEN pgda.advent_id
+			WHEN etra.attribute_name = 'asset_type1'
+				THEN ISNULL(pgda.asset_type1, '')
+			WHEN etra.attribute_name = 'asset_type2'
+				THEN ISNULL(pgda.asset_type2, '')
+			WHEN etra.attribute_name = 'asset_type3'
+				THEN ISNULL(pgda.asset_type3, '')
+			WHEN etra.attribute_name = 'asset_type4'
+				THEN ISNULL(pgda.asset_type4, '')
+			WHEN etra.attribute_name = 'completed_by'
+				THEN pgda.submitted_by
+			WHEN etra.attribute_name = 'gift_date'
+				THEN cast(pgda.gift_date AS VARCHAR)
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			WHEN etra.attribute_name = 'total_gift_value'
+				THEN cast(pgda.total_gift_value AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_pif_gap_participant_data_asset_valution pgda ON r.guid = pgda.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 155
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN tav.account_name
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_trust_asset_valuation tav ON r.guid = tav.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+	
+	UNION
+	
+	----form_id = 157
+	SELECT r.request_id
+		,etr.email_template_rule_id
+		,xri.emailruleid
+		,etra.attribute_name
+		,CASE 
+			WHEN etra.attribute_name = 'account_name'
+				THEN id.account_name
+			WHEN etra.attribute_name = 'advent_id'
+				THEN id.advent_id
+			WHEN etra.attribute_name = 'completed_by'
+				THEN id.submitted_by
+			WHEN etra.attribute_name = 'current_investment_objective'
+				THEN id.current_investment_objective
+			WHEN etra.attribute_name = 'invest_trade_by_exception'
+				THEN CASE 
+						WHEN isnull(id.is_invest_or_trade_by_exception, 0) = 0
+							THEN 'No'
+						ELSE 'Yes'
+						END
+			WHEN etra.attribute_name = 'investment_per_policy'
+				THEN CASE 
+						WHEN isnull(id.is_investment_per_policy, 0) = 0
+							THEN 'No'
+						ELSE 'Yes'
+						END
+			WHEN etra.attribute_name = 'reason_for_change'
+				THEN id.comments
+			WHEN etra.attribute_name = 'reason_for_submission'
+				THEN id.reason_for_submission
+			WHEN etra.attribute_name = 'request_id'
+				THEN cast(r.request_id AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_Investment_Directive id ON r.guid = id.guid
+	INNER JOIN EML_EmailTemplateRule etr ON xri.emailTemplateRuleid = etr.email_template_rule_id
+	LEFT OUTER JOIN EML_EmailTemplateRuleAttribute etra ON etr.email_template_rule_id = etra.email_template_rule_id
+END
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+		PRINT 'Created USP_WFT_GetEmailRuleEngineTemplateAttributeDetails Procedure.'
+	End

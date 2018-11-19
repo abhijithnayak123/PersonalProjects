@@ -1,0 +1,81 @@
+  IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTActivityConsoleAllowableStatus')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTActivityConsoleAllowableStatus;
+    PRINT 'DROPPED USP_RP_GetBRDTActivityConsoleAllowableStatus';
+END
+GO
+
+/******************************************************************************                    
+** Old Name:     USP_EIS_BR_DT_ActivityConsole_AllowableStatus_SELPROC             
+**                      
+** Name:     USP_RP_GetBRDTActivityConsoleAllowableStatus            
+**           
+** Short Desc: To fetch data for Activity Console    
+**                    
+** Full Description: To fetch data for Activity Console         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+     
+ Declare @User_ID int  
+ EXEC USP_RP_GetBRDTActivityConsoleAllowableStatus 100359,5  
+  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08-Sep-09               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+** 13-Jun-2014	Geervani		Made changes in the table names to refer new KASPICK DB 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/  
+CREATE PROCEDURE USP_RP_GetBRDTActivityConsoleAllowableStatus   
+(  
+ @User_ID int,  
+ @DeliverableID int  
+)  
+AS  
+BEGIN  
+  
+	DECLARE @DeliverableProcessID INT  
+	SET @DeliverableProcessID = (SELECT DeliverableProcessID FROM TBL_DLV_Deliverable WHERE DeliverableID = @DeliverableID )  
+
+	SELECT sf.StatusFlowID, r.RoleName AS Role_Name,  
+	StartDeliverableStatus = (SELECT StatusName  FROM TBL_DLV_DeliverableProcessStatus WHERE DeliverableItemStatusID = sf.Start_DeliverableStatusID),  
+	EndDeliverableStatus = (SELECT StatusName  FROM TBL_DLV_DeliverableProcessStatus WHERE DeliverableItemStatusID = sf.End_DeliverableStatusID)  
+	FROM TBL_DLV_StatusFlow sf  
+	INNER JOIN TBL_DLV_StatusFlowRole sfr ON sfr.statusflowid = sf.statusflowid  
+	INNER JOIN TBL_KS_Role r ON r.ROLEID = sfr.ROLE_ID  
+	INNER JOIN TBL_KS_UserRole ur ON ur.ROLEID = r.ROLEID  
+	WHERE ur.USERID = @User_ID AND sf.DeliverableProcessID = @DeliverableProcessID   
+  
+END  
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTActivityConsoleAllowableStatus')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTActivityConsoleAllowableStatus';
+    END

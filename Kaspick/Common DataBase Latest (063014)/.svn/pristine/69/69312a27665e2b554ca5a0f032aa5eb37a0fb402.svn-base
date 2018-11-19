@@ -1,0 +1,17 @@
+update TBL_PolicyItem
+set ownerid = cli.briefname
+from TBL_PolicyItem PItem
+inner join $(ExcelsiorDB)..client cli on cast(cli.clientid as varchar) = pitem.ownerid
+where PItem.PolicyLevel = 100 
+
+update TBL_PolicyItem
+set ownerid = substring(prg.briefname,1,15)
+from TBL_PolicyItem PItem
+inner join $(ExcelsiorDB)..program prg on cast(prg.programid as varchar) = pitem.ownerid
+where PItem.PolicyLevel = 200
+
+update TBL_PolicyItem
+set ownerid = acc.adventid
+from TBL_PolicyItem PItem
+inner join $(ExcelsiorDB)..DEFERREDGIFTACCOUNT acc on cast(acc.accountid as varchar) = pitem.ownerid
+where PItem.PolicyLevel = 300

@@ -1,0 +1,172 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveSTGClientComment]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewSaveSTGClientComment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewSaveSTGClientComment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveSTGClientComment]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewSaveSTGClientComment    
+** Short Desc:     
+**    
+** Full Description : 
+**            
+**    
+** Sample Call    
+ Declare @Ret int  
+ DECLARE @XMLDATA XML  
+ SET @XMLDATA =   
+        '<IE_ClientCommentCollection>  
+   <UpdateList>  
+    <IE_ClientComment StagingID="10283"  EP_ClientIEComment="10/31/2007vbapathi - venu B"    
+                 GroupID="39"  CustomerAccountNumber="352C606"  RunDate="2008-11-26 11:27:06.607" ModifiedDate="2008-11-26 11:27:06.607"  UserID="200737"  />  
+   </UpdateList>  
+  </IE_ClientCommentCollection>'  
+    EXEC USP_IE_ReviewSaveSTGClientComment  -- parameters  
+  @XMLDATA, @Ret OUTPUT      
+  Select @Ret
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/13/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewSaveSTGClientComment] @XMLDATA XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --      
+	DECLARE @CurrModifiedDate DATETIME;
+	--  Temp tables, Cursors, Table Variables  --  
+	DECLARE @UpdateStaging TABLE (
+		StagingID INT NULL
+		,EP_ClientIEComment VARCHAR(4000) NULL
+		,ModifiedDate DATETIME NULL
+		);
+
+	-- Body of procedure  --  
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO @UpdateStaging
+		SELECT XmlInput.Staging.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Staging.value('@EP_ClientIEComment[1]', 'varchar(4000)') AS EP_ClientIEComment
+			,XmlInput.Staging.value('@ModifiedDate[1]', 'DateTime') AS ModifiedDate
+		FROM @XMLDATA.nodes('//IE_ClientCommentCollection/UpdateList/IE_ClientComment') AS XmlInput(Staging)
+
+		SELECT @CurrModifiedDate = ModifiedDate
+		FROM TBL_IE_STG_Estimate
+		WHERE StagingID = (
+				SELECT Top 1 StagingID
+				FROM @UpdateStaging
+				Order by StagingID
+				)
+				
+		IF (
+				@CurrModifiedDate = (
+					SELECT top 1 ModifiedDate
+					FROM @UpdateStaging
+					Order By StagingID
+					)
+				)
+		BEGIN
+			--Logging history data. Making sure that all records related to same group.         
+			IF (
+					1 = (
+						SELECT Grp.ISOFFICIAL
+						FROM TBL_IE_Group Grp
+						INNER JOIN TBL_IE_STG_Estimate STGEst
+							ON STGEst.GroupID = Grp.GroupID
+						WHERE STGEst.STAGINGID = (
+								SELECT TOP 1 StagingID
+								FROM @UpdateStaging
+								Order By StagingID
+								)
+						)
+					)
+			BEGIN
+				EXEC USP_IE_ReviewSaveHistoryDetail @ParentScreen = 'Client Comment'
+					,@XMLDATA = @XMLDATA
+			END
+
+			UPDATE TBL_IE_STG_Estimate
+			SET EP_ClientIEComment = XmlInput.EP_ClientIEComment
+				,MODIFIEDDATE = GETDATE()
+			FROM @UpdateStaging XmlInput
+			INNER JOIN TBL_IE_STG_Estimate STGEst
+				ON STGEst.StagingID = XmlInput.StagingID
+			--UPDATE DEFERREDGIFTACCOUNT
+			--SET IncomeProjectionComment = es_temp.Ex_ClientIEComment
+			--FROM @UpdateStaging es_temp
+			--INNER JOIN TBL_EIS_IE_Estimate_Staging es
+			--	ON es.StagingID = es_temp.StagingID
+			--INNER JOIN DEFERREDGIFTACCOUNT dga
+			--	ON dga.AccountID = es.AccountID
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+		END
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

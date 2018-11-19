@@ -1,0 +1,143 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_SaveParsedSecurityType]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_SaveParsedSecurityType]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_TR_SaveParsedSecurityType      
+** Short Desc : Saves SecurityType to TBL_TR_AssetClassList
+**      
+** Full Description : Saves SecurityType to TBL_TR_AssetClassList
+**      
+** Sample Call      
+	Declare @XMLSecurityTypeInfo XMl
+	SET @XMLSecurityTypeInfo =       
+	'<SecurityTypeInfoCollection>
+	<SecurityTypeInfo AssetClassName="ag"  AssetClassDescription="Small Company Stocks"  
+	AssetClassType="Equity"  AssetClassCategory="e"  AssetClassScaler="1"  />
+	</SecurityTypeInfoCollection>'    
+	Declare @ReturnStatus INT
+	Declare @ErrorDesc Varchar(8000)
+	EXEC USP_TR_SaveParsedSecurityType @XMLSecurityTypeInfo, @ReturnStatus,  @ErrorDesc
+** Return values: 0,-1,-2 and Error Description
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/27/2014       
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_SaveParsedSecurityType]
+	-- paremeters here      
+	@XMLSecurityTypeInfo XML
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+-- Body of procedure  --      
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	DECLARE @NewSecurityTypes TABLE (
+		AssetClassName VARCHAR(25)
+		,AssetClassCategory VARCHAR(50)
+		,AssetClassType VARCHAR(10)
+		,AssetClassDescription VARCHAR(40)
+		,AssetClassScaler FLOAT
+		)
+
+	INSERT INTO @NewSecurityTypes (
+		AssetClassName
+		,AssetClassCategory
+		,AssetClassType
+		,AssetClassDescription
+		,AssetClassScaler
+		)
+	SELECT DISTINCT XMLDATA.item.value('@AssetClassName[1]', 'varchar(25)') AS AssetClassName
+		,XMLDATA.item.value('@AssetClassCategory[1]', 'varchar(50)') AS AssetClassCategory
+		,XMLDATA.item.value('@AssetClassType[1]', 'varchar(10)') AS AssetClassType
+		,XMLDATA.item.value('@AssetClassDescription[1]', 'varchar(40)') AS AssetClassDescription
+		,XMLDATA.item.value('@AssetClassScaler[1]', 'float') AS AssetClassScaler
+	FROM @XMLSecurityTypeInfo.nodes('//SecurityTypeInfoCollection/SecurityTypeInfo') AS XMLDATA(item)
+	WHERE isnull(XMLDATA.item.value('@AssetClassName[1]', 'varchar(25)'), '') <> ''
+
+	UPDATE TBL_TR_AssetClassList
+	SET AssetClassDescription = newAssetClass.AssetClassDescription
+		,AssetClassType = newAssetClass.AssetClassType
+		,AssetClassCategory = newAssetClass.AssetClassCategory
+		,AssetClassScaler = newAssetClass.AssetClassScaler
+	FROM TBL_TR_AssetClassList existingAssetClass
+	INNER JOIN @NewSecurityTypes newAssetClass ON newAssetClass.AssetClassName = existingAssetClass.AssetClassName
+
+	INSERT INTO TBL_TR_AssetClassList (
+		AssetClassName
+		,AssetClassDescription
+		,AssetClassType
+		,AssetClassCategory
+		,AssetClassScaler
+		)
+	SELECT newAssetClass.AssetClassName
+		,newAssetClass.AssetClassDescription
+		,newAssetClass.AssetClassType
+		,newAssetClass.AssetClassCategory
+		,newAssetClass.AssetClassScaler
+	FROM @NewSecurityTypes newAssetClass
+	LEFT OUTER JOIN TBL_TR_AssetClassList existingAssetClass ON newAssetClass.AssetClassName = existingAssetClass.AssetClassName
+	WHERE isnull(existingAssetClass.AssetClassName, '') = ''
+
+	UPDATE TBL_TR_AXYSInfoImportLog
+	SET lastUpdated = GetDate()
+		,RowsLoaded = (
+			SELECT count(*)
+			FROM @NewSecurityTypes
+			)
+	WHERE FileDescription = 'Asset Classes'
+
+	SET @ReturnStatus = 0;
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1;
+	SET @ErrorDesc = error_message();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+
+SET NOCOUNT OFF;
+GO
+
+

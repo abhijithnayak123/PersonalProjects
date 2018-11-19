@@ -1,0 +1,132 @@
+/****** Object:  StoredProcedure [dbo].[sp_dsIncrement]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_dsIncrement]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_dsIncrement]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_dsIncrement]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_dsIncrement                      
+** Short Desc: Helper proce for sp_DeliverableSchedule
+**                      
+** Full Description: Helper proce for sp_DeliverableSchedule. Finds the NEXT scheduled date according to the specified calendar parameters
+**
+** Input Arguments:   The @seed_date output parameter is used as a starting  
+** point for date calculations, and then returned with a  
+** new value.  
+**  
+** For accurate date calculations, one call to sp_dsInit  
+** is required before any calls to sp_ds_Increment  
+**         
+** Sample Call     
+**                     
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_dsIncrement @freq_type INT
+	,-- 0 = Daily; 1 = weekly; 2 = Mothly; 3 = Yearly      
+	@freq_recurrence INT
+	,@freq_occurrence INT
+	,@freq_month_occurrence INT
+	,@freq_day_occurrence VARCHAR(10)
+	,@seed_date DATETIME
+OUTPUT AS
+
+DECLARE @temp_date DATETIME
+
+/*   
+  ** Daily, every X days  
+  */
+IF (@freq_type = 0)
+	AND (@freq_day_occurrence IS NULL)
+BEGIN
+	/* Advance one day from  day indicated */
+	SELECT @seed_date = DATEADD(day, @freq_recurrence, @seed_date)
+END
+		/*   
+  ** Daily, Weekdays-only  
+  */
+ELSE
+	IF (@freq_type = 0)
+		AND (@freq_day_occurrence = 'MTWRF')
+	BEGIN
+		/* Advance to next weekday */
+		SELECT @seed_date = DATEADD(day, 1, @seed_date)
+
+		EXEC sp_dsNextWeekday @seed_date OUTPUT
+	END
+			/*   
+  ** Weekly, Certain days of the week  
+  */
+	ELSE
+		IF (@freq_type = 1)
+			AND (@freq_day_occurrence IS NOT NULL)
+		BEGIN
+			/* Advance to next day in specified set */
+			SELECT @temp_date = DATEADD(day, 1, @seed_date)
+
+			EXEC sp_dsNextDayInSet @freq_day_occurrence
+				,@temp_date OUTPUT
+
+			/* If day comes in subsequent week, advance specified week interval */
+			IF DATEPART(weekday, @temp_date) <= DATEPART(weekday, @seed_date)
+				SELECT @seed_date = DATEADD(week, @freq_recurrence - 1, @temp_date)
+			ELSE
+				SELECT @seed_date = @temp_date
+		END
+				/*   
+  ** Monthly  
+  */
+		ELSE
+			IF (@freq_type = 2)
+			BEGIN
+				/* Advance months by indicated interval */
+				SELECT @seed_date = DATEADD(month, @freq_recurrence, @seed_date)
+
+				/* Reset to correct day to accommodate short months, weekday schedules, etc... */
+				EXEC sp_dsInit @freq_type = @freq_type
+					,@freq_occurrence = @freq_occurrence
+					,@freq_month_occurrence = @freq_month_occurrence
+					,@freq_day_occurrence = @freq_day_occurrence
+					,@seed_date = @seed_date OUTPUT
+			END
+					/*   
+  ** Yearly  
+  */
+			ELSE
+				IF (@freq_type = 3)
+				BEGIN
+					/* Advance months by indicated interval */
+					SELECT @seed_date = DATEADD(year, 1, @seed_date)
+
+					/* Reset to correct day to accommodate weekday schedules, etc... */
+					EXEC sp_dsInit @freq_type = @freq_type
+						,@freq_occurrence = @freq_occurrence
+						,@freq_month_occurrence = @freq_month_occurrence
+						,@freq_day_occurrence = @freq_day_occurrence
+						,@seed_date = @seed_date OUTPUT
+				END

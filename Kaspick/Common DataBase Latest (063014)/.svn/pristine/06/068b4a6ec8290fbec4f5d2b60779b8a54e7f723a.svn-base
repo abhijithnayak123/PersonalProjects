@@ -1,0 +1,97 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportCalcNextDate'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportCalcNextDate
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportCalcNextDate                      
+** Short Desc:  To Get no of days in a year 
+**                      
+** Full Description:  To Get no of days in a year 
+**                              
+** Input Arguments:
+	@CreatedDate DATETIME
+	,@FirstDay INT
+	,@FirstMonth VARCHAR(3)
+	,@FirstOccur VARCHAR(25)-- L,F,O  
+**         
+** Sample Call     
+        
+ SELECT [dbo].[Fn_ReportCalcNextDate]('01/01/2013',1,1,'L')   
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportCalcNextDate] (
+	@CreatedDate DATETIME
+	,@FirstDay INT
+	,@FirstMonth VARCHAR(3)
+	,@FirstOccur VARCHAR(25)
+	)
+RETURNS DATETIME
+AS
+BEGIN
+	DECLARE @NextDate DATETIME
+	DECLARE @Incr INT
+	DECLARE @ReturnDate DATETIME
+
+	--IF @Freq < 1
+	--	OR @Freq > 12
+	--	SET @ReturnDate = NULL
+	IF @FirstOccur = 'L'
+	BEGIN
+		SET @NextDate = convert(DATETIME, '1' + '/' + @FirstMonth + '/' + cast((Year(@CreatedDate) - 1) AS VARCHAR), 103)
+		SET @NextDate = DateAdd(month, 1, @NextDate) - 1
+	END
+	ELSE
+		IF @FirstOccur = 'F'
+			SET @NextDate = convert(DATETIME, '1' + '/' + @FirstMonth + '/' + cast((Year(@CreatedDate) - 1) AS VARCHAR), 103)
+		ELSE
+			IF @FirstOccur = 'O'
+				SET @NextDate = convert(DATETIME, cast(@FirstDay AS VARCHAR) + '/' + @FirstMonth + '/' + cast((Year(@CreatedDate) - 1) AS VARCHAR), 103)
+			ELSE
+				SET @ReturnDate = NULL
+
+	SET @Incr = 12
+
+	WHILE (@NextDate <= @CreatedDate)
+	BEGIN
+		SET @NextDate = DateAdd(month, @Incr, @NextDate)
+
+		IF @FirstOccur = 'L'
+		BEGIN
+			SET @NextDate = convert(DATETIME, '1' + '/' + cast(Month(@NextDate) AS VARCHAR) + '/' + cast((Year(@NextDate)) AS VARCHAR), 103)
+			SET @NextDate = DateAdd(month, 1, @NextDate) - 1
+		END
+	END
+
+	SET @ReturnDate = @NextDate
+
+	RETURN @ReturnDate
+END

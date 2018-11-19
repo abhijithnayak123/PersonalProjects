@@ -1,0 +1,100 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PostedVendorPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PostedVendorPayment]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:		USP_KCo_PostedVendorPayment
+** Short Desc:	Generates report for the posted vendor payment as per the ManagerCode and date range 
+**  
+** Full Description  
+
+**  
+** Sample Call  
+        EXEC USP_KCo_PostedVendorPayment  'WV','2014-03-01','2014-03-07'
+        EXEC USP_KCo_PostedVendorPayment  'CPF','01/30/2009','06/30/2009'  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Niveditha Narasimha
+** Company   : Ciber Offshore  
+** Project   : KCo Queries
+** Created DT: 11-Aug-2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 				
+*******************************************************************************  
+** Copyright (C) 2009 Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PostedVendorPayment]
+	-- paremeters here        
+	@ManagerCode VARCHAR(4)
+	,@PaymentDateFrom DATETIME
+	,@PaymentDateTo DATETIME
+AS
+SELECT AccMstr.ManagerCode AS 'Client BriefName'
+	,CashTran.CustomerAccountNumber AS 'Adventid'
+	,CashTran.TradeDate AS 'PaymentDate'
+	,CashDist.PaidToContactName AS 'PayeeName'
+	,CashTran.Amount AS 'PaymentAmount'
+	,CASE 
+		WHEN ContPayMeth.PaymentType = 'Jrnl'
+			THEN 'Journal'
+		ELSE ContPayMeth.PaymentType
+		END AS 'Paymentmethod'
+	,PrincIncomeIndicator AS 'Charge Type'
+	,TaxCodeDesc AS 'Expense Code'
+	,RTRIM(LTRIM((ISNULL(ContAdd.Address1 + ' ', '') + ISNULL(ContAdd.Address2 + ' ', '') + ISNULL(ContAdd.Address3 + ' ', '') + ISNULL(ContAdd.City + ' ', '') + ISNULL(ContAdd.STATE + ' ', '') + ISNULL(ContAdd.CountryCode + ' ', '')))) AS 'PayeeAddress'
+	,CommentsLine1 AS MEMO
+	,CashTran.TaxYear
+FROM SYN_IT_CashDisbursements CashDist
+INNER JOIN SYN_IT_CashTransaction CashTran
+	ON CashDist.TransactionNumber = CashTran.TransactionNumber
+INNER JOIN SYN_IT_AccountMaster AccMstr
+	ON CashTran.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_CashTransactionExt CashTranExt
+	ON CashTranExt.TransactionNumber = CashTran.TransactionNumber
+LEFT OUTER JOIN SYN_IT_ContactPaymentMethods ContPayMeth
+	ON ContPayMeth.ID = PaidToPaymentMethodID
+LEFT OUTER JOIN SYN_IT_ContactAddresses ContAdd
+	ON ContAdd.ID = CashDist.PaidToContactAddressID
+		AND ContAdd.ActiveFlag = - 1
+LEFT OUTER JOIN SYN_IT_TaxCodes TaxCod
+	ON CashTran.TaxCode = TaxCod.TaxCode
+WHERE CashTran.TaxCode NOT IN (
+		570
+		,009
+		,052
+		,737
+		,691
+		,697
+		,595
+		,596
+		,601
+		,602
+		)
+	AND AccMstr.ManagerCode = @ManagerCode
+	AND CashTran.TradeDate BETWEEN @PaymentDateFrom
+		AND @PaymentDateTo

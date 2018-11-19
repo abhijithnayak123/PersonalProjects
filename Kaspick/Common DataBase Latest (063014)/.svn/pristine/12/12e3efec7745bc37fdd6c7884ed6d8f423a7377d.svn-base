@@ -1,0 +1,113 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_ReportPayDatePrecedingTerm'
+		)
+BEGIN
+	DROP FUNCTION Fn_ReportPayDatePrecedingTerm
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_ReportPayDatePrecedingTerm                      
+** Short Desc: 
+**                      
+** Full Description: 
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+ select dbo.Fn_ReportPayDatePrecedingTerm('L',31,'JAN',2013,'01/31/2013','1/1/2014')
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 03-FEB-2014                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_ReportPayDatePrecedingTerm] (
+	@FirstOccurrence VARCHAR(1)
+	,@FirstEventDay SMALLINT
+	,@FirstEventMonth VARCHAR(3)
+	,@TaxYear INT
+	,@CreationDate DATETIME
+	,@MatureDate DATETIME
+	)
+RETURNS DATETIME
+AS
+BEGIN
+	DECLARE @ReturnDate DATETIME
+	DECLARE @RetTable TABLE (
+		RecordId INT identity
+		,pmtDates DATETIME
+		)
+	DECLARE @TaxYearDate DATETIME
+	DECLARE @minId INT
+	DECLARE @maxId INT
+	DECLARE @Ctr INT
+
+	SET @ReturnDate = @MatureDate
+	SET @TaxYearDate = cast('01/01/' + cast(@TaxYear AS VARCHAR) AS DATETIME)
+
+	INSERT INTO @RetTable (pmtDates)
+	SELECT pmtDates
+	FROM [dbo].[Fn_ReportGetPaymentDate](@FirstOccurrence, @FirstEventDay, @FirstEventMonth, @TaxYearDate, @CreationDate)
+
+	IF (
+			SELECT count(*)
+			FROM @RetTable
+			) > 0
+	BEGIN
+		--Look for pay date closest to mature date  
+		SET @Ctr = 0
+		SET @minId = 1
+
+		SELECT @maxId = max(RecordId)
+		FROM @RetTable
+
+		WHILE (@minId <= @maxId)
+		BEGIN
+			IF (
+					(
+						(
+							SELECT pmtDates
+							FROM @RetTable
+							WHERE RecordId = @minId
+							) < @MatureDate
+						)
+					AND (@minId > @Ctr)
+					)
+			BEGIN
+				SET @Ctr = @minId
+			END
+
+			SET @minId = @minId + 1
+		END -- while ends  
+
+		IF (@Ctr >= 1)
+			SELECT @ReturnDate = pmtDates
+			FROM @RetTable
+			WHERE RecordId = @Ctr
+	END -- if ends  
+
+	RETURN @ReturnDate
+END

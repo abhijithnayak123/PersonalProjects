@@ -1,0 +1,66 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_TrimDecimalValue'
+		)
+BEGIN
+	DROP FUNCTION FN_TrimDecimalValue;
+
+	PRINT 'DROPPED FN_TrimDecimalValue';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : FN_TrimDecimalValue
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the data for populating the data in the search controls of historical gifts page.
+**      
+** Sample Call      
+   SELECT dbo.[FN_TrimDecimalValue]('1234.10')
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 05/22/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+
+CREATE FUNCTION [dbo].[FN_TrimDecimalValue](@DecimalValue VARCHAR(50))
+RETURNS VARCHAR(50)
+AS
+BEGIN
+	RETURN REPLACE(RTRIM(REPLACE(REPLACE(LTRIM(RTRIM(REPLACE(@DecimalValue, '0', ' '))), ' ', '0'), '.', ' ')), ' ', '.')
+END
+GO
+--SELECT dbo.FN_TrimDecimalValue('123456.00')
+--GO
+--SELECT dbo.FN_TrimDecimalValue('123456.10')
+--GO
+--SELECT dbo.FN_TrimDecimalValue('023456.10')
+--GO
+--SELECT dbo.FN_TrimDecimalValue('0.99')

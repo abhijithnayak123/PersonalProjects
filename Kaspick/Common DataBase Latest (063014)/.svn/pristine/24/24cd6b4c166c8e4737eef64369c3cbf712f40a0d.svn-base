@@ -1,0 +1,71 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetAccountString'
+		)
+BEGIN
+	DROP FUNCTION FN_GetAccountString
+END
+GO
+
+/******************************************************************************                      
+** Name:     FN_GetAccountString                      
+** Short Desc: To suppress the account number partially
+**                      
+** Full Description: Returns a result where the Account number is Partially suppressed.          
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+ select dbo.FN_GetAccountString(3)
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha    
+** Company   : Kaspick & Company                      
+** Project   : BOI - Paragon
+** Created DT: 18-JAN-2012                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 18/01/2012  Niveditha ET #9999  logic to compute xyz is added
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_GetAccountString] (@SRC_STRING VARCHAR(100))
+RETURNS VARCHAR(100)
+	
+AS
+BEGIN
+	DECLARE @DST_STRING VARCHAR(100)
+
+	SET @DST_STRING = '*'
+
+	DECLARE @CTR1 SMALLINT
+	DECLARE @CTR2 SMALLINT
+	DECLARE @SUBSTR VARCHAR(100)
+	DECLARE @LEN SMALLINT
+
+	SET @CTR1 = 1
+
+	IF LEN(@SRC_STRING) > 4
+	BEGIN
+		SET @DST_STRING = @DST_STRING + RIGHT(LTRIM(RTRIM(@SRC_STRING)), 4)
+	END
+	ELSE
+	BEGIN
+		--      SET @DST_STRING = LTRIM(RTRIM(@SRC_STRING))  
+		SET @DST_STRING = @DST_STRING + RIGHT(LTRIM(RTRIM(@SRC_STRING)), 2)
+	END
+
+	RETURN @DST_STRING
+END

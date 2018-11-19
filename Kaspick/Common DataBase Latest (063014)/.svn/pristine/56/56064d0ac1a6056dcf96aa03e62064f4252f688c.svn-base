@@ -1,0 +1,101 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_PaymentSummary]    Script Date: 05/23/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_PaymentSummary]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_PaymentSummary]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_PaymentSummary]    Script Date: 05/23/2013 12:11:16 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_PaymentSummary
+                     
+** Short Desc	:	Populate Payments Summary console in Middleware  
+*                  
+**                      
+** Full Description: Populate Payments Summary console in Middleware  
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+	 EXEC USP_PP_PaymentSummary 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 08-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 18-Oct-13 Saravanan				Added ProcessID Key column in select statement
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [DBO].[USP_PP_PaymentSummary]
+AS
+BEGIN
+	DECLARE @StandardCount INT
+	DECLARE @ExceptionCount INT
+	DECLARE @TemplateType INT
+	DECLARE @ProcessID INT
+
+	SELECT @StandardCount = COUNT(*)
+	FROM TBL_PP_STG_PaymentExport
+	WHERE isnull(ExceptionCode, 0) = 0
+
+	SELECT @ExceptionCount = COUNT(*)
+	FROM TBL_PP_STG_PaymentExport
+	WHERE isnull(ExceptionCode, 0) > 0
+
+	/* TemplateType: TemplateType when 1 then Standard, when 2 then Exception, when both 3 */
+	SELECT @TemplateType = CASE 
+			WHEN @StandardCount > 0
+				AND @ExceptionCount = 0
+				THEN 1
+			WHEN @StandardCount = 0
+				AND @ExceptionCount > 0
+				THEN 2
+			WHEN @StandardCount > 0
+				AND @ExceptionCount > 0
+				THEN 3
+			END
+	
+	SELECT TOP 1 @ProcessID= ProcessID from TBL_PP_STG_PaymentExport
+	
+	SELECT DISTINCT CustomerAccountNumber
+		,ManagerCode
+		,AllianceNumber
+		,@TemplateType AS TemplateType
+		,COUNT(ContactID) AS NoOfTransactions
+		,SUM(PaymentAmount) AS PaymentAmount
+		,@ProcessID AS ProcessID
+	FROM TBL_PP_STG_PaymentExport
+	GROUP BY CustomerAccountNumber
+		,ManagerCode
+		,AllianceNumber
+	ORDER BY CustomerAccountNumber
+		,ManagerCode
+		,AllianceNumber
+END

@@ -1,0 +1,279 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML]    Script Date: 08/26/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML]    Script Date: 08/26/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML                      
+** Short Desc: To Get Beneficiary LeadTime
+**                      
+** Full Description:  To Get Beneficiary LeadTime where Input is XML
+**            
+**        
+**                              
+** Input Arguments: 
+	 	@XMLCustomerAccountNumber xml
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML        
+	'<AccountPayoutScheduleCollection><InsertList><AccountPayoutSchedule ManagerCode="ACL" CustomerAccountNumber="ACADW" InstructionID="1" APScheduleID="1"  PaymentBatch="0"  PaymentDate="1/31/2014 12:00:00 AM"  ScheduledAmount="250"  TaxYear="2014"  TotalScheduledAmount="250"  RecordVersion=""  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><BenPayoutScheduleCollection><InsertList><BenPayoutSchedule CustomerAccountNumber="ACADW" APScheduleID="1"  ContactID="2072"  BeneficiaryDistributionID="1" BPScheduleID="1"  PaymentDate="1/31/2014 12:00:00 AM"  PaymentID="0"  ScheduledAmount="250"  TaxYear="2014"  PayeeName=""  IsBackBuilt="False"  Memo=""  Comments=""  EPD="1/1/1900 12:00:00 AM"  VoidDate="1/1/1900 12:00:00 AM"  ReissueAs="0"  FixedPayment="False"  RecordVersion=""  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></BenPayoutScheduleCollection></AccountPayoutScheduleCollection>'
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 26-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 27-jan-14   Salih               Changed table variables with temp tables
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+** 04-Aug-14   Saravanan	   Added Distinct in result
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentLeadTimeForAccountXML] @XMLAccountPayoutSchedule XML
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	--  Variable Declarations  -- 
+	--DECLARE @ContactRoleCode INT
+	DECLARE @MinCheck INT
+	DECLARE @MinNonCheck INT
+	DECLARE @MinimumWirePostingDays INT
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpBeneLeadTime]') IS NOT NULL
+		DROP TABLE [#TmpBeneLeadTime]
+
+	IF OBJECT_ID('tempdb..[#TmpWirePostDays]') IS NOT NULL
+		DROP TABLE [#TmpWirePostDays]
+
+	CREATE TABLE #TmpBeneLeadTime (
+		CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		--,ContactRoleCode INT
+		,LeadTime INT
+		,BeneficiaryDistributionID INT
+		,PaymentType CHAR(20)
+		,FixedOrPercentageFlag SMALLINT
+		,AdviceFlag SMALLINT
+		--,InstructionID INT
+		)
+
+	CREATE TABLE #TmpWirePostDays (
+		CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		--,ContactRoleCode INT
+		,DaysValue INT
+		,BeneficiaryDistributionID INT
+		)
+
+	----Assigning value to Variables
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	--SET @ContactRoleCode = 21 --'Beneficiary'
+
+	---Inserting Beneficiary into temp table  from Insert List  
+	INSERT INTO #TmpBeneLeadTime (
+		CustomerAccountNumber
+		,ContactID
+		--,ContactRoleCode
+		,BeneficiaryDistributionID
+		,PaymentType
+		,FixedOrPercentageFlag
+		,AdviceFlag
+		--,InstructionID
+		)
+	SELECT DISTINCT XMLData.CustomerAccountNumber
+		,Bene.ContactID
+		,Bene.BeneficiaryDistributionID
+		,ContPayMeth.PaymentType
+		,Bene.FixedOrPercentageFlag
+		,Bene.AdviceFlag
+		--,Bene.InstructionID
+	FROM SYN_IT_BeneficiaryDistributions Bene
+	INNER JOIN (
+		SELECT x.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,x.Item.value('@ContactID[1]', 'INT') AS ContactID
+			,x.Item.value('@BeneficiaryDistributionID[1]', 'INT') AS BeneficiaryDistributionID
+		FROM @XMLAccountPayoutSchedule.nodes('//InsertList/BenPayoutSchedule') AS x(Item)
+		) XMLData
+		ON Bene.BeneficiaryDistributionID = XMLData.BeneficiaryDistributionID
+	INNER JOIN SYN_IT_ContactPaymentMethods ContPayMeth
+		ON Bene.PayeePaymentMethodID = ContPayMeth.ID
+
+	---Inserting Beneficiary into temp table  from Update List  
+	INSERT INTO #TmpBeneLeadTime (
+		CustomerAccountNumber
+		,ContactID
+		--,ContactRoleCode
+		,BeneficiaryDistributionID
+		,PaymentType
+		,FixedOrPercentageFlag
+		,AdviceFlag
+		--,InstructionID
+		)
+	SELECT DISTINCT XMLData.CustomerAccountNumber
+		,XMLData.ContactID
+		--,@ContactRoleCode
+		,Bene.BeneficiaryDistributionID
+		,ContPayMeth.PaymentType
+		,Bene.FixedOrPercentageFlag
+		,Bene.AdviceFlag
+		--,Bene.InstructionID
+	FROM SYN_IT_BeneficiaryDistributions Bene
+	INNER JOIN (
+		SELECT x.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,x.Item.value('@ContactID[1]', 'INT') AS ContactID
+			,x.Item.value('@BeneficiaryDistributionID[1]', 'INT') AS BeneficiaryDistributionID
+		FROM @XMLAccountPayoutSchedule.nodes('//UpdateList/BenPayoutSchedule') AS x(Item)
+		) XMLData
+		ON Bene.BeneficiaryDistributionID = XMLData.BeneficiaryDistributionID
+	INNER JOIN SYN_IT_ContactPaymentMethods ContPayMeth
+		ON Bene.PayeePaymentMethodID = ContPayMeth.ID
+
+	--get the default values for check and noncheck from sys table      
+	SELECT @MinCheck = MinimumCheckPostingDays
+		,@MinNonCheck = MinimumNonCheckPostingDays
+		,@MinimumWirePostingDays = MinimumWirePostingDays
+	FROM TBL_PP_SystemAdministration
+
+	---Get the list of Contact for PaymentMethod = 'Wire'
+	INSERT INTO #TmpWirePostDays (
+		ContactID
+		--,ContactRoleCode
+		,DaysValue
+		,BeneficiaryDistributionID
+		)
+	SELECT TmpBeneLeadTime.ContactID
+		--,TmpBeneLeadTime.ContactRoleCode
+		,@MinimumWirePostingDays AS DaysValue
+		,BeneficiaryDistributionID
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	WHERE PaymentType = 'Wire'
+
+	----lowest priority Manager		   
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = MgrRule.DaysValue
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	INNER JOIN SYN_IT_AccountMaster AccMst
+		ON AccMst.CustomerAccountNumber = TmpBeneLeadTime.CustomerAccountNumber
+	INNER JOIN dbo.TBL_PP_ManagerRule MgrRule
+		ON MgrRule.ManagerCode = AccMst.ManagerCode
+	WHERE MgrRule.DaysValue IS NOT NULL
+
+	--second priority CustomerAccountNumber  
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = CASE 
+			WHEN AccntRule.DaysValue IS NULL
+				THEN LeadTime
+			ELSE AccntRule.DaysValue
+			END
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	INNER JOIN dbo.TBL_PP_AccountRule AccntRule
+		ON AccntRule.CustomerAccountNumber = TmpBeneLeadTime.CustomerAccountNumber
+	WHERE AccntRule.DaysValue IS NOT NULL
+
+	--Highest priority Contact       
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = CASE 
+			WHEN CnctRule.DaysValue IS NULL
+				THEN LeadTime
+			ELSE CnctRule.DaysValue
+			END
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	INNER JOIN dbo.TBL_PP_ContactRule CnctRule
+		ON CnctRule.ContactID = TmpBeneLeadTime.Contactid
+	WHERE CnctRule.DaysValue IS NOT NULL
+
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = CASE 
+			WHEN ISNULL(LeadTime, 0) > @MinNonCheck
+				THEN ISNULL(LeadTime, 0)
+			ELSE @MinNonCheck
+			END
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	WHERE PaymentType IS NULL
+		OR PaymentType <> 'CHECK'
+
+	--For Chek payment method MW rules..If not found then System admin value      
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = CASE 
+			WHEN LeadTime IS NULL
+				THEN @MinCheck
+			ELSE LeadTime
+			END
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	WHERE (
+			FixedOrPercentageFlag = 3
+			OR FixedOrPercentageFlag = 4
+			)
+		AND (
+			PaymentType IS NOT NULL
+			AND (
+				PaymentType = 'CHECK'
+				OR (
+					-- 26-may-2014	Salih :  Splitcheck implementation changes, AdviceFlag check modified from 1 to -4 
+					PaymentType = 'CHECK'
+					AND AdviceFlag = - 4
+					)
+				)
+			)
+
+	UPDATE #TmpBeneLeadTime
+	SET LeadTime = CASE 
+			WHEN ISNULL(LeadTime, 0) > TmpWirePstng.DaysValue
+				THEN ISNULL(LeadTime, 0)
+			ELSE TmpWirePstng.DaysValue
+			END
+	FROM #TmpBeneLeadTime TmpBeneLeadTime
+	INNER JOIN #TmpWirePostDays TmpWirePstng
+		ON TmpBeneLeadTime.BeneficiaryDistributionID = TmpWirePstng.BeneficiaryDistributionID
+
+	---Return data  
+	SELECT Distinct CustomerAccountNumber
+		,ContactID
+		--,ContactRoleCode
+		,LeadTime
+		,BeneficiaryDistributionID
+	FROM #TmpBeneLeadTime
+	ORDER BY ContactID
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpBeneLeadTime]') IS NOT NULL
+		DROP TABLE [#TmpBeneLeadTime]
+
+	IF OBJECT_ID('tempdb..[#TmpWirePostDays]') IS NOT NULL
+		DROP TABLE [#TmpWirePostDays]
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

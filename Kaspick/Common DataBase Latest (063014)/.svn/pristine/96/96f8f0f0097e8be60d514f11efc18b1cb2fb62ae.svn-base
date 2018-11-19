@@ -1,0 +1,305 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveInnotrustProfileInfo]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportSaveInnotrustProfileInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportSaveInnotrustProfileInfo]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportSaveInnotrustProfileInfo]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportSaveInnotrustProfileInfo    
+** Short Desc:  For importing Innotrust Data to staging table  TBL_IE_STG_Estimate.
+**    
+** Full Description : For importing Innotrust Data to staging table TBL_IE_STG_Estimate.
+**            
+**    
+** Sample Call    
+  EXEC USP_IE_ImportSaveInnotrustProfileInfo  -- parameters  
+  '<ImportStagingCollection><InsertList>  
+   <ImportStaging StagingID="94"  RunDate="9/25/2007 12:00:00 AM" />  
+   <ImportStaging StagingID="95"  RunDate="9/25/2007 12:00:00 AM" />     
+   <ImportStaging StagingID="96"  RunDate="9/25/2007 12:00:00 AM" />  
+   </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>  
+  </ImportStagingCollection>'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     r
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income STGEstimation    
+** Created DT: 07/16/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportSaveInnotrustProfileInfo] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Temp tables, Cursors, Table Variables  --  
+	IF OBJECT_ID('tempdb..#Tmp_AccountsToBeImported') IS NOT NULL
+		DROP TABLE #Tmp_AccountsToBeImported
+
+	CREATE TABLE #Tmp_AccountsToBeImported (
+		StagingID INT
+		,RunDate DATETIME
+		)
+
+	-- Body of procedure  --  
+	BEGIN TRY
+		--  Transactions  
+		BEGIN TRANSACTION
+
+		--Get acounts to be imported from xml  
+		INSERT INTO #Tmp_AccountsToBeImported
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@RunDate[1]', 'datetime') AS RunDate
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+		--Clear Excelsior Import Data for above accounts  
+		UPDATE TBL_IE_STG_Estimate
+		SET 
+		IT_RequiresIncomeEstimate = 0
+			,IT_IsIncomeAccrual = 0
+			,IT_IsAmortization = 0
+			,IT_IsAccretion = 0
+			,IT_IsRentalIncomeExpenses = 0
+			,IT_IsMiscExpenses = 0
+			,IT_IsPropertyTaxIncome = 0
+			,IT_IsPromNoteAmort = 0
+			,IT_PayCapGainsAsIncome = 0
+			,
+			EP_InvestPerPolicy = NULL
+			,EP_InvestmentType = NULL
+			,EP_FirstTradeDate = NULL
+			,EP_TranchingStatus = NULL
+			,KDB_HoldsSubstitutes = NULL
+			,KDB_HoldsRestrictedAssets = NULL
+			,IT_TerminationRule = NULL
+			,IT_FlipProvision = NULL
+			,IT_ExpectedFlipDate = NULL
+			,Ca_TrustLifeExpectancy = NULL
+			,IT_PayActualNI = NULL
+			,IE_CurrentYearIncomeTarget = NULL
+			,IE_PriorYearIncomeTarget = NULL
+			,EP_InvestmentComment = NULL
+			,IT_PaysSTGDAsIncome = NULL
+			,IT_CalculationMethod = NULL
+			,IT_ClientLegalName = NULL
+			,IsExcelsiorImported = NULL
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		 --Data Import From TBL_PolicyItem  
+		-------------------------------------------------  
+		--RequiresIncomeEstimate ,Income Accrual Pol ,Rental Income (Expenses),Misc. Expenses,Property Tax and Prom Note Amort
+		UPDATE TBL_IE_STG_Estimate
+		SET IT_RequiresIncomeEstimate =  CASE 
+				WHEN isnull(UDFAccMas.UDFAMColumn001, 'N') <> 'N'
+					THEN 1
+				ELSE 0
+				END 
+			,IT_IsIncomeAccrual =  CASE 
+				WHEN isnull(UDFAccMas.UDFAMColumn003, 'N') <> 'N'
+					THEN 1
+				ELSE 0
+				END 
+			,IT_IsRentalIncomeExpenses = CASE WHEN UDFAccMas.UDFAMColumn034 = 'I' THEN 1 ELSE 0 END 
+			,IT_IsMiscExpenses = CASE WHEN UDFAccMas.UDFAMColumn032 = 'I' THEN 1 ELSE 0 END 
+			,IT_IsPropertyTaxIncome = CASE WHEN UDFAccMas.UDFAMColumn033 = 'I' THEN 1 ELSE 0 END  
+			,IT_IsPromNoteAmort = CASE WHEN UDFAccMas.UDFAMColumn031 <> 'N/A' THEN 1 ELSE 0 END   
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+			ON UDFAccMas.CustomerAccountNumber_Key = STGEst.CustomerAccountNumber
+
+		--AmortizationMethod : Amortization/Accretion 
+		UPDATE TBL_IE_STG_Estimate
+		SET IT_IsAmortization = CASE 
+				WHEN AccMas.AmortizationMethod = 'D'
+					OR AccMas.AmortizationMethod = 'B'
+					THEN '1'
+				ELSE '0'
+				END
+			,IT_IsAccretion = CASE 
+				WHEN AccMas.AmortizationMethod = 'U' 
+					OR AccMas.AmortizationMethod = 'B'
+					THEN '1'
+				ELSE '0'
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_AccountMaster AccMas
+			ON AccMas.CustomerAccountNumber = STGEst.CustomerAccountNumber
+
+		---- Policy Info Loaded 
+		---- Data Import From Account Master tables  
+		-------------------------------------------------------------  
+		--DECLARE @CurrDate DATE = getdate ()
+		--DECLARE @Horizon FLOAT
+		--DECLARE @CustomerAccountNumber VARCHAR(14)
+		--DECLARE @StagingID INT
+
+		--DECLARE ImpAcc_Cur CURSOR
+		--FOR
+		--SELECT STGEst.CustomerAccountNumber
+		--	,ImpAcc.StagingID
+		--FROM TBL_IE_STG_Estimate STGEst
+		--INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+		--	ON STGEst.StagingID = ImpAcc.StagingID
+
+		--OPEN ImpAcc_Cur
+
+		--FETCH NEXT
+		--FROM ImpAcc_Cur
+		--INTO @CustomerAccountNumber
+		--	,@StagingID
+
+		--WHILE @@FETCH_STATUS = 0
+		--BEGIN
+		--	EXEC USP_IE_GetTrustHorizon @CustomerAccountNumber
+		--		,@CurrDate
+		--		,@Horizon OUTPUT
+
+		--	UPDATE TBL_IE_STG_Estimate
+		--	SET Ca_TrustLifeExpectancy = @Horizon
+		--	WHERE StagingID = @StagingID
+		--		AND CustomerAccountNumber = @CustomerAccountNumber
+
+		--	FETCH NEXT
+		--	FROM ImpAcc_Cur
+		--	INTO @CustomerAccountNumber
+		--		,@StagingID
+		--END
+
+		--CLOSE ImpAcc_Cur
+
+		--DEALLOCATE ImpAcc_Cur
+
+		UPDATE TBL_IE_STG_Estimate 
+		SET AccountName = UDFAccMas.UDFAMColumn045
+			,AccountType = AccMas.AccountTypeCode
+			,CreationDate = AccMas.DateOpened
+			,MatureDate = UDFAccMas.UDFAMColumn030
+			,UnitrustPercentage = CTAcc.PayoutPercentage
+			,ObjectiveCode = InvAcc.ObjectiveCode
+			,EP_MasterObjectiveName = InvObj.MasterObjectiveName
+			,IT_PayCapGainsAsIncome = CASE 
+				WHEN isnull(UDFAccMas.UDFAMColumn013, 'N') <> 'N'
+					OR Isnull(UDFAccMas.UDFAMColumn015, 'N') <> 'N'
+					THEN 1
+				ELSE 0
+				END
+			,EP_InvestPerPolicy = InvAcc.Bypolicy
+			,EP_InvestmentType = InvAcc.InvestmentTypeCode
+			,EP_FirstTradeDate = InvAcc.FirstTradeDate
+			,EP_TranchingStatus = InvAcc.TrancheStatusCode
+			,KDB_HoldsSubstitutes = InvAcc.HoldsSubstitutes
+			,KDB_HoldsRestrictedAssets = InvAcc.RestrictedAssets
+			,IT_TerminationRule = UDFAccMas.UDFAMColumn020
+			,IT_FlipProvision = CASE 
+				WHEN isnull(UDFAccMas.UDFAMColumn006, 'N') <> 'N'
+					THEN 1
+				ELSE 0
+				END 
+			,IT_ExpectedFlipDate = UDFAccMas.UDFAMColumn008
+			,IT_PayActualNI = CASE 
+				WHEN isnull(UDFAccMas.UDFAMColumn028, 'N') <> 'N'
+					THEN 1
+				ELSE 0
+				END
+			,EP_InvestmentComment = InvAcc.InvestmentComment
+			,IT_PaysSTGDAsIncome = CASE 
+				WHEN UDFAccMas.UDFAMColumn014 = 'Y'
+					THEN 1
+				WHEN UDFAccMas.UDFAMColumn014 = 'N'
+					THEN 0
+				END 
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_AccountMaster AccMas
+			ON STGEst.CustomerAccountNumber = AccMas.CustomerAccountNumber
+		INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+			ON STGEst.CustomerAccountNumber = UDFAccMas.CustomerAccountNumber_Key
+		INNER JOIN TBL_INV_AccountProfile InvAcc
+			ON STGEst.CustomerAccountNumber = InvAcc.CustomerAccountNumber
+		INNER JOIN SYN_IT_CTAccountDetails CTAcc
+			ON STGEst.CustomerAccountNumber = CTAcc.CustomerAccountNumber
+		LEFT OUTER JOIN TBL_INV_InvestmentObjective InvObj
+			ON InvObj.ObjectiveCode = InvAcc.ObjectiveCode
+
+		--Client Info 
+		UPDATE TBL_IE_STG_Estimate
+		SET IT_ClientLegalName = CntctMstr.ContactName
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+		INNER JOIN SYN_IT_ContactMaster CntctMstr
+			ON STGEst.ManagerCode = CntctMstr.ManagerCode
+
+		--Client Info Loaded
+		--Update IsExcelsiorImported Flag   
+		UPDATE TBL_IE_STG_Estimate
+		SET 
+		--IsExcelsiorImported = 1			,
+		ModifiedDate = GETDATE()
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #Tmp_AccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

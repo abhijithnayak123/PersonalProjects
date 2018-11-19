@@ -1,0 +1,427 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentScheduleRegenerate]    Script Date: 07/25/2013 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveActivityConsoleCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveActivityConsoleCondition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveActivityConsoleCondition]    Script Date: 07/25/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SaveActivityConsoleCondition                      
+** Short Desc: To update Cleardate,Voiddate,PaymentDate,Status
+**                      
+** Full Description: To update Cleardate,Voiddate,PaymentDate,Status in TBL_PP_BeneficiaryPayoutSchedule/TBL_PP_PGCalcPaymentDataMerged/
+					 TBL_PP_BeneficiaryPayment as per the different input           
+**        
+**                              
+** Input Arguments:  
+	 @ConsoleXml	XML,      
+	 @ClearDate		VARCHAR(20),  
+	 @Comment		VARCHAR(1000) = NULL,  
+	 @DisplayVoidPaymentsInWeb INT = NULL,    
+	 @TransactionNumber Varchar(20) = NULL,	
+**         
+** Sample Call     
+        
+Declare @ret INT       
+  EXEC USP_PP_SaveActivityConsoleCondition  
+				'<ActivityConsolePaymentCollection><InsertList><ActivityConsolePayment ScheduleID="0"  UserID="100336"  Condition=""  PaymentID="0"  MergedPGCalcPaymentID="1107525"  PaymentDate="8/26/2014 12:00:00 AM"  RecordVersion="0x00000000016124A9"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ActivityConsolePaymentCollection>',
+				'08/27/2014',null,0,null,@ret output       
+Select @ret 
+
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 11-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**1/10/2014		Saravanan			Added TransactionNumber input Parameter for UnVoid payments 
+**4/29/2014		Saravanan			Updated payment Date as Clear date if clear date is defualt
+**5/22/2014		Saravanan			Fixed Review comments
+**8/20/2014		Saravanan			Fixed ET16738 - Removed Date Convert function for @ClearDate variable for Clear Date and Payment Date
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveActivityConsoleCondition] @ConsoleXml XML
+	,@ClearDate VARCHAR(20)
+	,@Comment VARCHAR(1000) = NULL
+	,@DisplayVoidPaymentsInWeb INT = NULL
+	,@TransactionNumber VARCHAR(20) = NULL
+	,@ReturnStatus INT
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds   
+--  Variable Data Assignment  --      
+SET @Returnstatus = 0
+
+-- Body of procedure  --        
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	--    
+	DECLARE @TmpConsoleCondition TABLE (
+		ID INT IDENTITY(1, 1)
+		,ScheduleID INT
+		,Condition VARCHAR(20)
+		,UserID INT
+		,PaymentID INT
+		,MergedPGCalcPaymentID INT
+		,PaymentDate DateTime
+		,RecordVersion VARCHAR(100)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table	   
+	INSERT INTO @TmpConsoleCondition (
+		ScheduleID
+		,Condition
+		,UserID
+		,PaymentID
+		,MergedPGCalcPaymentID
+		,PaymentDate
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		,XMLDATA.item.value('@Condition[1]', 'VARCHAR(20)') AS Condition
+		,XMLDATA.item.value('@UserID[1]', 'INT') AS UserID
+		,XMLDATA.item.value('@PaymentID[1]', 'INT') AS PaymentID
+		,XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'INT') AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @ConsoleXml.nodes('//ActivityConsolePaymentCollection/InsertList/ActivityConsolePayment') AS XMLDATA(item)
+
+	----Updating base tables based on Cleardate Condition	
+	IF (
+			@ClearDate <> ''
+			AND @ClearDate <> 'UnClear'
+			AND @ClearDate <> 'Void'
+			AND @ClearDate <> 'Unvoid'
+			)
+	BEGIN
+		UPDATE TBL_PP_BeneficiaryPayment
+		SET Cleardate = CASE @ClearDate WHEN '01/01/1900' THEN  TmpCndn.PaymentDate ELSE @ClearDate END 
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON BenPmnt.paymentID = TmpCndn.PaymentID
+
+		------Insert audit log for PGcalc    
+		INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+			AuditUserId
+			,AuditDatetime
+			,AuditType
+			,AuditDetails
+			,MergedPGCalcPaymentID
+			,ManagerCode
+			,PaymentBatch
+			,CustomerAccountNumber
+			,PersonCode
+			,PayeeName
+			,PaymentAmount
+			,PaymentDate
+			,SeparateCheck
+			,Account1
+			,Account2
+			,GiftDate
+			,PIFUnits
+			,PIFValue
+			,PIFIncome
+			,TaxWithholding
+			,PaymentID
+			,EPD
+			,Taxyear
+			,STATUS
+			,ContactID
+			,ContactRoleCode
+			,InstructionID
+			,beneficiaryDistributionID
+			,PeriodEndDate
+			,Memo
+			,Comment
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			,MatchType
+			,GiftWrapPaymentReviewDate
+			,GiftWrapPaymentReviewedBy
+			,DeletedUserId
+			)
+		SELECT TmpCndn.UserID
+			,GETDATE()
+			,'U'
+			,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+			,PgCalc.MergedPGCalcPaymentID
+			,PgCalc.ManagerCode
+			,PgCalc.PaymentBatch
+			,PgCalc.CustomerAccountNumber
+			,PgCalc.PersonCode
+			,PgCalc.PayeeName
+			,PgCalc.PaymentAmount
+			,PgCalc.PaymentDate
+			,PgCalc.SeparateCheck
+			,PgCalc.Account1
+			,PgCalc.Account2
+			,PgCalc.GiftDate
+			,PgCalc.PIFUnits
+			,PgCalc.PIFValue
+			,PgCalc.PIFIncome
+			,PgCalc.TaxWithholding
+			,PgCalc.PaymentID
+			,PgCalc.EPD
+			,PgCalc.Taxyear
+			,PgCalc.STATUS
+			,PgCalc.ContactID
+			,PgCalc.ContactRoleCode
+			,PgCalc.InstructionID
+			,PgCalc.beneficiaryDistributionID
+			,PgCalc.PeriodEndDate
+			,PgCalc.Memo
+			,PgCalc.Comment
+			,PgCalc.ModifiedDate
+			,PgCalc.ModifiedBy
+			,PgCalc.CreatedDate
+			,PgCalc.CreatedBy
+			,PGCalc.MatchType
+			,PGCalc.GiftWrapPaymentReviewDate
+			,PGCalc.GiftWrapPaymentReviewedBy
+			,TmpCndn.UserID
+		FROM TBL_PP_PGCalcPaymentDataMerged Pgcalc
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON PgCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+		WHERE TmpCndn.Condition = ''
+
+		--end audit log    
+		UPDATE TBL_PP_PGCalcPaymentDataMerged
+		SET PaymentDate = CASE @ClearDate WHEN '01/01/1900' THEN  TmpCndn.PaymentDate ELSE @ClearDate END
+			,ModifiedDate = GETDATE()
+			,ModifiedBy = TmpCndn.UserID
+		FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON PGCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+		WHERE (
+				TmpCndn.Condition = ''
+				OR TmpCndn.Condition = 'OnHold'
+				OR TmpCndn.Condition = 'Unposted'
+				)
+	END
+
+	IF (@ClearDate = 'UnClear')
+	BEGIN
+		UPDATE TBL_PP_BeneficiaryPayment
+		SET cleardate = NULL
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON BenPmnt.paymentID = TmpCndn.PaymentID
+	END
+
+	IF (@ClearDate = 'Void')
+	BEGIN
+		UPDATE TBL_PP_BeneficiaryPayment
+		SET VoidDate = GETDATE()
+			,Comment = @Comment
+			,DisplayVoidPaymentsInWeb = @DisplayVoidPaymentsInWeb
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON BenPmnt.paymentID = TmpCndn.PaymentID
+	END
+
+	IF (@ClearDate = 'Unvoid')
+	BEGIN
+		UPDATE TBL_PP_BeneficiaryPayment
+		SET VoidDate = NULL
+			,Comment = NULL
+			,DisplayVoidPaymentsInWeb = NULL
+			,TransactionNumber = @TransactionNumber
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN @TmpConsoleCondition TmpCndn
+			ON BenPmnt.paymentID = TmpCndn.PaymentID
+	END
+
+	UPDATE TBL_PP_BeneficiaryPayoutSchedule
+	SET STATUS = TmpCndn.Condition
+		,ModifiedDate = GETDATE()
+		,ModifiedBy = TmpCndn.UserID
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+	INNER JOIN @TmpConsoleCondition TmpCndn
+		ON BenPay.BPScheduleID = TmpCndn.ScheduleID
+
+	--- Insert audit log for PGcalc    
+	INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+		AuditUserId
+		,AuditDatetime
+		,AuditType
+		,AuditDetails
+		,MergedPGCalcPaymentID
+		,ManagerCode
+		,PaymentBatch
+		,CustomerAccountNumber
+		,PersonCode
+		,PayeeName
+		,PaymentAmount
+		,PaymentDate
+		,SeparateCheck
+		,Account1
+		,Account2
+		,GiftDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithholding
+		,PaymentID
+		,EPD
+		,Taxyear
+		,STATUS
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		,beneficiaryDistributionID
+		,PeriodEndDate
+		,Memo
+		,Comment
+		,ModifiedDate
+		,ModifiedBy
+		,CreatedDate
+		,CreatedBy
+		,MatchType
+		,GiftWrapPaymentReviewDate
+		,GiftWrapPaymentReviewedBy
+		,DeletedUserId
+		)
+	SELECT TmpCndn.UserID
+		,GETDATE()
+		,'U'
+		,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+		,PgCalc.MergedPGCalcPaymentID
+		,PgCalc.ManagerCode
+		,PgCalc.PaymentBatch
+		,PgCalc.CustomerAccountNumber
+		,PgCalc.PersonCode
+		,PgCalc.PayeeName
+		,PgCalc.PaymentAmount
+		,PgCalc.PaymentDate
+		,PgCalc.SeparateCheck
+		,PgCalc.Account1
+		,PgCalc.Account2
+		,PgCalc.GiftDate
+		,PgCalc.PIFUnits
+		,PgCalc.PIFValue
+		,PgCalc.PIFIncome
+		,PgCalc.TaxWithholding
+		,PgCalc.PaymentID
+		,PgCalc.EPD
+		,PgCalc.Taxyear
+		,PgCalc.STATUS
+		,PgCalc.ContactID
+		,PgCalc.ContactRoleCode
+		,PgCalc.InstructionID
+		,PgCalc.beneficiaryDistributionID
+		,PgCalc.PeriodEndDate
+		,PgCalc.Memo
+		,PgCalc.Comment
+		,PgCalc.ModifiedDate
+		,PgCalc.ModifiedBy
+		,PgCalc.CreatedDate
+		,PgCalc.CreatedBy
+		,PGCalc.MatchType
+		,PGCalc.GiftWrapPaymentReviewDate
+		,PGCalc.GiftWrapPaymentReviewedBy
+		,TmpCndn.UserID
+	FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+	INNER JOIN @TmpConsoleCondition TmpCndn
+		ON PgCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+	WHERE TmpCndn.Condition <> ''
+
+	--end audit log    
+	UPDATE TBL_PP_PGCalcPaymentDataMerged
+	SET STATUS = TmpCndn.Condition
+		,ModifiedDate = GETDATE()
+		,ModifiedBy = TmpCndn.UserID
+	FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+	INNER JOIN @TmpConsoleCondition TmpCndn
+		ON PGCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+	WHERE TmpCndn.Condition <> ''
+
+	----Returning data from temp table		    
+	SELECT TmpCndn.ScheduleID
+		,TmpCndn.PaymentID
+		,TmpCndn.MergedPGCalcPaymentID
+		,BenPay.RecordVersion
+		,TmpCndn.ReturnStatus
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = TmpCndn.ScheduleID
+	WHERE TmpCndn.PaymentID = 0
+	
+	UNION ALL
+	
+	SELECT TmpCndn.ScheduleID
+		,TmpCndn.PaymentID
+		,TmpCndn.MergedPGCalcPaymentID
+		,PGCalc.RecordVersion
+		,TmpCndn.ReturnStatus
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+		ON PGCalc.MergedPGCalcPaymentID = TmpCndn.MergedPGCalcPaymentID
+	WHERE TmpCndn.PaymentID = 0
+	
+	UNION ALL
+	
+	SELECT TmpCndn.ScheduleID
+		,TmpCndn.PaymentID
+		,TmpCndn.MergedPGCalcPaymentID
+		,BenPmnt.RecordVersion
+		,TmpCndn.ReturnStatus
+	FROM @TmpConsoleCondition TmpCndn
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = TmpCndn.PaymentID
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

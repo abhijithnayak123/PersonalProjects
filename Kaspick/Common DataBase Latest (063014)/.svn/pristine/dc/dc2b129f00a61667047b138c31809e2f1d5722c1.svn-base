@@ -1,0 +1,112 @@
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_FileName]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_Deliverable_FileName]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_Deliverable_FileName]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_FileName]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_Deliverable_FileName                      
+** Short Desc: Computes file/folder names for a specifed Deliverable DeliverableHorizon Rows where ActualDate IS NOT NULL  are not affected.   
+**                      
+** Full Description: Computes file/folder names for a specifed Deliverable DeliverableHorizon Rows where ActualDate IS NOT NULL  are not affected.    
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_Deliverable_Filename @DeliverableID INT
+AS
+DECLARE @HorID INT
+	,@DetID INT
+	,@ProjDate DATETIME
+	,@file VARCHAR(255)
+	,@folder VARCHAR(255)
+	,@webtext VARCHAR(255)
+
+/* Get MVD DeliverableHorizons for this Deliverable */
+DECLARE sched_cursor INSENSITIVE CURSOR
+FOR
+SELECT dh.HorizonID
+	,dh.DeliverableDetailID
+	,dh.ProjectedDate
+FROM DeliverableHorizon dh
+	,DeliverableSet ds
+	,DeliverableDetail dd
+	,DeliverableMedia dm
+	,DeliverableFormat df
+WHERE dd.DeliverableDetailID = dh.DeliverableDetailID
+	AND ds.DeliverableSetID = dd.DeliverableSetID
+	AND ds.FormatID = df.FormatID
+	AND ds.MediaID = dm.MediaID
+	AND dh.ActualDate IS NULL
+	AND ds.DeliverableID = @DeliverableID
+	AND dm.FullName = 'Website'
+	AND df.FullName = 'MVD'
+
+OPEN sched_cursor
+
+FETCH NEXT
+FROM sched_cursor
+INTO @HorID
+	,@DetID
+	,@ProjDate
+
+/* Update file/folder name for each returned row */
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SELECT @file = NULL
+		,@folder = NULL
+		,@webtext = NULL
+
+	EXEC sp_dsGetLocation @DetailID = @DetID
+		,@DueDate = @ProjDate
+		,@Foldername = @folder OUTPUT
+		,@FileName = @file OUTPUT
+		,@WebText = @webtext OUTPUT
+
+	UPDATE DeliverableHorizon
+	SET FileLocation = @folder
+		,FileName = @file
+		,LastModifyDate = '01/01/1900'
+		,ErrorCode = - 1
+	WHERE HorizonID = @HorID
+
+	FETCH NEXT
+	FROM sched_cursor
+	INTO @HorID
+		,@DetID
+		,@ProjDate
+END
+
+CLOSE sched_cursor
+
+DEALLOCATE sched_cursor

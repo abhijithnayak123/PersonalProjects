@@ -1,0 +1,286 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_CreateTradeError]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_CreateTradeError]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_CreateTradeError      
+** Short Desc : Create Trade Error
+**      
+** Full Description : Create Trade Error
+**              
+**      
+** Sample Call      
+   Declare @InsUpdDelValues XML
+   Declare @ReturnStatus INT
+   Declare @ErrorDesc VARCHAR(8000)
+	Set @InsUpdDelValues = '<TSheetApprovedTradeCollection>
+	<InsertList>
+	<TSheetApprovedTrade ActiveTradeID="0"  ArchiveTradeID=""  DollarAmount="-8689.74"  EventAccountID="0"  EventID="0"  LastModifiedDate="01/01/1900"  LastModifiedUserID="300029"  RecordVersion=""  SecuritySymbol="MSIS.X"  SecurityTypeCode=""  SplitTrade="False"  SubmissionType=""  SubmittedQuantityTillDate="0"  TradeDate="01/01/1900 00:00:00:000"  TradeID="92"  TradeQuantity="-873.339084777633"  TradeType="SA"  Source="TRex"  CustodianAccountNumber="99100259"  CustomerAccountNumber="ACBOO"  SLMasterAccount="98997256"  EventStatus="Review1"  FSITypeCode=""  Price=""  Broker=""  SecurityDescription=""  TradeStatus="0"  SubmissionDate="07/07/2009 10:20:41:000"  SubmissionFile=""  Comments="Mark Reconciled"  />
+	</InsertList>
+	</TSheetApprovedTradeCollection>'
+EXEC USP_TR_CreateTradeError @InsUpdDelValues,'',300028,@ReturnStatus,@ErrorDesc
+   -- parameters      
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/27/2014         
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_CreateTradeError] (
+	@InsUpdDelValues XML
+	,@FROM VARCHAR(30)
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from  
+	-- interfering with SELECT statements.  
+	SET NOCOUNT ON
+
+	DECLARE @NEWEVENTCREATION AS VARCHAR(15)
+	DECLARE @Errnbr AS INT
+	DECLARE @CHECKDIRTYWRITE AS BIT
+	DECLARE @ContinueAfterDW AS BIT
+	DECLARE @ApprovedStatusId AS INT
+	DECLARE @SubmittedStatusId AS INT
+	DECLARE @ReconciledStatusId AS INT
+
+	SELECT @ApprovedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Approved'
+
+	SELECT @SubmittedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Submitted'
+
+	SELECT @ReconciledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Reconciled'
+
+	BEGIN TRY
+		IF (@FROM <> 'Entry Error')
+		BEGIN
+			SET @CHECKDIRTYWRITE = 0
+		END
+		ELSE
+		BEGIN
+			SET @CHECKDIRTYWRITE = 1
+		END
+
+		IF (@CHECKDIRTYWRITE = 1)
+		BEGIN
+			IF EXISTS (
+					SELECT 1
+					FROM TBL_TR_TSheetApprovedTrade TShtAprvdTrd
+					INNER JOIN (
+						SELECT xmldata.ApprovedTradeColumns.value('@TradeIDTrex', 'INT') AS TRADEID
+							,xmldata.ApprovedTradeColumns.value('@RecordVersion[1]', 'varchar(max)') AS EventRecordVersion
+						FROM @InsUpdDelValues.nodes('/TradeErrorCollection/InsertList/TradeError') AS xmldata(ApprovedTradeColumns)
+						) tempTrade ON tempTrade.TRADEID = TShtAprvdTrd.TradeID
+						AND sys.fn_varbintohexsubstring(1, TShtAprvdTrd.recordversion, 1, 0) = tempTrade.EventRecordVersion
+					)
+			BEGIN
+				SET @ContinueAfterDW = 1
+			END
+			ELSE
+			BEGIN
+				SET @ContinueAfterDW = 0
+			END
+		END
+		ELSE
+		BEGIN
+			SET @ContinueAfterDW = 1
+		END
+
+		IF (@ContinueAfterDW = 1)
+		BEGIN
+			SELECT @NEWEVENTCREATION = 'TRADES'
+
+			BEGIN TRANSACTION @NEWEVENTCREATION
+
+			INSERT INTO TBL_TR_TradeError (
+				ErrorComments
+				,ErrorDate
+				,LastModifiedDate
+				,LastModifiedUserID
+				,TradeID
+				)
+			SELECT xmldata.ApprovedTradeColumns.value('@Comments', 'VARCHAR(150)') AS ERRORCOMMENTS
+				,GETDATE() AS ERRORDATE
+				,GETDATE() AS LastModifiedDate
+				,@UserID
+				,xmldata.ApprovedTradeColumns.value('@TradeIDTrex', 'INT') AS TRADEID
+			FROM @InsUpdDelValues.nodes('/TradeErrorCollection/InsertList/TradeError') AS xmldata(ApprovedTradeColumns)
+			INNER JOIN TBL_TR_TSheetApprovedTrade approvedTrades ON approvedTrades.TradeID = xmldata.ApprovedTradeColumns.value('@TradeIDTrex', 'INT')
+			WHERE isnull(xmldata.ApprovedTradeColumns.value('@TradeIDTrex', 'INT'), 0) <> 0
+
+			IF (@FROM = 'Entry Error')
+			BEGIN
+				UPDATE TBL_TR_TSheetApprovedTrade
+				SET LastModifiedDate = GetDate()
+				FROM TBL_TR_TSheetApprovedTrade TShtAprvdTrd
+				INNER JOIN (
+					SELECT xmldata.ApprovedTradeColumns.value('@TradeIDTrex', 'INT') AS TRADEID
+					FROM @InsUpdDelValues.nodes('/TradeErrorCollection/InsertList/TradeError') AS xmldata(ApprovedTradeColumns)
+					) TEMPTRADE ON TEMPTRADE.TRADEID = TShtAprvdTrd.TRADEID
+			END
+
+			COMMIT TRANSACTION @NEWEVENTCREATION
+
+			BEGIN TRANSACTION @NEWEVENTCREATION
+
+			IF (@@ERROR > 0)
+			BEGIN
+				ROLLBACK TRANSACTION @NEWEVENTCREATION
+			END
+
+			IF (@FROM = 'Trade Error')
+			BEGIN
+				UPDATE TBL_TR_TradeImport
+				SET TRADESTATUS = 'tradeerror'
+				FROM TBL_TR_TradeImport TrdImp
+				INNER JOIN (
+					SELECT xmldata.ApprovedTradeColumns.value('@TradeID', 'INT') AS TRADEID
+					FROM @InsUpdDelValues.nodes('/TradeErrorCollection/InsertList/TradeError') AS xmldata(ApprovedTradeColumns)
+					) TEMPTRADE ON TEMPTRADE.TRADEID = TrdImp.TRADEID
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @NEWEVENTCREATION
+				END
+			END
+			ELSE
+				IF (@FROM = 'Mark Reconciled')
+				BEGIN
+					UPDATE TBL_TR_TradeImport
+					SET TRADESTATUS = 'reconciled'
+						,ReconcileDate = GETDATE()
+					FROM TBL_TR_TradeImport TrdImp
+					INNER JOIN (
+						SELECT xmldata.ApprovedTradeColumns.value('@TradeID', 'INT') AS TRADEID
+						FROM @InsUpdDelValues.nodes('/TradeErrorCollection/InsertList/TradeError') AS xmldata(ApprovedTradeColumns)
+						) TEMPTRADE ON TEMPTRADE.TRADEID = TrdImp.TRADEID
+
+					IF (@@ERROR > 0)
+					BEGIN
+						ROLLBACK TRANSACTION @NEWEVENTCREATION
+					END
+				END
+
+			COMMIT TRANSACTION @NEWEVENTCREATION
+
+			UPDATE TBL_TR_Event
+			SET EventStatusID = @SubmittedStatusId
+				,LastModifiedUserID = @UserID
+				,LastModifiedDate = GetDate()
+			FROM TBL_TR_Event Evnt
+			INNER JOIN (
+				SELECT TShtAprvTrd.eventID
+					,sum(abs(TShtAprvTrd.TradeQuantity)) TotalTradeCount
+				FROM TBL_TR_TSheetApprovedTrade TShtAprvTrd
+				INNER JOIN TBL_TR_Event Evnt1 ON Evnt1.EventID = TShtAprvTrd.EventID
+					AND Evnt1.EventStatusID = @ApprovedStatusId
+				GROUP BY TShtAprvTrd.eventid
+				) AllApprovedTrades ON AllApprovedTrades.EventID = Evnt.EventID
+			INNER JOIN (
+				SELECT TShtAprvTrd2.eventID
+					,sum(abs(TShtAprvTrd2.TradeQuantity)) SubmittedOrErroredTradeCount
+				FROM TBL_TR_TSheetApprovedTrade TShtAprvTrd2
+				INNER JOIN TBL_TR_Event Evnt2 ON Evnt2.EventID = TShtAprvTrd2.EventID
+					AND Evnt2.EventStatusID = @ApprovedStatusId
+				WHERE round((abs(TShtAprvTrd2.SubmittedQuantityTillDate) - abs(TShtAprvTrd2.TradeQuantity)), 3) = 0
+					OR TShtAprvTrd2.tradeid IN (
+						SELECT tradeid
+						FROM TBL_TR_TradeError
+						)
+				GROUP BY TShtAprvTrd2.eventid
+				) AS SubmittedOrErroredTrades ON SubmittedOrErroredTrades.EventID = Evnt.EventID
+				AND round((abs(AllApprovedTrades.TotalTradeCount) - abs(SubmittedOrErroredTrades.SubmittedOrErroredTradeCount)), 3) = 0
+			WHERE Evnt.EventStatusID = @ApprovedStatusId
+
+			UPDATE TBL_TR_Event
+			SET EventStatusID = @ReconciledStatusId
+				,LastModifiedUserID = @UserID
+				,LastModifiedDate = GetDate()
+			FROM TBL_TR_Event Evnt
+			INNER JOIN (
+				SELECT TShtAprvTrd.eventID
+					,sum(abs(TShtAprvTrd.TradeQuantity)) TotalTradeCount
+				FROM TBL_TR_TSheetApprovedTrade TShtAprvTrd
+				INNER JOIN TBL_TR_Event Evnt1 ON Evnt1.EventID = TShtAprvTrd.EventID
+					AND Evnt1.EventStatusID = @SubmittedStatusId
+				GROUP BY TShtAprvTrd.eventid
+				) AllApprovedTrades ON AllApprovedTrades.EventID = Evnt.EventID
+			INNER JOIN (
+				SELECT TShtAprvTrd2.eventID
+					,sum(abs(TrdImp.TradeQuantity)) SubmittedOrErroredTradeCount
+				FROM TBL_TR_TradeImport TrdImp
+				INNER JOIN TBL_TR_TSheetApprovedTrade TShtAprvTrd2 ON TrdImp.TradeIDTRex = TShtAprvTrd2.TradeID
+				INNER JOIN TBL_TR_Event Evnt2 ON Evnt2.EventID = TShtAprvTrd2.EventID
+					AND Evnt2.EventStatusID = @SubmittedStatusId
+				WHERE TradeStatus = 'reconciled'
+					OR TShtAprvTrd2.tradeid IN (
+						SELECT tradeid
+						FROM TBL_TR_TradeError
+						)
+				GROUP BY TShtAprvTrd2.eventid
+				) AS SubmittedOrErroredTrades ON SubmittedOrErroredTrades.EventID = Evnt.EventID
+				AND round((abs(AllApprovedTrades.TotalTradeCount) - abs(SubmittedOrErroredTrades.SubmittedOrErroredTradeCount)), 3) = 0
+			WHERE Evnt.EventStatusID = @SubmittedStatusId
+
+			SET @ReturnStatus = 0;
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+			SET @ErrorDesc = 'Dirty Write';
+		END
+	END TRY
+
+	BEGIN CATCH
+		PRINT ERROR_MESSAGE();
+
+		SET @ErrorDesc = ERROR_MESSAGE();
+		SET @Errnbr = ERROR_NUMBER();
+
+		ROLLBACK TRANSACTION;
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+

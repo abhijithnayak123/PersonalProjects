@@ -1,0 +1,214 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveAccountValueOnStatement]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_SaveAccountValueOnStatement]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_SaveAccountValueOnStatement]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveAccountValueOnStatement]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_SaveAccountValueOnStatement    
+** Short Desc:  Saves the AccountValueOnStatement details for the given valuation IDs.   
+**    
+** Full Description : Saves the AccountValueOnStatement details for the given valuation IDs. 
+**            
+**    
+** Sample Call    
+  Declare @XMLdata XML
+  Declare @ReturnStatus INT
+  Declare @ErrorDesc Varchar(100)
+  
+  SET @XMLdata = '<IncomeAccrualScheduleCollection>
+	<InsertList>
+	<IncomeAccrualSchedule ValuationID= "1" CustomerAccountNumber="ACADW" />
+	</InsertList>
+	</IncomeAccrualScheduleCollection>'
+        EXEC USP_SIT_SaveAccountValueOnStatement  @XMLdata , 1, @ReturnStatus OUTPUT , @ErrorDesc OUTPUT
+  SELECT @ReturnStatus,@ErrorDesc
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/08/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_SaveAccountValueOnStatement] @XMLdata XML
+	,@UserID INT
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		CREATE TABLE #Tmp_CustomerAccountNumber (
+			ValuationID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,StatementFrequencyCode CHAR(8)
+			,PreviousPeriod DATETIME
+			,CurrentPeriod DATETIME
+			)
+
+		--CREATE TABLE #Tmp_AccountValueOnStatement (
+		--	ValuationID INT
+		--	,CustomerAccountNumber VARCHAR(14)
+		--	,BeginningAccrual MONEY
+		--	,EndingAccrual MONEY
+		--	,BeginningCost NUMERIC(28, 4)
+		--	,EndingCost NUMERIC(28, 4)
+		--	,BeginningCash NUMERIC(28, 4)
+		--	,EndingCash NUMERIC(28, 4)
+		--	,BeginningMarket NUMERIC(28, 4)
+		--	,EndingMarket NUMERIC(28, 4)
+		--	)
+		DECLARE @Colname VARCHAR(100)
+		DECLARE @SelColname VARCHAR(1000)
+		DECLARE @Qry VARCHAR(1000)
+		DECLARE @TableName VARCHAR(100)
+
+		SET @TableName = 'TBL_SIT_EBRAccountValueOnStatement'
+
+		INSERT INTO #Tmp_CustomerAccountNumber (
+			ValuationID
+			,CustomerAccountNumber
+			,StatementFrequencyCode
+			,PreviousPeriod
+			,CurrentPeriod
+			)
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS ValuationID
+			,XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)')
+			,XmlInput.Item.value('@StatementFrequencyCode[1]', 'CHAR(8)')
+			,XmlInput.Item.value('@PreviousPeriod[1]', 'DATETIME')
+			,XmlInput.Item.value('@CurrentPeriod[1]', 'DATETIME')
+		FROM @XMLDATA.nodes('/AccountValueonStatementsParametersCollection/InsertList/AccountValueonStatements') AS XmlInput(Item)
+
+		DELETE TBL_SIT_EBRAccountValueOnStatement
+		WHERE ValuationID IN (
+				SELECT ValuationID
+				FROM #Tmp_CustomerAccountNumber
+				)
+
+		INSERT INTO TBL_SIT_EBRAccountValueOnStatement (
+			ValuationID
+			,BeginningAccrual
+			,EndingAccrual
+			,StartDate
+			,EndDate
+			,BeginningCost
+			,EndingCost
+			,BeginningCash
+			,EndingCash
+			,BeginningMarket
+			,EndingMarket
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,SUM(ISNULL(RecPrvPrd.Balance, 0))
+			,SUM(ISNULL(RecCurrPrd.Balance, 0))
+			,MAX(TmpAccnt.PreviousPeriod)
+			,MAX(TmpAccnt.CurrentPeriod)
+			,SUM(ISNULL(HldPrvPrd.BaseBookValue, 0))
+			,SUM(ISNULL(HldCurrPrd.BaseBookValue, 0))
+			,SUM(ISNULL(HldPrvPrd.BaseBookValue, 0))
+			,SUM(ISNULL(HldCurrPrd.BaseBookValue, 0))
+			,SUM(ISNULL(HldPrvPrd.BaseMV, 0))
+			,SUM(ISNULL(HldCurrPrd.BaseMV, 0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_CustomerAccountNumber TmpAccnt
+		INNER JOIN Stmt_Holdings HldPrvPrd
+			ON HldPrvPrd.CustomerAccountNumber = TmpAccnt.CustomerAccountNumber
+				AND HldPrvPrd.StatementFrequencyCode = TmpAccnt.StatementFrequencyCode
+				AND HldPrvPrd.StatementDate = TmpAccnt.PreviousPeriod
+		INNER JOIN Stmt_Holdings HldCurrPrd
+			ON HldCurrPrd.CustomerAccountNumber = TmpAccnt.CustomerAccountNumber
+				AND HldCurrPrd.StatementFrequencyCode = TmpAccnt.StatementFrequencyCode
+				AND HldCurrPrd.StatementDate = TmpAccnt.CurrentPeriod
+		INNER JOIN Stmt_Receivable RecPrvPrd
+			ON RecPrvPrd.CustomerAccountNumber = TmpAccnt.CustomerAccountNumber
+				AND RecPrvPrd.StatementFrequencyCode = TmpAccnt.StatementFrequencyCode
+				AND RecPrvPrd.StatementDate = TmpAccnt.PreviousPeriod
+		INNER JOIN Stmt_Receivable RecCurrPrd
+			ON RecCurrPrd.CustomerAccountNumber = TmpAccnt.CustomerAccountNumber
+				AND RecCurrPrd.StatementFrequencyCode = TmpAccnt.StatementFrequencyCode
+				AND RecCurrPrd.StatementDate = TmpAccnt.CurrentPeriod
+		GROUP BY ValuationID
+
+		SET @ReturnStatus = 0
+		SET @ErrorDesc = '';
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,142 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRVEDeliverableItemsToBeValidated')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRVEDeliverableItemsToBeValidated;
+    PRINT 'DROPPED USP_RP_GetBRVEDeliverableItemsToBeValidated';
+END
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_RP_GetBRVEDeliverableItemsToBeValidated]    Script Date: 06/25/2014 12:04:24 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                  
+** Name:		USP_RP_GetBRVEDeliverableItemsToBeValidated  
+**      
+** Old Name:	USP_EIS_RPT_BR_VE_DeliverableItemsToBeValidated_SelProc   
+**       
+** Short Desc: Retrieves deliverable items for validation process. 
+**                  
+** Full Description: 
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	EXEC USP_RP_GetBRVEDeliverableItemsToBeValidated
+   
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 07/23/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 11/25/2009	Venugopal.B			Updated to fetch only primary deliverable items by adding the condition check with DeliveryMethodID
+** 12/09/2009	Venugopal.B			Updated to Exclude OnHold reports.
+** 01/13/2009	Venugopal.B			ET #11231: Added inner join with the table TBL_EIS_DT_Delivery_Type_Methods 
+** 03/12/2012	Anand Kumar			Changes for Adding Comments as per Stored Procedure standard template.
+** 03/14/2012	Anand Kumar			ERD changes implemetation.  
+** 07/16/2014	Geervani			Made changes in the table names to refer new KASPICK DB
+** Jul 25 2014	Geervani		Changed ContactID to DonorBeneContactID in TBL_DLV_DeliverableItem table
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/                  
+CREATE PROCEDURE [dbo].[USP_RP_GetBRVEDeliverableItemsToBeValidated]           
+AS      
+BEGIN
+	      --  Initial SET statements  --      
+      --SET NOCOUNT ON;      
+      --SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+      --SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+ 
+      --  Variable Declarations  --      
+      DECLARE @procname    VARCHAR(60);      
+      DECLARE @ErrorDesc     VARCHAR(1000);      
+      DECLARE @ErrorNumber     INT;
+      -- Variables used for error handling - uncomment if needed      
+      DECLARE @val1      VARCHAR(30);      
+      DECLARE @val2      VARCHAR(30);      
+ 
+      --  Temp tables, Cursors, Table Variables  --      
+ 
+      --  Variable Data Assignment  --      
+      SET @procname = 'USP_RP_GetBRVEDeliverableItemsToBeValidated';      
+ 
+      -- Body of procedure  --      
+      BEGIN TRY
+                  SELECT DISTINCT DI.DeliverableItemID, DI.DeliverableQueueID, LkpClient.ClientID AS ClientID, DI.EmployeeContactID AS ClientEmployeeID,
+                  LkpAcct.AccountID AS AccountID, LkpTrustPar.ParticipantID AS TrustparticipantID,
+                  LkpBene.BeneficiaryID AS BeneficiaryID,
+                  LkpDonor.DonorID AS DonorID,
+                  DI.GiftKey, DT.DeliverableFrequency
+                  FROM TBL_DLV_DeliverableItem DI
+                  INNER JOIN TBL_DLV_DeliverableQueue DQ ON DI.DeliverableQueueID = DQ.DeliverableQueueID 
+                  INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID
+                  INNER JOIN TBL_DLV_Deliverable DD ON DD.DeliverableID = DQ.DeliverableID
+                  INNER JOIN TBL_DLV_DeliverableMethod DM ON IMS.DeliveryMethodID = DM.DeliveryMethodID         --ET #11231
+                  AND DQ.DeliverableID= DM.DeliverableID
+                  AND DM.IsPrimary = 1   
+                  INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID 
+                  --AND DIS.DeliverableTypeID = DQ.DeliverableTypeID
+                  AND DIS.DeliverableProcessID = DD.DeliverableProcessID
+                  INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID 
+                  INNER JOIN VW_RP_DTDeliverable DT ON DQ.DeliverableID = DT.DeliverableID
+                  --Update to Exclude OnHold reports Begin
+                  INNER JOIN TBL_DLV_DeliverableTypeAttribute DTA ON DQ.DeliverableID = DTA.DeliverableID
+                  AND DTA.AttributePromptName='Hold'
+                  -- New Kaspick DB table name replaced here. 
+                  LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIDTA ON DI.DeliverableItemID = DIDTA.DeliverableItemID 
+                  AND DTA.DeliverableTypeAttributeID = DIDTA.DeliverableTypeAttributeID  
+                  LEFT OUTER JOIN TBL_Lookup_Account  LkpAcct  ON DI.CustomerAccountNumber  = LkpAcct.CustomerAccountNumber 
+                  LEFT OUTER JOIN TBL_Lookup_Client  LkpClient ON DI.ManagerCode   =  LkpClient.ManagerCode  
+                  LEFT OUTER JOIN TBL_Lookup_TrustParticipant LkpTrustPar ON di.DonorBeneContactID=LkpTrustPar.ContactID
+                  LEFT OUTER JOIN TBL_Lookup_Beneficiary LkpBene ON LkpBene.ContactID=DI.DonorBeneContactID AND lkpbene.CustomerAccountNumber=DI.CustomerAccountNumber
+		          AND LkpBene.RoleCode=21 -- only Beneficiary
+                  LEFT OUTER JOIN dbo.TBL_Lookup_Donor LkpDonor ON LkpDonor.ContactID=DI.DonorBeneContactID AND LkpDonor.CustomerAccountNumber=DI.CustomerAccountNumber
+                  WHERE DIS.StatusName in ('scheduled','Error')
+                  AND QS.StatusName = 'Open'
+                  AND LTRIM(RTRIM(ISNULL(DIDTA.AttributeValue,''))) <> '1'    --Update to Exclude OnHold reports 
+      END TRY      
+      BEGIN CATCH      
+            SET @ErrorDesc = ERROR_MESSAGE();      
+            SET @ErrorNumber = ERROR_NUMBER();      
+            SET @val1 = '';      
+            SET @val2 = '';      
+              
+            EXEC dbo.spSYS_ErrorHandler @codename = @procname,      
+            @errmsg = @ErrorDesc,       
+            @errnbr = @ErrorNumber,      
+            @val1 = '',       
+            @val1str = 'USP_RP_GetBRVEDeliverableItemsToBeValidated: Cannot Select.',       
+            @val2 = '',       
+            @val2str = '';      
+      END CATCH      
+      -- End of procedure  --      
+
+END
+GO
+
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRVEDeliverableItemsToBeValidated')
+BEGIN
+    PRINT 'CREATED USP_RP_GetBRVEDeliverableItemsToBeValidated';
+END

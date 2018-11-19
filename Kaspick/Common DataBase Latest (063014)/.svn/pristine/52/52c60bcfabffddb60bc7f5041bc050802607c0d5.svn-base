@@ -1,0 +1,228 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllTransactionErrors]    Script Date: 05/16/2014 10:52:09 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllTransactionErrors]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_GetAllTransactionErrors]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllTransactionErrors]    Script Date: 05/16/2014 10:52:09 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************   
+**      
+** Return values: Transaction Records
+**      
+**      
+** Sample Call      
+        EXEC [USP_OP_GetAllTransactionErrors] 'All','Open','All Clients','ALL','All','300013','03-6-2013','06-11-2014',1,0
+   -- parameters      
+**  
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By:       
+** Company   : Kaspick & Company      
+** Project   : Operations      
+** Created DT: 06/16/2014	      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_GetAllTransactionErrors] (
+	@AdventID VARCHAR(10)
+	,@TransactionStatus VARCHAR(50)
+	,@ClientGroups VARCHAR(20)
+	,@ClientIDs VARCHAR(5)
+	,@ResolutionResponse VARCHAR(50)
+	,@UserId INT
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	,@IsErrorDashboard BIT
+	,@IncludeAutoResolve BIT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+		
+		
+DECLARE @UserRole TABLE(ManagerCode VARCHAR(10),contactID INT, ContactName VARCHAR(100), contactrolecode INT, ContactRoleCodeDesc VARCHAR(100),
+userid INT, firstname VARCHAR(50), lastname VARCHAR(50))
+
+INSERT INTO @UserRole EXEC USP_KS_GetUserRole
+
+	SELECT TR.TRANSACTIONID
+		,AM.CustomerAccountNumber
+		,AM.ManagerCode AS ManagerCode
+		,(ISNULL(ClntMngr.FirstName, '') + ' ' + ISNULL(ClntMngr.LastName, '')) AS CLIENTMANAGER
+		,(ISNULL(TrstAdmin.FirstName, '') + ' ' + ISNULL(TrstAdmin.LastName, '')) AS TRUSTADMINISTRATOR
+		,(ISNULL(trdr.FirstName, '') + ' ' + ISNULL(trdr.LastName, '')) AS TRADER
+		,(ISNULL(OpsAdmin.FirstName, '') + ' ' + ISNULL(OpsAdmin.LastName, '')) AS PORTFOLIOADMINISTRATOR
+		,TR.TRANSACTIONDESCRIPTION
+		,TR.TRANSACTIONCODE
+		,TR.SECURITYSYMBOL
+		,TR.TRADEDATE
+		,TR.TRADEQUANTITY
+		,TR.TRADEAMOUNT
+		,(
+			CASE 
+				WHEN isnull(TR.AccountFMV, 0) <> 0
+					THEN ISNULL(((TR.TRADEAMOUNT) / (TR.AccountFMV)), 0)
+				ELSE 0
+				END
+			) AS NEWDOLLARSAMOUNT
+		,ISNULL(TR.ACCOUNTFMV, 0) AS ACCOUNTFMV
+		,TR.TRANSACTIONCOMMENT
+		,TR.CurrentErrorResponse
+		,TR.CurrentReconResponse
+		,isnull(ERR.ResponseDescription, '') AS ErrorResponseDescription
+		,isnull(RRR.ResponseDescription, '') AS ReconResponseDescription
+		,TR.SourceType
+		,TR.SecurityType AS SECURITYTYPE
+		--,D.AccountID AS ACCOUNTNUMBER
+		,TR.CURRENTERRORSTATUS
+		,TR.CURRENTRECONSTATUS
+		,TRDTIMP.RunStartDateTime AS IMPORTDATE
+		,TR.RunID
+		,TR.OrigninalCostDate
+		,TR.SourceSymbol
+		,TR.LotLocation
+		,TR.Broker
+		,TR.Commission
+		,TR.LotID
+		,TR.AXYSComment
+		,TR.AXYSPostDate
+		,TR.AXYSTransactionID
+		,TR.UserDefinedCode
+		,TR.IsError
+		,TR.IsRecon
+		,TR.IsSigCash
+		,TRR.ReconciliationGroupID AS GroupID
+		,TR.RecordVersion
+		,TR.LastModifiedUserID
+		,TR.LastModifiedDate
+		,TR.IsManagedAccount
+	FROM TBL_OP_Transaction TR
+	INNER JOIN TBL_OP_TransactionStatus TS ON TS.StatusID = CASE @IsErrorDashboard
+			WHEN 'True'
+				THEN TR.CURRENTERRORSTATUS
+			ELSE TR.CURRENTRECONSTATUS
+			END
+	INNER JOIN SYN_IT_AccountMaster AM ON TR.CustomerAccountNumber = AM.CustomerAccountNumber
+	INNER JOIN TBL_OP_TransactionDataImport TRDTIMP ON TR.RunID = TRDTIMP.RunID
+	LEFT OUTER JOIN TBL_OP_ResolutionResponse RRR ON TR.CurrentReconResponse = RRR.ResponseID
+	LEFT OUTER JOIN TBL_OP_ResolutionResponse ERR ON TR.CurrentErrorResponse = ERR.ResponseID
+	LEFT OUTER JOIN TBL_OP_TransactionReconciliation TRR ON TRR.TransactionID = TR.TransactionID
+	LEFT OUTER JOIN @UserRole ClntMngr ON ClntMngr.ManagerCode = am.ManagerCode AND ClntMngr.ContactRoleCode IN (2)
+	LEFT OUTER JOIN @UserRole TrstAdmin ON TrstAdmin.ManagerCode = am.ManagerCode AND TrstAdmin.ContactRoleCode IN (510)
+	LEFT OUTER JOIN @UserRole trdr ON trdr.ManagerCode = am.ManagerCode AND trdr.ContactRoleCode IN (515)
+	LEFT OUTER JOIN @UserRole OpsAdmin ON OpsAdmin.ManagerCode = am.ManagerCode AND OpsAdmin.ContactRoleCode IN (517)
+	WHERE (
+			(
+				(
+					@ADVENTID <> 'All'
+					AND TR.CustomerAccountNumber = @ADVENTID
+					)
+				OR @ADVENTID = 'All'
+				)
+			AND (
+				(
+					@RESOLUTIONRESPONSE <> 'All'
+					AND (
+						@IsErrorDashboard = 'True'
+						AND ERR.ResponseDescription = @RESOLUTIONRESPONSE
+						)
+					OR (
+						@IsErrorDashboard = 'False'
+						AND RRR.ResponseDescription = @RESOLUTIONRESPONSE
+						)
+					)
+				OR @RESOLUTIONRESPONSE = 'All'
+				)
+			AND (
+				@TRANSACTIONSTATUS <> 'All'
+				AND TS.StatusDescription = @TRANSACTIONSTATUS
+				)
+			AND (
+				(
+					@ClientGroups = 'My Clients'
+					AND @ClientIDs = 'All'
+					AND AM.ManagerCode IN (
+						SELECT ManagerCode
+						FROM SYN_IT_AccountMaster
+						WHERE ManagerCode IN (
+								SELECT ManagerCode
+								FROM TBL_KS_StaffRole
+								WHERE IsPrimary = 1
+									AND USerID = @UserId
+								)
+						)
+					)
+				OR (
+					@ClientGroups = 'All Clients'
+					AND @ClientIDs = 'All'
+					)
+				OR (
+					(
+						@ClientGroups = 'All Clients'
+						OR @ClientGroups = 'My Clients'
+						)
+					AND @ClientIDs <> 'All'
+					AND LTRIM(RTRIM(AM.ManagerCode)) = LTRIM(RTRIM(@ClientIDs))
+					)
+				)
+			AND (
+				(
+					YEAR(@FromDate) <> 9999
+					AND YEAR(@ToDate) <> 9999
+					AND (
+						convert(DATETIME, convert(VARCHAR(25), TRDTIMP.RunStartDateTime, 101)) BETWEEN cast(@FromDate AS VARCHAR)
+							AND cast(@ToDate AS VARCHAR)
+						)
+					)
+				OR (
+					YEAR(@FromDate) = 9999
+					AND YEAR(@ToDate) = 9999
+					)
+				)
+			AND (
+				(
+					@IsErrorDashboard = 'True'
+					AND TR.isError = 'True'
+					)
+				OR (
+					@IsErrorDashboard = 'False'
+					AND TR.isRecon = 'True'
+					)
+				)
+			)
+		AND (
+			CASE 
+				WHEN @IncludeAutoResolve = 0
+					THEN isnull(TR.CurrentReconResponse, 0)
+				ELSE 0
+				END
+			) <> 12
+END
+GO
+
+

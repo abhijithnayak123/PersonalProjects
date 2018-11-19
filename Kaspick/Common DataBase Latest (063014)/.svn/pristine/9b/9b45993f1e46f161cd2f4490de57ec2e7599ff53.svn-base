@@ -1,0 +1,70 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetReportList]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetReportList]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetReportList]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetReportList]    Script Date: 05/16/2013 12:11:16 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_GetReportList                      
+** Short Desc	:	To get list of reports      
+*                  
+**                      
+** Full Description: To get list of reports
+**                              
+** Input Arguments:   SourceType  -- Values can be Paragon / Middleware
+**         
+** Sample Call     
+        
+	EXEC USP_PP_GetReportList 'Middleware'
+	EXEC USP_PP_GetReportList 'Paragon'
+		
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 31-Jul-2013                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 3/27/2014	Saravanan	Added Order by ReportTitle
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].USP_PP_GetReportList (@SourceType VARCHAR(50))
+AS
+BEGIN
+	SELECT ReportName
+		,ReportTitle
+		,ReportDescription
+		,ReportFields
+		,ReportOrder
+		,ReportParameters
+	FROM TBL_PP_ReportList
+	WHERE IsActive = 1
+		AND SourceType = @SourceType
+	ORDER BY ReportTitle 
+END

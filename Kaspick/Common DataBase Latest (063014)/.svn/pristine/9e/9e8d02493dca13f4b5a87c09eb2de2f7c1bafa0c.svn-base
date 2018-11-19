@@ -1,0 +1,76 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTDeliveryMethod')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetBRDTDeliveryMethod;
+        PRINT 'DROPPED USP_RP_GetBRDTDeliveryMethod';
+    END
+GO
+
+
+ /************************************r******************************************   
+** New SP Name :       USP_RP_GetBRDTDeliveryMethod                  
+** Name:     USP_EIS_BR_DT_DeliveryMethod_SelProc                        
+** Short Desc: To retrieve Filter Section details      
+**               
+
+    
+** Full Description: Retrieves Delivery Methods for a deliverable      
+**                                
+** Input Arguments:       
+**           
+** Sample Call                        
+**  EXEC USP_RP_GetBRDTDeliveryMethod 4      
+**               
+** Return values: Null      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Venugopal B     
+** Company   : Kaspick & Company                        
+** Project   : Excelsior  - BeneReport                        
+** Created DT: 11/25/2011                        
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- ----,----                  
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.     
+** Mar-14-2012 Ashvin   ERD changes implemetation.    
+  
+** May-21-2014 RAJ   Made Changes for SP Name ExcelsiorDB into KaspickDB  
+** Jun-09-2014  RAJ SP Name Renamed and Formatted
+*******************************************************************************                      -  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/                        
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTDeliveryMethod]        
+(      
+ @DeliverableID INT    
+)                   
+AS                  
+BEGIN    
+           
+ SELECT     
+  DM.DeliveryMethodID AS DDVALUE,      
+  DM.DeliveryMethodName AS DDTEXT      
+ FROM TBL_DLV_DeliverableMethod DTM    
+  INNER JOIN TBL_DLV_DeliveryMethod DM ON DM.DeliveryMethodID = DTM.DeliveryMethodID     
+ WHERE DTM.DeliverableID = @DeliverableID      
+     
+END    
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetBRDTDeliveryMethod') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetBRDTDeliveryMethod';
+	END

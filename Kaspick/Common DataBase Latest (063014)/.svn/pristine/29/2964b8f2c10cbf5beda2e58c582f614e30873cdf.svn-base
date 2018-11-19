@@ -1,0 +1,672 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_CreateNewValuation]    Script Date: 04/11/2014 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_CreateNewValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_CreateNewValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_CreateNewValuation]    Script Date: 04/11/2014 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_CreateNewValuation                      
+** Short Desc: Create New Valuation records. 
+**                      
+** Full Description: Create New Valuation records. 
+**      
+**                              
+** Input Arguments:   @XMLManagerCodeParam XML
+**	,@UserID INT
+**	,@Comment VARCHAR(8000)
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+**	,@ReturnStatus INT  OUTPUT
+** Sample Call     
+
+DECLARE @XMLValuation XML
+DECLARE @XMLGiftAdditionData XML
+DECLARE @XMLGiftSeveredData XML
+DECLARE @XMLInnoTrustData XML
+DECLARE @ReturnStatus INT = - 1
+DECLARE @ErrorDesc VARCHAR(8000)
+SET @XMLValuation = '<ValuationCollection><InsertList>
+						<Valuation InnoTrustPaymentsAsOfDate="0"  EarlyTradedPayment="32183.59"  CustomerAccountNumber="ARGAP"  ManagerCode="AR"  ManageCodeName="Davis College"  Comment="COMMENT 7919281"  CreatedDate="03/03/2014 09:39:14:000"  CreatedBy="100326"  CurrentStatusID="5"  FinalFMV="43924316.16"  GiftwrapPaymentsAsOfDate="0"  GiftWrapCashtracInput="True"  GiftWrapMVDARptGenerated="False"  InitialFMV="44170049.69"  ModifiedDate="04/08/2014 11:34:00:000"  ModifiedBy="1"  OtherAdjustment="255"  OutstandingPaymentParagon="0"  PendingGiftAddition="0"  PendingSeverence="-114086.06"  ReconcilliationType=""  ReconFromDate="11/29/2013 12:00:00:000"  ReconToDate="02/27/2014 12:00:00:000"  ReconWithDW="False"  RecordVersion="0x00000000003CBFFE"  ValuationDate="02/27/2014 12:00:00:000"  ValuationID="12309"  GiftwrapEquityUnit="0"  NAV="0"  AccountType="CGA"  HasGiftExclusion="False"  GiftExclusionComment=""  ValuationType="Other"  AccountingRoutine=""  />
+					</InsertList></ValuationCollection>'
+SET @XMLGiftAdditionData =	'<ValuationGiftwrapTransactionCollection><InsertList>
+								 <ValuationGiftwrapTransaction Association="Donor/Bene-A"  BirthDate="02/07/1931 12:00:00:000"  DeathDate="01/01/1900 12:00:00:000"  FirstName="Merle"  GiftKey="4618230"  GiftAmount="77659.9"  GiftDate="12/03/2013 12:00:00:000"  GiftType="CGA"  GiftStatus="Current"  PersonGiftMapID="38804339"  LastName="Loren"  MatchComment="sg sdfgdasfdgdf agdsf"  MatchKey="02272014ARGAP461823012032013"  MatchStatus="M"  MarketValue="79076.6100"  MarketValueDate="02/23/2014 12:00:00:000"  OrgID="47"  OrgAccount1="ARGAP"  PersonID="714254"  PersonName="Peter Gillespie"  PersonStatus="Current"  SSN="081281423"  TransactionID="74469"  ValuationID="12309"  AccountClosedDate="01/01/1900 12:00:00:000"  Distributions="0"  />
+								 <ValuationGiftwrapTransaction Association="Donor/Bene-A"  BirthDate="07/06/1937 12:00:00:000"  DeathDate="01/01/1900 12:00:00:000"  FirstName="Shantay"  GiftKey="4618232"  GiftAmount="50000"  GiftDate="11/29/2013 12:00:00:000"  GiftType="CGA"  GiftStatus="Current"  PersonGiftMapID="38804341"  LastName="Monika"  MatchComment="Test Match"  MatchKey="02272014ARGAP461823211292013"  MatchStatus="M"  MarketValue="50770.5600"  MarketValueDate="02/23/2014 12:00:00:000"  OrgID="47"  OrgAccount1="ARGAP"  PersonID="2957274"  PersonName="Magdalen Z. Segur"  PersonStatus="Current"  SSN="902181180"  TransactionID="74470"  ValuationID="12309"  AccountClosedDate="01/01/1900 12:00:00:000"  Distributions="0"  />
+							</InsertList></ValuationGiftwrapTransactionCollection>'
+SET @XMLGiftSeveredData='<GiftwrapSeveredPersonCollection><InsertList>
+							<GiftwrapSeveredPerson PersonID="9403"  MatchKey=""  MatchStatus=""  MatchComment="Un match"  ValuationID="12309"  /> BirthDate="06/26/1920 12:00:00:000"  DeathDate="11/30/2013 12:00:00:000"  FirstName="Jeraldine"  LastName="Marcellus"  PersonID="9403"  PersonName="Angelo Barron"  PersonStatus="Deceased"  SSN="573200287"  MatchComment="Un match"  MatchKey=""  MatchStatus=""  TransactionID="74525"  ValuationID="12309"  SeveredAmt="26126.7"  AccountClosedDate="12/02/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="38808"  MatchKey=""  MatchStatus=""  MatchComment=""  ValuationID="12309"  /> BirthDate="09/03/1913 12:00:00:000"  DeathDate="02/09/2014 12:00:00:000"  FirstName="Collette"  LastName="Buena"  PersonID="38808"  PersonName="Bradford Sam Carey"  PersonStatus="Deceased"  SSN="765803186"  MatchComment=""  MatchKey=""  MatchStatus=""  TransactionID="74526"  ValuationID="12309"  SeveredAmt="2003.13"  AccountClosedDate="02/11/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="10230"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="06/23/1912 12:00:00:000"  DeathDate="10/15/2013 12:00:00:000"  FirstName="Asuncion"  LastName="Karol"  PersonID="10230"  PersonName="Chanelle L. Windsor"  PersonStatus="Deceased"  SSN="166566602"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74502"  ValuationID="12309"  SeveredAmt="468.35"  AccountClosedDate="01/08/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="37017"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="08/31/1920 12:00:00:000"  DeathDate="11/22/2013 12:00:00:000"  FirstName="Sanda"  LastName="Bryon"  PersonID="37017"  PersonName="Collin A. McCabe"  PersonStatus="Deceased"  SSN="073584357"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74528"  ValuationID="12309"  SeveredAmt="39442.32"  AccountClosedDate="01/28/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="10175"  MatchKey=""  MatchStatus=""  MatchComment=""  ValuationID="12309"  /> BirthDate="04/07/1932 12:00:00:000"  DeathDate="01/01/1900 12:00:00:000"  FirstName="Lupe"  LastName="Monte"  PersonID="10175"  PersonName="Devorah Suzanne Dawson"  PersonStatus="Current"  SSN="684097073"  MatchComment=""  MatchKey=""  MatchStatus=""  TransactionID="74503"  ValuationID="12309"  SeveredAmt="98909.52"  AccountClosedDate="02/04/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="8900"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="06/03/1914 12:00:00:000"  DeathDate="11/18/2013 12:00:00:000"  FirstName="Benita"  LastName="Katie"  PersonID="8900"  PersonName="Gerardo Gillespie"  PersonStatus="Deceased"  SSN="767026871"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74531"  ValuationID="12309"  SeveredAmt="456.57"  AccountClosedDate="12/02/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="128014"  MatchKey="01142014ARGAP12801412102013"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="03/28/1930 12:00:00:000"  DeathDate="11/17/2013 12:00:00:000"  FirstName="Jesica"  LastName="Avelina"  PersonID="128014"  PersonName="Jannette L. Bryne"  PersonStatus="Deceased"  SSN="510481232"  MatchComment="COMMENT 1260827"  MatchKey="01142014ARGAP12801412102013"  MatchStatus="M"  TransactionID="74510"  ValuationID="12309"  SeveredAmt="21325.78"  AccountClosedDate="12/10/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="10489"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="04/21/1916 12:00:00:000"  DeathDate="12/28/2013 12:00:00:000"  FirstName="Robby"  LastName="Vania"  PersonID="10489"  PersonName="Jeffery De Groot"  PersonStatus="Deceased"  SSN="697530871"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74530"  ValuationID="12309"  SeveredAmt="11109.38"  AccountClosedDate="01/28/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9639"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="11/14/1921 12:00:00:000"  DeathDate="11/26/2013 12:00:00:000"  FirstName="Leland"  LastName="Virgina"  PersonID="9639"  PersonName="Jerilyn Lashawn Blackwood"  PersonStatus="Deceased"  SSN="433746049"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74519"  ValuationID="12309"  SeveredAmt="139639.53"  AccountClosedDate="12/10/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9978"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="04/13/1921 12:00:00:000"  DeathDate="11/07/2013 12:00:00:000"  FirstName="Alyse"  LastName="Jeanett"  PersonID="9978"  PersonName="Jonie J. Hayford"  PersonStatus="Deceased"  SSN="719315077"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74507"  ValuationID="12309"  SeveredAmt="905.13"  AccountClosedDate="01/08/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9685"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="07/03/1919 12:00:00:000"  DeathDate="11/25/2013 12:00:00:000"  FirstName="Daryl"  LastName="Marisha"  PersonID="9685"  PersonName="Kathern Vanderbilt"  PersonStatus="Deceased"  SSN="726982042"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74513"  ValuationID="12309"  SeveredAmt="7446.82"  AccountClosedDate="12/02/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="293848"  MatchKey=""  MatchStatus=""  MatchComment=""  ValuationID="12309"  /> BirthDate="11/26/1917 12:00:00:000"  DeathDate="02/04/2014 12:00:00:000"  FirstName="Henriette"  LastName="Blossom"  PersonID="293848"  PersonName="Kathleen Holcombe"  PersonStatus="Deceased"  SSN="461180332"  MatchComment=""  MatchKey=""  MatchStatus=""  TransactionID="74508"  ValuationID="12309"  SeveredAmt="52450.06"  AccountClosedDate="02/11/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9064"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="05/15/1915 12:00:00:000"  DeathDate="12/12/2013 12:00:00:000"  FirstName="Lawrence"  LastName="Elsie"  PersonID="9064"  PersonName="Lashon B. Wallace"  PersonStatus="Deceased"  SSN="060010618"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74529"  ValuationID="12309"  SeveredAmt="27.9"  AccountClosedDate="12/19/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="10340"  MatchKey=""  MatchStatus=""  MatchComment=""  ValuationID="12309"  /> BirthDate="06/16/1920 12:00:00:000"  DeathDate="11/26/2013 12:00:00:000"  FirstName="Tesha"  LastName="Mariette"  PersonID="10340"  PersonName="Madeleine Ellamae Warburton"  PersonStatus="Deceased"  SSN="179893466"  MatchComment=""  MatchKey=""  MatchStatus=""  TransactionID="74532"  ValuationID="12309"  SeveredAmt="10723.35"  AccountClosedDate="02/04/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="10030"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="12/10/1917 12:00:00:000"  DeathDate="09/20/2013 12:00:00:000"  FirstName="Shanelle"  LastName="Ned"  PersonID="10030"  PersonName="Maire Denis"  PersonStatus="Deceased"  SSN="024415735"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74505"  ValuationID="12309"  SeveredAmt="14206.76"  AccountClosedDate="01/14/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9842"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="08/16/1911 12:00:00:000"  DeathDate="12/06/2013 12:00:00:000"  FirstName="Mallory"  LastName="Dorotha"  PersonID="9842"  PersonName="Maura J. Tynte"  PersonStatus="Deceased"  SSN="903036022"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74509"  ValuationID="12309"  SeveredAmt="972.5"  AccountClosedDate="02/06/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="955022"  MatchKey="02232014ARGAP95502201282014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="11/11/1917 12:00:00:000"  DeathDate="12/22/2013 12:00:00:000"  FirstName="Lenora"  LastName="Ernestina"  PersonID="955022"  PersonName="Mavis Jamey Singen"  PersonStatus="Deceased"  SSN="411632110"  MatchComment="COMMENT 1260827"  MatchKey="02232014ARGAP95502201282014"  MatchStatus="M"  TransactionID="74506"  ValuationID="12309"  SeveredAmt="13804.21"  AccountClosedDate="01/28/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="89264"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="12/28/1919 12:00:00:000"  DeathDate="12/23/2013 12:00:00:000"  FirstName="Thu"  LastName="Brigette"  PersonID="89264"  PersonName="Modesta Roseann Beckwith"  PersonStatus="Deceased"  SSN="036576369"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74512"  ValuationID="12309"  SeveredAmt="5397.32"  AccountClosedDate="01/14/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="9220"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="07/13/1914 12:00:00:000"  DeathDate="12/03/2013 12:00:00:000"  FirstName="Steven"  LastName="Carlita"  PersonID="9220"  PersonName="Philip Jordon Conway"  PersonStatus="Deceased"  SSN="609884055"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74527"  ValuationID="12309"  SeveredAmt="4.63"  AccountClosedDate="01/08/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="76121"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="12/09/1920 12:00:00:000"  DeathDate="10/18/2013 12:00:00:000"  FirstName="Cathey"  LastName="Maile"  PersonID="76121"  PersonName="Porsche M. Brougham"  PersonStatus="Deceased"  SSN="209400340"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74524"  ValuationID="12309"  SeveredAmt="7143.04"  AccountClosedDate="12/02/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="76359"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="04/27/1919 12:00:00:000"  DeathDate="12/16/2013 12:00:00:000"  FirstName="Kari"  LastName="Refugio"  PersonID="76359"  PersonName="Rod Athill"  PersonStatus="Deceased"  SSN="066181576"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74514"  ValuationID="12309"  SeveredAmt="18421.86"  AccountClosedDate="01/08/2014 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="1284484"  MatchKey="01312014ARGAP128448412232013"  MatchStatus="M"  MatchComment="COMMENT 2160329"  ValuationID="12309"  /> BirthDate="06/03/1928 12:00:00:000"  DeathDate="01/01/1900 12:00:00:000"  FirstName="Jackson"  LastName="Andria"  PersonID="1284484"  PersonName="Ruthe O&apos;Leary"  PersonStatus="Current"  SSN="351745023"  MatchComment="COMMENT 2160329"  MatchKey="01312014ARGAP128448412232013"  MatchStatus="M"  TransactionID="74504"  ValuationID="12309"  SeveredAmt="55273.79"  AccountClosedDate="12/23/2013 12:00:00:000"  /><GiftwrapSeveredPerson PersonID="76273"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  MatchComment="COMMENT 1260827"  ValuationID="12309"  /> BirthDate="01/06/1922 12:00:00:000"  DeathDate="12/12/2013 12:00:00:000"  FirstName="Jake"  LastName="Euna"  PersonID="76273"  PersonName="Twanna F. Evelyn"  PersonStatus="Deceased"  SSN="548217912"  MatchComment="COMMENT 1260827"  MatchKey="02272014ARGAP922001082014"  MatchStatus="M"  TransactionID="74520"  ValuationID="12309"  SeveredAmt="52699.79"  AccountClosedDate="12/20/2013 12:00:00:000"  />
+						</InsertList>
+						<GiftwrapSeveredPersonGiftsCollection>
+						<InsertList>
+							<GiftwrapSeveredPersonGifts PersonID="9403"  GiftKey="106294"  PersonGiftMapID="89226"  GiftAmount="25000"  GiftDate="12/16/2005 12:00:00:000"  GiftType="CGA"  GiftStatus="Finished"  MarketValue="0.0000"  MarketValueDate="12/03/2013 12:00:00:000"  OrgID="47"  OrgAccount1="ARGAP"  AccountClosedDate="12/02/2013 12:00:00:000"  Distributions="14649.06"  />
+							<GiftwrapSeveredPersonGifts PersonID="9403"  GiftKey="15228"  PersonGiftMapID="89227"  GiftAmount="12000"  GiftDate="12/17/2002 12:00:00:000"  GiftType="CGA"  GiftStatus="Finished"  MarketValue="0.0000"  MarketValueDate="12/03/2013 12:00:00:000"  OrgID="47"  OrgAccount1="ARGAP"  AccountClosedDate="12/02/2013 12:00:00:000"  Distributions="10148.63"  />
+						</InsertList>
+						</GiftwrapSeveredPersonGiftsCollection>
+						</GiftwrapSeveredPersonCollection>'
+SET @XMLInnoTrustData ='<ValuationInnoTrustTransactionCollection>
+						<InsertList>
+    <ValuationInnoTrustTransaction Comments="COMMENT 9086236"  MatchComment="Test Un Matched by Saravanan"  MatchKey=""  MatchStatus=""  Quantity="0"  Security="Trustee&apos;s Cash"  TradeAmount="50000"  TradeDate="11/29/2013 12:00:00:000"  TransactionCode="li"  TransactionID="72685"  ValuationID="12309"  GroupID=""  TaxCode=""  TransactionNumber=""  GiftID=""  ContactID="0"  />
+  </InsertList>
+</ValuationInnoTrustTransactionCollection>'
+                     
+EXEC USP_PV_CreateNewValuation '2/27/2014', @XMLValuation, @XMLGiftAdditionData, @XMLGiftSeveredData,@XMLInnoTrustData,1,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 11-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_CreateNewValuation] (
+	@ValuationDate DATETIME
+	,@XMLValuation XML
+	,@XMLGiftAdditionData XML
+	,@XMLGiftSeveredData XML
+	,@XMLInnoTrustData XML
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  -- 
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF OBJECT_ID('tempdb..[#TempValuation]') IS NOT NULL
+			DROP TABLE [#TempValuationForFilter]
+
+		IF OBJECT_ID('tempdb..[#TempValuation]') IS NOT NULL
+			DROP TABLE [#TempValuation]
+
+		CREATE TABLE #TempValuationForFilter (
+			ValuationDate DATETIME
+			,CustomerAccountNumber VARCHAR(14)
+			)
+
+		CREATE TABLE #TempValuation (
+			ValuationID INT
+			,ValuationDate DATETIME
+			,ReconFromDate DATETIME
+			,ReconToDate DATETIME
+			,CustomerAccountNumber VARCHAR(14)
+			,AccountType VARCHAR(20)
+			,ManagerCode VARCHAR(4)
+			,ManageCodeName VARCHAR(100)
+			,InitialFMV DECIMAL(20, 4)
+			,PendingSeverence DECIMAL(20, 4)
+			,PendingGiftAddition DECIMAL(20, 4)
+			,EarlyTradedPayment DECIMAL(20, 4)
+			,GiftwrapPaymentsAsOfDate DECIMAL(20, 4)
+			,InnoTrustPaymentsAsOfDate DECIMAL(20, 4)
+			,OtherAdjustment DECIMAL(20, 4)
+			,FinalFMV DECIMAL(20, 4)
+			,GiftwrapEquityUnit DECIMAL(17, 8)
+			,NAV DECIMAL(17, 8)
+			,ReconcilliationType CHAR(1)
+			,Comment VARCHAR(8000)
+			,CurrentStatusID INT
+			,ReconWithDW BIT
+			,GiftWrapCashtracInput BIT
+			,GiftWrapMVDARptGenerated BIT
+			,RecordVersion VARCHAR(100)
+			,HasGiftExclusion BIT
+			,GiftExclusionComment VARCHAR(8000)
+			,ValuationType VARCHAR(20)
+			,CreatedDate DATETIME
+			,CreatedBy INT
+			,ModifiedDate DATETIME
+			,ModifiedBy INT
+			)
+			
+		DECLARE @ActionStatusID INT
+
+		INSERT INTO #TempValuationForFilter (
+			ValuationDate
+			,CustomerAccountNumber
+			)
+		SELECT XMLDATA.item.value('@ValuationDate[1]', 'varchar(10)') AS ValuationDate
+			,XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+		FROM @XMLValuation.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+
+		SELECT @ActionStatusID = StatusID
+		FROM TBL_PV_ValuationStatus
+		WHERE STATUS = 'Approved'
+
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PV_Valuation valuation
+				INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+					AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+				WHERE Valuation.CurrentStatusID = @ActionStatusID
+				)
+		BEGIN
+			SET @ReturnStatus = - 1;
+			SET @ErrorDesc = 'Some of the selcted AdventID(s) are in approved status. Cannot create Valuation';
+		END
+		ELSE
+			IF EXISTS (
+					SELECT 1
+					FROM TBL_PV_Valuation valuation
+					INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+						AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+					)
+			BEGIN
+				DELETE
+				FROM TBL_PV_ValuationTracker
+				WHERE valuationID IN (
+						SELECT ValuationID
+						FROM TBL_PV_Valuation valuation
+						INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+							AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)
+
+				DELETE
+				FROM TBL_PV_ValuationInnoTrustTransaction
+				WHERE valuationID IN (
+						SELECT ValuationID
+						FROM TBL_PV_Valuation valuation
+						INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+							AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)
+
+				DELETE
+				FROM TBL_PV_ValuationGiftwrapTransaction
+				WHERE valuationID IN (
+						SELECT ValuationID
+						FROM TBL_PV_Valuation valuation
+						INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+							AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)
+
+				/* -- Tables are not yet migrated. 		
+				DELETE  FROM TBL_EIS_SIT_InterfaceFileGenerationLog 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+ 				DELETE  FROM TBL_EIS_SIT_BenePayments
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_Severances 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_StatusChangeLog 
+							WHERE valuationID IN (  
+									SELECT ValuationID 
+									FROM TBL_PV_Valuation valuation 
+										INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+									)			
+				DELETE  FROM TBL_EIS_SIT_AuditReconciliation   
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_EBR_ACCOUNTVALUEONSTATEMENTS 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_EBR_INCOMEACCRUALSCHEDULE 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_EBR_MARKETVALUESUMMARY 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_EBR_OTHERRECEIPTSANDEXPENSES 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_EBR_SUMMARYOFCASHTRANS 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+				DELETE  FROM TBL_EIS_SIT_Gifts_Associations 
+				WHERE valuationID IN (  
+						SELECT ValuationID 
+						FROM TBL_PV_Valuation valuation 
+							INNER JOIN  #TempValuationForFilter temp ON temp.ValuationDate = valuation.ValuationDate AND temp.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)			
+*/
+				DELETE
+				FROM TBL_PV_Valuation
+				WHERE valuationID IN (
+						SELECT ValuationID
+						FROM TBL_PV_Valuation valuation
+						INNER JOIN #TempValuationForFilter TEMP ON TEMP.ValuationDate = valuation.ValuationDate
+							AND TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+						)
+			END
+
+		INSERT INTO TBL_PV_Valuation (
+			ValuationDate
+			,ReconFromDate
+			,ReconToDate
+			,CustomerAccountNumber
+			,AccountType
+			,ManagerCode
+			,ManageCodeName
+			,InitialFMV
+			,PendingSeverence
+			,PendingGiftAddition
+			,EarlyTradedPayments
+			,GiftwrapPaymentsAsOfDate
+			,InnoTrustPaymentsAsOfDate
+			,OtherAdjustment
+			,FinalFMV
+			,GiftwrapEquityUnit
+			,NAV
+			,ReconcilliationType
+			,Comment
+			,CurrentStatusID
+			,ReconWithDW
+			,GiftWrapCashtracInput
+			,GiftWrapMVDARptGenerated
+			,HasGiftExclusion
+			,GiftExclusionComment
+			,ValuationType
+			,CreatedDate
+			,CreatedBy
+			,ModifiedDate
+			,ModifiedBy
+			)
+		OUTPUT INSERTED.*
+		INTO #TempValuation
+		SELECT XMLDATA.item.value('@ValuationDate[1]', 'varchar(10)') AS ValuationDate
+			,XMLDATA.item.value('@ReconFromDate[1]', 'varchar(10)') AS ReconFromDate
+			,XMLDATA.item.value('@ReconToDate[1]', 'varchar(10)') AS ReconToDate
+			,XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+			,XMLDATA.item.value('@AccountType[1]', 'varchar(20)') AS AccountType
+			,XMLDATA.item.value('@ManagerCode[1]', 'varchar(4)') AS ManagerCode
+			,XMLDATA.item.value('@ManageCodeName[1]', 'varchar(100)') AS ManageCodeName
+			,XMLDATA.item.value('@InitialFMV[1]', 'decimal(20,4)') AS InitialFMV
+			,XMLDATA.item.value('@PendingSeverence[1]', 'decimal(20,4)') AS PendingSeverence
+			,XMLDATA.item.value('@PendingGiftAddition[1]', 'decimal(20,4)') AS PendingGiftAddition
+			,XMLDATA.item.value('@EarlyTradedPayment[1]', 'decimal(20,4)') AS EarlyTradedPayment
+			,XMLDATA.item.value('@GiftwrapPaymentsAsOfDate[1]', 'decimal(20,4)') AS GiftwrapPaymentsAsOfDate
+			,XMLDATA.item.value('@InnoTrustPaymentsAsOfDate[1]', 'decimal(20,4)') AS InnoTrustPaymentsAsOfDate
+			,XMLDATA.item.value('@OtherAdjustment[1]', 'decimal(20,4)') AS OtherAdjustment
+			,XMLDATA.item.value('@FinalFMV[1]', 'decimal(20,4)') AS FinalFMV
+			,XMLDATA.item.value('@GiftwrapEquityUnit[1]', 'decimal(17,8)') AS GiftwrapEquityUnit
+			,XMLDATA.item.value('@NAV[1]', 'decimal(20,8)') AS NAV
+			,XMLDATA.item.value('@ReconcilliationType[1]', 'char(1)') AS ReconcilliationType
+			,XMLDATA.item.value('@Comment[1]', 'varchar(8000)') AS Comment
+			,XMLDATA.item.value('@CurrentStatusID[1]', 'int') AS CurrentStatusID
+			,0 AS ReconWithDW
+			,0 AS GiftWrapCashtracInput
+			,0 AS GiftWrapMVDARptGenerated
+			,XMLDATA.item.value('@HasGiftExclusion[1]', 'bit') AS HasGiftExclusion
+			,XMLDATA.item.value('@GiftExclusionComment[1]', 'varchar(8000)') AS GiftExclusionComment
+			,XMLDATA.item.value('@ValuationType[1]', 'varchar(20)') AS ValuationType
+			,GETDATE() AS CreatedDate
+			,@UserID AS CreatedBy
+			,GETDATE() AS ModifiedDate
+			,@UserID AS ModifiedBy
+		FROM @XMLValuation.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+
+		INSERT INTO TBL_PV_ValuationInnoTrustTransaction (
+			ValuationID
+			,MatchKey
+			,MatchStatus
+			,MatchComment
+			,GroupID
+			,[Security]
+			,TradeDate
+			,Quantity
+			,TradeAmount
+			,Comment
+			,TaxCode
+			,TransactionNumber
+			,TransactionCode
+			,GiftID
+			,ContactID
+			)
+		SELECT valuation.ValuationID
+			,TEMP.MatchKey
+			,TEMP.MatchStatus
+			,TEMP.MatchComment
+			,TEMP.GroupID
+			,TEMP.[Security]
+			,TEMP.TradeDate
+			,TEMP.Quantity
+			,TEMP.TradeAmount
+			,TEMP.Comment
+			,TEMP.TaxCode
+			,TEMP.TransactionNumber
+			,TEMP.TransactionCode
+			,TEMP.GiftID
+			,TEMP.ContactID
+		FROM #TempValuation valuation
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+				,XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+				,XMLDATA.item.value('@MatchKey[1]', 'varchar(50)') AS MatchKey
+				,XMLDATA.item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+				,XMLDATA.item.value('@MatchComment[1]', 'varchar(1000)') AS MatchComment
+				,XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+				,XMLDATA.item.value('@Security[1]', 'varchar(100)') AS [Security]
+				,XMLDATA.item.value('@TradeDate', 'datetime') AS TradeDate
+				,XMLDATA.item.value('@Quantity[1]', 'decimal(20,4)') AS Quantity
+				,XMLDATA.item.value('@TradeAmount[1]', 'decimal(20,4)') AS TradeAmount
+				,XMLDATA.item.value('@Comment[1]', 'varchar(8000)') AS Comment
+				,XMLDATA.item.value('@TaxCode[1]', 'varchar(10)') AS TaxCode
+				,XMLDATA.item.value('@TransactionNumber[1]', 'varchar(14)') AS TransactionNumber
+				,XMLDATA.item.value('@TransactionCode[1]', 'varchar(20)') AS TransactionCode
+				,XMLDATA.item.value('@GiftID[1]', 'int') AS GiftID
+				,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+			FROM @XMLInnoTrustData.nodes('//ValuationInnoTrustTransactionCollection/InsertList/ValuationInnoTrustTransaction') AS XMLDATA(Item)
+			) TEMP ON TEMP.CustomerAccountNumber = valuation.CustomerAccountNumber
+
+		INSERT INTO TBL_PV_ValuationGiftwrapTransaction (
+			ValuationID
+			,MatchKey
+			,MatchStatus
+			,MatchComment
+			,OrgID
+			,OrgAccount1
+			,GiftDate
+			,GiftType
+			,GiftAmount
+			,MarketValue
+			,MarketValueDate
+			,GiftStatus
+			,GiftKey
+			,AccountClosedDate
+			,Distributions
+			,PersonGiftMapID
+			,Association
+			,PersonID
+			,PersonName
+			,LastName
+			,FirstName
+			,SSN
+			,BirthDate
+			,PersonStatus
+			,DeathDate
+			)
+		SELECT valuation.ValuationID
+			,TEMP.MatchKey
+			,TEMP.MatchStatus
+			,TEMP.MatchComment
+			,TEMP.OrgID
+			,TEMP.OrgAccount1
+			,TEMP.GiftDate
+			,TEMP.GiftType
+			,TEMP.GiftAmount
+			,TEMP.MarketValue
+			,TEMP.MarketValueDate
+			,TEMP.GiftStatus
+			,TEMP.GiftKey
+			,TEMP.AccountClosedDate
+			,TEMP.Distributions
+			,TEMP.PersonGiftMapID
+			,TEMP.Association
+			,TEMP.PersonID
+			,TEMP.PersonName
+			,TEMP.LastName
+			,TEMP.FirstName
+			,TEMP.SSN
+			,TEMP.BirthDate
+			,TEMP.PersonStatus
+			,TEMP.DeathDate
+		FROM #TempValuation valuation
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+				,XMLDATA.item.value('@MatchKey[1]', 'varchar(50)') AS MatchKey
+				,XMLDATA.item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+				,XMLDATA.item.value('@MatchComment[1]', 'varchar(1000)') AS MatchComment
+				,XMLDATA.item.value('@OrgID[1]', 'int') AS OrgID
+				,XMLDATA.item.value('@OrgAccount1[1]', 'varchar(8)') AS OrgAccount1
+				,XMLDATA.item.value('@GiftDate[1]', 'datetime') AS GiftDate
+				,XMLDATA.item.value('@GiftType[1]', 'varchar(20)') AS GiftType
+				,XMLDATA.item.value('@GiftAmount[1]', 'decimal(20,4)') AS GiftAmount
+				,XMLDATA.item.value('@MarketValue[1]', 'decimal(20,4)') AS MarketValue
+				,XMLDATA.item.value('@MarketValueDate[1]', 'datetime') AS MarketValueDate
+				,XMLDATA.item.value('@GiftStatus[1]', 'varchar(20)') AS GiftStatus
+				,XMLDATA.item.value('@GiftKey[1]', 'int') AS GiftKey
+				,XMLDATA.item.value('@AccountClosedDate[1]', 'datetime') AS AccountClosedDate
+				,XMLDATA.item.value('@Distributions[1]', 'decimal(20,4)') AS Distributions
+				,XMLDATA.item.value('@PersonGiftMapID[1]', 'int') AS PersonGiftMapID
+				,XMLDATA.item.value('@Association[1]', 'varchar(20)') AS Association
+				,XMLDATA.item.value('@PersonID[1]', 'int') AS PersonID
+				,XMLDATA.item.value('@PersonName[1]', 'varchar(50)') AS PersonName
+				,XMLDATA.item.value('@LastName[1]', 'varchar(25)') AS LastName
+				,XMLDATA.item.value('@FirstName[1]', 'varchar(20)') AS FirstName
+				,XMLDATA.item.value('@SSN[1]', 'varchar(10)') AS SSN
+				,XMLDATA.item.value('@BirthDate[1]', 'datetime') AS BirthDate
+				,XMLDATA.item.value('@PersonStatus[1]', 'varchar(20)') AS PersonStatus
+				,XMLDATA.item.value('@DeathDate  [1]', 'datetime') AS DeathDate
+			FROM @XMLGiftAdditionData.nodes('//ValuationGiftwrapTransactionCollection/InsertList/ValuationGiftwrapTransaction') AS XMLDATA(Item)
+			) TEMP ON TEMP.OrgAccount1 = valuation.CustomerAccountNumber
+
+		INSERT INTO TBL_PV_ValuationGiftwrapTransaction (
+			ValuationID
+			,MatchKey
+			,MatchStatus
+			,MatchComment
+			,OrgID
+			,OrgAccount1
+			,GiftDate
+			,GiftType
+			,GiftAmount
+			,MarketValue
+			,MarketValueDate
+			,GiftStatus
+			,GiftKey
+			,AccountClosedDate
+			,Distributions
+			,PersonGiftMapID
+			,Association
+			,PersonID
+			,PersonName
+			,LastName
+			,FirstName
+			,SSN
+			,BirthDate
+			,PersonStatus
+			,DeathDate
+			)
+		SELECT valuation.ValuationID
+			,TEMP.MatchKey
+			,TEMP.MatchStatus
+			,TEMP.MatchComment
+			,TEMP.OrgID
+			,TEMP.OrgAccount1
+			,TEMP.GiftDate
+			,TEMP.GiftType
+			,TEMP.GiftAmount
+			,TEMP.MarketValue
+			,TEMP.MarketValueDate
+			,TEMP.GiftStatus
+			,TEMP.GiftKey
+			,TEMP.AccountClosedDate
+			,TEMP.Distributions
+			,TEMP.PersonGiftMapID
+			,TEMP.Association
+			,TEMP.PersonID
+			,TEMP.PersonName
+			,TEMP.LastName
+			,TEMP.FirstName
+			,TEMP.SSN
+			,TEMP.BirthDate
+			,TEMP.PersonStatus
+			,TEMP.DeathDate
+		FROM #TempValuation valuation
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@MatchKey[1]', 'varchar(50)') AS MatchKey
+				,XMLDATA.item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+				,XMLDATA.item.value('@MatchComment[1]', 'varchar(1000)') AS MatchComment
+				,TempXml.OrgID
+				,TempXml.OrgAccount1
+				,TempXml.GiftDate
+				,TempXml.GiftType
+				,TempXml.GiftAmount
+				,TempXml.MarketValue
+				,TempXml.MarketValueDate
+				,TempXml.GiftStatus
+				,TempXml.GiftKey
+				,TempXml.AccountClosedDate
+				,TempXml.Distributions
+				,TempXml.PersonGiftMapID
+				,TempXml.Association
+				,XMLDATA.item.value('@PersonID[1]', 'int') AS PersonID
+				,XMLDATA.item.value('@PersonName[1]', 'varchar(50)') AS PersonName
+				,XMLDATA.item.value('@LastName[1]', 'varchar(25)') AS LastName
+				,XMLDATA.item.value('@FirstName[1]', 'varchar(20)') AS FirstName
+				,XMLDATA.item.value('@SSN[1]', 'varchar(10)') AS SSN
+				,XMLDATA.item.value('@BirthDate[1]', 'datetime') AS BirthDate
+				,XMLDATA.item.value('@PersonStatus[1]', 'varchar(20)') AS PersonStatus
+				,XMLDATA.item.value('@DeathDate  [1]', 'datetime') AS DeathDate
+			FROM @XMLGiftSeveredData.nodes('//GiftwrapSeveredPersonCollection/InsertList/GiftwrapSeveredPerson') AS XMLDATA(item)
+			INNER JOIN (
+				SELECT XMLDATA.item.value('@PersonID[1]', 'int') AS PersonID
+					,XMLDATA.item.value('@GiftKey[1]', 'int') AS GiftKey
+					,XMLDATA.item.value('@OrgID[1]', 'int') AS OrgID
+					,XMLDATA.item.value('@OrgAccount1[1]', 'varchar(14)') AS OrgAccount1
+					,XMLDATA.item.value('@GiftDate[1]', 'datetime') AS GiftDate
+					,XMLDATA.item.value('@GiftType[1]', 'varchar(20)') AS GiftType
+					,XMLDATA.item.value('@GiftAmount[1]', 'decimal(20,4)') AS GiftAmount
+					,XMLDATA.item.value('@MarketValue[1]', 'decimal(20,4)') AS MarketValue
+					,XMLDATA.item.value('@MarketValueDate[1]', 'datetime') AS MarketValueDate
+					,XMLDATA.item.value('@GiftStatus[1]', 'varchar(20)') AS GiftStatus
+					,XMLDATA.item.value('@AccountClosedDate[1]', 'datetime') AS AccountClosedDate
+					,XMLDATA.item.value('@Distributions[1]', 'decimal(20,4)') AS Distributions
+					,XMLDATA.item.value('@PersonGiftMapID[1]', 'int') AS PersonGiftMapID
+					,NULL AS Association --XMLDATA.item.value('@Association[1]', 'varchar(20)') The value has not passed from Application
+				FROM @XMLGiftSeveredData.nodes('//GiftwrapSeveredPersonGiftsCollection/InsertList/GiftwrapSeveredPersonGifts') AS XMLDATA(item)
+				) AS TempXml ON TempXml.PersonID = XMLDATA.item.value('@PersonID', 'int')
+			) TEMP ON TEMP.OrgAccount1 = valuation.CustomerAccountNumber
+
+		INSERT INTO TBL_PV_ValuationTracker (
+			ValuationID
+			,ModifiedDate
+			,ModifiedBy
+			,PreviousStatusID
+			,PreviousStatus
+			,CurrentStatusID
+			,CurrentStatus
+			)
+		SELECT ValuationID
+			,getdate()
+			,@USerID
+			,NULL
+			,NULL
+			,CurrentStatusID
+			,[Status]
+		FROM #TempValuation val
+		INNER JOIN TBL_PV_ValuationStatus valstat ON valstat.StatusID = val.CurrentStatusID
+
+		COMMIT TRANSACTION;
+
+		SET @ReturnStatus = 0;
+		SET @ErrorDesc = '';
+
+		DECLARE @AccountType VARCHAR(20)
+
+		SELECT TOP 1 @AccountType = accounttype
+		FROM #TempValuation
+
+		SELECT val.ValuationID
+			,val.ValuationDate
+			,val.ReconFromDate
+			,val.ReconToDate
+			,val.CustomerAccountNumber
+			,val.AccountType
+			,val.ManagerCode
+			,val.ManageCodeName
+			,val.InitialFMV
+			,val.PendingSeverence
+			,val.PendingGiftAddition
+			,val.EarlyTradedPayments
+			,val.GiftwrapPaymentsAsOfDate
+			,val.InnoTrustPaymentsAsOfDate
+			,val.OtherAdjustment
+			,val.FinalFMV
+			,val.GiftwrapEquityUnit
+			,val.NAV
+			,val.ReconcilliationType
+			,val.Comment
+			,val.CurrentStatusID
+			,val.ReconWithDW
+			,val.GiftWrapCashtracInput
+			,val.GiftWrapMVDARptGenerated
+			,val.RecordVersion
+			,val.HasGiftExclusion
+			,val.GiftExclusionComment
+			,val.ValuationType
+			,val.CreatedDate
+			,val.CreatedBy
+			,val.ModifiedDate
+			,val.ModifiedBy
+			,usr.LoginName AS 'LoginName'
+			,STATUS AS CurrentStatus
+		FROM TBL_PV_Valuation val
+		INNER JOIN TBL_KS_USER usr ON usr.UserID = val.ModifiedBy
+		INNER JOIN TBL_PV_ValuationStatus ON StatusID = val.CurrentStatusID
+		WHERE ValuationDate = @ValuationDate
+			AND AccountType = @AccountType
+		ORDER BY CustomerAccountNumber;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		IF (@@TRANCOUNT > 0)
+		BEGIN
+			ROLLBACK TRANSACTION
+		END
+	END CATCH
+END
+

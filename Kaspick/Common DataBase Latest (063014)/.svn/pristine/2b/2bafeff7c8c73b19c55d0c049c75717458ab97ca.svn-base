@@ -1,0 +1,183 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTDeliverableItem'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetDTDeliverableItem;
+
+	PRINT 'DROPPED USP_RP_GetDTDeliverableItem';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** New SP Name:     USP_RP_GetDTDeliverableItem
+                      
+** Old Name:     USP_EIS_DT_DeliverableItem_SelProc       
+**      
+**               
+** Short Desc: SELECT Deliverable Items from  'TBL_DLV_DeliverableItem' table        
+**                        
+** Full Description: Get Deliverable Items from TBL_DLV_DeliverableItem for Auto Detect Job Scheduler      
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+         
+EXEC USP_RP_GetDTDeliverableItem    
+ @ItemIdXML = null,    
+ @QueueCreationMethodName = 'SUBSCRIPTION',    
+ @DetectionIdentifier = 1    
+     
+EXEC USP_EX_DTDeliverableItemSelProc    
+ @ItemIdXML = '<ActivityConsoleTrackerCollection><SelectList><ActivityConsoleTracker DeliverableItemID="50123" /></SelectList></ActivityConsoleTrackerCollection>',     
+ @QueueCreationMethodName = 'SUBSCRIPTION',    
+ @DetectionIdentifier = 1    
+**    
+** Return values: Return No of record    
+**    
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**    
+** Created By: Ashvin Mandowara    
+** Company   : Kaspick & Company                        
+** Project   : Excelsior  - BeneReport                        
+** Created DT: 21-Oct-11                   
+**    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------                  
+** 10/21/2011   Ashvin  None SP for auto detect job (new feature)     
+    
+** 03/12/2012 Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.    
+** 03/14/2012 Anand Kumar    Changes for COLUMN NAME CHANGES IN TBL_DLV_DeliverableQueue AND TBL_DLV_ItemMethodStatus TABLES.    
+** 04/09/2012 Ashvin   Changes for taking File Detection Status Flow ID from TBL_DLV_DeliverableProcess table.    
+** 04/09/2012 Ashvin   Changes for taking File Detection Status Flow ID or Publish To Web Status Flow ID from TBL_DLV_DeliverableProcess table.    
+** 04/12/2012 Ashvin   Added few more properties.    
+** 04/12/2012 Ashvin   Change for DB Review.    
+** 06/29/2012 Anand Kumar  Updated for QueueCreationEnabled validation    
+** 07/17/2012 Soorya   Added WaitingForNextActionRole    
+** 07/19/2012 Anand    Added RequireFileDetection  
+** 27-May-2014	Geervani	Made changes in the table names to refer new KASPICK DB  
+** 10/06/2014	RAJ			SP Name Renamed  
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_GetDTDeliverableItem] (
+	@ItemIdXML XML = NULL
+	,@QueueCreationMethodName VARCHAR(100)
+	,@DetectionIdentifier INT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --                  
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                  
+	SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+	SET ARITHABORT ON
+
+	DECLARE @QueueStatusCheck BIGINT
+
+	SELECT @QueueStatusCheck = QueueStatusID
+	FROM TBL_DLV_QueueStatus
+	WHERE StatusName = 'Open'
+
+	--DECLARE @QueueCreationEnabled INT    
+	--SELECT @QueueCreationEnabled = LIST_ITEM_ID FROM v_eis_list_items WHERE LIST_TYPE_NAME = 'Logical Value' AND LIST_ITEM_NAME = 'Yes'    
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_STATFLOW]')
+			)
+		DROP TABLE [DBO].[#TEMP_STATFLOW]
+
+	CREATE TABLE #TEMP_STATFLOW (
+		StatusFlowID BIGINT NULL
+		,DeliverableProcessID BIGINT NULL
+		,Start_StatusName CHAR(50) NULL
+		,Start_DeliverableStatusID BIGINT NULL
+		,End_StatusName CHAR(50) NULL
+		,End_DeliverableStatusID BIGINT NULL
+		,WaitingForNextActionRole CHAR(10) NULL
+		,RequireFileDetection BIT NULL
+		)
+
+	INSERT INTO #TEMP_STATFLOW
+	SELECT SF.StatusFlowID
+		,SF.DeliverableProcessID
+		,DPS1.StatusName AS Start_StatusName
+		,SF.Start_DeliverableStatusID
+		,DPS2.StatusName AS End_StatusName
+		,SF.End_DeliverableStatusID
+		,SF.DeliverableDefinedRole
+		,SF.RequireFileDetection
+	FROM TBL_DLV_StatusFlow SF
+	LEFT JOIN TBL_DLV_DeliverableProcessStatus DPS1 ON DPS1.DeliverableItemStatusID = SF.Start_DeliverableStatusID
+	LEFT JOIN TBL_DLV_DeliverableProcessStatus DPS2 ON DPS2.DeliverableItemStatusID = SF.End_DeliverableStatusID
+	WHERE SF.DeliverableDefinedRole IS NOT NULL
+		AND DPS1.StatusName NOT IN (
+			'Error'
+			,'Cancelled'
+			,'Web Published'
+			)
+		AND DPS2.StatusName NOT IN (
+			'Error'
+			,'Cancelled'
+			) --'Not Approved','Not Approved 2'    
+
+	SELECT DI.DeliverableItemID AS DeliverableItemID
+		,DI.DeliverableQueueID AS DeliverableQueueID
+		,DI.FolderName AS ItemFolderName
+		,DI.FILENAME AS ItemFileName
+		,DIS.DeliverableItemStatusID AS FromItemStatus
+		,SF.End_DeliverableStatusID AS ToItemStatus
+		,DP.MissingFileErrorStatusID AS ErrorItemStatus
+		,TMP.WaitingForNextActionRole
+		,SF.RequireFileDetection
+		,DI.IsReportInaPackage
+	FROM TBL_DLV_DeliverableItem DI
+	INNER JOIN TBL_DLV_DeliverableQueue DQ ON DI.DeliverableQueueID = DQ.DeliverableQueueID
+	-- Changed  DeliverableTypeID to DeliverableID in TBL_DLV_DeliverableQueue table    
+	INNER JOIN TBL_DLV_Deliverable DD ON DD.DeliverableID = DQ.DeliverableID -- AND DD.QueueCreationEnabled = @QueueCreationEnabled     
+	INNER JOIN TBL_DLV_DeliverableProcess DP ON DP.DeliverableProcessID = DD.DeliverableProcessID
+	-- Changed  ItemStatus IN TBL_DLV_DeliverableItem to DeliverableItemStatusID in TBL_DLV_ItemMethodStatus table    
+	INNER JOIN TBL_DLV_ItemMethodStatus DIS ON DIS.DeliverableItemID = DI.DeliverableItemID
+	INNER JOIN TBL_DLV_StatusFlow SF ON SF.DeliverableProcessID = DP.DeliverableProcessID
+		AND SF.Start_DeliverableStatusID = DIS.DeliverableItemStatusID
+	INNER JOIN TBL_ListItem EISLI ON EISLI.ListItemID = DP.QueueCreationMethodID
+	LEFT JOIN #TEMP_STATFLOW TMP ON TMP.Start_DeliverableStatusID = SF.End_DeliverableStatusID
+	WHERE DQ.QueueStatusID = @QueueStatusCheck
+		AND EISLI.ListItemName = @QueueCreationMethodName
+		AND SF.StatusFlowID = CASE @DetectionIdentifier
+			WHEN 1
+				THEN DP.FileDetectionStatusFlowID
+			WHEN 2
+				THEN DP.PublishToWebStatusFlowID
+			END
+		AND (
+			@ItemIdXML IS NULL
+			OR DI.DeliverableItemID IN (
+				SELECT XMLDoc.item.value('@DeliverableItemID', 'BIGINT') AS DeliverableItemID
+				FROM @ItemIdXML.nodes('//ActivityConsoleTrackerCollection/SelectList/ActivityConsoleTracker') AS XMLDoc(item)
+				)
+			)
+	ORDER BY DI.DeliverableItemID
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTDeliverableItem'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetDTDeliverableItem';
+END

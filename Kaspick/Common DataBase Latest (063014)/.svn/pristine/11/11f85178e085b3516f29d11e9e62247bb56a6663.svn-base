@@ -1,0 +1,89 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_EX_UpdWftAcctAction')
+BEGIN
+    DROP PROCEDURE USP_EX_UpdWftAcctAction;
+    PRINT 'DROPPED USP_EX_UpdWftAcctAction';
+END
+GO
+/******************************************************************************    
+** Name:     USP_EX_UpdWftAcctAction  
+**
+** Old Name:     [USP_EX_UpdWftAcctAction]    USP_EX_UpdWftAcctAction
+** Short Desc:     
+**    
+** Full Description    
+**            
+**    
+** Sample Call    
+ [USP_EX_UpdWftAcctAction] 'A8219637-6A9B-45E7-A368-EE1E288349A1',1773,30081  
+**    
+** Return values:     
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Karunakaran    
+** Company   : Kaspick & Company    
+** Project   : Excelsior WFT    
+** Created DT: 16-April-2010    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------  
+** 29-May-2014	Geervani	Made changes in the table names to refer new KASPICK DB    
+**     
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/    
+    
+CREATE PROCEDURE [dbo].[USP_EX_UpdWftAcctAction]    
+(    
+ @Guid varchar(255),  
+ @AcctAction int,  
+ @UserId int,  
+ @ActionOnDistribution int,  
+ @ActionOnLiquidateAssets int  
+)      
+AS     
+BEGIN  
+	UPDATE TBL_WFT_TrustTermination
+	SET   
+	action_on_account = @AcctAction,   
+	action_on_distribution = @ActionOnDistribution,  
+	action_on_liquidate_assets = @ActionOnLiquidateAssets,  
+	action_on_account_modified_by = @UserId,   
+	action_on_account_modified_date = GETDATE()   
+	WHERE GUID = @Guid  
+  
+	UPDATE TBL_WFT_Request SET 
+	is_authorized =     
+	CASE     
+		WHEN LI.ListItemName = 'Account Closure' AND RTRIM(LTRIM(WftTrstTer.ta_authorization_level)) = 'TA Level 1' THEN 1    
+		WHEN LI.ListItemName = 'Shift of Interest' AND RTRIM(LTRIM(distLI.ListItemName)) = 'Yes' AND RTRIM(LTRIM(WftTrstTer.ta_authorization_level)) = 'TA Level 1' THEN 1    
+		WHEN LI.ListItemName = 'Shift of Interest' AND RTRIM(LTRIM(distLI.ListItemName)) = 'No' AND RTRIM(LTRIM(WftTrstTer.ta_authorization_level)) IN ('TA Level 1','TA Level 2') THEN 1    
+		ELSE 0    
+		END    
+	FROM     
+	TBL_WFT_TrustTermination WftTrstTer     
+	LEFT OUTER JOIN TBL_ListItem LI ON WftTrstTer.action_on_account = LI.ListItemID    
+	LEFT OUTER JOIN TBL_ListItem distLI ON WftTrstTer.action_on_distribution = distLI.ListItemID    
+	INNER JOIN TBL_WFT_Request WFTR ON WFTR.guid = WftTrstTer.guid    
+	WHERE WftTrstTer.guid = @Guid    
+
+END  
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_UpdWftAcctAction')
+    BEGIN
+        PRINT 'CREATED USP_EX_UpdWftAcctAction';
+    END

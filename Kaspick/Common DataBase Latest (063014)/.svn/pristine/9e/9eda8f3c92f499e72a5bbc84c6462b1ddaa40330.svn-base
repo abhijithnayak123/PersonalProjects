@@ -1,0 +1,102 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewAddressChangeDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftNewAddressChangeDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftNewAddressChangeDetail';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftNewAddressChangeDetail
+
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate new Address Change details
+**
+** Sample Call
+	[USP_EX_GetWftNewAddressChangeDetail] '64820DCD-5126-4248-AB9E-0FA49C7AB403'
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Sanath
+**	Company	  :	Opteamix
+**	Project	  :	Tag
+**	Created DT:	12-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftNewAddressChangeDetail]
+	(@Guid VARCHAR(255))
+AS
+ DECLARE @accounts_array VARCHAR(max)
+DECLARE @participant_id INT
+
+SELECT @accounts_array = AffectedCustomerAccountNumber
+	,@participant_id = DonoBeneAddr.ContactID
+FROM TBL_TAG_DBAddressChange AddChg
+INNER JOIN TBL_TAG_DonorBeneContactAddress DonoBeneAddr ON 
+		AddChg.DBAddressChangeID=DonoBeneAddr.DBAddressChangeID
+WHERE GUID = @GUID
+
+SELECT [notificationdate] AS NotificationDate
+	,[SubmittedUsername] AS submitted_by
+	,[imauthorizationlevel] AS im_authorization_level
+	,[taauthorizationlevel] AS ta_authorization_level
+	,[ProxyUsername] AS pxy_username
+	,ConMstr.ContactName AS client_full_name
+	,[donorbenename] AS donor_bene_name
+	,[donorbenessn] AS donor_bene_ssn_ein
+    ,[AffectedCustomerAccountNumber] 
+	,[comments]
+	, DonContAddr.[State] AS legal_state
+	 ,DonContAddr.[CountryCode] AS legal_country
+	,[TrustAdministratorName] AS trust_admin
+	,[ClientManagerName] AS client_manager
+	,AddrChng.[ContactID] AS participant_id
+FROM TBL_TAG_DBAddressChange AddrChng
+INNER JOIN TBL_TAG_DonorBeneContactAddress DonContAddr ON AddrChng.DBAddressChangeID=DonContAddr.DBAddressChangeID
+INNER JOIN SYN_IT_ContactMaster ConMstr ON AddrChng.ManagerCode=ConMstr.Managercode
+WHERE GUID = @GUID
+
+SELECT AccMstr.CustomerAccountNumber
+	,'[' + AccMstr.CustomerAccountNumber + '] ' + AccMstr.CustomerDescriptionLine1 AS AccountsDetail
+FROM FN_SplitString(@accounts_array, '^') A
+INNER JOIN SYN_IT_AccountMaster AccMstr ON CHARINDEX(ltrim(rtrim(AccMstr.CustomerAccountNumber)), A.items )> 0
+
+SELECT VwTrstPrtcpnt.CustomerAccountNumber
+	,'[' + VwTrstPrtcpnt.CustomerAccountNumber + '] ' + VwTrstPrtcpnt.ACCOUNT_FULLNAME AS AccountsDetail
+FROM VW_EX_TRUSTPARTICIPANTTYPE VwTrstPrtcpnt
+INNER JOIN dbo.FN_SplitString(@accounts_array, '^') A ON CHARINDEX(ltrim(rtrim(VwTrstPrtcpnt.CustomerAccountNumber)), A.items )> 0
+WHERE VwTrstPrtcpnt.ParticipantID = @participant_id
+	AND A.items IS NULL
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewAddressChangeDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftNewAddressChangeDetail';
+END

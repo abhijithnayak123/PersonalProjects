@@ -1,0 +1,112 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineWireBeneficiaryAuthorized]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineWirePaymentCleared]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineWirePaymentCleared]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineWirePaymentCleared]    Script Date: 09/03/2014 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineWirePaymentCleared                      
+** Short Desc: To get Wire cleared details
+**                      
+** Full Description: To get Wire cleared details 
+**        
+**                              
+** Input Arguments: 
+		@UserID INT,
+		@Type Bit =1--auto 
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineWirePaymentCleared     1   ,1
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Anand   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Sept-14                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+
+
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineWirePaymentCleared] @UserID INT
+	,@Type BIT = 1 --auto     
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	---Declare Variable
+	DECLARE @RuleID INT
+	DECLARE @CurrentDate DATETIME
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Wire not cleared'
+		AND RuleCategory = 'Beneficiary payment'
+
+	SELECT @CurrentDate = CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+
+	-- Body of procedure  --            
+	---Selecting wire Beneficiary Authorised data for payment type Beneficiarypayment & PGCalcImport
+	IF @Type = 1
+	BEGIN
+		SELECT 'Beneficiarypayment' AS PaymentType
+			,BenPay.BPScheduleID AS ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestCleared' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireSubmitted, NULL)), 'none') AS ActualValue
+		FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON BenPay.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(BenPay.PaymentDate, '') <> ''
+			AND BenPmnt.PaymentMethod = 'WIRE'
+			AND @CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), DATEADD(DAY, 2, BenPay.PaymentDate), 101))
+			AND BenPmnt.ClearDate IS NULL
+		
+		UNION ALL
+		
+		SELECT 'PGCalcImport' AS PaymentType
+			,pgcalc.MergedPGCalcPaymentID AS ScheduleID
+			,@RuleID AS RuleID
+			,'WireRequestCleared' AS Attribute
+			,ISNULL(CONVERT(VARCHAR(20), ISNULL(BenPmnt.WireAuthorizedDate, NULL)), 'none') AS ActualValue
+		FROM dbo.TBL_PP_PGCalcPaymentDataMerged pgcalc
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON pgcalc.PaymentID = BenPmnt.PaymentID
+		WHERE ISNULL(pgcalc.PaymentDate, '') <> ''
+			AND BenPmnt.PaymentMethod = 'WIRE'
+			AND @CurrentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), DATEADD(DAY, 2, pgcalc.PaymentDate), 101))
+			AND BenPmnt.ClearDate IS NULL
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

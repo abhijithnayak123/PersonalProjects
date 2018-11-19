@@ -1,0 +1,209 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetBeneficiarySeveranceFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetBeneficiarySeveranceFromGiftwrap]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetBeneficiarySeveranceFromGiftwrap]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetBeneficiarySeveranceFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetBeneficiarySeveranceFromGiftwrap
+** Short Desc: Procedure for importing/updating beneficiary severances for the specified period and account type
+** Full Description: Procedure for importing/updating beneficiary severances for the specified period and account type
+** Input Arguments:   	@endDate DATETIME, @valuationId INT, @customerAccountNumber VARCHAR(20), @accountType VARCHAR(20)
+** Sample Call     
+        
+Declare @endDate DATETIME
+Declare @valuationId INT
+Declare @customerAccountNumber VARCHAR(20)
+Declare @accountType VARCHAR(20)   
+
+Set @endDate = '1992-02-22'
+Set @valuationId = 1280
+Set @customerAccountNumber = 'ACGAP'
+Set @accountType = 'Gap'
+
+Exec USP_SIT_ImportNewGiftFromGiftwrap @endDate, @valuationId, @customerAccountNumber, @accountType
+
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : PEVA - Sub Accounting Module
+** Created DT: 18-Aug-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetBeneficiarySeveranceFromGiftwrap] (
+	@endDate DATETIME
+	,@valuationId INT
+	,@customerAccountNumber VARCHAR(20)
+	,@accountType VARCHAR(20)
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @startDate DATETIME
+	DECLARE @ClientID INT
+
+	SELECT @ClientID = clientid
+	FROM SYN_GW_TBLCLIENT
+	WHERE ClientName = 'Kaspick'
+
+	DECLARE @Temp TABLE (
+		auditID INT
+		,ModDate DATETIME
+		,PrimaryKey INT
+		)
+
+	INSERT INTO @Temp
+	SELECT au.auditID
+		,au.ModDate
+		,au.PrimaryKey
+	FROM SYN_GW_tblaudit au
+	CROSS APPLY AuditData.nodes('//InsertedVal/row') AS AOC(Cust)
+	WHERE au.tablename = 'tblGift'
+		AND Operation NOT IN ('D')
+		AND isnull(AOC.Cust.value('@CreditThroughDate[1]', 'DateTime'), '') <> ''
+		AND au.PrimaryKey IN (
+			SELECT GiftKey
+			FROM SYN_GW_TBLGIFT gf
+			INNER JOIN SYN_GW_TBLORGANIZATION org ON gf.OrgID = org.OrgID
+			WHERE orgAccount1 = @customerAccountNumber
+			)
+
+	--set @endDate = DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,@endDate),0))    
+	SET @startDate = CAST((STR(YEAR(@endDate)) + '/' + STR(MONTH(@endDate)) + '/1') AS DATETIME)
+
+	BEGIN
+		WITH giftdata (
+			VALUATION_ID
+			,ORGNAME
+			,MKTVALUE
+			,MVDATE
+			,GIFT_PK
+			,ORGNICK
+			,DISTRIBAMT
+			,ACCTCLOSED
+			)
+		AS (
+			SELECT DISTINCT @valuationId
+				,ltrim(rtrim(org.orgname))
+				,gf.MarketValue
+				,gf.MarketValueDate
+				,gf.giftKey
+				,rtrim(ltrim(org.OrgNickname))
+				,gf.DistributionAmount
+				,gf.ACCOUNTCLOSEDDATE
+			FROM SYN_GW_TBLGIFT gf
+			INNER JOIN SYN_GW_TBLORGANIZATION org ON gf.OrgID = org.OrgID
+			INNER JOIN TBL_PV_VALUATION pv ON org.OrgAccount1 = pv.CustomerAccountNumber
+			LEFT OUTER JOIN SYN_GW_TBLAUDIT au ON gf.GiftKey = au.PrimaryKey
+				AND au.tablename = 'tblGift'
+				AND au.AuditID IN (
+					SELECT auditID
+					FROM @Temp
+					WHERE au.PrimaryKey = PrimaryKey
+						AND au.ModDate = (
+							SELECT max(ModDate)
+							FROM @Temp
+							WHERE au.PrimaryKey = PrimaryKey
+							)
+					)
+				AND gf.ClientID = @ClientID
+			WHERE pv.valuationid = @valuationId
+				AND CustomerAccountNumber = @customerAccountNumber
+				AND pv.AccountType = @accountType
+				AND (
+					gf.ACCOUNTCLOSEDDATE BETWEEN @startDate
+						AND @endDate
+					OR au.moddate BETWEEN @startDate
+						AND @endDate
+					)
+			)
+		UPDATE TBL_SIT_Severance
+		SET ValuationID = giftdata.VALUATION_ID
+			,OrgName = giftdata.ORGNAME
+			,MarketValue = giftdata.MKTVALUE
+			,MarketValueDate = giftdata.MVDATE
+			,GiftID = giftdata.GIFT_PK
+			,OrgNick = giftdata.ORGNICK
+			,DistributedAmount = giftdata.DISTRIBAMT
+			,AccountClosedDate = giftdata.ACCTCLOSED
+		FROM giftdata
+		WHERE giftdata.gift_pk = TBL_SIT_Severance.GiftID
+			AND giftdata.VALUATION_ID = TBL_SIT_Severance.valuationid
+	END
+
+	INSERT INTO TBL_SIT_Severance (
+		ValuationID
+		,OrgName
+		,MarketValue
+		,MarketValueDate
+		,GiftID
+		,OrgNick
+		,DistributedAmount
+		,AccountClosedDate
+		)
+	SELECT @valuationId
+		,ltrim(rtrim(org.orgname))
+		,gf.MarketValue
+		,gf.MarketValueDate
+		,gf.giftKey
+		,ltrim(rtrim(org.OrgNickname))
+		,gf.DistributionAmount
+		,gf.ACCOUNTCLOSEDDATE
+	FROM SYN_GW_TBLGIFT gf
+	INNER JOIN SYN_GW_TBLORGANIZATION org ON gf.OrgID = org.OrgID
+	INNER JOIN TBL_PV_VALUATION pv ON org.OrgAccount1 = pv.CustomerAccountNumber
+	LEFT OUTER JOIN SYN_GW_TBLAUDIT au ON gf.GiftKey = au.PrimaryKey
+		AND au.tablename = 'tblGift'
+		AND au.AuditID IN (
+			SELECT auditID
+			FROM @Temp
+			WHERE au.PrimaryKey = PrimaryKey
+				AND au.ModDate = (
+					SELECT max(ModDate)
+					FROM @Temp
+					WHERE au.PrimaryKey = PrimaryKey
+					)
+			)
+		AND gf.ClientID = @ClientID
+	WHERE pv.valuationid = @valuationId
+		AND CustomerAccountNumber = @customerAccountNumber
+		AND pv.AccountType = @accountType
+		AND (
+			gf.ACCOUNTCLOSEDDATE BETWEEN @startDate
+				AND @endDate
+			OR au.moddate BETWEEN @startDate
+				AND @endDate
+			)
+		AND gf.giftKey NOT IN (
+			SELECT GiftID
+			FROM TBL_SIT_Severance
+			);
+END
+

@@ -1,0 +1,110 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradingDetail;
+
+	PRINT 'DROPPED USP_EX_GetTradingDetail';
+END
+GO
+
+/******************************************************************************    
+** Name : USP_EX_GetTradingDetail
+** Old Name:     USP_EIS_EX_TRADING_DTLSelProc    
+** Short Desc: To retrieve records from table AlertEvent.     
+**    
+EXEC USP_EX_GetTradingDetail      
+@alertid = 1    
+**    
+**    
+**     
+** Created By: Sandesh M M    
+** Company   : Kaspick & Company    
+** Project   : Excelsior-IM Profile    
+** Created DT: 23-03-07    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+* 12-jul-07    Sandesh             Concurrency Check     
+* 20-Mar-14    Sanath				INVREQ 3.1  Modified
+* 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************    
+** Copyright (C) <2007,,2006> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradingDetail] (@alertid INT)
+AS
+BEGIN
+	---Checking Record is deleted or not..  
+	DECLARE @STATUSFLAG BIT
+
+	EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_BR_AlertEvent'
+		,@FIELD_NAME = 'AlertID'
+		,@FIELD_VALUE = @alertid
+		,@STATUS = @STATUSFLAG OUTPUT
+
+	IF (@STATUSFLAG = 1)
+	BEGIN
+		RAISERROR 50002 'RECORD DELETED'
+
+		RETURN
+	END
+
+	--  Variable Declarations  --    
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling -     
+	DECLARE @val1 VARCHAR(Max);
+
+	--  Variable Data Assignment  --    
+	SET @procname = 'USP_EX_GetTradingDetail';
+
+	BEGIN TRY
+		SELECT BrAlrtEvnt.DefinedBy
+			,KsUsr.LoginName
+			,BrAlrtEvnt.DefinitionDate
+			,AccPrfile.CustomerAccountNumber
+			,BrAlrtEvnt.AlertStatus
+			,BrAlrtEvnt.ALERTCATEGORY_ID
+			,BrAlrtEvnt.AlertCause
+			,BrAlrtEvnt.AlertDate
+			,BrAlrtEvnt.AssignedTo
+			,BrAlrtEvnt.CompletionDate
+			,BrAlrtEvnt.CompletedBy
+			,BrAlrtEvnt.AlertComment
+		FROM TBL_BR_AlertEvent BrAlrtEvnt
+		INNER JOIN TBL_INV_AccountProfile AccPrfile ON AccPrfile.CustomerAccountNumber = BrAlrtEvnt.CustomerAccountNumber
+		LEFT JOIN TBL_KS_User KsUsr ON KsUsr.UserID = BrAlrtEvnt.DefinedBy
+		WHERE BrAlrtEvnt.AlertID = @alertid
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = @ALERTID;
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'Alert ID';
+	END CATCH;
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingDetail'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetTradingDetail';
+END

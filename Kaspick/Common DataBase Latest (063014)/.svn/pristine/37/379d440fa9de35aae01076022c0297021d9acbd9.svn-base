@@ -1,0 +1,71 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestFlowStatusList'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftRequestFlowStatusList;
+
+	PRINT 'DROPPED USP_EX_GetWftRequestFlowStatusList';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftRequestFlowStatusList
+** Old Name:  [sp_wft_get_request_flow_status_list]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate the flow status drop down list in the list page.
+**
+** Sample Call
+	[sp_wft_get_request_flow_status_list]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Abhishek Chadha
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	11/16/2009
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 20-Mar-2014  Abhijith EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftRequestFlowStatusList]
+	-- paremeters here  
+AS
+BEGIN
+	-- Body of procedure  --  
+	SELECT flow_status_id
+		,flow_status_name
+		,flow_status_abbrev
+	FROM TBL_WFT_FlowStatus
+	ORDER BY flow_status_abbrev
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftRequestFlowStatusList'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftRequestFlowStatusList';
+END

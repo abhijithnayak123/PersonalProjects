@@ -1,0 +1,280 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveTrading'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveTrading;
+
+	PRINT 'DROPPED USP_EX_SaveTrading';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************            
+** Name : USP_EX_SaveTrading
+** Old Name:     USP_EIS_EX_TRADING_UpdProc          
+** Short Desc: Update Insert Stored Procedures.             
+**            
+** Full Description            
+** SP Used to Insert, Update the data to TBL_BR_AlertEvent         
+** Sample Call              
+ DECLARE @return_value int,          
+   @retval int          
+          
+ EXEC @return_value = [dbo].[USP_EX_SaveTrading]          
+   @opertype = N'U',          
+   @alertid = 111,          
+   @adventid = N'1TG',          
+   @alertstatus = N'Pending',          
+   @alertstatusid = 30,          
+   @alertcategoryid = 540,          
+   @alertcause = N'320',          
+   @alertcauseid = 250,          
+   @alertdate = N'04/04/2007',          
+   @assignedto = 38,          
+   @completedby = 38,          
+   @completiondate = N'04/04/2007',          
+   @alertcomment = N'User Comment',          
+   @createduserid = N'38',          
+   @createddate = N'04/04/2007',          
+   @modifieduserid = N'38',          
+   @modifieddate = N'04/04/2007',          
+   @retval = @retval OUTPUT          
+           
+**            
+** Return values: @RETVAL            
+**            
+**            
+** Standard declarations              
+**       SET NOCOUNT             ON              
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds              
+**             
+** Created By: Sandesh M M            
+** Company   : Kaspick & Company            
+** Project   : Excelsior-IM Profile            
+** Created DT: 23-03-07            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+** 04/03/2014   Sanath     Updating Trading task page for req INVREQ3.1
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted          
+*******************************************************************************            
+** Copyright (C) <2007,,2006> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION         
+
+Declare  @retval        as int
+EXEC USP_EX_SaveTrading 'U',133182,'ACMIL','Completed',987,1963,'Cash Needs',
+	1965,'9/4/2007',100124,NULL,'6/1/2007','COMMENT112',100124,'6/1/2007',100023,'4/22/2014', @retval output 
+		
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveTrading] (
+	@opertype AS CHAR(1)
+	,@alertid AS INT
+	,@adventid AS VARCHAR(25)
+	,@alertstatus AS VARCHAR(30)
+	,@alertstatusid AS INT
+	,@alertcategoryid AS INT
+	,@alertcause AS VARCHAR(50)
+	,@alertcauseid AS INT
+	,@alertdate AS DATETIME
+	,@assignedto AS INT
+	,@completedby AS INT = NULL
+	,@completiondate AS DATETIME
+	,@alertcomment AS VARCHAR(254)
+	,@createduserid AS VARCHAR(100)
+	,@createddate AS DATETIME
+	,@modifieduserid AS VARCHAR(100)
+	,@modifieddate AS DATETIME
+	,@retval AS INT OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling -           
+	DECLARE @val1 VARCHAR(Max);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --          
+	SET @procname = 'USP_EX_SaveTrading';
+
+	DECLARE @accountid CHAR(14)
+
+	SELECT @accountid = @adventid
+
+	DECLARE @alert_status VARCHAR(30);
+
+	EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @alertstatusid
+		,@IVAN_VALUE = @alert_status OUTPUT
+
+	--AlertCause DBValue  
+	DECLARE @alert_cause VARCHAR(50);
+
+	EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @alertcauseid
+		,@IVAN_VALUE = @alert_cause OUTPUT
+
+	--1          
+	IF EXISTS (
+			SELECT A.CustomerAccountNumber
+			FROM TBL_INV_AccountProfile A
+			WHERE A.CustomerAccountNumber = @accountid
+			)
+	BEGIN
+		IF (@opertype = 'I') --Insert          
+		BEGIN
+			BEGIN TRY
+				BEGIN TRANSACTION
+
+				DECLARE @return_alertid AS INT
+
+				SELECT @return_alertid = max(AlertID) + 1
+				FROM TBL_BR_AlertEvent
+
+				INSERT INTO TBL_BR_AlertEvent (
+					AlertID
+					,DefinedBy
+					,DefinitionDate
+					,CustomerAccountNumber
+					,AlertStatus
+					,AlertCause
+					,AlertDate
+					,AssignedTo
+					,CompletionDate
+					,CompletedBy
+					,AlertComment
+					,Alertcategory_ID
+					,CREATED_USER_ID
+					,Created_Date
+					,Modified_User_ID
+					,Modified_Date
+					)
+				VALUES (
+					@Return_AlertID
+					,@createduserid
+					,@createddate
+					,@accountid
+					,@alert_status
+					,@alert_cause
+					,@alertdate
+					,@assignedto
+					,@completiondate
+					,@completedby
+					,@alertcomment
+					,@alertcategoryid
+					,@createduserid
+					,@createddate
+					,@modifieduserid
+					,@modifieddate
+					)
+
+				SET @retval = @return_alertid
+
+				COMMIT TRANSACTION
+			END TRY
+
+			BEGIN CATCH
+				ROLLBACK TRANSACTION;
+
+				SET @ErrorMessage = ERROR_MESSAGE();
+				SET @ErrorNumber = ERROR_NUMBER();
+				SET @val1 = Cast(@ACCOUNTID AS VARCHAR(Max));
+				SET @val2 = @OPERTYPE;
+
+				EXEC USP_EX_SYSErrorHandler @codename = @procname
+					,@ErrorMessage = @ErrorMessage
+					,@ErrorNumber = @ErrorNumber
+					,@val1 = @val1
+					,@val1str = 'Account ID'
+					,@val2 = @val2
+					,@val2str = 'Insertion';
+			END CATCH;
+
+			RETURN 1
+		END -- End insert          
+
+		IF (@opertype = 'U') --update          
+		BEGIN
+			---Checking Record is deleted  
+			DECLARE @STATUSFLAG BIT
+
+			EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_BR_AlertEvent'
+				,@FIELD_NAME = 'AlertID'
+				,@FIELD_VALUE = @alertid
+				,@STATUS = @STATUSFLAG OUTPUT
+
+			IF (@STATUSFLAG = 1)
+			BEGIN
+				RAISERROR 50001 'RECORD DELETED'
+
+				RETURN
+			END
+
+			BEGIN TRY
+				BEGIN TRANSACTION
+
+				UPDATE TBL_BR_AlertEvent
+				SET CustomerAccountNumber = @accountid
+					,AlertCategory_ID = @alertcategoryid
+					,AlertStatus = @alert_status
+					,AlertCause = @alert_cause
+					,AlertDate = @alertdate
+					,AssignedTo = @assignedto
+					,CompletionDate = @completiondate
+					,CompletedBy = @completedby
+					,Modified_Date = getDate()
+					,Modified_User_Id = @modifieduserid
+					,AlertComment = Rtrim(Ltrim(@alertcomment))
+				WHERE AlertID = @alertid
+
+				SET @retval = @alertid
+
+				COMMIT TRANSACTION
+			END TRY
+
+			BEGIN CATCH
+				ROLLBACK TRANSACTION
+
+				SET @ErrorMessage = ERROR_MESSAGE();
+				SET @ErrorNumber = ERROR_NUMBER();
+				SET @val1 = Cast(@accountid AS VARCHAR(Max));
+				SET @val2 = @opertype;
+
+				EXEC USP_EX_SYSErrorHandler @codename = @procname
+					,@ErrorMessage = @ErrorMessage
+					,@ErrorNumber = @ErrorNumber
+					,@val1 = @val1
+					,@val1str = 'Alert Id '
+					,@val2 = @val2
+					,@val2str = 'Updation';
+			END CATCH;
+
+			RETURN 1
+		END --End update          
+	END
+	ELSE
+	BEGIN
+		SET @retval = - 1
+
+		RETURN - 1
+	END
+END --1   
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveTrading'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveTrading';
+END

@@ -1,0 +1,54 @@
+/****** Object:  StoredProcedure [dbo].[sp_dsNextWeekday]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_dsNextWeekday]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_dsNextWeekday]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_dsNextWeekday]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_dsNextWeekday                      
+** Short Desc: Date calculation utility proc
+**                      
+** Full Description: Date calculation utility proc. Resets date to the next weekday which falls on or after @seed_date  
+**                              
+** Input Arguments:   
+**         
+** Sample Call  
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+** 
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_dsNextWeekday @seed_date DATETIME
+OUTPUT AS
+
+WHILE (
+		DATEPART(weekday, @seed_date) IN (
+			1
+			,7
+			)
+		)
+	SELECT @seed_date = DATEADD(day, 1, @seed_date)

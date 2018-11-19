@@ -1,0 +1,234 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftPifGapParticipantDataAssetValutionDetail')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetWftPifGapParticipantDataAssetValutionDetail;
+        PRINT 'DROPPED USP_EX_GetWftPifGapParticipantDataAssetValutionDetail';
+    END
+GO
+
+/******************************************************************************
+**Name :   USP_EX_GetWftPifGapParticipantDataAssetValutionDetail
+** Old SP Name: [sp_wft_pif_gap_participant_data_asset_valution_detail]
+** 
+
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate Addition to Trust detail
+**
+** Sample Call
+	[sp_wft_pif_gap_participant_data_asset_valution_detail] 
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Vshivhare
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior WFT
+**	Created DT:	12-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 30/05/2014	Mallikarjun		SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+						
+CREATE PROCEDURE [dbo].[USP_EX_GetWftPifGapParticipantDataAssetValutionDetail]
+(
+	@Guid varchar(255)
+)	 
+AS 
+SELECT
+Pif_Gap_Contact_Data_Asset_Valution_ID AS pif_gap_participant_data_asset_valution_id
+,form_id
+,guid
+,revision_date
+,notification_date
+,submitted_by
+,is_revised_submission
+,LoginManagerCodeID  AS login_clientid
+,ManagerCodeName AS client_name
+,PGPDAV.CustomerAccountNumber AS account_id
+,PGPDAV.CustomerAccountNumber AS advent_id
+,account_name
+,account_type
+,PGPDAV.comments
+,asset_delivery_arrival
+,expected_asset_arrival_date
+,gift_date
+,asset_type4
+,asset_type3
+,asset_type2
+,asset_type1
+,ticker_symbol4
+,ticker_symbol3
+,ticker_symbol2
+,ticker_symbol1
+,price_source4
+,price_source3
+,price_source2
+,price_source1
+,number_of_share4
+,number_of_share3
+,number_of_share2
+,number_of_share1
+,high_price4
+,high_price3
+,high_price2
+,high_price1
+,donors_date_of_acquisition4
+,donors_date_of_acquisition3
+,donors_date_of_acquisition2
+,donors_date_of_acquisition1
+,low_price4
+,low_price3
+,low_price2
+,low_price1
+,long_term_holding4
+,long_term_holding3
+,long_term_holding2
+,long_term_holding1
+,average_price4
+,average_price3
+,average_price2
+,average_price1
+,donors_cost_basis4
+,donors_cost_basis3
+,donors_cost_basis2
+,donors_cost_basis1
+,chkbx_zero_cost_1
+,chkbx_zero_cost_2
+,chkbx_zero_cost_3
+,chkbx_zero_cost_4
+,asset_value4
+,asset_value3	
+,asset_value2
+,asset_value1
+,delivery_method4
+,delivery_method3
+,delivery_method2
+,delivery_method1
+,asset_description4
+,asset_description3
+,asset_description2
+,asset_description1
+,value_of_additional_gifted_assets
+,total_gift_value
+,total_cost_basis
+,irs_discount_rate
+,charitable_deduction_amount
+,gift_purpose
+,gift_restriction
+,contract_number
+,assets_owned_by
+,asset_joint_owned_by
+,annuity_percent
+,annuity_amount
+,date_of_first_payment
+,payment_frequency
+,prorated_first_payment_amount
+,regular_payment_amount
+,bene1_salutation
+,bene1_male_female
+,bene1_first_name
+,bene1_middle_initial
+,bene1_last_name
+,bene1_address3
+,bene1_address2
+,bene1_address1
+,bene1_city
+,bene1_state
+,bene1_zip
+,bene1_country
+,bene1_ssn
+,bene1_birthdate
+,bene1_relationship_to_gift
+,bene2_salutation
+,bene2_male_female
+,bene2_first_name
+,bene2_middle_initial
+,bene2_last_name
+,bene2_address3
+,bene2_address2
+,bene2_address1
+,bene2_city
+,bene2_state
+,bene2_zip
+,bene2_country
+,bene2_ssn
+,bene2_birthdate
+,bene2_relationship_to_gift
+,bene2_relationship_to_bene1
+,donor_first_name
+,donor_last_name
+,use_same_payment_method
+,auth_for_direct_deposit1
+,pay_to_the_order_of1
+,bank1_name
+,bank1_account_number
+,bank1_phone_number
+,bank1_address1
+,bank1_address2
+,bank1_city
+,bank1_state
+,bank1_zip
+,auth_for_direct_deposit2
+,pay_to_the_order_of2
+,bank2_name
+,bank2_account_number
+,bank2_phone_number
+,bank2_address2
+,bank2_address1
+,bank2_city
+,bank2_state
+,bank2_zip
+,if_married_payments_will_be
+,if_jointly_ssn
+,from_month
+,to_month
+,completed_by
+,modified
+,modified_by
+,org_userid
+,org_username
+,org_useremail
+,pxy_userid
+,pxy_username
+,pxy_useremail
+,client_manager
+,trust_administrator
+,ta_authorization_level
+,im_authorization_level
+,team_folder_name
+,this_is_for
+,AccMas.ExternalCustomerID as account_number
+
+
+FROM [TBL_WFT_PifGapcontactDataAssetValution] PGPDAV
+	inner join SYN_IT_AccountMaster AccMas on AccMas.CustomerAccountNumber = PGPDAV.CustomerAccountNumber
+
+	WHERE Guid = @Guid
+	
+
+	
+	
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetWftPifGapParticipantDataAssetValutionDetail') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetWftPifGapParticipantDataAssetValutionDetail';
+	END

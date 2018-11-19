@@ -1,0 +1,67 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_FASB_GetListItem'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_FASB_GetListItem;
+
+	PRINT 'DROPPED USP_RP_FASB_GetListItem';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************            
+** Name	      : [USP_RP_FASB_GetListItem]
+** Old Name   : [USP_EIS_RPT_FASB_ListItem_SelProc]            
+** Short Desc : Gets the list items for  FASB dropdowns  
+**            
+** Full Description            
+**                
+**            
+** Return values: NONE            
+**     
+** Sample Call  
+**      
+** EXEC [USP_RP_FASB_GetListItem] 'Calculation Method'           
+**             
+** Created By : Ganapati      
+** Company  :  Kaspick & Company            
+** Project  :  FASB            
+** Created DT :  Sep/18/2012            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:			Author:  Bug #		Description:                           Rvwd            
+** ------------		-------- ------		-------------------------------------- --------            
+** Sep/18/2012		Ganapati			Created    
+** 07/29/2014		Srikanth R			Changes for FASB BOI
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_RP_FASB_GetListItem]
+	@LIST_TYPE_NAME VARCHAR(100)
+AS
+BEGIN
+	SELECT
+		LI.ListItemID AS 'LIST_ITEM_ID', LI.ListItemName AS 'LIST_ITEM_NAME'
+	FROM
+		TBL_ListItem LI
+	INNER JOIN
+		TBL_ListType LT
+	ON
+		LT.ListTypeID = LI.ListTypeID
+	WHERE
+		LT.ListTypeName = @LIST_TYPE_NAME
+	ORDER BY
+		LI.ListItemID
+END
+GO
+--EXEC USP_RP_FASB_GetListItem 'Mortality Table'

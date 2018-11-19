@@ -1,0 +1,64 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_GetMappingFieldValue'
+		)
+BEGIN
+	DROP FUNCTION Fn_GetMappingFieldValue
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_GetMappingFieldValue                      
+** Short Desc: 
+**                      
+** Full Description: Get Mapping Value from TBL_EIS_SIT_FieldValueMatrix table for a given FieldValue and FieldName
+** Input Arguments: FieldValue and FieldName
+**         
+** Sample Call     
+Select dbo.Fn_GetMappingFieldValue('TBL_EIS_SIT_Gifts_Associations.ORIGINAL_GIFT_UNITS', 'gift.units')
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 18-Aug-2014
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[Fn_GetMappingFieldValue] (
+	-- Add the parameters for the function here  
+	@fieldvalue VARCHAR(250)
+	,@fieldname VARCHAR(250)
+	)
+RETURNS VARCHAR(250)
+AS
+BEGIN
+	-- Declare the return variable here  
+	DECLARE @mappingvalue VARCHAR(250)
+
+	-- Add the T-SQL statements to compute the return value here  
+	SELECT @mappingvalue = mappingvalue
+	FROM TBL_SIT_FieldValueMatrix
+	WHERE FieldName = @fieldname
+		AND FieldValue = @fieldvalue
+
+	-- Return the result of the function  
+	RETURN @mappingvalue
+END

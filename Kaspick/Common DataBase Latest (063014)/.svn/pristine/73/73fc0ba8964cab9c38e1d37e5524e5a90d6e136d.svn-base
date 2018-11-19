@@ -1,0 +1,89 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetObjectiveCode]    Script Date: 09/12/2013 11:46:42 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetObjectiveCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetObjectiveCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetObjectiveCode]    Script Date: 12/06/2013 11:46:42 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                            
+** Name:     USP_PP_GetObjectiveCode                            
+** Short Desc: Retrieves ObjectiveCode for the specified accounts      
+**                            
+** Full Description:   Retrieves ObjectiveCode for the specified accounts     
+**                                    
+** Input Arguments:           
+**               
+** Sample Call           
+**            
+ DECLARE @XMLdata XML;    
+		 set @XMLdata = '<AccountCollection>
+         <Account CustomerAccountNumber="ACADW" AccountStatus="ACTIVE"  />
+         </AccountCollection>'              
+ EXEC USP_PP_GetObjectiveCode   @XMLdata          
+           
+           
+**                   
+** Return values: Null          
+**                            
+**                            
+** Standard declarations                            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                            
+**                             
+** Created By: Mohamed Salih              
+** Company   : Kaspick & Company              
+** Project   : BOI - Paragon 
+** Created DT: 16-JAN-14                       
+**                                        
+*******************************************************************************                      
+**       Change History                            
+*******************************************************************************                      
+** Date:        Author:  Bug #     Description:                           Rvwd                      
+** --------  -------- ------    -------------------------------------- --------                      
+** 
+*******************************************************************************                            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetObjectiveCode]
+	-- paremeters here                
+	@XmlInput XML
+AS
+BEGIN
+	--  Initial Set statements  --                
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                             
+
+	--  Temp tables, Cursors, Table Variables  --                
+	DECLARE @TempData TABLE (
+		CustomerAccountNumber CHAR(14)
+		,AccountStatus VARCHAR(20)
+		);
+
+	-- Body of procedure  --                
+	INSERT INTO @TempData
+	SELECT XMLdoc.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLdoc.Item.value('@AccountStatus[1]', 'VARCHAR(20)') AS AccountStatus
+	FROM @XmlInput.nodes('//AccountCollection/Account') AS XMLdoc(Item)
+
+	SELECT DISTINCT AccProf.CustomerAccountNumber
+		,ObjectiveCode
+	FROM TBL_INV_AccountProfile AccProf
+	INNER JOIN @TempData XMLInput
+		ON XMLInput.CustomerAccountNumber = AccProf.CustomerAccountNumber
+			AND XmlInput.AccountStatus = 'ACTIVE'
+			AND ObjectiveCode IS NOT NULL
+END
+	-- End of procedure  --

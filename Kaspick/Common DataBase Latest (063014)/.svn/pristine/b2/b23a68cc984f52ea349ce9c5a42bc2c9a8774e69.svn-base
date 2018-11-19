@@ -1,0 +1,23 @@
+SET NOCOUNT ON
+DECLARE @ApplicationID INT
+
+SELECT @ApplicationID = ApplicationID
+FROM TBL_KS_Application
+WHERE ApplicationName = 'Payments'
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM TBL_KS_ApplicationInnoTrustKey
+		WHERE [ApplicationID] = @ApplicationID
+			AND [Key] = 'GiftedPropertyFMVTrans'
+		)
+	INSERT INTO TBL_KS_ApplicationInnoTrustKey (
+		[ApplicationID]
+		,[Key]
+		,[Value]
+		)
+	VALUES (
+		@ApplicationID
+		,'GiftedPropertyFMVTrans'
+		,'^(DFP)$'
+		)

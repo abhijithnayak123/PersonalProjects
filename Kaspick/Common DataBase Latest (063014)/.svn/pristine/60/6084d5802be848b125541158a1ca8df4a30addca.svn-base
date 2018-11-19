@@ -1,0 +1,85 @@
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Deassign]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_Deliverable_Deassign]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_Deliverable_Deassign]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Deassign]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_Deliverable_Deassign                      
+** Short Desc: De-Associates a DeliverableSet with a Client  
+**                      
+** Full Description: De-Associates a DeliverableSet with a Client  
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_Deliverable_Deassign (
+	@setID INT
+	,@clientID INT
+	)
+AS
+DECLARE @deliverableID INT
+	,@detailID INT
+
+/* Lookup DeliverableSet */
+SELECT @deliverableID = ds.DeliverableID
+	,@detailID = dd.DeliverableDetailID
+FROM DeliverableDetail dd
+	,DeliverableSet ds
+WHERE dd.DeliverableSetID = ds.DeliverableSetID
+	AND dd.DeliverableSetID = @setID
+	AND dd.ClientID = @clientID
+
+IF (@detailID IS NOT NULL)
+BEGIN
+	/* IF any DeliverableHorizon Rows have an ActualDate, then close instead of delete */
+	IF EXISTS (
+			SELECT HorizonID
+			FROM DeliverableHorizon
+			WHERE DeliverableDetailID = @detailID
+				AND ActualDate IS NOT NULL
+			)
+		UPDATE DeliverableDetail
+		SET IsClosed = 1
+		WHERE DeliverableDetailID = @detailID
+			/* If no DeliverableHorizon rows hav ActualDate, then physically delete */
+	ELSE
+		DELETE DeliverableDetail
+		WHERE DeliverableDetailID = @detailID
+
+	/* Update Horizon */
+	EXEC sp_Deliverable_Schedule @DetailID = @detailID
+
+	/* Update folder/file names */
+	EXEC sp_Deliverable_Filename @deliverableID
+END

@@ -1,0 +1,63 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_GetGiftWrapClients'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_GetGiftWrapClients;
+
+	PRINT 'DROPPED USP_BR_FASB_GetGiftWrapClients';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/**********************************************************************************************                    
+** Name:     [USP_BR_FASB_GetGiftWrapClients]
+** Old Name: [USP_EIS_RPT_FASB_GIFTWRAP_CLIENTS_SELPROC]
+** Short Desc: To retrieve the Giftwrap clients for FASB Export  
+**                    
+** Full Description: To retrieve the giftwrap clients for FASB Export.   
+   
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  EXEC [USP_BR_FASB_GetGiftWrapClients]     
+**           
+** Return values: NONE  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Ganapati  
+** Company   : Kaspick & Company                    
+** Project   : FASB                    
+** Created DT: 22/08/2012                    
+**                                
+**********************************************************************************************              
+**       Change History                    
+**********************************************************************************************              
+** Date:		Author:   Bug #		Description:                        Rvwd              
+** --------		-------- ------		---------------------------------	--------              
+** 08/22/2012   Ganapati			Created   
+** 07/29/2014	Srikanth R			Changes for BOI
+*********************************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*********************************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_BR_FASB_GetGiftWrapClients]
+AS
+BEGIN
+	SELECT
+		ClientID
+		,ClientName
+		,ClientNickName
+	FROM
+		SYN_GW_TBLClient
+END
+

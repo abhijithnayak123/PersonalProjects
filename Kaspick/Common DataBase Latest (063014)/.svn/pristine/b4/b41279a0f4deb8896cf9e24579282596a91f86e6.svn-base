@@ -1,0 +1,79 @@
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Calendar]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_Deliverable_Calendar]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_Deliverable_Calendar]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Calendar]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_Deliverable_Calendar                      
+** Short Desc: Finds all rows in DeliverableSchedule table that are associated with a specific CalendarParameterID,
+** and calls the sp_Deliverable_Schedule stored proc  to update the DeliverableHorizon table                    
+** Full Description: Finds all rows in DeliverableSchedule table that are associated with a specific CalendarParameterID,
+** and calls the sp_Deliverable_Schedule stored proc  to update the DeliverableHorizon table                           
+** Input Arguments:   
+**         
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_Deliverable_Calendar @CalendarID INT
+	,@MinDate DATETIME = NULL
+AS
+DECLARE @DetID INT
+
+/* Find DeliverableDetails for this CalendarParameter */
+DECLARE detail_cursor INSENSITIVE CURSOR
+FOR
+SELECT DeliverableDetailID
+FROM DeliverableDetail
+WHERE CalendarParameterID = @CalendarID
+	AND IsClosed = 0
+
+OPEN detail_cursor
+
+FETCH NEXT
+FROM detail_cursor
+INTO @DetID
+
+/* Update all schedules */
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	EXEC sp_Deliverable_Schedule @DetailID = @DetID
+		,@MinDate = @MinDate
+
+	FETCH NEXT
+	FROM detail_cursor
+	INTO @DetID
+END
+
+/* Cleanup */
+CLOSE detail_cursor
+
+DEALLOCATE detail_cursor

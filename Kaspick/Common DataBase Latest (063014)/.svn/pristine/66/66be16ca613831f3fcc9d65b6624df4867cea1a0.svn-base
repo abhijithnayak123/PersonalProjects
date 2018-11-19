@@ -1,0 +1,75 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserRole]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetUserRole]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetUserRole]
+GO
+
+/******************************************************************************  
+** Name:     USP_KS_GetUserRole  
+** Short Desc: Put in Short Description  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+        EXEC USP_KS_GetUserRole 'rspivey'  -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Niveditha Narasimha
+** Company   : Kaspick & Company  
+** Project   : Kasper  
+** Created DT: 09-Jul-2013
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** <mm/dd/yyyy>  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE USP_KS_GetUserRole
+	-- paremeters here  
+	@LoginName VARCHAR(50)
+AS
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+DECLARE @UserID INT
+
+SELECT @UserID = UserID
+FROM TBL_KS_USER
+WHERE LoginName = @LoginName
+
+-- Question on unique loginname ?
+-- Body of procedure  --  
+SELECT DISTINCT ROLE.RoleID
+	,RoleName
+FROM TBL_KS_Role ROLE
+INNER JOIN TBL_KS_UserRole UserRole ON ROLE.RoleID = UserRole.RoleID
+	AND UserID = @UserID
+	
+
+
+--(
+--SELECT TOP 1 UserID
+--FROM TBL_KS_USER
+--WHERE LoginName = @LoginName
+--)
+SET NOCOUNT OFF;
+	-- End of procedure  --  

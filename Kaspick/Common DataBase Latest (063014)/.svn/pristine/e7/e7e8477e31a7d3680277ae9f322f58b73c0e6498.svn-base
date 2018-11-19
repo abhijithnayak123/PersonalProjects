@@ -1,0 +1,102 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAutoPopulateDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftAffectedAccounts;
+
+	PRINT 'DROPPED USP_EX_GetWftAutoPopulateDetail';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetWftAutoPopulateDetail
+** Old Name: NA
+** Short Desc:	
+** Full Description
+**        This stored proc is used to get Auto Populate Check details
+**
+** Sample Call
+	[USP_EX_GetWftAutoPopulateDetail]--'A8BBBA5C-D6DA-4A4F-8062-4443FF8CBBEF' 
+	
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: NageswaraRao 
+**	Company	  :	Opteamix
+**	Project	  :	Excelsior TAG
+**	Created DT:	25-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+** 
+*******************************************************************************/
+CREATE PROCEDURE [dbo].USP_EX_GetWftAutoPopulateDetail  ----'A8BBBA5C-D6DA-4A4F-8062-4443FF8CBBEF' 
+	(
+	-- paremeters here      
+	@Guid VARCHAR(255)
+	,@Iscountry_Address4Exists INT OUTPUT
+	)
+AS
+--  Variable Data Assignment  --      
+SET @Iscountry_Address4Exists = 0;
+
+
+-- Body of procedure  -- 
+BEGIN TRY
+
+	SELECT @Iscountry_Address4Exists = ISNULL(Auto_Populate_Excelsior,0)
+		 from TBL_WFT_Request
+		WHERE GUID=@Guid
+
+END TRY
+
+	BEGIN CATCH
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_GetWftAutoPopulateDetail';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage,
+				-- Message text.
+				@ErrorSeverity,
+				-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAutoPopulateDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftAutoPopulateDetail';
+END

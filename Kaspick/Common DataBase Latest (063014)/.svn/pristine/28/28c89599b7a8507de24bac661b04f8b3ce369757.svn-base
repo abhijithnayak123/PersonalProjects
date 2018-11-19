@@ -1,0 +1,62 @@
+--This script is to populate the ReportListDetail and ReportListAttribute Table.
+SET NOCOUNT ON
+
+delete from tbl_kco_reportlistdetail
+delete from TBL_KCo_ReportListAttribute
+
+insert into TBL_KCo_ReportListDetail (ReportID, Category, ApplicationID, Name, Description, SPName, IsActive, ReportDisplaySeq, CreatedDate)
+values
+
+(2,'Payments',            	6,	'Unposted Bene Payments by Last Name',	'Unposted Benficiary Payments by Last Name',	'USP_KCo_UnPostedBenePayments',	1,	20,	'19:45.5'),
+(5,'Payments',            	6,	'Excelsior Payment Conditions',	'Excelsior Payment Conditions',	'USP_KCo_PaymentCondition',	1,	50,	'19:45.5'),
+(6,'Payments',            	6,	'Beneficiary Payments Posted with Errors and Warnings',	'Beneficiary Payments Posted with Errors and Warnings',	'USP_KCo_PostedPaymentsWithErrorsWarnings',	1,	60,'19:45.5'),
+(8,'Payments',            	6,	'Posted Vendor Payments', 	'Posted Vendor Payments' ,	'USP_KCo_PostedVendorPayment',	1,	90,	'19:45.5'),
+(11,	'Payments',            	6,	'Net Income Account Estimate vs UT', 	'Net Income Account Estimate vs Unit Trust', 	'USP_KCo_NetIncomeAccountEstimateVsUT',	1,	120,	'19:45.5'),
+(13,'Excelsior',           	1,	'TAG Requests',	'TAG Requests',	'USP_KCo_TAGRequest',	1,	135,	'19:45.5'),
+(14,	'Excelsior',           	1,	'TAG Requests Audit',	'TAG Requests Audit',	'USP_KCo_TAGRequestAudit',	1,	140,	'19:45.5'),
+(18,	'Excelsior',           	1,	'Donor Beneficiary Address',	'Donor Beneficiary Address','USP_KCo_DonorBeneAddress',	1,	170,	'19:45.5'),
+(24,	'Payments',            	6,	'Beneficiary/Vendor ID Search with Payment Method',	'List of Beneficiary/Vendor',	'USP_KCo_BeneVendorList',	1,	200,	'19:45.5'),
+(25,	'Payments',            	6,	'Account Information',	'Account Information',	'USP_KCo_TrustAccountInformation',	1,	210,	'19:45.5'),
+(26,	'Payments',            	6,	'Donor/Beneficiary Information',	'Donor/Beneficiary Information',	'USP_KCo_DonorBeneficiaryInformation',	1,	220,	'19:45.5'),
+(27,	'Payments',            	6,	'Trust Valuation Information',	'Trust Valuation Information',	'USP_KCo_TrustValuationInformation',	1,	230,	'19:45.5'),
+(28,	'Payments',            	6,	'Gifts and Additions',	'Gifts and Additions',	'USP_KCo_NewGiftAdditionsTrustPIFCGA',	1,	240,	'19:45.5'),
+(29,	'Payments',            	6,	'Terminations and Severances',	'Terminations and Severances',	'USP_KCo_TerminationsAndSeverances',	1,	250,	'19:45.5')
+
+
+insert into TBL_KCo_ReportListAttribute (AttributeID, ReportID, Attribute, Description, Control, DataType, FixedValue)
+values
+
+(4,	2,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(5,	2,	'@PaymentDateFrom',	'Payment Date From',	'Date',	'Date',	NULL),
+(6,	2,	'@PaymentDateTo',	'Payment Date To',	'Date',	'Date',	NULL),
+(9,	5,	'@EntityType',	'Entity Type',	'Dropdown',	'String',	'Client, Account, Beneficiary'),
+(10,	6,	'@PaymentDateFrom',	'Payment Date From',	'Date',	'Date',	NULL),
+(11,	6,	'@PaymentDateTo',	'Payment Date To',	'Date',	'Date',	NULL),
+(13,	8,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(14,	8,	'@PaymentDateFrom',	'Payment Date From',	'Date',	'Date',	NULL),
+(15,	8,	'@PaymentDateTo',	'Payment Date To',	'Date',	'Date',	NULL),
+(19,	11,	'@PayoutYear',	'Payout Year',	'Text',	'Number',	NULL),
+(20,	13,	'@SubmittedDateFrom',	'Submitted Date From',	'Date',	'Date',	NULL),
+(21,	13,	'@SubmittedDateTo',	'Submitted Date To',	'Date',	'Date',	NULL),
+(22,	14,	'@AuditDateFrom',	'Audit Date From',	'Date',	'Date',	NULL),
+(23,	14,	'@AuditDateTo',	'Audit Date To',	'Date',	'Date',	NULL),
+(27,    18,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(28,	18,	'@IncludeDeceasedContacts',	'Include Deceased Participants',	'Dropdown',	'String',	'Yes, No'),
+(42,	24,	'@PaymentType',	'Payment Type',	'Dropdown',	'String',	'Beneficiary Payment, Vendor Payment'),
+(43,	24,	'@XMLBeneVendorList',	'ID',	'Text',	'String',	NULL),
+(44,	25,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(45,	26,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(46,	26,	'@IncludeDeceasedContacts',	'Include Deceased Participants',	'Dropdown',	'String',	'Yes, No'),
+(47,	27,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(48,	27,	'@PayoutYear',	'Payout Year',	'Text',	'Number',	NULL),
+(49,	25,	'@IncludeInactiveAccounts',	'Include Inactive Accounts',	'Dropdown',	'String',	'Yes,No'),
+(50,	28,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(51,	28,	'@GiftDateFrom',	'Gift Date From',	'Date',	'Date',	NULL),
+(52,	28,	'@GiftDateTo',	'Gift Date To',	'Date',	'Date',	NULL),
+(53,	28,	'@OrderByInvObjective',	'Order by Investment Objective',	'Dropdown',	'String',	'Yes,No'),
+(54,	29,	'@ManagerCode',	'Client Brief Name',	'Dropdown',	'String',	NULL),
+(55,	29,	'@TerminationDateFrom',	'Termination Date From',	'Date',	'Date',	NULL),
+(56,	29,	'@TerminationDateTo',	'Termination Date To',	'Date',	'Date',	NULL),
+(57,	29,	'@OrderByInvObjective',	'Order by Investment Objective',	'Dropdown',	'String',	'Yes,No')
+
+

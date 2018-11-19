@@ -1,0 +1,294 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTCoverpage'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetBRDTCoverpage;
+
+	PRINT 'DROPPED USP_RP_GetBRDTCoverpage';
+END
+GO
+
+/******************************************************************************                      
+** Name  :		USP_RP_GetBRDTCoverpage 
+** Old NAME:     USP_EIS_BR_DT_COVERPAGE_SELPROC                    
+** SHORT DESC: TO FETCH DATA FOR ACTIVITY CONSOLE      
+**                      
+** FULL DESCRIPTION: TO FETCH DATA FOR ACTIVITY CONSOLE           
+**                              
+** INPUT ARGUMENTS:     
+**         
+** SAMPLE CALL:    
+    USP_RP_GetBRDTCoverpage @ACCOUNTID= '105029,104530,',@PARTICIPANTID='101711,120495,', @DELIVERABLEITEMID='18267,18375,'  
+    USP_RP_GetBRDTCoverpage 100982,21255,101383    
+         
+** RETURN VALUES: NULL    
+**                      
+**                      
+** STANDARD DECLARATIONS                      
+**       SET LOCK_TIMEOUT         30000   -- 30 SECONDS                      
+**                       
+** CREATED BY:   
+** COMPANY   : KASPICK & COMPANY                      
+** PROJECT   : EXCELSIOR  - BENEREPORT                      
+** CREATED DT:                
+**                                  
+*******************************************************************************                
+**       CHANGE HISTORY                      
+*******************************************************************************                
+** DATE:        AUTHOR:  BUG #     DESCRIPTION:                           RVWD                
+** --------  -------- ------    -------------------------------------- --------                
+** 21/06/2011  Chaithra  ET# 13222 Added Advent ID,Participant ID  
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation. 
+** 01-Sep-2014 Gaurav Nahar kaspick Naming Convention 
+*******************************************************************************                      
+** COPYRIGHT (C) <COPYRIGHTYEAR,,YEAR> KASPICK & COMPANY, ALL RIGHTS RESERVED                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].USP_RP_GetBRDTCoverpage  
+(    
+ @ACCOUNTID VARCHAR(MAX) = '',    
+ @DELIVERABLEITEMID VARCHAR(MAX) = '',  
+ @PARTICIPANTID VARCHAR(MAX) = ''    
+)    
+AS    
+BEGIN    
+    
+		DECLARE @mon_val INT  
+		SET @mon_val = month(getdate())  
+		  
+		DECLARE @date_val int  
+		SET @date_val = day(getdate())  
+	  
+  
+	IF OBJECT_ID('#TRUSTPARTICIPANTDTLS') IS NOT NULL    
+	DROP TABLE #TRUSTPARTICIPANTDTLS   
+	CREATE TABLE #TRUSTPARTICIPANTDTLS  
+	(  
+		LOGOPATH VARCHAR(MAX),  
+		PNAME VARCHAR(MAX),  
+		ADDRESS1 VARCHAR(MAX),  
+		ADDRESS2 VARCHAR(MAX),  
+		ADDRESS3 VARCHAR(MAX),  
+		CITY VARCHAR(100),  
+		STATE  VARCHAR(100),  
+		ZIPCODE  VARCHAR(10),  
+		COUNTRY  VARCHAR(100),  
+		PARTICIPANTID INT,  
+		LINKID INT,  
+		ADDRESSTYPE VARCHAR(10),  
+		ADVENTID VARCHAR(MAX)  
+	)     
+	  
+	INSERT INTO #TRUSTPARTICIPANTDTLS(LOGOPATH, PNAME, PARTICIPANTID,ADVENTID)  
+	  
+	SELECT  DISTINCT   
+		TEXTVALUE AS LOGOPATH,    
+	  
+	LTRIM(RTRIM(CASE WHEN ISNULL(LTRIM(RTRIM(VP.SALUTATION)),'')='' OR VP.SALUTATION = 'NONE'  OR VP.SALUTATION = 'Drs.'   
+	 OR VP.SALUTATION = 'Friends' THEN '' ELSE LTRIM(RTRIM(VP.SALUTATION))  END  
+	+ CASE WHEN(ISNULL(LTRIM(RTRIM(VP.FIRSTNAME)),'')='')THEN '' ELSE (' '+LTRIM(RTRIM(VP.FIRSTNAME))) END  
+	+ CASE WHEN(ISNULL(LTRIM(RTRIM(VP.MIDDLEINITIALS)),'')='')THEN '' ELSE( ' ' +  LTRIM(RTRIM(VP.MIDDLEINITIALS)))END  
+	+ CASE WHEN(ISNULL(LTRIM(RTRIM(VP.LASTNAME)),'')='')THEN '' ELSE( ' ' +  LTRIM(RTRIM(VP.LASTNAME)))END))  
+	  
+	/*  
+	--Edited the first and last name sequence. 8/16/2011 Suresh  
+	CASE WHEN ISNULL(LTRIM(RTRIM(VP.SALUTATION)),'''')='''' OR VP.SALUTATION = 'NONE'  OR VP.SALUTATION = 'Drs.'   
+	 OR VP.SALUTATION = 'Friends' THEN '' ELSE LTRIM(RTRIM(VP.SALUTATION))+ ' '  END  
+	+  
+	RTRIM((CASE WHEN(ISNULL(LTRIM(RTRIM(VP.FIRSTNAME)),'''')='''')THEN ' ' ELSE (VP.FIRSTNAME)END))    
+	+ ' ' +    
+	ISNULL(VP.MIDDLEINITIALS,'')  
+	+ ' ' + RTRIM((CASE WHEN(ISNULL(LTRIM(RTRIM(VP.LASTNAME)),'''')='''')THEN ' ' ELSE(VP.LASTNAME)END))   
+	*/  
+	AS 
+		PARTICIPANTNAME,   
+		--AL.LINKID,  
+		VP.PARTICIPANTID,  
+		VAC.ADVENTID   
+	FROM 
+			TBL_DLV_DeliverableItem DI   
+	INNER JOIN 
+			VW_EX_Account VAC on DI.CustomerAccountNumber = VAC.AccountID   
+	INNER JOIN 
+			dbo.VW_EX_TrustParticipantType VP ON VP.PARTICIPANTID = DI.DonorBeneContactID    
+	--INNER JOIN ADDRESSLINKAGE AL ON AL.LINKID = VP.PARTICIPANTID    
+	LEFT OUTER JOIN 
+			TBL_PolicyItem PIT ON PIT.OwnerID = DI.CustomerAccountNumber AND pit.PolicyLevel=300     
+	AND 
+			PolicyDimensionID IN (SELECT POLICYDIMENSIONID FROM TBL_PolicyDimension WHERE FULLNAME = 'LABEL LOGO')    
+	WHERE 
+	--	AL.LINKID IN (SELECT SPLITSTRING  FROM FN_SplitString(',',@PARTICIPANTID))    
+	--AND 
+	--	LINKTYPE = 6      
+
+			DI.DELIVERABLEITEMID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@DELIVERABLEITEMID))    
+	AND 
+			DI.CustomerAccountNumber IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@ACCOUNTID))      
+	         
+	UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='MAILING'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6    
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid   
+	and @mon_val between FromDate and ToDate   
+	and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = ToDate    then  
+	 ToDate else 31  end   
+	AND A.ADDRESSTYPE = 'MAILING' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	where FromDate<=ToDate  
+	  
+	  
+	UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='MAILING'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6    
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid   
+	and (@mon_val >= FromDate or @mon_val<= ToDate )   
+	and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = TODate    then  
+	 TODate else 31  end   
+	AND A.ADDRESSTYPE = 'MAILING' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	where FromDate>TODate  
+	  
+	  
+	UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='PAYMENT'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6   
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid  
+	and @mon_val between FromDate and Todate   
+	 and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = ToDate    then  
+	 ToDate else 31  end   
+	AND A.ADDRESSTYPE = 'PAYMENT' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	AND VP.ADDRESSTYPE IS NULL  
+	AND NOT ( (isnull(FromDate,1) = 1 or FromDate = 0) and (isnull(Todate,12) = 12 or ToDate = 0)  and  
+	 (isnull(FromDate,1) = 1 or FromDate = 0) and (isnull(ToDate,31) = 31 or ToDate = 0) )  
+	 where FromDate<=ToDate  
+	   
+	   
+	 UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='PAYMENT'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6   
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid  
+	and (@mon_val >= FromDate or @mon_val<= ToDate
+	 and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = ToDate    then  
+	 ToDate else 31  end   
+	AND A.ADDRESSTYPE = 'PAYMENT' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	AND VP.ADDRESSTYPE IS NULL  
+	AND NOT ( (isnull(FromDate,1) = 1 or FromDate = 0) and (isnull(ToDate,12) = 12 or ToDate = 0)  and  
+	 (isnull(FromDate,1) = 1 or FromDate = 0) and (isnull(ToDate,31) = 31 or ToDate = 0) )  )
+	 where FromDate>ToDate  
+	   
+	  
+	UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='LEGAL'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6     
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid  
+	and @mon_val between FromDate and ToDate   
+	 and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = ToDate    then  
+	 ToDate else 31  end   
+	AND A.ADDRESSTYPE = 'LEGAL' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	AND VP.ADDRESSTYPE IS NULL  
+	where FromDate<=ToDate  
+	  
+	  
+	UPDATE #TRUSTPARTICIPANTDTLS SET ADDRESS1 = A.ADDRESS1, ADDRESS2 = A.ADDRESS2, ADDRESS3 = A.ADDRESS3, ADDRESSTYPE='LEGAL'  
+	,STATE = A.STATE, CITY = A.CITY, ZIPCODE = A.ZIPCODE, COUNTRY = A.COUNTRYCODE  
+	FROM #TRUSTPARTICIPANTDTLS VP     
+	INNER JOIN dbo.SYN_IT_ContactMaster AL ON AL.ContactID = VP.PARTICIPANTID    
+	INNER JOIN dbo.SYN_IT_ContactAddresses A ON A.ContactID=AL.ContactID 
+	--AND LINKTYPE = 6     
+	--inner join tbl_eis_ex_address_supplement eas on a.addressid = eas.addressid   
+	and (@mon_val >= FromDate or @mon_val<= ToDate )   
+	 and   
+	@date_val between   
+	case when @mon_val = FromDate    then  FromDate else 1   
+	 end    
+	 and   
+	   case when @mon_val = ToDate    then  
+	 ToDate else 31  end   
+	AND A.ADDRESSTYPE = 'LEGAL' AND VP.PARTICIPANTID IN (SELECT SPLITSTRING  FROM fn_SPLITSTRINGFORCHAR(',',@PARTICIPANTID))  
+	AND VP.ADDRESSTYPE IS NULL  
+	where FromDate>ToDate  
+
+	SELECT  
+	LOGOPATH,  
+	PNAME AS PARTICIPANTNAME,  
+	  
+	LTRIM(RTRIM(CASE WHEN(LTRIM(RTRIM(ISNULL(ADDRESS1,'')))='')THEN '' ELSE (LTRIM(RTRIM(ADDRESS1)) + CHAR(13) + CHAR(10))  END)) +  
+	LTRIM(RTRIM(CASE WHEN(LTRIM(RTRIM(ISNULL(ADDRESS2,'')))='')THEN '' ELSE (LTRIM(RTRIM(ADDRESS2)) + CHAR(13) + CHAR(10))  END)) +  
+	LTRIM(RTRIM(CASE WHEN(LTRIM(RTRIM(ISNULL(ADDRESS3,'')))='')THEN '' ELSE (LTRIM(RTRIM(ADDRESS3)))  END))  
+	AS ADDRESS,    
+	/*  
+	LTRIM(RTRIM(  
+	(CASE WHEN (ISNULL(LTRIM(RTRIM(ADDRESS1)),'')='')THEN '' ELSE LTRIM(RTRIM(ADDRESS1)) END)  
+	+ '\n' +    
+	(CASE WHEN (ISNULL(LTRIM(RTRIM(ADDRESS2)),'')='')THEN '' ELSE ' '+LTRIM(RTRIM(ADDRESS2)) END)  
+	+ '\n' +    
+	(CASE WHEN (ISNULL(LTRIM(RTRIM(ADDRESS3)),'')='')THEN '' ELSE ' '+LTRIM(RTRIM(ADDRESS3)) END)  
+	)) AS ADDRESS,  
+	*/  
+	  
+	LTRIM(RTRIM(ISNULL(CITY,''))) AS CITY,  
+	LTRIM(RTRIM(  
+	  LTRIM(RTRIM(ISNULL(STATE,'')))+   
+	  CASE WHEN (LTRIM(RTRIM(ISNULL(ZIPCODE,'')))='') THEN '' ELSE ' ' + LTRIM(RTRIM(ZIPCODE)) END   
+	)) AS STATEZIP,  
+	RTRIM((CASE WHEN(ISNULL(LTRIM(RTRIM(COUNTRY)),'USA')='USA')THEN '' ELSE LTRIM(RTRIM(COUNTRY)) END)) AS COUNTRY,  
+	PARTICIPANTID,  
+	ADVENTID  
+	FROM #TRUSTPARTICIPANTDTLS    
+	   
+	END
+	GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTCoverpage'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetBRDTCoverpage';
+END
+GO	
+     

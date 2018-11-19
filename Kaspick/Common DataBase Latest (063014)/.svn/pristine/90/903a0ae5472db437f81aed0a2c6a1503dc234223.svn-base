@@ -1,0 +1,139 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportBeneficiaryACH]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportBeneficiaryACH]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportBeneficiaryACH]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportBeneficiaryACH]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportBeneficiaryACH                      
+** Short Desc: Procedure to get Beneficiary ACH report  
+**                      
+** Full Description: Procedure to get Beneficiary ACH report 
+**      
+**                              
+** Input Arguments: @ManagerCode VARCHAR(4)
+	,@MaskFlag BIT 
+	,@ExcludeMatured BIT 
+	,@ExcludePIF BIT 
+	,@ExcludeGAP BIT             
+** Sample Call     
+EXEC USP_PP_ReportBeneficiaryACH 'SM',null,1,0,0
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 26-Mar-2014
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+** 15-jul-14   Niveditha		   Re-written due to join changes for contactpayment method and beneficiary distributions.
+** 14-Aug-14   Saravanan		Updated the MaskFlag condition for Java Team
+** 02-Sep-14   Saravanan		UPdated the Account Name column - added space between Line 1,2,3,4
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportBeneficiaryACH]
+	-- paremeters here       
+	@ManagerCode VARCHAR(4) = NULL
+	,@MaskFlag BIT = NULL
+	,@ExcludeMatured BIT = NULL
+	,@ExcludePIF BIT = NULL
+	,@ExcludeGAP BIT = NULL
+AS
+BEGIN
+	--  Initial Set statements  --            
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+	SELECT AccMstr.CustomerAccountNumber AS AdventID
+		--,LTRIM(RTRIM(ISNULL(CustomerDescriptionLine1, '') + '' + ISNULL(CustomerDescriptionLine2, '') + '' + ISNULL(CustomerDescriptionLine3, '') + '' + ISNULL(CustomerDescriptionLine4, ''))) AS AccountName
+		,RTRIM(CASE 
+				WHEN ISNULL(CustomerDescriptionLine1, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine1) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine2, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine2) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine3, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine3) + ' '
+				END + ISNULL(CustomerDescriptionLine4, '')) AS AccountName
+		,ContMstr.ContactName AS PaymentName
+		,ABAVerif.BankName AS BankName
+		,ABAVerif.ABANumber AS ABANumber
+		,CASE 
+			WHEN @MaskFlag IS NOT NULL AND @MaskFlag = 1
+				THEN replicate('X', len(ContPayMeth.CreditAcctNumber) - 4) + convert(NVARCHAR, RIGHT(ContPayMeth.CreditAcctNumber, 4))
+			ELSE convert(NVARCHAR, ContPayMeth.CreditAcctNumber)
+			END DepositoryAccount
+		,ContPayMeth.AccountType AS BankAccountType
+	FROM SYN_IT_BeneficiaryDistributions BeneDist
+	INNER JOIN SYN_IT_RemittanceInstructions Remit
+		ON Remit.InstructionID = BeneDist.InstructionID
+	INNER JOIN SYN_IT_AccountMaster AccMstr
+		ON AccMstr.CustomerAccountNumber = Remit.CustomerAccountNumber
+	INNER JOIN SYN_IT_UDF_accountmaster UDFAccMstr
+		ON UDFAccMstr.CustomerAccountNumber_Key = AccMstr.CustomerAccountNumber
+	INNER JOIN SYN_IT_ContactMaster ContMstr
+		ON BeneDist.ContactID = ContMstr.ContactID
+	LEFT OUTER JOIN SYN_IT_ContactPaymentMethods ContPayMeth
+		ON ContPayMeth.ID = BeneDist.PayeePaymentMethodID
+	LEFT OUTER JOIN SYN_IT_ABAVerification ABAVerif
+		ON ABAVerif.ABANumber = ContPayMeth.ABANumberCode
+	WHERE AccMstr.ManagerCode = @ManagerCode
+		AND ContPayMeth.PaymentType = 'ACH'
+		AND (
+			@ExcludeMatured = 0
+			OR (
+				@ExcludeMatured = 1
+				AND UDFAccMstr.UDFAMColumn030 IS NULL
+				)
+			)
+		AND (
+			@ExcludePIF = 0
+			OR (
+				@ExcludePIF = 1
+				AND AccMstr.AccountTypeCode != 'PIF'
+				)
+			)
+		AND (
+			@ExcludeGAP = 0
+			OR (
+				@ExcludeGAP = 1
+				AND AccMstr.AccountTypeCode NOT IN (
+					'GAP'
+					,'GAPR'
+					,'GAPP'
+					)
+				)
+			)
+	ORDER BY AccMstr.CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,244 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsTradingCopy'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_InsTradingCopy;
+
+	PRINT 'DROPPED USP_EX_InsTradingCopy';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name: USP_EX_InsTradingCopy
+** Old Name:     USP_EIS_EX_TRADING_COPY_InsProc          
+** Short Desc: Procedure for Inserting records for Trading Task - Copy screen          
+**          
+** Full Description          
+**        More detailed description if necessary          
+**          
+** Sample Call          
+        USP_EIS_EX_TRADING_COPY_InsProc @xmldoc = N'<root><Item><advent_id>UCBECD</advent_id></Item><Item><alert_date>4/10/2007</alert_date></Item><Item><alert_date>6/12/2007</alert_date></Item><Item><advent_id>UCBEC</advent_id></Item></root>',          
+  @xmlpath = N'root/Item',          
+  @alertcategoryid = 989,          
+  @alertcause = N'Invest excess Cash',          
+  @alertcauseid = 995,          
+  @assignedto = 107,          
+  @alertcomment = N'ee',          
+  @createduserid = 9,          
+  @createddate = N'4/10/2007'          
+*           
+*          
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET NOCOUNT             ON          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By: Rahul Sharma          
+** Company   : Kaspick & Company          
+** Project   : Excelsior -- IM PROFILE          
+** Created DT: 04/03/2007          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** <mm/dd/yyyy>     
+** 05-22-2007   Rahul    Removed Supplement Related ID's 
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted     
+*******************************************************************************          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_InsTradingCopy] (
+	@xmldoc VARCHAR(MAX) = NULL
+	,@xmlpath VARCHAR(50) = NULL
+	,@alertcategoryid AS INT
+	,@alertcause AS VARCHAR(50)
+	,@alertcauseid AS INT
+	,@assignedto AS INT
+	,@alertcomment AS VARCHAR(254)
+	,@createduserid AS INT
+	,@createddate AS DATETIME
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @hdoc INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	SET @procname = 'USP_EX_InsTradingCopy';
+
+	CREATE TABLE #TempAdventDTL (Advent_ID VARCHAR(15))
+
+	CREATE TABLE #TempAlertDTL (Alert_Date DATETIME)
+
+	CREATE TABLE #TempGeneral (
+		UID INT identity(1, 1)
+		,Alert_Date DATETIME
+		,Advent_ID VARCHAR(15)
+		,AlertUID INT NULL
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		EXEC SP_XML_PREPAREDOCUMENT @hdoc OUTPUT
+			,@xmldoc
+
+		INSERT INTO #TempAdventDTL
+		SELECT isnull(advent_id, '')
+		FROM OpenXml(@hdoc, @xmlpath, 2) WITH (advent_id VARCHAR(15))
+
+		INSERT INTO #TempAlertDTL
+		SELECT isnull(alert_date, '')
+		FROM OpenXml(@hdoc, @xmlpath, 2) WITH (alert_date DATETIME)
+
+		DELETE
+		FROM #TempAdventDTL
+		WHERE advent_id = ''
+
+		DELETE
+		FROM #TempAlertDTL
+		WHERE alert_date = ''
+
+		DECLARE @lvalue INT
+		DECLARE @return_alertid AS INT
+		DECLARE @status_value AS VARCHAR(20);
+
+		SELECT @return_alertid = max(AlertID) + 1
+		FROM TBL_BR_AlertEvent
+
+		INSERT INTO #TempGeneral (
+			advent_id
+			,alert_date
+			)
+		SELECT *
+		FROM #TempAdventDTL
+			,#TempAlertDTL
+
+		SET @return_alertid = @return_alertid - 1;
+
+		UPDATE #TempGeneral
+		SET alertuid = @return_alertid + uid
+
+		SELECT @status_value = listitemname
+		FROM dbo.TBL_ListItem
+		WHERE listtypeid = (
+				SELECT listtypeid
+				FROM dbo.TBL_ListType
+				WHERE listtypename = 'Trading Tasks Status'
+				)
+			AND listitemname = 'Pending'
+
+		--AlertCause DBValue    
+		DECLARE @alert_cause VARCHAR(50);
+
+		EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @alertcauseid
+			,@IVAN_VALUE = @alert_cause OUTPUT
+
+		INSERT INTO TBL_BR_AlertEvent (
+			alertid
+			,definedby
+			,definitiondate
+			,CustomerAccountNumber
+			,alertstatus
+			,alertcause
+			,alertdate
+			,assignedto
+			,alertcomment
+			,alertcategory_id
+			,created_user_id
+			,created_date
+			,modified_user_id
+			,modified_date
+			)
+		SELECT Tmp.alertuid
+			,@createduserid
+			,@createddate
+			,AccPrfl.CustomerAccountNumber
+			,@status_value
+			,@alert_cause
+			,Tmp.alert_date
+			,@assignedto
+			,@alertcomment
+			,@alertcategoryid
+			,@createduserid
+			,@createddate
+			,@createduserid
+			,@createddate
+		FROM #TempGeneral Tmp
+		INNER JOIN TBL_INV_AccountProfile AccPrfl ON Tmp.advent_id = AccPrfl.CustomerAccountNumber
+		WHERE AccPrfl.CustomerAccountNumber = Tmp.advent_id
+
+		SELECT @lvalue = max(alertuid)
+		FROM #TempGeneral
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.dbo.sysobjects
+				WHERE id = object_id(N'TEMPDB.[dbo].[#TempAdventDTL]')
+				)
+			DROP TABLE #TempAdventDTL
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.dbo.sysobjects
+				WHERE id = object_id(N'TEMPDB.[dbo].[#TempAlertDTL]')
+				)
+			DROP TABLE #TempAlertDTL
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.dbo.sysobjects
+				WHERE id = object_id(N'TEMPDB.[dbo].[#TempGeneral]')
+				)
+			DROP TABLE #TempGeneral
+
+		EXEC SP_XML_REMOVEDOCUMENT @hdoc
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = Cast(@xmlpath AS VARCHAR(20));
+		SET @val2 = Cast(@xmldoc AS VARCHAR(455));
+
+		EXEC USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = @val1
+			,@val1str = 'XMLPATH'
+			,@val2 = @val2
+			,@val2str = 'XMLDOC';
+	END CATCH;
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsTradingCopy'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_InsTradingCopy';
+END

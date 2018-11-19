@@ -1,0 +1,83 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllCustomerAccountNumber]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetAllCustomerAccountNumber]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetAllCustomerAccountNumber]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllCustomerAccountNumber]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetManagerAccount                      
+** Short Desc: Get list of all client or org for Sub-Accounting for the type - CGA, ENDOW, DAF.
+** Full Description: Get list of all client or org for Sub-Accounting for the type - CGA, ENDOW, DAF
+** Input Arguments:  
+** Sample Call          
+ EXEC USP_SIT_GetAllCustomerAccountNumber 'GAP'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetAllCustomerAccountNumber
+(
+	@AccountType VARCHAR(20)
+)
+	-- paremeters here    
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET ANSI_NULLS OFF;
+	SET QUOTED_IDENTIFIER OFF;
+
+	--  Variable Declarations  --    
+	--  Variable Data Assignment  --    
+	-- Body of procedure  --    
+	SELECT CP.CustomerAccountNumber	
+		,CP.AccountType
+		,CP.ManagerCode
+		,CP.ManagerCodeName
+		,CP.GiftWrapAccount
+		,CP.GroupID
+	FROM TBL_PV_ManagerCodeParameter CP
+		Inner Join SYN_IT_UDF_AccountMaster AM On AM.CustomerAccountNumber_Key = CP.CustomerAccountNumber
+	WHERE AM.UDFAMColumn044 = 'SA' -- Accounting Routine should be sub accounting
+		AND CP.AccountType IN (
+			'GAP'
+			,'DAF'
+			,'DDF'
+			,'END'
+			,'ENDQ'
+			,'ENDT'
+			)
+			And (@AccountType = 'All' Or CP.AccountType = @AccountType)
+	ORDER BY CP.ManagerCode
+END

@@ -1,0 +1,149 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllTradeErrorFromTSheetApprovedTrade]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllTradeErrorFromTSheetApprovedTrade]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_TR_GetAllTradeErrorFromTSheetApprovedTrade        
+** Short Desc : Get Trade Error from table TBL_TR_TSheetApprovedTrade      
+**      
+** Full Description : Get Trade Error from table TBL_TR_TSheetApprovedTrade based on the Search Criteria
+**                
+**        
+** Sample Call   
+	EXEC USP_TR_GetAllTradeErrorFromTSheetApprovedTrade 'All','All','All'    
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+**                                 Created      
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllTradeErrorFromTSheetApprovedTrade] (
+	@CustomerAccountNumber VARCHAR(14)
+	,@SLMasterAccount VARCHAR(12)
+	,@SecuritySymbol VARCHAR(50)
+	)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from  
+	-- interfering with SELECT statements.  
+	SET NOCOUNT ON
+
+	DECLARE @STATUS AS VARCHAR(50)
+
+	SET @STATUS = 'Approved'
+
+	DECLARE @STATUSID INT
+
+	SET @STATUSID = (
+			SELECT EventStatusID
+			FROM TBL_TR_EventStatus
+			WHERE EventStatus = 'Proposed'
+			)
+
+	SELECT TAprvdTrd.TRADEID
+		,isnull(TAprvdTrd.TRADEID, 0) AS TradeIDTRex
+		,EvntAcnt.CustomerAccountNumber
+		,EvntAcnt.SLMASTERACCOUNT
+		,ISNULL(EvntAcnt.CUSTODIANACCOUNTNUMBER, 0) CUSTODIANACCOUNTNUMBER
+		,AcntPrfl.DISCRETIONARYTRADE
+		,TAprvdTrd.SECURITYSYMBOL
+		,TAprvdTrd.TRADETYPE
+		,(TAprvdTrd.TRADEQUANTITY - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) AS TRADEQUANTITY
+		,ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0) AS SUBMITTEDQUANTITYTILLDATE
+		,CASE 
+			WHEN (
+					(TAprvdTrd.SplitTrade = 'TRUE')
+					AND ((TAprvdTrd.TRADEQUANTITY - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) <> 0)
+					)
+				THEN ((TAprvdTrd.TRADEQUANTITY - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) * (TAprvdTrd.DOLLARAMOUNT / TAprvdTrd.TRADEQUANTITY))
+			ELSE TAprvdTrd.DOLLARAMOUNT
+			END AS DOLLARTRADEAMT
+		,TAprvdTrd.SplitTrade
+		,TAprvdTrd.DOLLARAMOUNT AS DOLLARAMOUNT
+		,EnvtStatus.EVENTSTATUS AS TRADESTATUS
+		,Evnt.SOURCE
+		,TAprvdTrd.TRADEDATE
+		,ISNULL(USR.LOGINNAME, 'Imported') PROPOSEDTRADER
+		,'' AS SUBMITTEDTRADER
+		,TAprvdTrd.RecordVersion AS RecordVersion
+	FROM TBL_TR_TSheetApprovedTrade TAprvdTrd
+	INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON TAprvdTrd.EventAccountID = EvntAcnt.EventAccountID
+	INNER JOIN TBL_TR_Event Evnt ON TAprvdTrd.EVENTID = Evnt.EVENTID
+	INNER JOIN TBL_TR_EventSTATUS EnvtStatus ON Evnt.EVENTSTATUSID = EnvtStatus.EVENTSTATUSID
+		AND EnvtStatus.EVENTSTATUS = @STATUS
+	INNER JOIN TBL_INV_AccountProfile AcntPrfl ON AcntPrfl.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+	LEFT OUTER JOIN (
+		SELECT EvntTrkr.EventID
+			,EvntTrkr.ModifiedUserID
+			,EvntTrkr.ModifiedDate
+			,ROW_NUMBER() OVER (
+				PARTITION BY EvntTrkr.EventID ORDER BY EvntTrkr.ModifiedDate DESC
+				) AS RowNum
+		FROM TBL_TR_EventTracker EvntTrkr
+		WHERE EventStatusID = @STATUSID
+		) Proposer ON Proposer.EventID = Evnt.EventID
+		AND RowNum = 1
+	LEFT OUTER JOIN TBL_KS_User USR ON USR.[USERID] = Proposer.ModifiedUserID
+	WHERE (TAprvdTrd.TRADEQUANTITY - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) <> 0
+		AND (
+			(
+				(
+					@CustomerAccountNumber <> 'All'
+					AND AcntPrfl.CustomerAccountNumber = @CustomerAccountNumber
+					)
+				OR @CustomerAccountNumber = 'All'
+				)
+			AND (
+				(
+					@SLMasterAccount <> 'All'
+					AND EvntAcnt.SLMasterAccount = @SLMasterAccount
+					)
+				OR @SLMasterAccount = 'All'
+				)
+			AND (
+				(
+					@SecuritySymbol <> 'All'
+					AND TAprvdTrd.SecuritySymbol = @SecuritySymbol
+					)
+				OR @SecuritySymbol = 'All'
+				)
+			)
+		AND TAprvdTrd.TRADEID NOT IN (
+			SELECT TRADEID
+			FROM TBL_TR_TradeError
+			)
+	ORDER BY EvntAcnt.CustomerAccountNumber
+END
+GO
+
+

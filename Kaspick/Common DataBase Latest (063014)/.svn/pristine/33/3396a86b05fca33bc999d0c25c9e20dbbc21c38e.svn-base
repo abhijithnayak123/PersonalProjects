@@ -1,0 +1,173 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_ImportApprovedPEVAValuation]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_ImportApprovedPEVAValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_ImportApprovedPEVAValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_ImportApprovedPEVAValuation]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_ImportApprovedPEVAValuation                      
+** Short Desc: Insert the parameters being passed to their respective columns in the table 
+** Full Description: Insert the parameters being passed to their respective columns in the table 
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_ImportApprovedPEVAValuation
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_ImportApprovedPEVAValuation
+AS
+BEGIN
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+--  Variable Declarations  --    
+DECLARE @procname VARCHAR(60);
+DECLARE @newstatus INT
+DECLARE @oldstatus INT
+DECLARE @Reject_StatusID INT
+
+--  Variable Data Assignment  --    
+SET @procname = 'USP_SIT_ImportApprovedPEVAValuation';
+
+-- Body of procedure  --    
+
+	--For the valutions imported firt time to Sub-Accounting  
+	SELECT @newstatus = SITStatusID
+	FROM TBL_SIT_STATUS
+	WHERE StatusName = 'Approved'
+
+	SELECT @oldstatus = SITStatusID
+	FROM TBL_SIT_STATUS
+	WHERE StatusName = 'Null'
+
+	INSERT INTO TBL_SIT_StatusChangeLog (
+		ValuationID
+		,OldStatusID
+		,NewStatusID
+		,Comment
+		,StatusChangeUserID
+		,StatusChangeDate
+		) (
+		SELECT valuationid
+		,@oldstatus
+		,@newstatus
+		,''
+		,1
+		,getdate() FROM TBL_PV_Valuation PV INNER JOIN TBL_PV_ValuationStatus PVS ON PVS.StatusID = PV.CurrentStatusID INNER JOIN TBL_PolicyItem P ON P.OwnerID = PV.CustomerAccountNumber
+		AND P.PolicyLevel = 300 WHERE PVS.STATUS = 'Approved'
+		AND P.PolicyDropDownID = (
+			SELECT PolicyDropDownID
+			FROM TBL_PolicyDropDown
+			WHERE DropDownText = 'Sub-Accounting'
+			)
+		AND P.PolicyDimensionID = (
+			SELECT PolicyDimensionID
+			FROM TBL_PolicyDimension
+			WHERE FullName = 'Accounting Routine'
+			)
+		AND ValuationID NOT IN (
+			SELECT DISTINCT ValuationID
+			FROM TBL_SIT_STATUSCHANGELOG
+			)
+		)
+	--For the valutions REJECTED from sub-accounting and later APPROVED from PEVA  
+	--clearing the interface file log table for the valuations (else check boxes on the grid will reflect old files)  
+	SELECT @Reject_StatusID = SITStatusID
+	FROM TBL_SIT_STATUS
+	WHERE StatusName = 'Requires Review'
+
+	DELETE TBL_SIT_InterfaceFileGenerationLog
+	FROM TBL_SIT_InterfaceFileGenerationLog IFL
+	INNER JOIN TBL_PV_Valuation PV ON IFL.valuationid = PV.valuationid
+	INNER JOIN TBL_PV_ValuationStatus PVS ON PVS.StatusID = PV.CurrentStatusID
+	INNER JOIN TBL_PolicyItem P ON P.OwnerID = PV.CustomerAccountNumber
+		AND P.PolicyLevel = 300
+	WHERE PVS.STATUS = 'Approved'
+		AND P.PolicyDropDownID = (
+			SELECT PolicyDropDownID
+			FROM TBL_PolicyDropDown
+			WHERE DropDownText = 'Sub-Accounting'
+			)
+		AND P.PolicyDimensionID = (
+			SELECT PolicyDimensionID
+			FROM TBL_PolicyDimension
+			WHERE FullName = 'Accounting Routine'
+			)
+		AND PV.valuationid IN (
+			SELECT DISTINCT ValuationID
+			FROM TBL_SIT_StatusChangeLog SCL
+			WHERE dbo.Fn_TBL_SIT_GetLatestStatus(PV.ValuationID) = @Reject_StatusID
+			)
+
+	SELECT @newstatus = SITStatusID
+	FROM TBL_SIT_Status
+	WHERE StatusName = 'Approved'
+
+	INSERT INTO TBL_SIT_StatusChangeLog (
+		ValuationID
+		,OldStatusID
+		,NewStatusID
+		,Comment
+		,StatusChangeUserID
+		,StatusChangeDate
+		) (
+		SELECT valuationid
+		,dbo.Fn_TBL_SIT_GetLatestStatus(PV.ValuationID)
+		,@newstatus
+		,''
+		,1
+		,getdate() FROM TBL_PV_Valuation PV INNER JOIN TBL_PV_ValuationStatus PVS ON PVS.StatusID = PV.CurrentStatusID INNER JOIN TBL_PolicyItem P ON P.OwnerID = PV.CustomerAccountNumber
+		AND P.PolicyLevel = 300 WHERE PVS.STATUS = 'Approved'
+		AND P.PolicyDropDownID = (
+			SELECT PolicyDropDownID
+			FROM TBL_PolicyDropDown
+			WHERE DropDownText = 'Sub-Accounting'
+			)
+		AND P.PolicyDimensionID = (
+			SELECT PolicyDimensionID
+			FROM TBL_PolicyDimension
+			WHERE FullName = 'Accounting Routine'
+			)
+		AND valuationid IN (
+			SELECT DISTINCT ValuationID
+			FROM TBL_SIT_StatusChangeLog SCL
+			WHERE dbo.Fn_TBL_SIT_GetLatestStatus(ValuationID) = @Reject_StatusID
+			)
+		)
+END
+
+SET NOCOUNT OFF;

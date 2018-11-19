@@ -1,0 +1,62 @@
+
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_RefreshLog]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_RefreshLog]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_RefreshLog    
+* File Name       : USP_Lookup_RefreshLog.SQL    
+* Description     : This SP helps in logging the details into the "TBL_Lookup_DataRefreshLog" table in KaspickDB
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+	
+CREATE PROCEDURE USP_Lookup_RefreshLog(   @TableName        VARCHAR(100)
+										 ,@LogStatus		VARCHAR(20)
+										 ,@IsBulkLoad		BIT
+                                         ,@EffectedRecords	INT
+                                         ,@LogDescription	VARCHAR(MAX)   
+                                         ,@RunID			INT                                      
+)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @LogDate DATETIME =Getdate()
+	BEGIN TRY
+	
+		INSERT INTO TBL_Lookup_DataRefreshLog(TableName, LogStatus, IsBulkLoad, EffectedRecords, LogDescription, LogDate, RunID)
+		SELECT  @TableName	, @LogStatus , @IsBulkLoad , @EffectedRecords , @LogDescription	, @LogDate, @RunID
+		
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SELECT  @ErrorMessage	= ERROR_MESSAGE(),
+				@ErrorSeverity	= ERROR_SEVERITY(),
+				@ErrorState		= ERROR_STATE()
+	    
+		INSERT INTO TBL_Lookup_DataRefreshLog(TableName, IsBulkLoad, EffectedRecords, LogStatus, LogDescription, LogDate, RunID)
+		SELECT  @TableName	, @IsBulkLoad , @IsBulkLoad , @EffectedRecords , 'Error', GetDate(),@RunID
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    	
+	END CATCH
+END
+

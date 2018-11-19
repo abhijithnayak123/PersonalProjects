@@ -1,0 +1,79 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSAGenerateFileLog]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetSAGenerateFileLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetSAGenerateFileLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetSAGenerateFileLog]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetSAGenerateFileLog    
+** Short Desc:     
+**    
+** Full Description : 
+**            
+**    
+** Sample Call    
+  EXEC USP_SIT_GetSAGenerateFileLog    '<ValuationCollection><InsertList><Valuation ValuationID="13600" />
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ValuationCollection>'     
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetSAGenerateFileLog] @valuationXML XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	SELECT [ValuationID]
+		,[OldStatusID] AS OldStatusID
+		,[NewStatusID] AS NewStatusID
+		,NewSt.StatusName AS NewStatusName
+		,OldSt.StatusName AS OldStatusName
+	FROM TBL_SIT_StatusChangeLog StChngLg
+	INNER JOIN TBL_SIT_Status NewSt
+		ON NewSt.SITStatusID = StChngLg.NewStatusID
+	INNER JOIN TBL_SIT_Status OldSt
+		ON OldSt.SITStatusID = StChngLg.OldStatusID
+	LEFT OUTER JOIN TBL_KS_User Usr
+		ON Usr.UserID = StChngLg.StatusChangeUserID
+	WHERE StChngLg.ValuationID IN (
+			SELECT XmlInput.Item.value('@ValuationID[1]', 'int') AS ValuationID
+			FROM @valuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XmlInput(Item)
+			)
+
+	SET NOCOUNT OFF;
+END

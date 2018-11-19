@@ -1,0 +1,224 @@
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineRuleDetails]    Script Date: 05/14/2014 17:56:58 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineRuleDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+BEGIN
+	DROP PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineRuleDetails]
+
+	PRINT 'Dropped USP_WFT_GetEmailRuleEngineRuleDetails Procedure.'
+END
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineRuleDetails]    Script Date: 05/14/2014 17:56:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                    
+** Name:     USP_WFT_GetEmailRuleEngineRuleDetails                    
+** Short Desc: Get the EmailRules data associated to a set of RequestID and RuleID.   
+**                    
+** Full Description: To retrieve  details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+**   
+ EXEC USP_WFT_GetEmailRuleEngineRuleDetails '<root>
+			<templateRule><ID>7</ID><param1>3063</param1><param2>13</param2><param3></param3><param4></param4><param5></param5></templateRule>
+			<templateRule><ID>1</ID><param1>2083</param1><param2>1</param2><param3></param3><param4></param4><param5></param5></templateRule>
+			<templateRule><ID>27</ID><param1>11</param1><param2>35</param2><param3></param3><param4></param4><param5></param5></templateRule>
+			</root>'  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Soorya  
+** Company   : Kaspick & Company                    
+** Project   : EmailRuleEngine                    
+** Created DT: 04/23/2010                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 10/08/2012	Manjiri	Ticket#10455   When @send_to is 'R' incorrect email 
+										address was retrieved as the LINKTYPE=2 
+										condition was missing
+** 06/30/2014   Salih               Procedure modified based on KaspickDB table structure
+** 07/21/2014	Yashasvi			Added an additional condition AND AddressType = 'eMail'
+									in line 164
+***08-18-14		Niveditha		   Fixed the Client Manager rolecode
+** 09-02-2014	Yashasvi		Modified the procedure to take the client employee email id from wft request
+**					table's sybmitted by email
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineRuleDetails] (@xmlRequest XML)
+AS
+--  Initial Set statements  --        
+--SET NOCOUNT ON;        
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+--  Variable Declarations  --        
+DECLARE @procname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @RequestID INT
+DECLARE @Count INT
+DECLARE @Cnt INT
+DECLARE @send_to CHAR(1)
+DECLARE @EmailAddress VARCHAR(max)
+-- Variables used for error handling - uncomment if needed        
+DECLARE @val1 VARCHAR(30);
+DECLARE @val2 VARCHAR(30);
+--  Temp tables, Cursors, Table Variables  --        
+DECLARE @ToEmailAddress TABLE (
+	ID INT IDENTITY(1, 1)
+	,request_id INT
+	,emailruleid INT
+	,emailtemplateruleid INT
+	,send_to CHAR(1)
+	,to_email_address VARCHAR(max)
+	)
+
+--  Variable Data Assignment  --        
+SET @procname = 'USP_WFT_GetEmailRuleEngineRuleDetails';
+
+-- Body of procedure  --        
+BEGIN TRY
+	INSERT INTO @ToEmailAddress (
+		request_id
+		,emailruleid
+		,emailTemplateRuleid
+		,send_to
+		,to_email_address
+		)
+	SELECT XmlInput.value('param1[1]', 'int') AS requestid
+		,XmlInput.value('param2[1]', 'int') AS param2
+		,XmlInput.value('ID[1]', 'int') AS emailTemplateRuleid
+		,EmlRul.send_to
+		,EmlRul.to_email_address
+	FROM @xmlRequest.nodes('//templateRule') AS a(XmlInput)
+	INNER JOIN TBL_WFT_EmailRule EmlRul
+		ON EmlRul.email_rule_id = XmlInput.value('param2[1]', 'int')
+			AND EmlRul.email_template_rule_id = XmlInput.value('ID[1]', 'int')
+
+	UPDATE @ToEmailAddress
+	SET to_email_address = ISNULL(TrstAdmn.email, '') + ';' + ISNULL(ClntMngr.email, '')
+	FROM @ToEmailAddress EmlAdrs
+	INNER JOIN TBL_WFT_Request WftReq
+		ON EmlAdrs.request_id = WftReq.request_id
+			AND EmlAdrs.send_to = 'A'
+	INNER JOIN (
+		SELECT DISTINCT Usr.UserID AS UserID
+			,AccMgrCod.ManagerCode AS ManagerCode
+			,Usr.Email AS Email
+		FROM TBL_KS_User Usr
+		INNER JOIN SYN_IT_SubContactRoles SubCntRol
+			ON SubCntRol.SubContactID = Usr.InnotrustContactID
+				AND SubCntRol.ContactRoleCode = 510 -- 'Trust Administrator'
+				AND Usr.IsActive = 1
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+			ON AccMgrCod.ContactID = SubCntRol.ContactID
+		) TrstAdmn
+		ON WftReq.ManagerCode = TrstAdmn.ManagerCode
+	INNER JOIN (
+		SELECT DISTINCT Usr.UserID AS UserID
+			,AccMgrCod.ManagerCode AS ManagerCode
+			,Usr.Email AS Email
+		FROM TBL_KS_User Usr
+		INNER JOIN SYN_IT_SubContactRoles SubCntRol
+			ON SubCntRol.SubContactID = Usr.InnotrustContactID
+			--08-18-14:Niveditha		   Fixed the Client Manager rolecode
+				AND SubCntRol.ContactRoleCode = 2 -- 'Client Manager' 
+				AND Usr.IsActive = 1
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+			ON AccMgrCod.ContactID = SubCntRol.ContactID
+		) ClntMngr
+		ON WftReq.ManagerCode = TrstAdmn.ManagerCode
+
+	UPDATE @ToEmailAddress
+	SET to_email_address = ISNULL(WftReq.SubmittedBy_email, '')
+	FROM @ToEmailAddress EmlAdrs
+	INNER JOIN TBL_WFT_Request WftReq
+		ON EmlAdrs.request_id = WftReq.request_id
+			AND EmlAdrs.send_to = 'R'
+
+	SELECT EmlAddr.request_id
+		,EmlAddr.emailruleid
+		,EmlAddr.emailtemplateruleid
+		,from_email_address
+		,reply_to_email_address
+		,bounce_back_email_address
+		,EmlAddr.to_email_address
+		,cc_email_address
+		,bcc_email_address
+		,'' AS subject
+		,'' AS body
+		,1 AS is_html_email
+		,0 AS is_sent
+		,GETDATE() AS sent_datetime
+		,GETDATE() AS created_datetime
+		,1 AS created_user_id
+		,NULL AS created_proxy_webuser_id
+		,NULL AS created_webuser_id
+		,EmlTmpltRul.email_template_id AS email_template_id
+		,0 AS priority_flag
+	FROM TBL_WFT_EmailRule EmlRul
+	INNER JOIN @ToEmailAddress EmlAddr
+		ON EmlAddr.emailruleid = EmlRul.email_rule_id
+	INNER JOIN TBL_EML_EmailTemplateRule EmlTmpltRul
+		ON EmlTmpltRul.email_template_rule_id = EmlRul.email_template_rule_id
+END TRY
+
+BEGIN CATCH
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'Error with USP_WFT_GetEmailRuleEngineRuleDetails Procedure'
+END CATCH
+	-- End of procedure  -- 
+GO
+
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineRuleDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+BEGIN
+	PRINT 'Created USP_WFT_GetEmailRuleEngineRuleDetails Procedure.'
+END
+GO
+
+

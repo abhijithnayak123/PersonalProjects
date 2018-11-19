@@ -1,0 +1,101 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition]    Script Date: 08/08/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition]    Script Date: 08/08/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition                      
+** Short Desc: To get Payment condition status
+**                      
+** Full Description:  To get Payment condition status for BeneficiaryPayment/PGCalcImport payment Type          
+**        
+**                              
+** Input Arguments:
+ @UserID INT,
+ @Type Bit =1--auto 
+
+**         
+** Sample Call     
+EXEC USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition     100110,0  
+EXEC USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition     100316,0         
+
+                         
+      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 8-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryAccountPaymentCondition] @UserID INT
+	,@Type BIT = 1 --auto 
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	---Declare Variable
+	DECLARE @RuleID INT
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Account Payment Condition'
+		AND RuleCategory = 'Beneficiary payment'
+
+	-- Body of procedure  --      
+	-----Return Data
+	SELECT DISTINCT PaymentType
+		,StgData.ScheduleID
+		,@RuleID AS RuleID
+		,'AccountPaymentConditionStatus' AS Attribute
+		,ISNULL(List.ListItemName, 'Inactive') AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	LEFT JOIN TBL_PP_PaymentCondition PayCndn
+		ON PayCndn.CustomerAccountNumber = StgData.CustomerAccountNumber
+		AND PayCndn.ContactID IS NULL
+	LEFT JOIN dbo.TBL_ListItem List
+		ON List.ListItemID = PayCndn.StatusID
+	WHERE StgData.PaymentType IN (
+			'Beneficiarypayment'
+			,'PGCalcImport'
+			)
+		AND StgData.UserID = @UserID
+		
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

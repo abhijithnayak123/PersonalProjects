@@ -1,0 +1,115 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentByTrustSubReport]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentByTrustSubReport]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentByTrustSubReport]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentByTrustSubReport]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentByTrustSubReport                      
+** Short Desc:  Procedure to generate the Payment by trust sub report 
+**                      
+** Full Description: Procedure to generate the Payment by trust sub report 
+**      
+**                              
+** Input Arguments:  @BeginDate DATETIME
+**	,@EndDate DATETIME
+**	,@TaxYear INT             
+** Sample Call          
+ EXEC USP_PP_ReportGetPaymentByTrustSubReport  '01/01/2009','12/31/2009',2009
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentByTrustSubReport] (
+	@BeginDate DATETIME
+	,@EndDate DATETIME
+	,@TaxYear INT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds         
+
+	SELECT AccPaySch.CustomerAccountNumber
+		,BenPaySch.ContactID
+		,BenPaySch.ContactRoleCode
+		,CONVERT(VARCHAR, BenPaySch.PaymentDate, 101) AS PaymentDate
+		,BenPaySch.TaxYear
+		,BenPaySch.ScheduledAmount
+		,CASE 
+			WHEN CntPmtMth.PaymentType = 'CHECK'
+				AND RTRIM(LTRIM((BeneDist.PaidToContactName))) <> ''
+				THEN BeneDist.PaidToContactName
+			ELSE CntMstr.ContactName
+			END AS PaymentName
+		,BenPymt.VoidDate
+		,BenPymt.ReissueOf
+		,BenPymt.ReissueAs
+		,BeneDist.PaidToContactName AS AlternatePaymentName -- BenPymt.AlternatePaymentName
+		,BenPymt.PaymentMethod
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPaySch
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccPaySch
+		ON BenPaySch.APScheduleID = AccPaySch.APScheduleID
+	LEFT OUTER JOIN SYN_IT_BeneficiaryDistributions BeneDist
+		ON BeneDist.BeneficiaryDistributionID = BenPaySch.BeneficiaryDistributionID
+	LEFT OUTER JOIN SYN_IT_ContactPaymentMethods CntPmtMth
+		ON BeneDist.PayeePaymentMethodID = CntPmtMth.ID
+	LEFT OUTER JOIN SYN_IT_ContactMaster CntMstr
+		ON CntMstr.ContactID = BenPaySch.ContactID
+	LEFT OUTER JOIN TBL_PP_BeneficiaryPayment BenPymt
+		ON BenPaySch.PaymentID = BenPymt.PaymentID
+	WHERE (
+			(
+				BenPaySch.PaymentDate >= @BeginDate
+				AND BenPaySch.PaymentDate <= @EndDate
+				)
+			AND (BenPaySch.TaxYear = @TaxYear)
+			AND (BenPymt.VoidDate IS NULL)
+			)
+		OR (
+			(
+				BenPaySch.PaymentDate >= @BeginDate
+				AND BenPaySch.PaymentDate <= @EndDate
+				)
+			AND (BenPaySch.TaxYear = @TaxYear)
+			AND (BenPymt.ReissueAs > 0)
+			)
+	ORDER BY AccPaySch.CustomerAccountNumber ASC
+		,year(BenPaySch.PaymentDate) ASC
+		,BenPaySch.PaymentDate ASC
+
+	SET NOCOUNT OFF
+END

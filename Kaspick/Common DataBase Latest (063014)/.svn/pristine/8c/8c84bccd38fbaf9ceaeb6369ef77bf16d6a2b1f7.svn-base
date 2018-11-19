@@ -1,0 +1,733 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRDTDeliverableItemsSubscriptionType'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_UpdBRDTDeliverableItemsSubscriptionType;
+
+	PRINT 'DROPPED USP_RP_UpdBRDTDeliverableItemsSubscriptionType';
+END
+GO
+
+/******************************************************************************     
+** New SP Name : USP_RP_UpdBRDTDeliverableItemsSubscriptionType
+     
+** Old Name   :   USP_EIS_BR_DT_DeliverableItems_SubscriptionType_UpdProc    
+**    
+  
+
+** Short Desc : To insert Deliverable Iems - Subscription Type    
+**          
+** Full Description          
+**          
+**  To insert Deliverables    
+**    
+** Sample Call    
+ DECLARE @ReturnStatus INT;     
+ DECLARE @ErrorDesc VARCHAR(8000);     
+ EXEC USP_RP_UpdBRDTDeliverableItemsSubscriptionType    
+  @DeliverableQueueID = 51,    
+  @DeliverableID= 26,    
+  @FrequencyID=1724,    
+  @ReportDate='2011-06-30 00:00:00.000',     
+  @UserID=1,    
+  @ReturnStatus=0,     
+  @ErrorDesc=''     
+**          
+** Return values: NONE          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+** Created By :  Soorya    
+** Company  :  Kaspick & Company          
+** Project  :  Deliverable Tool         
+** Created DT :  Oct/04/2011          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:     Author:  Bug #  Description:        Rvwd          
+** --------  -------- ------ ------------------------------------------ -------    
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.    
+** Mar-14-2012 Ashvin   ERD changes implemetation.    
+** Mar-29-2012 Ashvin ET-13687  Solved ET Issue 13687    
+  
+** May-20-2014   RAJ  Modified SP name and Table name with Column Name in ExcelsiorDB into KaspickDB  
+** Jun-09-2014   RAJ SP Name Renamed and Formatted
+*******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE USP_RP_UpdBRDTDeliverableItemsSubscriptionType (
+	@DeliverableQueueID INT
+	,@DeliverableID BIGINT
+	,@FrequencyID INT
+	,@ReportDate DATETIME
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails and     
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+		BEGIN TRY
+				BEGIN TRANSACTION
+	--  Initial Set statements  --                  
+	--SET NOCOUNT ON;                  
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                  
+	SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+	SET ARITHABORT ON
+
+	--SET @FreqID = 0;    
+	--DECLARE @DeliverableTypeID BIGINT, @QueueStatusID BIGINT; --, @DeliverableID BIGINT;    
+	DECLARE @ReportLevel VARCHAR(100);
+	DECLARE @Frequency VARCHAR(2);
+	DECLARE @DeliverableItemStatusID BIGINT;
+	DECLARE @R1 VARCHAR(5)
+		,@R2 VARCHAR(5)
+		,@R3 VARCHAR(5)
+		,@R4 VARCHAR(5);
+	DECLARE @DeliverableProcessID INT
+	DECLARE @DeliverableTypeID BIGINT;
+	DECLARE @ErrorNumber INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @DeliverableTypeID = DeliverableTypeID
+	FROM TBL_DLV_DeliverableType
+	WHERE DeliverableTypeName = 'Report Package'
+
+	-- Get the 'Report Level' for the Deliverable    
+	SELECT @ReportLevel = RTRIM(LTRIM(LI.ListItemName))
+	FROM TBL_DLV_Deliverable D
+	INNER JOIN TBL_ListItem LI ON LI.ListItemID = D.ReportLevelID
+		AND D.DeliverableLevel = 1
+	INNER JOIN dbo.TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID
+	WHERE LT.ListTypeName = 'ReportLevel'
+		AND D.DeliverableID = @DeliverableID
+
+	-- Get the Frequency value from the ID    
+	SELECT @Frequency = (
+			CASE 
+				WHEN RTRIM(LTRIM(ListItemName)) = 'Annually'
+					THEN 'A'
+				WHEN RTRIM(LTRIM(ListItemName)) = 'Semi-Annually'
+					THEN 'S'
+				WHEN RTRIM(LTRIM(ListItemName)) = 'Quarterly'
+					THEN 'Q'
+				WHEN RTRIM(LTRIM(ListItemName)) = 'Monthly'
+					THEN 'M'
+				WHEN RTRIM(LTRIM(ListItemName)) = 'Other'
+					THEN 'O'
+				END
+			)
+	FROM TBL_ListItem
+	WHERE ListItemID = @FrequencyID
+
+	--finding DeliverableProcessID fropm the DLV_Deliverable By @DeliverableID     
+	--initially it was 1 hardcoded    
+	SELECT @DeliverableProcessID = DeliverableProcessID
+	FROM TBL_DLV_Deliverable
+	WHERE DeliverableID = @DeliverableID
+
+	-- Get the Deliverable Item Status 'Scheduled'       
+	SELECT @DeliverableItemStatusID = DeliverableItemStatusID
+	FROM TBL_DLV_DeliverableProcessStatus
+	WHERE StatusName = 'Scheduled'
+		AND DeliverableProcessID = @DeliverableProcessID -- The value should be DeliverableID, to be modified     
+
+	-- Calculate the Quarterly dates    
+	EXEC USP_RP_GetDTReportDate @ReportDate
+		,@Frequency
+		,@R1 OUTPUT
+		,@R2 OUTPUT
+		,@R3 OUTPUT
+		,@R4 OUTPUT;
+
+	-- Create the Deliverable Items     
+	-- Handle the Level2 Deliverables if the Level1 Deliverable is of 'Report Package' type    
+	-- Handle the 'Year Type' subscribed by the Client - Calendar or 'Fiscal' - Q1,Q2,Q3,Q4    
+	IF (@ReportLevel = 'Client')
+	BEGIN
+		INSERT INTO [#DT_UPD_ITEM] (
+			[Clientid]
+			,[AccountID]
+			,[TrustparticipantID]
+			,[AccountType]
+			,[AdventID]
+			,[ClientBriefName]
+			,[ReportDate]
+			,[Frequency]
+			,[FolderName]
+			,[FILENAME]
+			,[IsReportInaPackage]
+			,[ItemStatus]
+			,[Approver1RoleID]
+			,[Approver1ID]
+			,[Approver2RoleID]
+			,[Approver2ID]
+			,[WaitingForNextActionRole]
+			,[OwnerRoleID]
+			,[OwnerID]
+			)
+		SELECT DISTINCT CD.ManagerCode AS ClientID
+			,NULL AS AccountID
+			,NULL AS TrustparticipantID
+			,NULL AS AccountType
+			,NULL AS AdventID
+			,AccMgrCodes.ManagerCode AS ClientBriefName
+			,@ReportDate AS ReportDate
+			,@Frequency
+			,dbo.FN_GetDTFolderOrFileName(D.RootFolderPath, '', '', @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS FolderName
+			,dbo.FN_GetDTFolderOrFileName(D.FileNameConvention, '', '', @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS [FileName]
+			,(
+				CASE 
+					WHEN D.DeliverableTypeID = @DeliverableTypeID
+						THEN 1
+					ELSE 0
+					END
+				) AS IsReportInaPackage
+			,@DeliverableItemStatusID AS ItemStatus
+			,D.Approver1RoleID
+			,D.Approver1ID
+			,D.Approver2RoleID
+			,D.Approver2ID
+			,NULL AS WaitingForNextActionRole
+			,D.OwnerRoleID
+			,D.OwnerID
+		FROM TBL_DLV_Deliverable D
+		INNER JOIN TBL_DLV_DeliverableFrequency DF ON DF.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable CD ON CD.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableFrequency CDF ON CDF.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+			AND CDF.DeliverableFrequencyId = DF.DeliverableFrequencyID
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.ManagerCode = CD.ManagerCode ---  INNER JOIN SYN_EX_TBL_EIS_EX_CLIENT_SUPPLEMENT CS ON CS.CLIENTID = C.ClientID    
+		INNER JOIN TBL_PolicyItem PIM ON PIM.OwnerID = AccMgrCodes.ManagerCode
+			AND PIM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PD ON pd.PolicyDimensionID = PIM.PolicyDimensionID
+			AND PD.FullName = 'Institution Type'
+		INNER JOIN TBL_PolicyDropdown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableYearType CDYT ON CDYT.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+		INNER JOIN TBL_DLV_DeliverableYearType DYT ON DYT.DeliverableYearTypeID = CDYT.DeliverableYearTypeID
+		INNER JOIN TBL_ListItem LI ON LI.ListItemID = DYT.YearTypeID
+		INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID
+		INNER JOIN TBL_Policyitem PITM ON PITM.OwnerID = CD.ManagerCode
+			AND PITM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PDFY ON PDFY.PolicyDimensionID = PITM.PolicyDimensionID
+			AND PDFY.FullName = 'Fiscal Year End'
+		WHERE (
+				D.DeliverableID = @DeliverableID
+				OR D.Parent_DeliverableID = @DeliverableID
+				)
+			AND DF.FrequencyID = @FrequencyID
+			AND LT.ListTypeName = 'Year Type'
+			AND PDD.DropDownText <> 'DMO' -- No Demo Client    
+			AND (
+				(
+					RTRIM(LTRIM(@Frequency)) = 'M'
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 3
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 9
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'S'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'A'
+						AND DATEPART(MONTH, @ReportDate) = 12
+						AND DATEPART(DAY, @ReportDate) = 31
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							OR PITM.TextValue = @R3
+							OR PITM.TextValue = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Fiscal'
+						AND PITM.TextValue = @R1
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R3
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Other'
+						AND CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+						)
+					)
+				)
+			AND CD.ManagerCode NOT IN (
+				SELECT ManagerCode
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+	END
+
+	IF (@ReportLevel = 'Account')
+	BEGIN
+		INSERT INTO [#DT_UPD_ITEM] (
+			[Clientid]
+			,[AccountID]
+			,[TrustparticipantID]
+			,[AccountType]
+			,[AdventID]
+			,[ClientBriefName]
+			,[ReportDate]
+			,[Frequency]
+			,[FolderName]
+			,[FILENAME]
+			,[IsReportInaPackage]
+			,[ItemStatus]
+			,[Approver1RoleID]
+			,[Approver1ID]
+			,[Approver2RoleID]
+			,[Approver2ID]
+			,[WaitingForNextActionRole]
+			,[OwnerRoleID]
+			,[OwnerID]
+			)
+		SELECT CD.ManagerCode AS ClientID
+			,ACC.ACCOUNTID AS AccountID
+			,NULL AS TrustparticipantID
+			,ACC.ACCOUNTTYPE AS AccountType
+			,ACC.ADVENTID AS AdventID
+			,AccMgrCodes.ManagerCode AS ClientBriefName
+			,@ReportDate AS ReportDate
+			,@Frequency
+			,dbo.FN_GetDTFolderOrFileName(D.RootFolderPath, ACC.ACCOUNTTYPE, ACC.ADVENTID, @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS FolderName
+			,dbo.FN_GetDTFolderOrFileName(D.FileNameConvention, ACC.ACCOUNTTYPE, ACC.ADVENTID, @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS [FileName]
+			,(
+				CASE 
+					WHEN D.DeliverableTypeID = @DeliverableTypeID
+						THEN 1
+					ELSE 0
+					END
+				) AS IsReportInaPackage
+			,@DeliverableItemStatusID AS ItemStatus
+			,D.Approver1RoleID
+			,D.Approver1ID
+			,D.Approver2RoleID
+			,D.Approver2ID
+			,NULL AS WaitingForNextActionRole
+			,D.OwnerRoleID
+			,D.OwnerID
+		FROM TBL_DLV_Deliverable D
+		INNER JOIN TBL_DLV_DeliverableFrequency DF ON DF.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable CD ON CD.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableFrequency CDF ON CDF.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+			AND CDF.DeliverableFrequencyId = DF.DeliverableFrequencyID
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.Managercode = CD.ManagerCode
+		--INNER JOIN TBL_EIS_EX_CLIENT_SUPPLEMENT C ON C.ClientID = CD.ManagerCode    
+		--INNER JOIN TBL_EIS_EX_CLIENT_SUPPLEMENT CS ON CS.CLIENTID = C.ClientID 
+		INNER JOIN VW_EX_ACCOUNT ACC ON ACC.CLIENTID = AccMgrCodes.Managercode
+		INNER JOIN TBL_PolicyItem PIM ON PIM.OwnerID = ACC.ClientID
+			AND PIM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PD ON pd.PolicyDimensionID = PIM.PolicyDimensionID
+			AND PD.FullName = 'Institution Type'
+		INNER JOIN TBL_PolicyDropDown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableYearType CDYT ON CDYT.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+		INNER JOIN TBL_DLV_DeliverableYearType DYT ON DYT.DeliverableYearTypeID = CDYT.DeliverableYearTypeID
+		INNER JOIN TBL_ListItem LI ON LI.ListItemID = DYT.YearTypeID
+		INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID
+		INNER JOIN TBL_Policyitem PITM ON PITM.OwnerID = CD.ManagerCode
+			AND PITM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PDFY ON PDFY.PolicyDimensionID = PITM.PolicyDimensionID
+			AND PDFY.FullName = 'Fiscal Year End'
+		WHERE (
+				D.DeliverableID = @DeliverableID
+				OR D.Parent_DeliverableID = @DeliverableID
+				)
+			AND DF.FrequencyID = @FrequencyID
+			AND ACC.Account_Status IN (
+				'Active'
+				,'Transition'
+				) -- Active and Transition Accounts    
+			AND PDD.DropDownText <> 'DMO' -- No Demo Client    
+			AND (
+				(
+					RTRIM(LTRIM(@Frequency)) = 'M'
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 3
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 9
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'S'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'A'
+						AND DATEPART(MONTH, @ReportDate) = 12
+						AND DATEPART(DAY, @ReportDate) = 31
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							OR PITM.TextValue = @R3
+							OR PITM.TextValue = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Fiscal'
+						AND PITM.TextValue = @R1
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R3
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Other'
+						AND CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+						)
+					)
+				)
+			AND CD.ManagerCode NOT IN (
+				SELECT Clientid
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+			AND ACC.ACCOUNTID NOT IN (
+				SELECT AccountID
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+	END
+
+	IF (@ReportLevel = 'Participant')
+	BEGIN
+		INSERT INTO [#DT_UPD_ITEM] (
+			[Clientid]
+			,[AccountID]
+			,[TrustparticipantID]
+			,[AccountType]
+			,[AdventID]
+			,[ClientBriefName]
+			,[ReportDate]
+			,[Frequency]
+			,[FolderName]
+			,[FILENAME]
+			,[IsReportInaPackage]
+			,[ItemStatus]
+			,[Approver1RoleID]
+			,[Approver1ID]
+			,[Approver2RoleID]
+			,[Approver2ID]
+			,[WaitingForNextActionRole]
+			,[OwnerRoleID]
+			,[OwnerID]
+			)
+		SELECT CD.ManagerCode AS ClientID
+			,TPT.CustomerAccountNumber AS AccountID
+			,TPT.ParticipantID AS TrustparticipantID
+			,TPT.AccountType AS AccountType
+			,TPT.CustomerAccountNumber AS AdventID
+			,AccMgrCodes.ManagerCode AS ClientBriefName
+			,@ReportDate AS ReportDate
+			,@Frequency
+			,dbo.FN_GetDTFolderOrFileName(D.RootFolderPath, '', '', @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS FolderName
+			,dbo.FN_GetDTFolderOrFileName(D.FileNameConvention, '', '', @ReportDate, AccMgrCodes.ManagerCode, @Frequency, 1) AS [FileName]
+			,(
+				CASE 
+					WHEN D.DeliverableTypeID = @DeliverableTypeID
+						THEN 1
+					ELSE 0
+					END
+				) AS IsReportInaPackage
+			,@DeliverableItemStatusID AS ItemStatus
+			,D.Approver1RoleID
+			,D.Approver1ID
+			,D.Approver2RoleID
+			,D.Approver2ID
+			,NULL AS WaitingForNextActionRole
+			,D.OwnerRoleID
+			,D.OwnerID
+		FROM TBL_DLV_Deliverable D
+		INNER JOIN TBL_DLV_DeliverableFrequency DF ON DF.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable CD ON CD.DeliverableID = D.DeliverableID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableFrequency CDF ON CDF.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+			AND CDF.DeliverableFrequencyId = DF.DeliverableFrequencyID
+		INNER JOIN SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.Managercode = CD.ManagerCode
+		--INNER JOIN Client C ON C.ClientID = CD.ManagerCode    
+		--INNER JOIN TBL_EIS_EX_CLIENT_SUPPLEMENT CS ON CS.CLIENTID = C.ClientID    
+		INNER JOIN VW_EX_TrustParticipantType TPT ON TPT.CLIENTID = AccMgrCodes.Managercode
+		INNER JOIN TBL_PolicyItem PIM ON PIM.OwnerID = TPT.ClientID
+			AND PIM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PD ON pd.PolicyDimensionID = PIM.PolicyDimensionID
+			AND PD.FullName = 'Institution Type'
+		INNER JOIN TBL_PolicyDropdown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableYearType CDYT ON CDYT.ManagerCodeDeliverableID = CD.ManagerCodeDeliverableID
+		INNER JOIN TBL_DLV_DeliverableYearType DYT ON DYT.DeliverableYearTypeID = CDYT.DeliverableYearTypeID
+		INNER JOIN TBL_ListItem LI ON LI.ListItemID = DYT.YearTypeID
+		INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID
+		INNER JOIN TBL_Policyitem PITM ON PITM.OwnerID = CD.ManagerCode
+			AND PITM.PolicyLevel = 100
+		INNER JOIN TBL_PolicyDimension PDFY ON PDFY.PolicyDimensionID = PITM.PolicyDimensionID
+			AND PDFY.FullName = 'Fiscal Year End'
+		WHERE (
+				D.DeliverableID = @DeliverableID
+				OR D.Parent_DeliverableID = @DeliverableID
+				)
+			AND DF.FrequencyID = @FrequencyID
+			AND TPT.Account_Status IN (
+				'Active'
+				,'Transition'
+				) -- Active and Transition Accounts   
+				AND TPT.DateOfDeath IS NULL 
+			--AND TPT.ExpireDate IS NULL -- No Dead Participant    
+			AND PDD.DropDownText <> 'DMO' -- No Demo Client    
+			AND (
+				(
+					RTRIM(LTRIM(@Frequency)) = 'M'
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 3
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 9
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'S'
+						AND (
+							(
+								DATEPART(MONTH, @ReportDate) = 6
+								AND DATEPART(DAY, @ReportDate) = 30
+								)
+							OR (
+								DATEPART(MONTH, @ReportDate) = 12
+								AND DATEPART(DAY, @ReportDate) = 31
+								)
+							)
+						)
+					OR (
+						LI.ListItemName = 'Calendar'
+						AND RTRIM(LTRIM(@Frequency)) = 'A'
+						AND DATEPART(MONTH, @ReportDate) = 12
+						AND DATEPART(DAY, @ReportDate) = 31
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							OR PITM.TextValue = @R3
+							OR PITM.TextValue = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Fiscal'
+						AND (
+							PITM.TextValue = @R1
+							OR PITM.TextValue = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Fiscal'
+						AND PITM.TextValue = @R1
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'Q'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R3
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R4
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'S'
+						AND LI.ListItemName = 'Other'
+						AND (
+							CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+							OR CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R2
+							)
+						)
+					OR (
+						RTRIM(LTRIM(@Frequency)) = 'A'
+						AND LI.ListItemName = 'Other'
+						AND CAST(CDYT.OtherMonth AS VARCHAR) + '/' + CAST(CDYT.OtherDayofMonth AS VARCHAR) = @R1
+						)
+					)
+				)
+			AND CD.ManagerCode NOT IN (
+				SELECT ManagerCode
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+			AND TPT.CustomerAccountNumber NOT IN (
+				SELECT CustomerAccountNumber
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+			AND TPT.ParticipantID NOT IN (
+				SELECT ContactID
+				FROM TBL_DLV_DeliverableItem
+				WHERE DeliverableQueueID = @DeliverableQueueID
+				)
+	END
+	COMMIT TRANSACTION
+	END TRY
+	
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+		SET @ReturnStatus = - 1;
+		SELECT @ErrorDesc = ERROR_MESSAGE()
+			,@ErrorNumber = ERROR_NUMBER()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorDesc
+				,-- Message text.
+				@ErrorNumber
+				,-- Severity.
+				@ErrorState -- State.
+				);
+		
+	END CATCH
+END
+
+
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRDTDeliverableItemsSubscriptionType'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_UpdBRDTDeliverableItemsSubscriptionType';
+END

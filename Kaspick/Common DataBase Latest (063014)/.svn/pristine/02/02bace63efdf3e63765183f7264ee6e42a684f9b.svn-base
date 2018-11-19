@@ -1,0 +1,107 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProgramCLVal')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProgramCLVal;
+        PRINT 'DROPPED USP_EX_GetProgramCLVal';
+    END
+GO
+   
+   
+/*********************************************************************************************************************                            
+* PROCEDURE NAME  : USP_EX_GetProgramCLVal  
+* OLD PROCEDURE NAME  : USP_EIS_EX_PROGRAM_CL_VALSELPROC                            
+* DESCRIPTION     : TO CHECK CLIENT VALIDITY                             
+* INPUT           : @CLIENTID                              
+*                                                        
+* MODIFICATION LOG                            
+*                                                        
+* DATE       CREATED BY  DESCRIPTION                                                                        
+*--------------------------------------------------------------------------------------------------------------------                            
+* 05-DEC-06  VSHIVHARE   CREATED.    
+* 02-NOV-07  CPAREKH  MODIFIED TO INCLUDE 'CLIENTID' AND 'CLIENT BRIEFNAME' WHILE 'RET_VAL' IS 2.    
+* 24-APR-14  Mallikarjun Modified   
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted  
+*********************************************************************************************************************/                            
+CREATE PROCEDURE [dbo].[USP_EX_GetProgramCLVal] --'ACL',100260                 
+(                  
+ @CLIENT_BRIEFNAME CHAR(4),                   
+ @USERID INT                  
+                  
+ --@RET_VAL INT OUTPUT                        
+)                            
+AS                            
+BEGIN                            
+ DECLARE @STATUS_LI_ID INT ,                  
+   @STATUS_ID INT,                  
+   @CLIENTID varchar(15)            
+            
+SELECT @CLIENTID= ManagerCode FROM SYN_IT_AccountManagerCodes  where ManagerCode LIKE @CLIENT_BRIEFNAME             
+                    
+ -- GET STATUS LIST ITEM ID                   
+ EXEC USP_EX_GetListItemID                     
+  @LIST_TYPE_NAME = 'STATUS',                    
+  @LIST_ITEM_NAME = 'INACTIVE',                    
+  @LIST_ITEM_ID   = @STATUS_ID OUTPUT                   
+              
+ -- CHECK FOR RECORD EXITS IN CLIENT SUPPLEMENT WITH DELETE FLAG =0                  
+ -- IF NIT RETURN 1                  
+ IF NOT EXISTS( SELECT ManagerCode as CLIENTID FROM SYN_IT_AccountManagerCodes    
+  where ManagerCode=@CLIENTID   
+   
+     )                  
+ BEGIN                  
+  SELECT 1 AS RET_VAL , 0 AS CLIENTID, '' AS BRIEFNAME                        
+  RETURN(-1)                  
+ END                   
+              
+ -- CHECK FOR RECORD EXITS IN CLIENT SUPPLEMENT WITH DELETE FLAG = 0 AND STATUS NOT 'INACTIVE'                  
+ -- IF NOT RETURN 3                  
+ IF NOT EXISTS( SELECT ManagerCode as CLIENTID FROM SYN_IT_AccountManagerCodes    
+  where ManagerCode=@CLIENTID and ActiveFlag=-1  
+    
+   
+     )                  
+ BEGIN                  
+  SELECT 3 AS RET_VAL , 0 AS CLIENTID, '' AS BRIEFNAME                      
+  RETURN(-1)                    
+ END               
+                 
+-- CHECK FOR RECORD EXITS IN CLIENT SUPPLEMENT WITH DELETE FLAG = 0 AND STAFFROLE TABLE HAS RECORD FOR                   
+-- THIS CLIENTID AND LOGGED IN USER ID                  
+ -- IF NOT RETURN 2                  
+ IF NOT EXISTS( SELECT ManagerCode as CLIENTID FROM SYN_IT_AccountManagerCodes AccMgrCds  
+  INNER JOIN TBL_KS_USER USR ON AccMgrCds.ContactID=USR.InnotrustContactID  
+  where AccMgrCds.ManagerCode=@CLIENTID AND USR.UserId=@USERID  
+    
+   
+     )    
+ BEGIN    
+  
+   
+ SELECT 2 AS RET_VAL,ManagerCode as CLIENTID,ManagerCode AS BRIEFNAME  FROM SYN_IT_AccountManagerCodes    
+ where ManagerCode=@CLIENTID  
+   
+   
+ RETURN(-1)    
+ END    
+    
+  SELECT 0 AS RET_VAL,ManagerCode as CLIENTID,ManagerCode AS BRIEFNAME  FROM SYN_IT_AccountManagerCodes    
+  Where ManagerCode=@CLIENTID  
+   
+   
+  
+    
+ RETURN (0)    
+END    
+  
+  
+  GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProgramCLVal') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProgramCLVal';
+	END  

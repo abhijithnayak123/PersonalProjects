@@ -1,0 +1,680 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentProfile]    Script Date: 06/27/2013 17:32:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPaymentProfile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPaymentProfile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentProfile]    Script Date: 06/27/2013 17:32:21 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetPaymentProfile                      
+** Short Desc: To retrieve Policy Payment data
+**                      
+** Full Description: To retrieve the dimension values from POLICYITEM table for                
+**     a particular OWNER related to 'Accouting' POLICYCATEGORY.     
+**                              
+** Input Arguments:  
+	 @ManagerCode VARCHAR(5)
+	,@AllianceNumber VARCHAR(15)
+	,@CustomerAccountNumber VARCHAR(14)
+	,@ContactID INT
+	,@EntityType VARCHAR(20) 
+**         
+** Sample Call     
+        
+ EXEC USP_PP_GetPaymentProfile  'BR',Null,Null,Null,'Manager'
+ EXEC USP_PP_GetPaymentProfile   'BR','BR',Null,Null,'Alliance'
+ EXEC USP_PP_GetPaymentProfile   'BR','BR','LANE1',Null,'Account'
+ EXEC USP_PP_GetPaymentProfile   'BR','BR','LANE1',129584,'Contact'
+ 
+ '129583','Beneficiary','DPGAP'
+**            
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetPaymentProfile] (
+	 @ManagerCode VARCHAR(5)
+	,@AllianceNumber VARCHAR(15) = NULL
+	,@CustomerAccountNumber VARCHAR(14) = NULL
+	,@ContactID INT = NULL
+	,@EntityType VARCHAR(20)
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @PolicyLevel INT
+	DECLARE @PolicyLevelAlliance		INT
+	DECLARE @PolicyLevelManager INT
+	DECLARE @PolicyCategory INT
+	DECLARE @Value VARCHAR(100)
+	DECLARE @OwnerID VARCHAR(15)
+	DECLARE @OwnerIDInput VARCHAR(15)
+	DECLARE @EntityTypeInput VARCHAR(20)
+	DECLARE @CheckSignerPolicyID INT
+	DECLARE @LogoPaymentPolicyID INT
+	DECLARE @LogoEnvelopeID INT
+	DECLARE @AddressPaymentID INT
+	DECLARE @TaxPaymentID INT
+	DECLARE @EnvelopeID INT
+	DECLARE @PmntLogoMrktgMsgID INT
+	DECLARE @TmpltWitholdingID INT
+	DECLARE @Datatype VARCHAR(100)
+	DECLARE @PolicyDimensionID INT
+	DECLARE @AccountType VARCHAR(1000)
+	DECLARE @Comments VARCHAR(1000)
+	DECLARE @StatusID INT
+	DECLARE @ValidationEngineResultType INT
+	DECLARE @ContactRoleCode INT
+	DECLARE @ModifiedByID INT
+	DECLARE @PolicyModifiedByID INT
+	DECLARE @ManagerModifiedByID INT
+	DECLARE @AccountModifiedByID INT
+	DECLARE @ContactModifiedByID INT
+	
+	DECLARE @ModifiedBy VARCHAR(100)
+	DECLARE @PolicyModifiedBy VARCHAR(100)
+	DECLARE @ModifiedDate DATETIME
+	DECLARE @PolicyModifiedDate DATETIME
+	DECLARE @ManagerCondition INT
+	DECLARE @AccountCondition INT
+	DECLARE @ContactCondition INT
+
+
+	----Assigning values to variables
+
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	SET @ContactRoleCode = 21 --'Beneficiary'
+	
+
+	---Get Policy Levels for Alliance
+
+	SELECT @PolicyLevelAlliance = PolicyLevel ---200
+	FROM dbo.TBL_PolicyLevel
+	WHERE LevelName = 'Alliance'
+	
+	SELECT @PolicyLevelManager = PolicyLevel ---200
+	FROM dbo.TBL_PolicyLevel
+	WHERE LevelName = 'Manager'
+
+
+	SELECT @OwnerIDInput = (
+			CASE @EntityType
+				WHEN 'Manager'
+					THEN @ManagerCode
+				WHEN 'Alliance'
+					THEN @AllianceNumber
+				WHEN 'Account'
+					THEN @CustomerAccountNumber
+				END
+			)
+
+
+	SET @EntityTypeInput = @EntityType
+	SET @OwnerID = @OwnerIDInput
+
+	IF (
+			@EntityType = 'Manager'
+			OR @EntityType = 'Alliance'
+			OR @EntityType = 'Account'
+			)
+	BEGIN
+		SELECT @PolicyLevel = PolicyLevel
+		FROM TBL_PolicyLevel
+		WHERE LevelName = @EntityType
+
+		SELECT @PolicyCategory = PolicyCategoryID
+		FROM TBL_PolicyCategory
+		WHERE FULLNAME = 'Paragon'
+
+		--1.  Check signer (This dimension applicable for all three -Manager,Alliance,Account)
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Check signer'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance or Account enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager
+		-----IF EntityType = Account and data does not exists in PolicyItem then check if it exists for Alliance level.IF exists then 
+		-----retrieve from that level or else go to higher level i.e.Manager level to retrieve Policy item id	
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			IF @EntityType = 'Alliance'
+			BEGIN
+				SELECT @OwnerID = @ManagerCode
+
+				SELECT @EntityType = 'Manager'
+			END
+			ELSE
+				IF @EntityType = 'Account'
+				BEGIN
+					IF EXISTS (
+							SELECT 1
+							FROM TBL_PolicyItem PolicyItem
+							WHERE OwnerID = @AllianceNumber
+								AND PolicyLevel = @PolicyLevelAlliance
+								AND PolicyDimensionID = @PolicyDimensionID
+							)
+					BEGIN
+						SELECT @OwnerID = @AllianceNumber
+
+						SELECT @EntityType = 'Alliance'
+					END
+					ELSE
+					BEGIN
+						SELECT @OwnerID = @ManagerCode
+
+						SELECT @EntityType = 'Manager'
+					END
+				END
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Check signer'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @CheckSignerPolicyID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension		   
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+		--2. Address on Payments(This dimension applicable for all three -Manager,Alliance,Account)                  
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Address on Payments'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance or Account enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager
+		-----IF EntityType = Account and data does not exists in PolicyItem then check if it exists for Alliance level.IF exists then 
+		-----retrieve from that level or else go to higher level i.e.Manager level to retrieve Policy item id	
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			IF @EntityType = 'Alliance'
+			BEGIN
+				SELECT @OwnerID = @ManagerCode
+
+				SELECT @EntityType = 'Manager'
+			END
+			ELSE
+				IF @EntityType = 'Account'
+				BEGIN
+					IF EXISTS (
+							SELECT 1
+							FROM TBL_PolicyItem PolicyItem
+							WHERE OwnerID = @AllianceNumber
+								AND PolicyLevel = @PolicyLevelAlliance
+								AND PolicyDimensionID = @PolicyDimensionID
+							)
+					BEGIN
+						SELECT @OwnerID = @AllianceNumber
+
+						SELECT @EntityType = 'Alliance'
+					END
+					ELSE
+					BEGIN
+						SELECT @OwnerID = @ManagerCode
+
+						SELECT @EntityType = 'Manager'
+					END
+				END
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Address on Payments'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @AddressPaymentID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension		   
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+	END
+
+	IF (
+			@EntityType = 'Manager'
+			OR @EntityType = 'Alliance'
+			)
+	BEGIN
+		--3.  Logo on Beneficiary Payments   
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Logo on Beneficiary Payments'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			SELECT @OwnerID = @ManagerCode
+
+			SELECT @EntityType = 'Manager'
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Logo on Beneficiary Payments'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @LogoPaymentPolicyID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension	
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+		--4. Logo on Envelopes                  
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Logo on Envelopes'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			SELECT @OwnerID = @ManagerCode
+
+			SELECT @EntityType = 'Manager'
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Logo on Envelopes'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @LogoEnvelopeID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension		   
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+		--5. Tax Pmt Mail Inst.                  
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Tax Pmt Mail Inst.'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			SELECT @OwnerID = @ManagerCode
+
+			SELECT @EntityType = 'Manager'
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Tax Pmt Mail Inst.'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @TaxPaymentID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension	
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+		--6. Envelopes                  
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Envelopes'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		-----IF EntityType = Manager,Execute the child SP and get PolicyItemID
+		-----IF EntityType = Alliance enter the loop
+		---- IF	EntityType = Alliance and data does not exists in PolicyItem,then get it from Manager level by assigning 
+		-----@ManagerCode to @Ownerid and setting @EntityType as Manager	                    
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PolicyItem PolicyItem
+				WHERE OwnerID = @OwnerIDInput
+					AND PolicyLevel = @PolicyLevel
+					AND PolicyDimensionID = @PolicyDimensionID
+				)
+		BEGIN
+			SELECT @OwnerID = @ManagerCode
+
+			SELECT @EntityType = 'Manager'
+		END
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Envelopes'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @EnvelopeID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension		   
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+	END
+
+	IF (@EntityType = 'Manager')
+	BEGIN
+		--7. Payment Logo/Marketing Message  (This dimension applicable for only Manager Level)            
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Payment Logo/Marketing Message'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Payment Logo/Marketing Message'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @PmntLogoMrktgMsgID = CAST(@Value AS INT)
+		--8. Templates with withholding info  (This dimension applicable for only Manager Level)                 
+		SET @Value = NULL
+
+		EXEC USP_PP_GetPolicyDimensionValue @DimensionFullName = 'Templates with withholding info'
+			,@Datatype = @Datatype OUTPUT
+			,@PolicyDimensionID = @PolicyDimensionID OUTPUT
+
+		EXEC [USP_PP_GetPolicyItemValue] @OwnerID
+			,@EntityType
+			,'Templates with withholding info'
+			,@PolicyCategory
+			,@Value OUTPUT
+			,@Datatype OUTPUT
+			,@PolicyDimensionID OUTPUT
+
+		SET @TmpltWitholdingID = CAST(@Value AS INT)
+		----Reassigning the Variables to original inputs for retrieving policyid for next dimension		   
+		SET @OwnerID = @OwnerIDInput
+		SET @EntityType = @EntityTypeInput
+	END
+
+	-- Payment conditions          
+	-- Retreive the Manager ,account and contact status condition from PaymentCondition
+	IF (
+			@EntityType = 'Manager'
+			OR @EntityType = 'Account'
+			OR @EntityType = 'Contact'
+			)
+	BEGIN
+		SELECT  @ManagerCondition = ListItem.ListItemID,
+				@ManagerModifiedByID = PayCond.ModifiedBy
+		FROM TBL_PP_PaymentCondition PayCond
+		INNER JOIN dbo.TBL_ListItem ListItem ON PayCond.StatusID = ListItem.ListItemID
+		INNER JOIN dbo.TBL_ListType ListType ON ListItem.ListTypeID = ListItem.ListTypeID
+		INNER JOIN dbo.TBL_ListItem ListItem1 ON PayCond.EntityTypeId = ListItem1.ListItemID
+		INNER JOIN dbo.TBL_ListType ListType1 ON ListItem1.ListTypeID = ListItem1.ListTypeID
+		WHERE PayCond.ManagerCode = @ManagerCode
+			AND ListType.ListTypeName = 'Payment Condition'
+			AND ListType1.ListTypeName = 'Entity'
+			AND ListItem1.ListItemName= 'Manager'
+
+		
+		SELECT @AccountCondition = ListItem.ListItemID,
+			   @AccountModifiedByID = PayCond.ModifiedBy
+		FROM TBL_PP_PaymentCondition PayCond
+		INNER JOIN dbo.TBL_ListItem ListItem ON PayCond.StatusID = ListItem.ListItemID
+		INNER JOIN dbo.TBL_ListType ListType ON ListItem.ListTypeID = ListType.ListTypeID
+		WHERE PayCond.CustomerAccountNumber = @CustomerAccountNumber
+			AND ISNULL(ContactRoleCode, '') = ''
+			AND ListType.ListTypeName = 'Payment Condition'
+
+
+		SELECT @ContactCondition = ListItem.ListItemID,
+			   @ContactModifiedByID = PayCond.ModifiedBy
+		FROM TBL_PP_PaymentCondition PayCond
+		INNER JOIN dbo.TBL_ListItem ListItem ON PayCond.StatusID = ListItem.ListItemID
+		INNER JOIN dbo.TBL_ListType ListType ON ListItem.ListTypeID = ListType.ListTypeID
+		WHERE PayCond.CustomerAccountNumber = @CustomerAccountNumber
+			AND PayCond.ContactID = @ContactID
+			AND ListType.ListTypeName = 'Payment Condition'
+
+
+	----Retrieve Payment condition data 
+	SELECT @AccountType = AccountType
+		,@Comments = Comments
+		,@ValidationEngineResultType = ValidationEngineResultType
+		,@ModifiedDate = PayCond.ModifiedDate
+		,@ModifiedByID = ModifiedBy
+		,@ModifiedBy = ModUser.LoginName
+	FROM TBL_PP_PaymentCondition PayCond
+	INNER JOIN TBL_KS_User ModUser ON ModUser.UserID = PayCond.ModifiedBy
+	WHERE ISNULL(ManagerCode, '') = CASE 
+			WHEN @EntityType = 'Manager'
+				THEN @ManagerCode
+			ELSE @ManagerCode
+			END
+		AND ISNULL(CustomerAccountNumber, '') = CASE 
+			WHEN @EntityType = 'Account'
+				THEN @CustomerAccountNumber
+			WHEN @EntityType = 'Contact'
+				THEN @CustomerAccountNumber
+			ELSE ''
+			END
+		AND ISNULL(ContactID, '') = CASE 
+			WHEN @EntityType = 'Contact'
+				THEN @ContactID
+			ELSE ''
+			END
+		AND ISNULL(ContactRoleCode, '') = CASE 
+			WHEN @EntityType = 'Contact'
+				THEN @ContactRoleCode
+			ELSE ''
+			END
+
+	SET @ManagerCondition = CASE 
+			WHEN @EntityTypeInput = 'Manager'
+				AND @ModifiedByID IS NOT NULL
+				THEN @ManagerCondition
+			WHEN @EntityTypeInput = 'Account'
+				AND @ManagerModifiedByID IS NOT NULL
+				THEN @ManagerCondition
+			WHEN @EntityTypeInput = 'Contact'
+				AND @ManagerModifiedByID IS NOT NULL
+				THEN @ManagerCondition
+			ELSE NULL
+			END
+	SET @AccountCondition = CASE 
+			WHEN @EntityTypeInput = 'Account'
+				AND @ModifiedByID IS NOT NULL
+				THEN @AccountCondition
+			WHEN @EntityTypeInput = 'Contact'
+				AND @AccountModifiedByID IS NOT NULL
+				THEN @AccountCondition
+			ELSE NULL
+			END
+	SET @ContactCondition = CASE 
+			WHEN @EntityTypeInput = 'Contact'
+				AND @ModifiedByID IS NOT NULL
+				THEN @ContactCondition
+			ELSE NULL
+			END
+	END
+
+	-------ModifiedBy ID & Name and Modified date for Manager/Alliance/Account from PolicyItem Table	
+	SELECT @PolicyModifiedDate = max(ModifiedDate)
+	FROM dbo.TBL_PolicyItem PolItem
+	WHERE OwnerID = CASE @EntityType
+				WHEN 'Manager'
+					THEN @ManagerCode
+				WHEN 'Alliance'
+					THEN @AllianceNumber
+				WHEN 'Account'
+					THEN @CustomerAccountNumber
+				END
+		AND PolicyLevel = @PolicyLevel
+
+
+	SELECT @PolicyModifiedByID = PolItem.ModifiedUserId
+		,@PolicyModifiedBy = LoginName
+	FROM dbo.TBL_PolicyItem PolItem
+	INNER JOIN dbo.TBL_KS_User TblUser ON LTRIM(RTRIM(PolItem.ModifiedUserId)) = LTRIM(RTRIM(TblUser.UserID))
+	WHERE OwnerID = CASE @EntityType
+				WHEN 'Manager'
+					THEN @ManagerCode
+				WHEN 'Alliance'
+					THEN @AllianceNumber
+				WHEN 'Account'
+					THEN @CustomerAccountNumber
+				END
+		AND PolicyLevel = @PolicyLevel
+		AND PolItem.ModifiedDate = @PolicyModifiedDate
+		
+		
+		
+		--------ModifiedBy ID & Name and Modified date for Alliance when Alliance level data is not present in PolicyItem Table
+		--IF NOT EXISTS (
+		--SELECT 1
+		--FROM TBL_PolicyItem PolicyItem
+		--WHERE OwnerID = @AllianceNumber
+		--	AND PolicyLevel = @PolicyLevelAlliance) AND @EntityType = 'Alliance'
+		--BEGIN
+		--	SELECT @PolicyModifiedDate = max(ModifiedDate)
+		--	FROM dbo.TBL_PolicyItem PolItem
+		--	WHERE OwnerID = @ManagerCode
+		--	AND PolicyLevel = @PolicyLevelManager
+			
+
+		--	SELECT @PolicyModifiedByID = PolItem.ModifiedUserId
+		--		,@PolicyModifiedBy = FirstName + '' + MiddleName + '' + LastName
+		--	FROM dbo.TBL_PolicyItem PolItem
+		--	INNER JOIN dbo.TBL_KS_User TblUser ON LTRIM(RTRIM(PolItem.ModifiedUserId)) = LTRIM(RTRIM(TblUser.UserID))
+		--	WHERE OwnerID = @ManagerCode
+		--		AND PolicyLevel = @PolicyLevelManager
+		--		AND PolItem.ModifiedDate = @PolicyModifiedDate
+			
+			
+		--END
+		
+
+	-- Display Policy Settings
+	SELECT @EntityTypeInput AS EntityType
+		,@ManagerCode AS ManagerCode
+		,@AllianceNumber AS AllianceNumber
+		,@CustomerAccountNumber AS CustomerAccountNumber
+		,@ContactID AS ContactID
+		,@CheckSignerPolicyID AS CheckSignerPDID
+		,@LogoPaymentPolicyID AS LogoOnBenePaymentsPDID
+		,@LogoEnvelopeID AS LogoOnEnvelopesPDID
+		,@AddressPaymentID AS AddressOnBenePaymentsPDID
+		,@TaxPaymentID AS TaxPMTMailInstPDID
+		,@EnvelopeID AS EnvelopesPDID
+		,@PmntLogoMrktgMsgID AS PaymentLogoPDID
+		,@TmpltWitholdingID AS TemplateWithWithholdingInfoPDID
+		-- Display Payment Condition 
+		,CASE 
+			WHEN @EntityType = 'Alliance'
+				THEN NULL
+			ELSE @AccountType
+			END AS PaymentAccountType
+		,CASE 
+			WHEN @EntityType = 'Alliance'
+				THEN NULL
+			ELSE @Comments
+			END AS PaymentConditionNote
+		,CASE 
+			WHEN @EntityType = 'Alliance'
+				THEN NULL
+			ELSE @ValidationEngineResultType
+			END AS ValidationEngineResultType
+		,@ManagerCondition AS ManagerPaymentConditionStatus
+		,@AccountCondition AS AccountPaymentConditionStatus
+		,@ContactCondition AS ContactPaymentConditionStatus
+		,Case WHEN ISNull(@ModifiedDate,'01/01/1753')>= IsNull(@PolicyModifiedDate,'01/01/1753') THEN @ModifiedByID
+			  ELSE @PolicyModifiedByID END AS LastModifiedByUserID
+		,Case WHEN ISNull(@ModifiedDate,'01/01/1753')>= IsNull(@PolicyModifiedDate,'01/01/1753') THEN @ModifiedBy
+			  ELSE @PolicyModifiedBy END AS LastModifiedByUser
+		,Case WHEN ISNull(@ModifiedDate,'01/01/1753')>= IsNull(@PolicyModifiedDate,'01/01/1753') THEN @ModifiedDate
+			  ELSE @PolicyModifiedDate END AS LastModifiedDateTime
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_NUMBER() AS ErrorNumber
+		,ERROR_MESSAGE() AS ErrorMessage
+END CATCH

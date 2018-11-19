@@ -1,0 +1,73 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_ScheduledTermination]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_ScheduledTermination]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_ScheduledTermination  
+** Short Desc: Generate report for the scheduled termination  
+**    
+** Full Description    
+**      Generate report for the scheduled termination  
+**    
+** Sample Call    
+EXEC USP_KCo_ScheduledTermination '1995-10-10 00:00:00.000'
+	,'2014-04-04 00:00:00.000'
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries    
+** Created DT: 18-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_ScheduledTermination] @BeginDate AS DATETIME
+	,@EndDate AS DATETIME
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT RTRIM(LTRIM(UPPER(AccMas.Managercode))) AS Managercode
+		,RTRIM(LTRIM(UPPER(AccMas.CustomerAccountNumber))) AS CustomerAccountNumber
+		,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS FullName
+		,AccMas.ProjectedAccountCloseDate AS ExpectedMatureDate
+		,UAccMas.UDFAMColumn030 AS MatureDate
+	FROM SYN_IT_AccountMaster AccMas
+	LEFT OUTER JOIN SYN_IT_UDF_AccountMaster UAccMas ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	WHERE (AccMas.ProjectedAccountCloseDate) >= @BeginDate
+		AND (AccMas.ProjectedAccountCloseDate) <= @EndDate
+	ORDER BY AccMas.Managercode
+		,AccMas.CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

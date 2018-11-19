@@ -1,0 +1,70 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetImportLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetImportLog]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetImportLog      
+** Short Desc : Gets the Import Log details from TBL_TR_AXYSInfoImportLog  
+**      
+** Full Description : Gets the Import Log details from TBL_TR_AXYSInfoImportLog  
+**              
+**      
+** Sample Call 
+	Declare @ReturnStatus INT = - 1
+	Declare @ErrorDesc VARCHAR(8000)
+	EXEC USP_TR_GetImportLog @ReturnStatus,@ErrorDesc   
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/27/2014       
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**                                Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetImportLog] @ReturnStatus INT = - 1
+OUTPUT
+	,@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from    
+	-- interfering with SELECT statements.    
+	SET NOCOUNT ON
+
+	SELECT ImportLogID
+		,DestinationTable
+		,LastUpdated
+		,FileDescription
+		,FileName
+		,RowsLoaded
+	FROM TBL_TR_AXYSInfoImportLog
+	ORDER BY LastUpdated DESC
+END

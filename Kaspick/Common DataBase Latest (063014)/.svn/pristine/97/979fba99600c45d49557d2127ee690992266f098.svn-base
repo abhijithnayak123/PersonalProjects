@@ -1,0 +1,624 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProfileTax')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProfileTax;
+        PRINT 'DROPPED USP_EX_GetProfileTax';
+    END
+GO
+   
+
+  
+  
+/**************************************************************************                        
+* New Procedure Name  : USP_EX_GetProfileTax  
+* Old PROCEDURE NAME  : USP_EIS_EX_PROFILE_TAX_SELPROC                        
+* DESCRIPTION     : LISTS TAX RECORD  FOR GIVEN ENTITY                        
+* MODIFICATION LOG:                         
+*  Sample Call    : [USP_EIS_EX_PROFILE_TAX_SelProc]  'PROGRAM',200023 --,'ProgramTax.aspx'                                             
+* DATE         MODIFIED BY  DESCRIPTION                                                                    
+*-------------------------------------------------------------------------                        
+* 20-NOV-06    MANJIRI C  CREATED                        
+* 15-FEB-07    GEETHA PRIYA.V MODIFIED(REMOVED SALUTATION(BUG# 4177))                           
+* 27-FEB-07  TANUJ   ENTER IF CONDITION FOR RETRIVING TAXID                         
+* 01-MAR-07    GEETHA PRIYA.V MODIFIED(YEAR OF FIRST K-1 AND YEAR OF LAST K-1(BUG# 4305))                        
+* 03-APR-07    GEETHA PRIYA.V MODIFIED && IF CLAUSE FOR ENTITYTYPE = ACCOUNT (BUG 4758)                        
+* 31-MAY-07    Vshivhare modified for fetching tax details from PolicyItem Table                         
+* 05-Jun-07    Vshivhare modified for New dimension Depre. Schedule                        
+* 20-Jun-07    Tanuj modified for adding high priority field                      
+* 21-Jun-07    Vshivhare modified for TrustParticipant Tax Name                    
+* 05-Jul-07    Saravanan PM && Modified for High Periority filed mapped to Profile Tax Table in Beneficiary Level                    
+* 06-jul-07  Tanuj added global condition                 
+*19-July-07  Tanuj  Added new field K1Priority               
+*18 Sep 07  Saravanan Added New Filed CT_12S_ID,OR_REGISTRATION_NO         
+* 5-mar-07 Deepa added fascimilesignerflag           
+* 11192009  Website Enhancements - Abhishek - Removed the logic of checking the CT12S field based on the legal address for OR        
+*12-March-14 Sanath Tax tab in Program module pointing to KaspickDB    
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted  
+  
+--Sample Call for Donor/Ben  
+EXEC USP_EX_GetProfileTax 'CONTACT','61576','DonorBeneficiaryTax.aspx','High Priority Bene Tax Forms (K-1)',  
+ 21   
+  
+--Sample Call for Account  
+EXEC USP_EX_GetProfileTax 'ACCOUNT','ACADW','AccountTax.aspx','High Priority',''   
+  
+--Sample Call for Account  
+EXEC USP_EX_GetProfileTax 'MANAGER','ACL','ClientTax.aspx','High Priority',''        
+****************************************************************************/  
+CREATE PROCEDURE USP_EX_GetProfileTax   
+ @ENTITYTYPE VARCHAR(30)  
+ ,@ENTITYID VARCHAR(15)  
+ ,@PAGENAME VARCHAR(50) = NULL  
+ ,@FLD_NAME VARCHAR(50) = NULL  
+ ,@Type_ID INT = NULL  
+ ,@TAX_NAME VARCHAR(35) = NULL OUTPUT  
+AS  
+BEGIN  
+ DECLARE @PARTY_TYPE_ORG INT  
+  ,@PARTY_TYPE_IND INT  
+  ,@BELL_DATE DATETIME  
+  ,@REQUIRED_LATER_ID_TAX INT  
+  ,@ENTITY_TYPE_ID INT  
+  ,@TAX_ID INT  
+  ,@MODE VARCHAR(8)  
+ DECLARE @TRUSTEECHANGEDATE DATETIME  
+  ,@ADDRESSCHANGEDATE DATETIME  
+  ,@ACCOUNTTRANSFERDATE DATETIME  
+  ,@TAXRETURNEXDATE DATETIME  
+  ,@R1099MEDIAID INT  
+  ,@HIGHPRIORITY_VALUE VARCHAR(5)  
+  ,@MAILONORBEFORE_MM_ID INT  
+  ,@MAILONORBEFORE_DD_ID INT  
+  ,@VALUE VARCHAR(100)  
+  ,@POLICYDIMENSIONID INT  
+  ,@DATATYPE VARCHAR(20)  
+  ,@HIGH_PRIORITY_K1_ID INT  
+  ,@K1_MAILING_RULE INT  
+  ,@TX_RTN_MAILING_RULE INT  
+  ,@MN_STATE_ID FLOAT  
+  ,@OR_REGISTRATION_BELL_DATE DATETIME  
+  
+ EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'ENTITY'  
+  ,@LIST_ITEM_NAME = @ENTITYTYPE  
+  ,@LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT  
+  
+ EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'PARTY TYPE'  
+  ,@LIST_ITEM_NAME = 'ORGANIZATION'  
+  ,@LIST_ITEM_ID = @PARTY_TYPE_ORG OUTPUT  
+  
+ EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'PARTY TYPE'  
+  ,@LIST_ITEM_NAME = 'INDIVIDUAL'  
+  ,@LIST_ITEM_ID = @PARTY_TYPE_IND OUTPUT  
+  
+ IF (@ENTITYTYPE = 'CONTACT')  
+ BEGIN  
+  SELECT @TAX_ID = TAX_ID  
+  FROM TBL_IRS_ProfileTax  
+  WHERE BeneContactID = @ENTITYID 
+
+ END  
+ ELSE IF (@ENTITYTYPE = 'ACCOUNT')  
+ BEGIN  
+  SELECT @TAX_ID = TAX_ID  
+  FROM TBL_IRS_ProfileTax  
+  WHERE CustomerAccountNumber = @ENTITYID  
+   AND ENTITY_TYPE_ID = @ENTITY_TYPE_ID  
+ END  
+ ELSE  
+ BEGIN  
+  SELECT @TAX_ID = TAX_ID  
+  FROM TBL_IRS_ProfileTax  
+  WHERE (  
+    CASE   
+     WHEN @ENTITYTYPE = 'MANAGER'  
+      THEN ManagerCode  
+     WHEN @ENTITYTYPE = 'ALLIANCE'  
+      THEN AllianceNumber  
+     END  
+    ) = @ENTITYID  
+   AND ENTITY_TYPE_ID = @ENTITY_TYPE_ID  
+ END  
+  
+ IF (@TAX_ID = NULL)  
+ BEGIN  
+  SET @MODE = 'NEW'  
+ END  
+ ELSE  
+ BEGIN  
+  SET @MODE = 'EDIT'  
+ END  
+  
+ DECLARE @UNIQUE_ID INT  
+  
+ IF (@ENTITYTYPE = 'CONTACT')  
+ BEGIN  
+  IF (@TAX_ID IS NOT NULL)  
+  BEGIN  
+   SELECT @HIGHPRIORITY_VALUE = HIGH_PRIORITY  
+   FROM TBL_IRS_ProfileTax  
+   WHERE BeneContactID = @ENTITYID  
+  
+   SET @MAILONORBEFORE_MM_ID = ltrim(rtrim(Substring(@HIGHPRIORITY_VALUE, 1, Charindex('/', @HIGHPRIORITY_VALUE) - 1)))  
+   SET @MAILONORBEFORE_DD_ID = Substring(@HIGHPRIORITY_VALUE, Charindex('/', @HIGHPRIORITY_VALUE) + 1, len(@HIGHPRIORITY_VALUE))  
+  
+   SELECT @MAILONORBEFORE_MM_ID = ListItemID  
+   FROM VW_ListItem  
+   WHERE ListTypeName = 'MONTHS'  
+    AND DisplaySequence = @MAILONORBEFORE_MM_ID  
+  
+   SELECT PrfTax.TAX_ID  
+    ,UdfConAccRol.UDFCAColumn012
+    ,UdfConAccRol.UDFCAColumn013 
+    ,ISNULL(EmpConMstr.PrimaryFirstName,'') + ' ' + ISNULL(EmpConMstr.PrimaryMiddleInitial,'') + ' ' + ISNULL(EmpConMstr.PrimaryLastName,'') AS BENEFICIARYTAXFORMID  
+    ,PrfTax.BENEFICIARY_TAX_FORM_ID  
+    ,@MAILONORBEFORE_MM_ID AS MAILONORBEFORE_MM_ID  
+    ,@BELL_DATE AS BELL_DATE  
+    ,VLstItm.LISTITEMID AS K1_PRIORITY  
+    ,( SELECT TOP 1  DATEOFDEATH  
+     FROM SYN_IT_CONTACTMASTER ConMstr  
+     INNER JOIN SYN_IT_CONTACTACCOUNTROLES ConAccRol ON ConAccRol.CONTACTID = @ENTITYID  
+      AND ConAccRol.CONTACTROLECODE IN (21)   
+     INNER JOIN SYN_IT_ACCOUNTMASTER AccMstr ON AccMstr.CUSTOMERACCOUNTNUMBER = ConAccRol.CUSTOMERACCOUNTNUMBER  
+     ) AS DOD  
+    ,@MAILONORBEFORE_DD_ID AS MAILONORBEFORE_DD_ID  
+   FROM SYN_IT_ContactMaster ConMstr  
+     LEFT JOIN TBL_IRS_ProfileTax PrfTax ON PrfTax.BeneContactID = ConMstr.CONTACTID  
+     INNER JOIN SYN_IT_UDF_CONTACTACCOUNTROLE UdfConAccRol ON UdfConAccRol.CONTACTID_KEY = ConMstr.CONTACTID  
+     INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = ConMstr.ContactId  
+      INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode and ConRolCds.ID   
+    in (10, 21, 24, 37)  
+     INNER JOIN dbo.SYN_IT_AccountMaster AS AccMstr ON AccMstr.CustomerAccountNumber = ConAccRol.CustomerAccountNumber  
+     INNER JOIN dbo.SYN_IT_CTAccountDetails AS CtAccDtls  ON CtAccDtls.CustomerAccountNumber = ConAccRol.CustomerAccountNumber  
+     INNER JOIN dbo.SYN_IT_UDF_AccountMaster AS UdfAccMstr ON UdfAccMstr.CustomerAccountNumber_Key = AccMstr.CustomerAccountNumber  
+     LEFT JOIN VW_EX_ListItem VLstItm ON VLstItm.IvanValue = CAST(PrfTax.K_1_PRIORITY AS VARCHAR)  
+    AND VLstItm.ListTypeName = 'LOGICAL VALUE'  
+     LEFT JOIN SYN_IT_ContactMaster EmpConMstr ON PrfTax.BENEFICIARY_TAX_FORM_ID = EmpConMstr.CONTACTID  
+   WHERE ConMstr.ContactID = @entityid  
+     
+  END  
+  ELSE  
+  BEGIN  
+   SELECT 0  
+    ,UdfConAccRol.UDFCAColumn012  
+    ,UdfConAccRol.UDFCAColumn013  
+    ,NULL  
+    ,NULL  
+    ,NULL  
+    ,NULL  
+    ,NULL  
+    ,(  
+     SELECT  TOP 1 DATEOFDEATH  
+     FROM SYN_IT_CONTACTMASTER ConMstr  
+     INNER JOIN SYN_IT_CONTACTACCOUNTROLES ConAccRol ON ConAccRol.CONTACTID = @ENTITYID  
+      AND ConAccRol.CONTACTROLECODE IN (21) --AND ConAccRol.CUSTOMERACCOUNTNUMBER = @ENTITYID    
+     INNER JOIN SYN_IT_ACCOUNTMASTER AccMstr ON AccMstr.CUSTOMERACCOUNTNUMBER = ConAccRol.CUSTOMERACCOUNTNUMBER  
+     ) AS DOD  
+    ,NULL  
+   FROM SYN_IT_ContactMaster ConMstr  
+   LEFT JOIN TBL_IRS_ProfileTax PrfTax ON PrfTax.BeneContactID = ConMstr.ContactId  
+   LEFT JOIN SYN_IT_UDF_CONTACTACCOUNTROLE UdfConAccRol ON UdfConAccRol.CONTACTID_KEY = ConMstr.CONTACTID  
+    AND CONTACTROLECODE_KEY IN (  
+     21  
+     ,24  
+     )  
+   WHERE ConMstr.ContactId = @ENTITYID  
+  END  
+ END  
+ ELSE  
+ BEGIN  
+  --Fetch all above parameters value from Policy Tables                        
+  --High Priority                        
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'High Priority'  
+    
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'TEXT'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+    
+  SET @HIGHPRIORITY_VALUE = @VALUE                      
+  SET @MAILONORBEFORE_MM_ID = ltrim(rtrim(Substring(@HIGHPRIORITY_VALUE, 1, Charindex('/', @HIGHPRIORITY_VALUE) - 1)))  
+  SET @MAILONORBEFORE_DD_ID = Substring(@HIGHPRIORITY_VALUE, Charindex('/', @HIGHPRIORITY_VALUE) + 1, len(@HIGHPRIORITY_VALUE))  
+  
+  SELECT @MAILONORBEFORE_MM_ID = ListItemID  
+  FROM VW_EX_ListItem  
+  WHERE ListTypeName = 'MONTHS'  
+   AND DisplaySequence = @MAILONORBEFORE_MM_ID  
+  
+                 
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'K-1 MAILING RULE'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'CheckACHMailRule'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @K1_MAILING_RULE = CAST(@VALUE AS INT)  
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'TX RTN MAILING RULE'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'TX RTN MAILING RULE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @TX_RTN_MAILING_RULE = CAST(@VALUE AS INT)  
+  
+  SET @VALUE = NULL  
+    
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'MN State ID'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,NULL  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+   ,@MN_STATE_ID OUTPUT  
+  
+  --TRUSTEE CHNAGE DATE                        
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'Trustee Change Date'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'DATE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @TRUSTEECHANGEDATE = CAST(@VALUE AS DATETIME)  
+              
+  --Tax Return Extension Date                        
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'Tax Return Ext. Date'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'DATE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @TAXRETURNEXDATE = CAST(@VALUE AS DATETIME)  
+               
+  --Account Transerfer Date                       
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_POLICYDIMENSION  
+  WHERE FULLNAME = 'Account Transfer Dt'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'DATE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @ACCOUNTTRANSFERDATE = CAST(@VALUE AS DATETIME)  
+   
+  --Address Change Date                        
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'Address Change Date'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'DATE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @ADDRESSCHANGEDATE = CAST(@VALUE AS DATETIME)  
+    
+  --1099R Media                        
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = '1099R Media'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'1098/9 Media'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @R1099MEDIAID = CAST(@VALUE AS INT)  
+  
+    
+  --Depreciation Schedule                      
+  DECLARE @DEPRECIATION INT  
+  
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'Depre. Schedule'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'LOGICAL VALUE'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @DEPRECIATION = CAST(@VALUE AS INT)  
+    
+  --12. High Priority K-1                                  
+  SET @VALUE = NULL  
+  
+  SELECT @DATATYPE = DATATYPE  
+   ,@POLICYDIMENSIONID = PolicyDimensionID  
+  FROM TBL_PolicyDimension  
+  WHERE FULLNAME = 'High Priority K-1'  
+  
+  EXEC [USP_EX_GetPolicydimensionValue] @ENTITYID  
+   ,@ENTITYTYPE  
+   ,'Logical Value'  
+   ,@DATATYPE  
+   ,@POLICYDIMENSIONID  
+   ,@VALUE OUTPUT  
+  
+  SET @HIGH_PRIORITY_K1_ID = CAST(@VALUE AS INT)  
+  
+            
+  DECLARE @LEGALADDRESSCOUNT INT  
+  
+  SELECT @LEGALADDRESSCOUNT = COUNT(*)  
+  FROM SYN_IT_ContactAddresses ConAdres  
+  INNER JOIN SYN_IT_CONTACTMASTER ConMstr ON ConMstr.ContactId = ConAdres.ContactId  
+  INNER JOIN SYN_IT_CONTACTACCOUNTROLES ConAccRol ON ConAccRol.ContactId = ConMstr.ContactId  
+   AND CONTACTROLECODE = 16  
+   AND ConAccRol.CUSTOMERACCOUNTNUMBER = @ENTITYID  
+  WHERE ConAdres.PRIMARYADDRESSFLAG = - 1  
+   AND (  
+    ConAdres.STATE = 'OR'  
+    OR ConAdres.STATE = 'CA\OR'  
+    )  
+  
+  IF (@TAX_ID IS NOT NULL)  
+  BEGIN  
+    
+   SELECT PrfTax.TAX_ID  
+    ,(  
+     CASE   
+      WHEN upper(@ENTITYTYPE) = 'MANAGER'  
+       THEN PrfTax.MANAGERCODE  
+      WHEN upper(@ENTITYTYPE) = 'ALLIANCE'  
+       THEN PrfTax.ALLIANCENUMBER  
+      WHEN upper(@ENTITYTYPE) = 'ACCOUNT'  
+       THEN PrfTax.CUSTOMERACCOUNTNUMBER  
+      END  
+     ) AS LINKID  
+    ,@TRUSTEECHANGEDATE AS TRUSTEE_CHANGE_DATE  
+    ,@ADDRESSCHANGEDATE AS ADDRESS_CHANGE_DATE  
+    ,@ACCOUNTTRANSFERDATE AS ACCOUNT_TRANSFER_DATE  
+    ,@TAXRETURNEXDATE AS TAX_RETURN_EXTENSION_DATE  
+    ,PrfTax.EmployeeContactID AS FASCIMILE_SIGNER_EMPLOYEEID  
+    ,@R1099MEDIAID AS R1099_MEDIA_ID  
+    ,ISNULL(ConMstr.PrimaryFirstName,'') + ' ' + ISNULL(ConMstr.PrimaryMiddleInitial,'') + ' ' + ISNULL(ConMstr.PrimaryLastName,'') AS BENEFICIARYTAXFORMID  
+    ,--PT.PARTY_NAME AS BENEFICIARYTAXFORMID,                        
+    PrfTax.BENEFICIARY_TAX_FORM_ID AS BENEFICIARY_TAX_FORM_ID  
+    ,@MAILONORBEFORE_MM_ID AS MAILONORBEFORE_MM_ID  
+    ,ISNULL(EmpConMstr.PrimaryFirstName,'') + ' ' + ISNULL(EmpConMstr.PrimaryMiddleInitial,'') + ' ' + ISNULL(EmpConMstr.PrimaryLastName,'') AS TAXRETURNID                        
+    ,PrfTax.TAX_RETURN_ID AS RETURNID                        
+    ,ISNULL(ConMstr10989.PrimaryFirstName,'') + ' ' + ISNULL(ConMstr10989.PrimaryMiddleInitial,'') + ' ' + ISNULL(ConMstr10989.PrimaryLastName,'') AS TAX10989ID                        
+    ,PrfTax.TAX_10989_ID AS PROFILE10989ID                        
+    ,ISNULL(ConMstr1099.PrimaryFirstName,'') + ' ' + ISNULL(ConMstr1099.PrimaryMiddleInitial,'') + ' ' + ISNULL(ConMstr1099.PrimaryLastName,'') AS TAX1099RID                        
+    ,PrfTax.TAX_1099R_ID AS PROFILE1099RID  
+    ,@BELL_DATE AS BELL_DATE  
+    ,@DEPRECIATION AS DEPRECIATION_SCHEDULE  
+    ,(  
+     CASE   
+      WHEN upper(@ENTITYTYPE) = 'MANAGER'  
+       THEN NULL  
+      WHEN upper(@ENTITYTYPE) = 'ALLIANCE'  
+       THEN NULL  
+      WHEN upper(@ENTITYTYPE) = 'ACCOUNT'  
+       THEN (  
+         SELECT UDFAMColumn049 AS FIRSTTAXYEAR  
+         FROM SYN_IT_UDF_ACCOUNTMASTER   
+         WHERE CustomerAccountNumber_Key = @ENTITYID  
+         )  
+      END  
+     ) AS FIRSTTAXYEAR  
+      
+    ,(  
+     CASE   
+      WHEN @ENTITYTYPE = 'MANAGER'  
+       THEN NULL  
+      WHEN @ENTITYTYPE = 'ALLIANCE'  
+       THEN NULL  
+      WHEN @ENTITYTYPE = 'ACCOUNT'  
+       THEN (  
+         SELECT UDFAMColumn050 AS LASTTAXYEAR  
+         FROM SYN_IT_UDF_ACCOUNTMASTER   
+         WHERE CustomerAccountNumber_Key = @ENTITYID  
+         )  
+      END  
+     ) AS LASTTAXYEAR  
+    ,@HIGH_PRIORITY_K1_ID AS K1PRIORITY  
+    ,@MODE AS MODE  
+    ,@K1_MAILING_RULE AS K1_MAILING_RULE  
+    ,@TX_RTN_MAILING_RULE AS TX_RTN_MAILING_RULE  
+    ,@MN_STATE_ID AS MN_STATE_ID  
+    ,PrfTax.CT_12S_ID  
+    ,PrfTax.OR_REGISTRATION_NO AS OR_REGISTRATION_NO  
+    ,@OR_REGISTRATION_BELL_DATE AS OR_REGISTRATION_BELL_DATE  
+    ,@MAILONORBEFORE_DD_ID AS MAILONORBEFORE_DD_ID  
+    ,PrfTax.FASCIMILE_SIGNER_FLAG AS FASCIMILESIGNERFLAG  
+   FROM TBL_IRS_ProfileTax PrfTax  
+   LEFT JOIN SYN_IT_ContactMaster ConMstr ON PrfTax.BENEFICIARY_TAX_FORM_ID = ConMstr.CONTACTID  
+   LEFT JOIN SYN_IT_ContactMaster EmpConMstr ON PrfTax.TAX_RETURN_ID = EmpConMstr.CONTACTID  
+   LEFT JOIN SYN_IT_ContactMaster ConMstr10989 ON PrfTax.TAX_10989_ID = ConMstr10989.CONTACTID  
+   LEFT JOIN SYN_IT_ContactMaster ConMstr1099 ON PrfTax.TAX_1099R_ID = ConMstr1099.CONTACTID  
+   LEFT JOIN VW_EX_ListItem VLstItm ON VLstItm.IvanValue = CAST(PrfTax.K_1_PRIORITY AS VARCHAR)  
+    AND VLstItm.ListTypeName = 'LOGICAL VALUE'  
+               
+   WHERE PrfTax.TAX_ID = @TAX_ID  
+  END  
+  ELSE  
+  BEGIN  
+    
+   IF @ENTITYTYPE <> 'ACCOUNT'  
+   BEGIN  
+    SELECT 1 AS TAX_ID  
+     ,'1' AS LINKID  
+     ,@TRUSTEECHANGEDATE AS TRUSTEE_CHANGE_DATE  
+     ,@ADDRESSCHANGEDATE AS ADDRESS_CHANGE_DATE  
+     ,@ACCOUNTTRANSFERDATE AS ACCOUNT_TRANSFER_DATE  
+     ,@TAXRETURNEXDATE AS TAX_RETURN_EXTENSION_DATE  
+     ,1 AS FASCIMILE_SIGNER_EMPLOYEEID  
+     ,@R1099MEDIAID AS R1099_MEDIA_ID  
+     ,' ' AS BENEFICIARYTAXFORMID  
+     ,1  
+     ,@MAILONORBEFORE_MM_ID AS MAILONORBEFORE_MM_ID  
+     ,' ' AS TAXRETURNID  
+     ,0 AS RETURNID  
+     ,' ' AS TAX10989ID  
+     ,0 AS PROFILE10989ID  
+     ,' ' AS TAX1099RID  
+     ,0 AS PROFILE1099RID  
+     ,@BELL_DATE AS BELL_DATE  
+     ,@DEPRECIATION AS DEPRECIATION_SCHEDULE  
+     ,NULL AS FIRSTTAXYEAR  
+     ,NULL AS LASTTAXYEAR  
+     ,@HIGH_PRIORITY_K1_ID AS K1PRIORITY  
+     ,@MODE  
+     ,@K1_MAILING_RULE AS K1_MAILING_RULE  
+     ,@TX_RTN_MAILING_RULE AS TX_RTN_MAILING_RULE  
+     ,@MN_STATE_ID AS MN_STATE_ID  
+     ,- 1 AS CT_12S_ID  
+     ,NULL AS OR_REGISTRATION_NO  
+     ,NULL AS OR_REGISTRATION_BELL_DATE  
+     ,@MAILONORBEFORE_DD_ID AS MAILONORBEFORE_DD_ID  
+     ,0 AS FASCIMILESIGNERFLAG  
+   END  
+   ELSE  
+   BEGIN  
+    SELECT 1  
+     ,'1' AS LINKID  
+     ,@TRUSTEECHANGEDATE AS TRUSTEE_CHANGE_DATE  
+     ,@ADDRESSCHANGEDATE AS ADDRESS_CHANGE_DATE  
+     ,@ACCOUNTTRANSFERDATE AS ACCOUNT_TRANSFER_DATE  
+     ,@TAXRETURNEXDATE AS TAX_RETURN_EXTENSION_DATE  
+     ,1  
+     ,@R1099MEDIAID AS R1099_MEDIA_ID  
+     ,' ' AS BENEFICIARYTAXFORMID  
+     ,1  
+     ,@MAILONORBEFORE_MM_ID AS MAILONORBEFORE_MM_ID  
+     ,' ' AS TAXRETURNID  
+     ,0 AS RETURNID  
+     ,' ' AS TAX10989ID  
+     ,0 AS PROFILE10989ID  
+     ,' ' AS TAX1099RID  
+     ,0 AS PROFILE1099RID  
+     ,@BELL_DATE AS BELL_DATE  
+     ,@DEPRECIATION AS DEPRECIATION_SCHEDULE  
+     ,UDFAMColumn049  AS FIRSTTAXYEAR   
+     ,UDFAMColumn050  AS LASTTAXYEAR   
+     ,@HIGH_PRIORITY_K1_ID AS K1PRIORITY  
+     ,@MODE AS MODE  
+     ,@K1_MAILING_RULE AS K1_MAILING_RULE  
+     ,@TX_RTN_MAILING_RULE AS TX_RTN_MAILING_RULE  
+     ,@MN_STATE_ID AS MN_STATE_ID  
+     ,(  
+      CASE   
+       WHEN @LEGALADDRESSCOUNT = 0  
+        THEN - 1  
+       ELSE 0  
+       END  
+      ) AS CT_12S_ID  
+     ,NULL AS OR_REGISTRATION_NO  
+     ,@OR_REGISTRATION_BELL_DATE AS OR_REGISTRATION_BELL_DATE  
+     ,@MAILONORBEFORE_DD_ID AS MAILONORBEFORE_DD_ID  
+     ,0 AS FASCIMILESIGNERFLAG  
+    FROM SYN_IT_UDF_AccountMaster  
+    WHERE CustomerAccountNumber_Key = @ENTITYID  
+   END  
+  END  
+ END  
+  
+ IF (  
+   @ENTITYTYPE = 'DONORBENEFICIARY'  
+   AND @TYPE_ID IS NOT NULL  
+   )  
+ BEGIN  
+  SELECT  
+   UdfConAccRol.UDFCAColumn012 AS FIRSTK1YEAR  
+   ,UdfConAccRol.UDFCAColumn013 AS LASTK1YEAR  
+   ,(  
+    SELECT TOP 1 ConMstr.DateOfDeath AS EXPIREDATE  
+    FROM SYN_IT_ContactRoleCodes ConRolCds  
+    INNER JOIN SYN_IT_ContactAccountRoles ConAccRol ON ConRolCds.ID=ConAccRol.ContactRoleCode AND ConRolCds.ID IN (21,37,40,41,43)  
+    INNER JOIN SYN_IT_ContactMaster ConMstr ON ConAccRol.ContactID = ConMstr.ContactID  
+    WHERE ConMstr.ContactID = @ENTITYID  
+      
+    ) AS DOD  
+   FROM SYN_IT_ContactRoleCodes ConRolCds  
+   INNER JOIN SYN_IT_ContactAccountRoles ConAccRol ON ConRolCds.ID=ConAccRol.ContactRoleCode AND ConRolCds.ID IN (21,37,40,41,43)  
+   INNER JOIN SYN_IT_ContactMaster ConMstr ON ConAccRol.ContactID = ConMstr.ContactID   
+   INNER JOIN SYN_IT_UDF_ContactAccountRole UdfConAccRol ON UdfConAccRol.ContactID_Key = ConMstr.ContactID  
+  WHERE ConMstr.ContactID = @ENTITYID  
+ END  
+  
+ IF (@ENTITYTYPE = 'ACCOUNT_TAX_NEW')  
+ BEGIN  
+  SELECT UDFAMColumn049  FIRSTTAXYEAR  
+   ,UDFAMColumn050  LASTTAXYEAR  
+  FROM SYN_IT_UDF_AccountMaster  
+  WHERE CustomerAccountNumber_Key = @ENTITYID  
+ END  
+END  
+  
+  GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProfileTax') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProfileTax';
+	END  
+      
+      

@@ -1,0 +1,71 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetManagerCodeParameter]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetManagerCodeParameter]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetManagerCodeParameter]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetManagerCodeParameter]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetManagerCodeParameter                      
+** Short Desc: Procedure to generate the Manager Payment list report
+**                      
+** Full Description: Procedure to get all Manager Details
+**      
+**                              
+
+Sample Call: 
+EXEC USP_PP_ReportGetManagerCodeParameter 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Aashay Thodar 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Aug-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetManagerCodeParameter]
+	-- paremeters here  
+AS
+BEGIN
+	--  Initial Set statements  --  
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;
+
+	--  Variable Declarations  --  
+	SELECT  AccMgr.ManagerCode
+		,CntMst.ContactName AS ManagerDescription
+	FROM SYN_IT_AccountManagerCodes AccMgr
+	INNER JOIN SYN_IT_ContactMaster CntMst
+		ON AccMgr.ContactID = CntMst.ContactID
+	ORDER BY AccMgr.ManagerCode
+
+	SET NOCOUNT OFF
+END
+	-- End of procedure  --  

@@ -1,0 +1,128 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftFlowStatusByLoginUser'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftFlowStatusByLoginUser;
+
+	PRINT 'DROPPED USP_EX_GetWftFlowStatusByLoginUser';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftFlowStatusByLoginUser
+** Old Name:  [sp_wft_get_flow_status_by_login_user]
+** Short Desc:	
+**
+** Full Description : Get the Flow Status By Login User.
+**       
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: 
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 21-Mar-2014   Abhijith EXCREQ 9.1 Modified
+** 23-MAY-2014   Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftFlowStatusByLoginUser]
+	-- paremeters here  
+	@request_id INT
+	,@flow_number INT
+	,@login_user_id INT
+AS
+BEGIN
+	--  Variable Declarations  --  
+	--  Temp tables, Cursors, Table Variables  --  
+	--  Variable Data Assignment  --  
+	SELECT flow_status_id
+		,flow_status_name
+	FROM (
+		-- Step 1: get current stage status  
+		SELECT RqstFlw.flow_status_id
+			,FlwSttus.flow_status_name
+			,FrmFlwStg.status_display_sequence
+		FROM TBL_WFT_Request Rqst
+		INNER JOIN TBL_WFT_RequestFlow RqstFlw ON Rqst.request_id = RqstFlw.request_id
+		INNER JOIN TBL_WFT_FlowStatus FlwSttus ON RqstFlw.flow_status_id = FlwSttus.flow_status_id
+		INNER JOIN TBL_WFT_FormFlow FrmFlw ON RqstFlw.form_flow_id = FrmFlw.form_flow_id
+		INNER JOIN TBL_WFT_FormFlowStage FrmFlwStg ON FrmFlw.form_flow_id = FrmFlwStg.form_flow_id
+			AND FlwSttus.flow_status_id = FrmFlwStg.flow_status_id
+		WHERE Rqst.request_id = @request_id
+			AND FrmFlw.flow_number = @flow_number
+		
+		UNION
+		
+		-- Step 2: get next stage statuses based upon current status of the request flow   
+		--     minus restricted status for the current user  
+		SELECT FrmFlwStgNxtStg.flow_status_id
+			,FlwSttusSeqms.flow_status_name
+			,FrmFlwStgDspSeq.status_display_sequence
+		FROM TBL_WFT_Request Rqst
+		INNER JOIN TBL_WFT_RequestFlow RqstFlw ON Rqst.request_id = RqstFlw.request_id
+		INNER JOIN TBL_WFT_FlowStatus FlwSttus ON RqstFlw.flow_status_id = FlwSttus.flow_status_id
+		INNER JOIN TBL_WFT_FormFlow FrmFlw ON RqstFlw.form_flow_id = FrmFlw.form_flow_id
+		INNER JOIN TBL_WFT_FormFlowStage FrmFlwStg ON FrmFlw.form_flow_id = FrmFlwStg.form_flow_id
+			AND FlwSttus.flow_status_id = FrmFlwStg.flow_status_id
+		INNER JOIN TBL_WFT_FormFlowStageNextStage FrmFlwStgNxtStg ON FrmFlwStg.form_flow_stage_id = FrmFlwStgNxtStg.form_flow_stage_id
+		INNER JOIN TBL_WFT_FlowStatus FlwSttusSeqms ON FrmFlwStgNxtStg.flow_status_id = FlwSttusSeqms.flow_status_id
+		INNER JOIN TBL_WFT_FormFlowStage FrmFlwStgDspSeq ON FrmFlw.form_flow_id = FrmFlwStgDspSeq.form_flow_id
+			AND FlwSttusSeqms.flow_status_id = FrmFlwStgDspSeq.flow_status_id
+		WHERE RqstFlw.request_id = @request_id
+			AND FrmFlw.flow_number = @flow_number
+			AND FrmFlwStgNxtStg.flow_status_id NOT IN (
+				-- Get restricted status ids for current user based upon user restrictions  
+				SELECT restricted_flow_status_id
+				FROM (
+					-- get restrictions for all users based upon latest restricted status changes  
+					SELECT audit_user_id
+						,RqstFlwAdt.to_flow_status_id
+						,FrmFlwStgUsrRstctn.restricted_flow_status_id
+						,audit_datetime
+						,RANK() OVER (
+							PARTITION BY RqstFlwAdt.to_flow_status_id
+							,FrmFlwStgUsrRstctn.restricted_flow_status_id ORDER BY audit_datetime DESC
+							) AS 'RANK'
+					FROM TBL_WFT_RequestFlowAudit RqstFlwAdt
+					INNER JOIN TBL_WFT_RequestFlow RqstFlw ON RqstFlwAdt.request_flow_id = RqstFlw.request_flow_id
+					INNER JOIN TBL_WFT_FormFlow FrmFlw ON RqstFlw.form_flow_id = FrmFlw.form_flow_id
+					INNER JOIN TBL_WFT_FormFlowStage FrmFlwStg ON FrmFlw.form_flow_id = FrmFlwStg.form_flow_id
+						AND RqstFlwAdt.to_flow_status_id = FrmFlwStg.flow_status_id
+					INNER JOIN TBL_WFT_FormFlowStageUserRestriction FrmFlwStgUsrRstctn ON FrmFlwStg.form_flow_stage_id = FrmFlwStgUsrRstctn.form_flow_stage_id
+					WHERE RqstFlw.request_id = @request_id
+						AND flow_number = @flow_number
+						AND from_flow_status_id != to_flow_status_id
+					) AS sub
+				WHERE rank = 1
+					AND audit_user_id = @login_user_id
+				)
+		) AS statuslist
+	ORDER BY status_display_sequence
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftFlowStatusByLoginUser'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_GetWftFlowStatusByLoginUser';
+END

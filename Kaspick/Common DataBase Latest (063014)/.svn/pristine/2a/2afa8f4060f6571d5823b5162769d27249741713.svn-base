@@ -1,0 +1,452 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_ImportNewGiftFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_ImportNewGiftFromGiftwrap]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_ImportNewGiftFromGiftwrap]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_ImportNewGiftFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetLastValuation                      
+** Short Desc: Procedure to import new gifts or update existing gifts for the specified period and account type GAP
+** Full Description: Procedure to import new gifts or update existing gifts for the specified period and account type GAP
+** Input Arguments:   	@endDate DATETIME, @valuationId INT, @customerAccountNumber VARCHAR(20), @accountType VARCHAR(20)
+** Sample Call     
+        
+Declare @endDate DATETIME
+Declare @valuationId INT
+Declare @customerAccountNumber VARCHAR(20)
+Declare @accountType VARCHAR(20)   
+
+Set @endDate = '1992-02-22'
+Set @valuationId = 1280
+Set @customerAccountNumber = 'ACGAP'
+Set @accountType = 'Gap'
+
+Exec USP_SIT_ImportNewGiftFromGiftwrap @endDate, @valuationId, @customerAccountNumber, @accountType
+
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : PEVA - Sub Accounting Module
+** Created DT: 18-Aug-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_ImportNewGiftFromGiftwrap] (
+	@endDate DATETIME
+	,@valuationId INT
+	,@customerAccountNumber VARCHAR(20)
+	,@accountType VARCHAR(20)
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @startdate DATETIME
+	DECLARE @maxid INT
+
+	--set @endDate = DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0,@endDate),0))      
+	SET @startdate = CAST((STR(YEAR(@endDate)) + '/' + STR(MONTH(@endDate)) + '/1') AS DATETIME)
+
+	-- update the data for existing records in TBL_SIT_GiftAssociation table      
+	BEGIN
+		WITH giftdata (
+			GIFTTYPE
+			,CLIENTREFNUMBERONE
+			,CLIENTREFNUMBERTWO
+			,PRIORREFERENCENUMBER
+			,GIFTDATE
+			,GIFTPOSTEDDATE
+			,TAXFORM
+			,POOLEDTYPE
+			,PAYOUT
+			,FIRSTPAYMENTDATE
+			,PAYMENTFREQUENCY
+			,PAYMENTTIMING
+			,ORIGINALGIFTAMOUNT
+			,ORIGINALGIFTUNITS
+			,GIFTSUBTYPE
+			,RESERVESTATE
+			,TESTAMENTARY
+			,CHARTIABLEDEDUCTION
+			,IRSDISCOUNTRATE
+			,ENDOWED
+			,TOTALGIFTUNITS
+			,GIFTSTATUS
+			,DISTRIBUTIONAMOUNT
+			,UNDISTRIBUTEDINCONTRACT
+			,TAXID
+			,ASSOCIATIONTYPE
+			,PARTYTYPE
+			,FIRSTNAME
+			,LASTNAME
+			,GENDER
+			,BENEFICIARYPERCENTAGE
+			,LIFEPRECEDESTERM
+			,HOMEADDRESSLINE1
+			,HOMEADDRESSLINE2
+			,HOMECITY
+			,HOMESTATE
+			,HOMEZIPCODE
+			,HOMECOUNTRY
+			,PAYTOTHEORDEROF
+			,DATEOFBIRTH
+			,PARTYSTATUS
+			,DONOTCOMBINECHECKS
+			,ADDRESSTYPE
+			,FUNDCODE
+			,CONTRIBUTIONPERCENTAGE
+			,GIFTNAME
+			,SORTNAME
+			,VALUATIONID
+			,ADVENTID
+			)
+		AS (
+			SELECT dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GIFTTYPE', 'gift.gifttype')
+				,gf.account1
+				,gf.account2
+				,'KCO' + convert(VARCHAR(100), gf.giftkey)
+				,gd.giftdate
+				,gd.giftdate
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TAXFORM', 'gift.taxform')
+				,'pol'
+				,gf.PayoutPercent AS paypercent
+				,gf.FirstPaymentDate AS firstpay
+				,dbo.Fn_GetMappingFieldValue((
+						SELECT pf.short
+						FROM SYN_GW_TBLPAYMENTFREQUENCY pf
+						WHERE pf.PaymentFrequencyID = gf.paymentfrequencyid
+						), 'gf.payfreq')
+				,
+				--dbo.Fn_GetMappingFieldValue(gf.paytime, 'gf.paytime'), gf.giftamt,      
+				dbo.Fn_GetMappingFieldValue(pt.Short, 'gf.paytime')
+				,gd.GiftAmount AS giftamt
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ORIGINALGIFTUNIT', 'gift.units')
+				,
+				--dbo.Fn_GetMappingFieldValue(gf.subtype, 'gf.subtype'),    
+				dbo.Fn_GetMappingFieldValue(st.Short, 'gf.subtype')
+				,gf.ReserveState AS rstate
+				,--gf.rstate,       
+				dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TESTAMENTARY', 'gift.testament')
+				,gd.CharitableDeduction AS chardeduct
+				,gd.IRSDiscountRate AS irsdisc
+				,--gf.chardeduct, gf.irsdisc,     
+				dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ENDOWED', 'gift.endow')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TOTALGIFTUNIT', 'gift.totunits')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GIFTSTATUS', 'gift.gstatus')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.DISTRIBUTIONAMOUNT', 'gift.distribamt')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.UNDISTRIBUTEDINCONTRACT', 'gift.undistinc')
+				,dbo.Fn_GetMappingFieldValue(pv.CustomerAccountNumber, 'TaxID')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ASSOCIATIONTYPE', 'link1.assoc')
+				,
+				--'per' , ltrim(rtrim(org.orgnick)) + ' FN', ltrim(rtrim(org.orgnick)) + ' LN',     
+				'per'
+				,ltrim(rtrim(org.OrgNickname)) + ' FN'
+				,ltrim(rtrim(org.OrgNickname)) + ' LN'
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GENDER', 'person.gender')
+				,100
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.LIFEPRECEDESTERM', 'link1.isprior')
+				,dbo.Fn_GetMappingFieldValue('ad.add1', 'ad.add1')
+				,dbo.Fn_GetMappingFieldValue('ad.add2', 'ad.add2')
+				,dbo.Fn_GetMappingFieldValue('ad.city', 'ad.city')
+				,dbo.Fn_GetMappingFieldValue('ad.state', 'ad.state')
+				,dbo.Fn_GetMappingFieldValue('ad.zipcode', 'ad.zipcode')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.HOMECOUNTRY', 'address.country')
+				,
+				--ltrim(rtrim(org.orgnick)) + ' FN ' +ltrim(rtrim(org.orgnick)) + ' LN', dbo.Fn_GetMappingFieldValue('DEFAULT_DATE_OF_BIRTH','DEFAULT_DATE_OF_BIRTH'),      
+				ltrim(rtrim(org.OrgNickname)) + ' FN ' + ltrim(rtrim(org.OrgNickname)) + ' LN'
+				,dbo.Fn_GetMappingFieldValue('DEFAULT_DATE_OF_BIRTH', 'DEFAULT_DATE_OF_BIRTH')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.PARTYSTATUS', 'person.pstatus')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.DONOTCOMBINECHECKS', 'link1.sepcheck')
+				,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ADDRESSTYPE', 'address.addrtype')
+				,
+				-- 'A' ,100  ,  ltrim(rtrim(pr.fname))+' '+ltrim(rtrim(pr.lname)) , substring(ltrim(rtrim(pr.lname)),1,15),       
+				'A'
+				,100
+				,ltrim(rtrim(pr.FirstName)) + ' ' + ltrim(rtrim(pr.LastName))
+				,substring(ltrim(rtrim(pr.LastName)), 1, 15)
+				,pv.valuationid
+				,pv.CustomerAccountNumber
+			FROM SYN_GW_TBLGift gf
+			LEFT OUTER JOIN SYN_GW_TBLPersonGiftMap li ON li.giftid = gf.giftid
+				AND li.PERSONGIFTMAPID IN (
+					SELECT TOP 1 pgm.PERSONGIFTMAPID
+					FROM SYN_GW_TBLPersonGiftMap pgm
+					WHERE pgm.giftid = gf.giftid
+					)
+			LEFT OUTER JOIN SYN_GW_TBLPerson pr ON pr.PersonID = li.PersonID
+			LEFT OUTER JOIN SYN_GW_TBLAddress ad ON li.addressid = ad.addressid
+			LEFT OUTER JOIN SYN_GW_TBLOrganization org ON gf.orgid = org.orgid
+			INNER JOIN SYN_GW_TBLGIFTDETAIL gd ON gf.GiftId = gd.GiftId
+			INNER JOIN SYN_GW_TBLPAYMENTTIMING pt ON gf.PaymentTimingID = pt.PaymentTimingID
+			INNER JOIN SYN_GW_TBLSUBTYPE st ON gf.SubtypeID = st.SubtypeID
+			INNER JOIN TBL_PV_VALUATION pv ON ltrim(rtrim(org.orgaccount1)) = pv.CustomerAccountNumber
+			WHERE pv.valuationid = @valuationId
+				AND pv.CustomerAccountNumber = @customerAccountNumber
+				AND pv.AccountType = CASE 
+					WHEN @accountType = 'GAP'
+						THEN @accountType
+					ELSE 'xyz'
+					END
+				-- the account type logic is for CGA to pull CGA records only       
+				AND gd.giftdate BETWEEN @startdate
+					AND @endDate
+			)
+		UPDATE TBL_SIT_GiftAssociation
+		SET GIFTTYPE = giftdata.GIFTTYPE
+			,MANAGERREFNUMBERONE = giftdata.CLIENTREFNUMBERONE
+			,MANAGERREFNUMBERTWO = giftdata.CLIENTREFNUMBERTWO
+			,GIFTDATE = giftdata.GIFTDATE
+			,GIFTPOSTEDDATE = giftdata.GIFTPOSTEDDATE
+			,TAXFORM = giftdata.TAXFORM
+			,POOLEDTYPE = giftdata.POOLEDTYPE
+			,PAYOUT = giftdata.PAYOUT
+			,FIRSTPAYMENTDATE = giftdata.FIRSTPAYMENTDATE
+			,PAYMENTFREQUENCY = giftdata.PAYMENTFREQUENCY
+			,PAYMENTTIMING = giftdata.PAYMENTTIMING
+			,ORIGINALGIFTAMOUNT = giftdata.ORIGINALGIFTAMOUNT
+			,ORIGINALGIFTUNIT = giftdata.ORIGINALGIFTUNITS
+			,GIFTSUBTYPE = giftdata.GIFTSUBTYPE
+			,RESERVESTATE = giftdata.RESERVESTATE
+			,TESTAMENTARY = giftdata.TESTAMENTARY
+			,CharitableDeduction = giftdata.CHARTIABLEDEDUCTION
+			,IRSDISCOUNTRATE = giftdata.IRSDISCOUNTRATE
+			,ENDOWED = giftdata.ENDOWED
+			,TotalGiftUnit = giftdata.TOTALGIFTUNITS
+			,GIFTSTATUS = giftdata.GIFTSTATUS
+			,DISTRIBUTIONAMOUNT = giftdata.DISTRIBUTIONAMOUNT
+			,UnDistributedInContact = giftdata.UNDISTRIBUTEDINCONTRACT
+			,TAXID = giftdata.TAXID
+			,ASSOCIATIONTYPE = giftdata.ASSOCIATIONTYPE
+			,PARTYTYPE = giftdata.PARTYTYPE
+			,FIRSTNAME = giftdata.FIRSTNAME
+			,LASTNAME = giftdata.LASTNAME
+			,GENDER = giftdata.GENDER
+			,BENEFICIARYPERCENTAGE = giftdata.BENEFICIARYPERCENTAGE
+			,LIFEPRECEDESTERM = giftdata.LIFEPRECEDESTERM
+			,HOMEADDRESSLINE1 = giftdata.HOMEADDRESSLINE1
+			,HOMEADDRESSLINE2 = giftdata.HOMEADDRESSLINE2
+			,HOMECITY = giftdata.HOMECITY
+			,HOMESTATE = giftdata.HOMESTATE
+			,HOMEZIPCODE = giftdata.HOMEZIPCODE
+			,HOMECOUNTRY = giftdata.HOMECOUNTRY
+			,PAYTOTHEORDEROF = giftdata.PAYTOTHEORDEROF
+			,DATEOFBIRTH = giftdata.DATEOFBIRTH
+			,PARTYSTATUS = giftdata.PARTYSTATUS
+			,DoNotCombineCheck = giftdata.DONOTCOMBINECHECKS
+			,ADDRESSTYPE = giftdata.ADDRESSTYPE
+			,FUNDCODE = giftdata.FUNDCODE
+			,CONTRIBUTIONPERCENTAGE = giftdata.CONTRIBUTIONPERCENTAGE
+			,GIFTNAME = giftdata.FIRSTNAME
+			,SORTNAME = giftdata.LASTNAME
+		FROM giftdata
+		WHERE giftdata.PRIORREFERENCENUMBER = TBL_SIT_GiftAssociation.PRIORREFERENCENUMBER
+			AND giftdata.VALUATIONID = TBL_SIT_GiftAssociation.valuationid
+	END
+
+	SELECT @maxid = max(newgiftid)
+	FROM TBL_SIT_GiftAssociation
+
+	-- insert the data for new gifts in TBL_SIT_GiftAssociation table      
+	INSERT INTO TBL_SIT_GiftAssociation (
+		valuationid
+		,GiftKey
+		,GIFTTYPE
+		,ManagerRefNumberOne
+		,ManagerRefNumberTwo
+		,PRIORREFERENCENUMBER
+		,GIFTDATE
+		,GIFTPOSTEDDATE
+		,TAXFORM
+		,POOLEDTYPE
+		,PAYOUT
+		,FIRSTPAYMENTDATE
+		,PAYMENTFREQUENCY
+		,PAYMENTTIMING
+		,ORIGINALGIFTAMOUNT
+		,OriginalGiftUnit
+		,GIFTSUBTYPE
+		,RESERVESTATE
+		,TESTAMENTARY
+		,CharitableDeduction
+		,IRSDISCOUNTRATE
+		,ENDOWED
+		,TotalGiftUnit
+		,GIFTSTATUS
+		,DISTRIBUTIONAMOUNT
+		,UnDistributedInContact
+		,TAXID
+		,ASSOCIATIONTYPE
+		,PARTYTYPE
+		,FIRSTNAME
+		,LASTNAME
+		,GENDER
+		,BENEFICIARYPERCENTAGE
+		,LIFEPRECEDESTERM
+		,HOMEADDRESSLINE1
+		,HOMEADDRESSLINE2
+		,HOMECITY
+		,HOMESTATE
+		,HOMEZIPCODE
+		,HOMECOUNTRY
+		,PAYTOTHEORDEROF
+		,DATEOFBIRTH
+		,PARTYSTATUS
+		,DoNotCombineCheck
+		,ADDRESSTYPE
+		,FUNDCODE
+		,CONTRIBUTIONPERCENTAGE
+		,GIFTNAME
+		,SORTNAME
+		)
+	SELECT @valuationId
+		,gf.giftkey AS gift_pk
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GIFT_TYPE', 'gift.gifttype')
+		,gf.account1
+		,gf.account2
+		,'KCO' + convert(VARCHAR(100), gf.GiftKey)
+		,gd.giftdate
+		,gd.giftdate
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TAX_FORM', 'gift.taxform')
+		,
+		--'pol' , gf.paypercent, gf.firstpay,       
+		'pol'
+		,gf.PayoutPercent AS paypercent
+		,gf.FirstPaymentDate AS firstpay
+		,
+		--dbo.Fn_GetMappingFieldValue(gf.payfreq, 'gf.payfreq'),      
+		dbo.Fn_GetMappingFieldValue((
+				SELECT pf.short
+				FROM SYN_GW_TBLPaymentFrequency pf
+				WHERE pf.PaymentFrequencyID = gf.paymentfrequencyid
+				), 'gf.payfreq')
+		,
+		--dbo.Fn_GetMappingFieldValue(gf.paytime, 'gf.paytime'), gf.giftamt,      
+		dbo.Fn_GetMappingFieldValue(pt.Short, 'gf.paytime')
+		,gd.GiftAmount AS giftamt
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ORIGINAL_GIFT_UNITS', 'gift.units')
+		,
+		-- dbo.Fn_GetMappingFieldValue(gf.subtype, 'gf.subtype'),    
+		dbo.Fn_GetMappingFieldValue(st.Short, 'gf.subtype')
+		,gf.ReserveState AS rstate
+		,--gf.rstate,       
+		dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TESTAMENTARY', 'gift.testament')
+		,gd.CharitableDeduction AS chardeduct
+		,gd.IRSDiscountRate AS irsdisc
+		,--gf.chardeduct,   gf.irsdisc,      
+		dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ENDOWED', 'gift.endow')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.TOTAL_GIFT_UNITS', 'gift.totunits')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GIFT_STATUS', 'gift.gstatus')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.DISTRIBUTION_AMOUNT', 'gift.distribamt')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.UNDISTRIBUTED_IN_CONTRACT', 'gift.undistinc')
+		,dbo.Fn_GetMappingFieldValue(pv.CustomerAccountNumber, 'TaxID')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ASSOCIATION_TYPE', 'link1.assoc')
+		,
+		-- 'per' , ltrim(rtrim(org.orgnick)) + ' FN', ltrim(rtrim(org.orgnick)) + ' LN',     
+		'per'
+		,ltrim(rtrim(org.OrgNickname)) + ' FN'
+		,ltrim(rtrim(org.OrgNickname)) + ' LN'
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.GENDER', 'person.gender')
+		,100
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.LIFE_PRECEDES_TERM', 'link1.isprior')
+		,dbo.Fn_GetMappingFieldValue('ad.add1', 'ad.add1')
+		,dbo.Fn_GetMappingFieldValue('ad.add2', 'ad.add2')
+		,dbo.Fn_GetMappingFieldValue('ad.city', 'ad.city')
+		,dbo.Fn_GetMappingFieldValue('ad.state', 'ad.state')
+		,dbo.Fn_GetMappingFieldValue('ad.zipcode', 'ad.zipcode')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.HOME_COUNTRY', 'address.country')
+		,
+		--  ltrim(rtrim(org.orgnick)) + ' FN '+ ltrim(rtrim(org.orgnick)) + ' LN', dbo.Fn_GetMappingFieldValue('DEFAULT_DATE_OF_BIRTH','DEFAULT_DATE_OF_BIRTH'),      
+		ltrim(rtrim(org.OrgNickname)) + ' FN ' + ltrim(rtrim(org.OrgNickname)) + ' LN'
+		,dbo.Fn_GetMappingFieldValue('DEFAULT_DATE_OF_BIRTH', 'DEFAULT_DATE_OF_BIRTH')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.PARTY_STATUS', 'person.pstatus')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.DO_NOT_COMBINE_CHECKS', 'link1.sepcheck')
+		,dbo.Fn_GetMappingFieldValue('TBL_SIT_GiftAssociation.ADDRESS_TYPE', 'address.addrtype')
+		,
+		-- 'A', 100, ltrim(rtrim(pr.fname))+' '+ltrim(rtrim(pr.lname)), substring(ltrim(rtrim(pr.lname)),1,15)           
+		'A'
+		,100
+		,ltrim(rtrim(pr.FirstName)) + ' ' + ltrim(rtrim(pr.LastName))
+		,substring(ltrim(rtrim(pr.LastName)), 1, 15)
+	FROM SYN_GW_TBLGIFT gf
+	--left outer join GWRAP_TBLASSOCIATION li on li.giftid=gf.giftid and li.AssociationID in (select top 1 link1_pk from       
+	--GWRAP_TBLASSOCIATION where giftid = gf.giftid)     
+	LEFT OUTER JOIN SYN_GW_TBLPERSONGIFTMAP li ON li.giftid = gf.giftid
+		AND li.PERSONGIFTMAPID IN (
+			SELECT TOP 1 pgm.PERSONGIFTMAPID
+			FROM SYN_GW_TBLPERSONGIFTMAP pgm
+			WHERE pgm.giftid = gf.giftid
+			)
+	LEFT OUTER JOIN SYN_GW_TBLPERSON pr ON pr.PersonID = li.PersonID
+	--left outer JOIN GWRAP_TBLADDRESS ad ON ad.person_fk = pr.person_pk and li.addr_fk = ad.addr_pk     
+	LEFT OUTER JOIN SYN_GW_TBLADDRESS ad ON li.addressid = ad.addressid
+	LEFT OUTER JOIN SYN_GW_TBLORGANIZATION org ON gf.orgid = org.orgid
+	INNER JOIN SYN_GW_TBLGIFTDETAIL gd ON gf.GiftId = gd.GiftId
+	INNER JOIN SYN_GW_TBLPAYMENTTIMING pt ON gf.PaymentTimingID = pt.PaymentTimingID
+	INNER JOIN SYN_GW_TBLSUBTYPE st ON gf.SubtypeID = st.SubtypeID
+	INNER JOIN TBL_PV_VALUATION pv ON ltrim(rtrim(org.orgaccount1)) = pv.CustomerAccountNumber
+	--inner join GWRAP_TBLGIFTTYPEASSOCIATIONMAP gfam On gfam.associationid=gf.associationid    
+	WHERE pv.valuationid = @valuationId
+		AND CustomerAccountNumber = @customerAccountNumber
+		AND pv.AccountType = CASE 
+			WHEN @accountType = 'GAP'
+				THEN @accountType
+			ELSE 'xyz'
+			END
+		-- the account type logic is for CGA to pull CGA records only       
+		AND gd.giftdate BETWEEN @startdate
+			AND @endDate
+		AND ('KCO' + convert(VARCHAR(100), gf.giftkey)) NOT IN (
+			SELECT PRIORREFERENCENUMBER
+			FROM TBL_SIT_GiftAssociation
+			)
+		-- logic to check if it is new gift or existing gift       
+		-- and gift_pk not in       
+		-- (select GiftKey from TBL_EIS_SIT_Gift_DataHubIdentifier)      
+		;
+
+	-- insert the new gift records to Mapping TBL_EIS_SIT_Gift_DataHubIdentifier TABLE      
+	IF NOT EXISTS (
+			SELECT GiftKey
+			FROM TBL_SIT_GiftDataHubIdentifier
+			WHERE GiftKey IN (
+					SELECT giftkey
+					FROM TBL_SIT_GiftAssociation
+					WHERE newgiftid > @maxid
+					)
+			)
+	BEGIN
+		INSERT INTO TBL_SIT_GiftDataHubIdentifier (
+			GiftKey
+			,GIFTDATE
+			)
+		SELECT giftkey
+			,GIFTDATE
+		FROM TBL_SIT_GiftAssociation
+		WHERE newgiftid > @maxid
+	END
+END

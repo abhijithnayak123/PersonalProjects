@@ -1,0 +1,101 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetBeneficiaryPaymentRecordVersion]    Script Date: 09/23/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetBeneficiaryPaymentRecordVersion]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetBeneficiaryPaymentRecordVersion]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetBeneficiaryPaymentRecordVersion]    Script Date: 09/23/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetBeneficiaryPaymentRecordVersion                      
+** Short Desc: Dirty Write Check
+**                      
+** Full Description: IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2         
+**        
+**                              
+** Input Arguments: @PaymentXml
+    
+
+**         
+** Sample Call     
+
+ Declare @Ret INT            
+ EXEC USP_PP_GetBeneficiaryPaymentRecordVersion      
+			'<PaymentCollection><InsertList></InsertList><UpdateList><Payment PaymentID="1199382"  CheckNumber="103"  PaymentDate="12/31/2014 12:00:00 AM"  IssueDate="1/1/1900 12:00:00 AM"  VoidDate="6/4/2014 12:00:00 AM"  TaxYear="2014"  ClearDate="1/1/1900 12:00:00 AM"  PaymentMethod="CHECK"  PostDate="5/24/2014 11:48:01 PM"  Comment="c2RmIGRhc2YgYXMNCmFzZGYNCiBhc2QgZg0KYXNkIGY="  Memo="RWRpdCBNZW1v"  ReissueAs="0"  ReissueOf="0"  StatusID="Void"  ClearMethod=""  PaymentType="B"  DisplayVoidPaymentInWeb="19"  RecordVersion="0x0000000000DC4EB5"  /></UpdateList><DeleteList></DeleteList></PaymentCollection>'  
+	,@Ret output  
+	Select @Ret       
+
+
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 25-Nov-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 6/4/2014		Saravanan			Modified the XML Root node name 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetBeneficiaryPaymentRecordVersion] @PaymentXml XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+		--  Variable Data Assignment  --            
+	SET @ReturnStatus = 0;
+
+	-- Body of procedure  --            
+	DECLARE @TmpPaymentData TABLE (
+		ID INT IDENTITY(1, 1)
+		,PaymentID INT
+		,RecordVersion VARCHAR(1000)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table	        
+	INSERT INTO @TmpPaymentData (
+		PaymentID
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@PaymentID[1]', 'INT') AS PaymentID
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @PaymentXml.nodes('//PaymentCollection/UpdateList/Payment') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	UPDATE @TmpPaymentData
+	SET @ReturnStatus = - 2
+	FROM @TmpPaymentData Tmpdata
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.PaymentID = Tmpdata.PaymentID
+			AND CONVERT(VARCHAR(20), CAST(BenPmnt.RecordVersion AS VARBINARY(8)), 1) <> Tmpdata.RecordVersion
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

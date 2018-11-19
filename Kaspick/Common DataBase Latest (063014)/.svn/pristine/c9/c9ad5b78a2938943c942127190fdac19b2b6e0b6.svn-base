@@ -1,0 +1,156 @@
+GO 
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetPODTDeliverableInstance')
+BEGIN
+    DROP PROCEDURE USP_RP_GetPODTDeliverableInstance;
+    PRINT 'DROPPED USP_RP_GetPODTDeliverableInstance';
+END
+GO
+
+
+/****** Object:  StoredProcedure [dbo].[USP_RP_GetPODTDeliverableInstance]    Script Date: 06/10/2014 13:37:46 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                      
+** Old Name:     USP_EIS_PO_DT_DeliverableInstance_SelProc    
+**
+** Name  :    USP_RP_GetPODTDeliverableInstance          
+** Short Desc: Select Deliverable Instances from  'TBL_EIS_DT_Deliverable_Queue' table      
+**                      
+** Full Description: Get Deliverable Instances           
+**                              
+** Input Arguments:     
+**         
+** Sample Call   
+
+ EXEC USP_RP_GetPODTDeliverableInstance    
+  @DeliverableName = 'Beneficiary Reports',    
+  @Frequency = 'Semi-Annual',    
+  @AsofDate = NULL,    
+  @InstanceStatusID = '<root><Item ID="0"></Item></root>'    
+**             
+** Return values: Return Status    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By:     
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 25-Sep-09                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 14-Oct-2011 Soorya   Updated the script as per the DeliverableTool requirement  
+**        Migrated TBL_EIS_DT_Deliverable_Type table to DLV_Deliverable  
+** 12-Mar-2012 Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.		
+** 14-Mar2012	  Anand Kumar    ERD changes implemetation.  	
+** 20-May-2014	Geervani		Made changes in the table names to refer new KASPICK DB   
+** 22-08-2014	RAJ				SET TRANSACTION ISOLATION LEVEL SNAPSHOT; - Removed
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_RP_GetPODTDeliverableInstance]    
+(    
+ @DeliverableName VARCHAR(100) = 'All',  -- DeliverableName column in DLV_Deliverable  
+ @Frequency VARCHAR(100) = 'All',    
+ @AsofDate DATETIME = NULL,    
+ @InstanceStatusID nvarchar(4000) = '<root><Item ID="0"></Item></root>'     
+)    
+AS  
+BEGIN    
+	--  Initial Set statements  --                
+	SET NOCOUNT ON;                
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds                             
+	SET ARITHABORT ON    
+	DECLARE @idoc int                
+
+	EXEC sp_xml_preparedocument @idoc OUTPUT,@InstanceStatusID     
+
+	IF(@Frequency != 'All')  
+		BEGIN  
+			SET @Frequency = (CASE WHEN @Frequency LIKE '%ly' THEN @Frequency  
+		ELSE @Frequency + 'ly' END)  
+		END  
+
+		SELECT       
+		DQ.DeliverableQueueID AS InstanceID,      
+		DQ.DeliverableQueueYear AS InstanceYear,      
+		DQ.DeliverableQueueName AS InstanceName,      
+		DQ.DeliverableQueueBriefName AS InstanceBriefName,      
+		DQS.StatusName AS Status,      
+		DQ.DeliverableEndDate AS AsOfDate,      
+		D.DeliverableID AS TypeID,      
+		D.DeliverableName AS TypeName,       
+		Frequency = (    
+		CASE       
+		WHEN RTRIM(LTRIM(LI.ListItemName)) = 'Annually' THEN 'Annual'      
+		WHEN RTRIM(LTRIM(LI.ListItemName)) = 'Semi-Annually' THEN 'Semi-Annual'      
+		ELSE RTRIM(LTRIM(LI.ListItemName))      
+		END      
+		),      
+		DQ.CreatedDate,      
+		InstanceOwner = (SELECT       
+		(CASE WHEN (ISNULL(LTRIM(RTRIM(LastName)), '') = '')       
+		THEN ''       
+		ELSE (LastName )       
+		END) +       
+		(CASE WHEN (ISNULL(LTRIM(RTRIM(FirstName)), '') = '')       
+		THEN ''       
+		ELSE (', ' + FirstName )       
+		END) +       
+		' ' +       
+		ISNULL(MiddleName, '') FROM TBL_KS_User WHERE [UserID] = DQ.CreatedUserID)  
+		FROM       
+		TBL_DLV_DeliverableQueue DQ      
+		INNER JOIN TBL_DLV_QueueStatus DQS ON DQ.QueueStatusID = DQS.QueueStatusID      
+		INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID    
+		INNER JOIN TBL_DLV_DeliverableFrequency DF ON D.DeliverableID = DF.DeliverableID    
+		INNER JOIN TBL_ListItem LI ON LI.ListItemID = DF.FrequencyID     
+		INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID and LT.ListTypeName = 'Annual Frequency'      
+		WHERE      
+		(  
+		-- Quick Fix - Queue table should have FK relation with DLV_DeliverableFrequency table  
+		(@DeliverableName = 'All')   
+		OR   
+		D.DeliverableName Like @DeliverableName + '%'
+		)    
+		AND   
+		(@Frequency = 'All' OR LI.ListItemName = @Frequency)    
+		AND   
+		(@AsofDate IS NULL OR  DATEDIFF(DAY,@AsofDate, DQ.DeliverableEndDate)=0 )    
+		AND   
+		(  
+		'0' IN (SELECT ID FROM OPENXML (@idoc, '/root/Item',3) WITH (ID INT))    
+		OR    
+		DQS.QueueStatusID IN (SELECT ID FROM OPENXML (@idoc, '/root/Item',3) WITH (ID INT))     
+		)   
+		AND (DQ.FrequencyID = LI.ListItemID)  
+		ORDER BY DQ.CreatedDate DESC   
+END  
+
+
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetPODTDeliverableInstance')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetPODTDeliverableInstance';
+    END
+
+

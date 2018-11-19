@@ -1,0 +1,94 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_PIFYearendBeneficiaryPayment]    Script Date: 09/23/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_PIFYearendBeneficiaryPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_PIFYearendBeneficiaryPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_PIFYearendBeneficiaryPayment]    Script Date: 09/23/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_PIFYearendBeneficiaryPayment                      
+** Short Desc: To retrieve payment detail for PIF Account
+**                      
+** Full Description: To retrieve all payment detail for PIF Account for Current and preceeding taxYears        
+**        
+**                              
+** Input Arguments: 
+	@ManagerCode Varchar(4), 
+	@CustomerAccountNumber Varchar(14), 
+	@AsOfDate datetime,  
+	@TaxYear int 
+    
+
+**         
+** Sample Call     
+
+EXEC USP_PP_PIFYearendBeneficiaryPayment  'SB ','SBPIF','11/01/2010',2012      
+
+
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 23-Sep-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 5/14/2014	Saravanan			Updated ExpenseCode to TaxCode
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+
+Create procedure [dbo].[USP_PP_PIFYearendBeneficiaryPayment]
+	@ManagerCode Varchar(4), 
+	@CustomerAccountNumber Varchar(14), 
+	@AsOfDate datetime,  
+	@TaxYear int  
+As 
+  
+BEGIN TRY
+
+ 
+	SELECT ManagerCode,CustomerAccountNumber, BenPmnt.PayeeName, BenPmnt.PaymentAmount, BenPmnt.PaymentDate,BenPmnt.TaxYear,  
+	BenPmnt.ClearDate, BenPmnt.TaxCode AS ExpenseCode, BenPmnt.PaymentMethod,  
+	Case   
+	when BenPmnt.ChargeType = 'I' then 'Income'   
+	when BenPmnt.ChargeType = 'P' then 'Principal'   
+	else BenPmnt.ChargeType  
+	End as 'CashCategory',  
+	BenPmnt.Paymentid
+	FROM TBL_PP_BeneficiaryPayment BenPmnt 
+	WHERE ManagerCode = @ManagerCode
+	AND   CustomerAccountNumber = @CustomerAccountNumber
+	AND AccountTYpe ='PIF'   
+	and BenPmnt.TaxYear <= @taxYear and (BenPmnt.ClearDate is null or BenPmnt.ClearDate > @asOfDate) and BenPmnt.VoidDate is NULL  
+	ORDER BY CustomerAccountNumber,BenPmnt.PaymentDate  
+
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH   
+

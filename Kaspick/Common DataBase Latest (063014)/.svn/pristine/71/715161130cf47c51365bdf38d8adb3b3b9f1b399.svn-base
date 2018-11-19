@@ -1,0 +1,61 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetSystemAdministration]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetSystemAdministration]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetSystemAdministration]
+GO
+
+/******************************************************************************            
+** Name:     USP_PP_GetSystemAdministration            
+** Short Desc: Fetch System Administration Details            
+**            
+** Full Description            
+**        Fetch System Administration Details            
+**            
+** Sample Call            
+        EXEC USP_PP_GetSystemAdministration              
+**            
+** Return values: NONE            
+**            
+**            
+** Standard declarations            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds            
+**             
+** Created By: Bandish Gupta            
+** Company   : Kaspick & Company            
+** Project   : BackOffice Integration            
+** Created DT: 02-Sep-2013          
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+**        
+**  
+*******************************************************************************            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/
+CREATE PROCEDURE dbo.USP_PP_GetSystemAdministration
+	-- paremeters here            
+AS
+--  Initial Set statements  --            
+--  SET NOCOUNT ON;            
+SET LOCK_TIMEOUT 30000;-- 30 seconds                        
+	-- Body of procedure  --            
+
+SELECT MinimumCheckPostingDays
+	,MinimumNonCheckPostingDays
+	,PaymentProcessStartTime
+	,WireThresholdAmount
+	,MinimumWirePostingDays
+
+FROM TBL_PP_SystemAdministration
+	-- End of procedure  --     

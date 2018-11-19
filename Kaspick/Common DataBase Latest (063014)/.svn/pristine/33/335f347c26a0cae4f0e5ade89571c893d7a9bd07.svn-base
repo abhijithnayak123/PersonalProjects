@@ -1,0 +1,207 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGOEstimate]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentByGOEstimate]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentByGOEstimate]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGOEstimate]    Script Date: 09/01/2014 13:59:34 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+/******************************************************************************    
+** Name:  USP_KCo_PaymentByGOEstimate  
+** Short Desc: Generate report for the payment information in terms of startdate, enddate and tax year  
+**    
+** Full Description    
+**      Generate report for the payment information in terms of startdate, enddate and tax year  
+* *
+ 
+** Sample Call    
+EXEC USP_KCo_PaymentByGOEstimate 'acl',  '2010-10-10 00:00:00.000'
+	,'2014-04-04 00:00:00.000', 2010,1,0
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Niveditha narasimha
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries   
+** Created DT: 21-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 8/23/2014	Saravanan			Added TBL_PP_PGCalcPaymentDataMerged table to get PIF & GAP account details 
+** 8/26/2014	Dipti				Added Additional parameter as per requirements
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentByGOEstimate] @ManagerCode AS CHAR(4) = NULL
+	,@BeginDate AS DATETIME
+	,@EndDate AS DATETIME
+	,@TaxYear INT
+	,@ExcludePIF AS BIT
+	,@ExcludeGAP AS BIT
+	,@CustomAccountNumber AS VARCHAR(14) = NULL
+	,@AccountType AS VARCHAR(4) = NULL
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB..sysobjects
+			WHERE id = object_id(N'TEMPDB..[#TmpResult]')
+			)
+		DROP TABLE #TmpResult
+
+	CREATE TABLE #TmpResult (
+		CustomerAccountNumber VARCHAR(14)
+		,ManagerCode VARCHAR(14)
+		,PaymentDate DATE
+		,ContactID INT
+		,ScheduledAmount MONEY
+		)
+
+	INSERT INTO #TmpResult
+	SELECT AccPayoutSch.CustomerAccountNumber
+		,AccPayoutSch.ManagerCode
+		,BenPayoutSch.PaymentDate
+		,BenPayoutSch.ContactID
+		,BenPayoutSch.ScheduledAmount
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPayoutSch
+	INNER JOIN TBL_PP_AccountPayoutSchedule AccPayoutSch
+		ON AccPayoutSch.APScheduleID = BenPayoutSch.APScheduleID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = AccPayoutSch.CustomerAccountNumber
+	WHERE (
+			@ManagerCode IS NULL
+			OR (
+				@ManagerCode IS NOT NULL
+				AND AccPayoutSch.ManagerCode = @ManagerCode
+				)
+			)
+		AND (
+			@CustomAccountNumber IS NULL
+			OR (
+				@CustomAccountNumber IS NOT NULL
+				AND AccPayoutSch.CustomerAccountNumber = @CustomAccountNumber
+				)
+			)
+		AND (
+			@AccountType IS NULL
+			OR (
+				@AccountType IS NOT NULL
+				AND @AccountType <> 'All' AND AccMas.AccountTypeCode = @AccountType
+				)
+				OR
+				(
+					@AccountType IS NOT NULL AND  @AccountType = 'All'
+				)
+			)
+		AND (
+			BenPayoutSch.PaymentDate >= @BeginDate
+			AND BenPayoutSch.PaymentDate <= @EndDate
+			)
+		AND BenPayoutSch.TaxYear = @TaxYear
+
+	IF (
+			@ExcludePIF = 0
+			OR @ExcludeGAP = 0
+			)
+	BEGIN
+		INSERT INTO #TmpResult
+		SELECT PGCalc.CustomerAccountNumber
+			,PGCalc.ManagerCode
+			,PGCalc.PaymentDate
+			,PGCalc.ContactID
+			,PGCalc.PaymentAmount
+		FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+		INNER JOIN SYN_IT_AccountMaster AccMas
+			ON AccMas.CustomerAccountNumber = PGCalc.CustomerAccountNumber
+		WHERE (
+				@ManagerCode IS NULL
+				OR (
+					@ManagerCode IS NOT NULL
+					AND AccMas.ManagerCode = @ManagerCode
+					)
+				)
+			AND (
+				@CustomAccountNumber IS NULL
+				OR (
+					@CustomAccountNumber IS NOT NULL
+					AND AccMas.CustomerAccountNumber = @CustomAccountNumber
+					)
+				)
+			AND (
+				@AccountType IS NULL
+				OR (
+					@AccountType IS NOT NULL
+					AND @AccountType <> 'All' AND AccMas.AccountTypeCode = @AccountType
+					)
+					OR
+				(
+					@AccountType IS NOT NULL AND  @AccountType = 'All'
+				)
+				)
+			AND (
+				@ExcludePIF = 0
+				OR (
+					@ExcludePIF = 1
+					AND AccMas.AccountTypeCode <> 'PIF'
+					)
+				)
+			AND (
+				@ExcludeGAP = 0
+				OR (
+					@ExcludePIF = 1
+					AND AccMas.AccountTypeCode NOT IN (
+						'GAP'
+						,'GAPR'
+						,'GAPP'
+						)
+					)
+				)
+			AND (
+				PGCalc.PaymentDate >= @BeginDate
+				AND PGCalc.PaymentDate <= @EndDate
+				)
+			AND PGCalc.TaxYear = @TaxYear
+	END
+
+	SELECT ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+		,ScheduledAmount
+	FROM #TmpResult
+	ORDER BY ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+
+	SET NOCOUNT OFF;
+END
+
+GO
+

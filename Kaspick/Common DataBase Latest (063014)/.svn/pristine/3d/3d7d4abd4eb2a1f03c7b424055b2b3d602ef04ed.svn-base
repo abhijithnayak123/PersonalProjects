@@ -1,0 +1,135 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetVendorExpense]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetVendorExpense]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_PP_ReportGetVendorExpense    
+** Short Desc: Procedure to get data for the Vendor expense report    
+**      
+**      
+** Sample Call      
+       EXEC USP_PP_ReportGetVendorExpense 'ACL','01/01/2008','12/31/2014'
+       EXEC USP_PP_ReportGetVendorExpense 'PF','01/01/2008','12/31/2014','PCGAP'
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company       
+** Project   : Paragon - Reports and queries      
+** Created DT: 04/Aug/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetVendorExpense] @ManagerCode CHAR(4)
+	,@FromDate DATETIME = NULL
+	,--	From date            
+	@ToDate DATETIME = NULL
+	,--	To date            
+	--@OptInclude INT not in use
+	@CustomerAccountNumber CHAR(14) = NULL -- Added for Kaspick Website Payments
+AS
+--  Variable Declarations  --
+SELECT CashTran.CustomerAccountNumber AS 'Adventid'
+	,AccMstr.CustomerShortName AS 'AccountName'
+	-- void date and memo mappping pending
+	,NULL AS VoidDate
+	,NULL AS Memo
+	,CashDist.DocumentNumber AS 'CheckNumber'
+	,CashTran.TradeDate AS 'PaymentDate'
+	,CashTran.Amount AS 'PaymentAmount'
+	,CASE 
+		WHEN STATUS = 'AUTH'
+			THEN 'UnCleared' -- Display void payments with status as Voided
+		WHEN STATUS = 'SETT'
+			THEN 'Cleared'
+		WHEN STATUS = 'CANC'
+			THEN 'Void'
+		ELSE 'Scheduled'
+		END AS PaymentStatus
+	,'Vendor' AS PaymentType
+	,CashDist.PaidToContactName AS 'PayeeName'
+	,CashDist.PaidToContactName AS 'PayeeName'
+	,CASE 
+		WHEN ContPayMeth.PaymentType = 'Jrnl'
+			THEN 'Journal'
+		ELSE ContPayMeth.PaymentType
+		END AS 'Paymentmethod'
+FROM SYN_IT_CashDisbursements CashDist
+INNER JOIN SYN_IT_CashTransaction CashTran
+	ON CashDist.TransactionNumber = CashTran.TransactionNumber
+INNER JOIN SYN_IT_AccountMaster AccMstr
+	ON CashTran.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_CashTransactionExt CashTranExt
+	ON CashTranExt.TransactionNumber = CashTran.TransactionNumber
+LEFT OUTER JOIN SYN_IT_ContactPaymentMethods ContPayMeth
+	ON ContPayMeth.ID = PaidToPaymentMethodID
+WHERE TaxCode NOT IN (
+		570
+		,009
+		,052
+		,737
+		,691
+		,697
+		,595
+		,596
+		,601
+		,602
+		)
+	AND (
+		(
+			(
+				(@FromDate IS NULL)
+				OR (
+					@FromDate IS NOT NULL
+					AND CashTran.TradeDate >= @FromDate
+					)
+				)
+			AND (
+				(@ToDate IS NULL)
+				OR (
+					@ToDate IS NOT NULL
+					AND CashTran.TradeDate <= @ToDate
+					)
+				)
+			)
+		AND ((AccMstr.ManagerCode) = @ManagerCode)
+		)
+	--AND PAYMENT.Voiddate IS NULL -- mapping pending
+	AND (
+		@CustomerAccountNumber IS NULL
+		OR (
+			@CustomerAccountNumber IS NOT NULL
+			AND CashTran.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		)
+ORDER BY CashTran.CustomerAccountNumber ASC
+	,CashDist.PaidToContactName
+GO
+
+

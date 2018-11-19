@@ -1,0 +1,68 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAllStatus]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetAllStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetAllStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAllStatus]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_GetAllStatus  
+** Short Desc: Gets all status from status table TBL_IE_Status  
+**  
+** Full Description  
+**          
+**  
+** Sample Call  
+        EXEC USP_IE_GetAllStatus  -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 07/02/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE dbo.USP_IE_GetAllStatus
+	-- paremeters here  
+AS
+BEGIN
+	--  Initial Set statements  --  
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	-- Body of procedure  --  
+	SELECT StatusID
+		,[Status]
+	FROM TBL_IE_Status
+	ORDER BY [Status];
+
+	SET NOCOUNT OFF;
+END
+	-- End of procedure  --  

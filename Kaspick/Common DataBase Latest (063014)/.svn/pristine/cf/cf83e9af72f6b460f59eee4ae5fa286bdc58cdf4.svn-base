@@ -1,0 +1,68 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetListItemName'
+		)
+BEGIN
+	DROP FUNCTION FN_GetListItemName;
+
+	PRINT 'DROPPED FUNCTION FN_GetListItemName';
+END
+GO
+
+/******************************************************************************    
+** Name:    FN_GetListItemName  
+** Short Desc: To get Item Name  
+**    
+** Full Description: To get Item Name based on the item_id passed as parameter  
+**          
+**    
+** Sample Call    
+  FN_GetListItemName  
+**    
+** Return values: LIST_ITEM_NAME  
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Abhijith  
+** Company   : Opteamix   
+** Project   : ExcelsiorPrime   
+** Created DT: 07-Apr-2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**  
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE FUNCTION FN_GetListItemName (
+	@IVAN_VALUE VARCHAR(100)
+	,@LIST_TYPE_NAME VARCHAR(100)
+	)
+RETURNS VARCHAR(100)
+AS
+BEGIN
+	DECLARE @LIST_ITEM_NAME VARCHAR(100)
+
+	SET @LIST_ITEM_NAME = NULL
+
+	SELECT @LIST_ITEM_NAME = LstItm.LISTITEMNAME
+	FROM TBL_ListType LstTyp
+	INNER JOIN TBL_ListItem LstItm ON LstItm.LISTTYPEID = LstTyp.LISTTYPEID
+	WHERE LstItm.IvanValue = @IVAN_VALUE
+		AND LstTyp.LISTTYPENAME = @LIST_TYPE_NAME
+
+	RETURN @LIST_ITEM_NAME
+END
+GO
+
+SET NOCOUNT OFF;
+

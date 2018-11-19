@@ -1,0 +1,230 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.triggers
+		WHERE object_id = OBJECT_ID(N'[dbo].[TRG_TR_AudTSheetApprovedTrade]')
+		)
+	DROP TRIGGER [dbo].[TRG_TR_AudTSheetApprovedTrade]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name: 	TRG_TR_AudTSheetApprovedTrade
+** Table Name:		TSheetApprovedTrade
+** Action			Insert, Update, Delete
+**
+** Description: 	Writes data changes to the audit table
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE TRIGGER [dbo].[TRG_TR_AudTSheetApprovedTrade] ON [dbo].[TBL_TR_TSheetApprovedTrade]
+AFTER INSERT
+	,UPDATE
+	,DELETE
+AS
+--  Variable Declarations  --
+DECLARE @trgname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @TradeID INT;
+-- Variables used for error handling - uncomment if needed
+DECLARE @val1 VARCHAR(30);
+
+--Declare @val2						varchar(30);
+SET @trgname = 'TRG_TR_AudTSheetApprovedTrade';
+
+--	Body of trigger  --
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the row is a Delete and rowcount from Deleted > 0 and Inserted > 0 or Inserted <> 0, 
+-- then get the data from the Deleted table for recording the old values in the audit table.
+BEGIN TRY
+	IF (
+			SELECT count(*)
+			FROM Deleted
+			) > 0
+		AND (
+			SELECT count(*)
+			FROM Inserted
+			) > 0
+	BEGIN
+		INSERT INTO TBL_TR_AUDIT_TSheetApprovedTrade (
+			AUDITUSERID
+			,AUDITDATETIME
+			,AUDITFLAG
+			,AUDITTABLE
+			,AUDITDETAIL
+			,TradeID
+			,EventID
+			,EventAccountID
+			,SecurityTypeCode
+			,SecuritySymbol
+			,TradeQuantity
+			,DollarAmount
+			,TradeDate
+			,TradeType
+			,ArchiveTradeID
+			,ActiveTradeID
+			,SubmissionType
+			,SplitTrade
+			,SubmittedQuantityTillDate
+			,LastModifiedUserID
+			,LastModifiedDate
+			,DELETEDUSERID
+			)
+		SELECT LastModifiedUserID
+			,Getdate()
+			,'U'
+			,'TBL_TR_TSheetApprovedTrade'
+			,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+			,D.TradeID
+			,D.EventID
+			,D.EventAccountID
+			,D.SecurityTypeCode
+			,D.SecuritySymbol
+			,D.TradeQuantity
+			,D.DollarAmount
+			,D.TradeDate
+			,D.TradeType
+			,D.ArchiveTradeID
+			,D.ActiveTradeID
+			,D.SubmissionType
+			,D.SplitTrade
+			,D.SubmittedQuantityTillDate
+			,D.LastModifiedUserID
+			,D.LastModifiedDate
+			,NULL
+		FROM Deleted D
+	END
+	ELSE
+		IF (
+				SELECT count(*)
+				FROM Inserted
+				) > 0
+		BEGIN
+			INSERT INTO TBL_TR_AUDIT_TSheetApprovedTrade (
+				AUDITUSERID
+				,AUDITDATETIME
+				,AUDITFLAG
+				,AUDITTABLE
+				,AUDITDETAIL
+				,TradeID
+				,EventID
+				,EventAccountID
+				,SecurityTypeCode
+				,SecuritySymbol
+				,TradeQuantity
+				,DollarAmount
+				,TradeDate
+				,TradeType
+				,ArchiveTradeID
+				,ActiveTradeID
+				,SubmissionType
+				,SplitTrade
+				,SubmittedQuantityTillDate
+				,LastModifiedUserID
+				,LastModifiedDate
+				,DELETEDUSERID
+				)
+			SELECT LastModifiedUserID
+				,Getdate()
+				,'I'
+				,'TBL_TR_TSheetApprovedTrade'
+				,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,I.TradeID
+				,I.EventID
+				,I.EventAccountID
+				,I.SecurityTypeCode
+				,I.SecuritySymbol
+				,I.TradeQuantity
+				,I.DollarAmount
+				,I.TradeDate
+				,I.TradeType
+				,I.ArchiveTradeID
+				,I.ActiveTradeID
+				,I.SubmissionType
+				,I.SplitTrade
+				,I.SubmittedQuantityTillDate
+				,I.LastModifiedUserID
+				,I.LastModifiedDate
+				,NULL
+			FROM Inserted I
+		END
+		ELSE
+			IF (
+					SELECT count(*)
+					FROM Deleted
+					) > 0
+			BEGIN
+				INSERT INTO TBL_TR_AUDIT_TSheetApprovedTrade (
+					AUDITUSERID
+					,AUDITDATETIME
+					,AUDITFLAG
+					,AUDITTABLE
+					,AUDITDETAIL
+					,TradeID
+					,EventID
+					,EventAccountID
+					,SecurityTypeCode
+					,SecuritySymbol
+					,TradeQuantity
+					,DollarAmount
+					,TradeDate
+					,TradeType
+					,ArchiveTradeID
+					,ActiveTradeID
+					,SubmissionType
+					,SplitTrade
+					,SubmittedQuantityTillDate
+					,LastModifiedUserID
+					,LastModifiedDate
+					,DELETEDUSERID
+					)
+				SELECT LastModifiedUserID
+					,Getdate()
+					,'D'
+					,'TBL_TR_TSheetApprovedTrade'
+					,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+					,D.TradeID
+					,D.EventID
+					,D.EventAccountID
+					,D.SecurityTypeCode
+					,D.SecuritySymbol
+					,D.TradeQuantity
+					,D.DollarAmount
+					,D.TradeDate
+					,D.TradeType
+					,D.ArchiveTradeID
+					,D.ActiveTradeID
+					,D.SubmissionType
+					,D.SplitTrade
+					,D.SubmittedQuantityTillDate
+					,D.LastModifiedUserID
+					,D.LastModifiedDate
+					,NULL
+				FROM Deleted D
+			END
+END TRY
+
+BEGIN CATCH
+	SET @errmsg = ERROR_MESSAGE();
+	SET @errnbr = ERROR_NUMBER();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+GO
+
+

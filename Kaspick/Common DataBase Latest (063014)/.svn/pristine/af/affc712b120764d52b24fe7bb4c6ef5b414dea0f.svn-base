@@ -1,0 +1,86 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingInnoTrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetPendingInnoTrustTransaction]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetPendingInnoTrustTransaction]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingInnoTrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetPendingInnoTrustTransaction                      
+** Short Desc: Reading unmatched data from TBL_PV_ValuationInnotrustTransaction table.
+** Full Description: Reading unmatched data from TBL_PV_ValuationInnotrustTransaction table.
+** Input Arguments:   	@ValuationXML XML
+** Sample Call     
+        
+DECLARE @ValuationXML XML     
+ SET  @ValuationXML = 
+		'<ValuationCollection>    
+		  <InsertList>    
+			<Valuation ValuationID="16" />    
+		  </InsertList>    
+		</ValuationCollection>'        
+ EXEC USP_PV_GetPendingInnoTrustTransaction @ValuationXML
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetPendingInnoTrustTransaction] (@ValuationXML XML)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	SELECT TransactionID
+		,ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,GroupID
+		,TransactionCode
+		,[Security]
+		,TradeDate
+		,Quantity
+		,TradeAmount
+		,Comment
+	FROM TBL_PV_ValuationInnotrustTransaction ValTran
+	WHERE ValTran.ValuationID IN (
+			SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+			FROM @ValuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+			)
+		AND LTRIM(RTRIM(ValTran.MatchStatus)) = '';
+END
+
+SET NOCOUNT OFF;
+

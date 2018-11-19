@@ -1,0 +1,645 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_NewGiftAdditionsTrustPIFCGA]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_NewGiftAdditionsTrustPIFCGA]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_NewGiftAdditionsTrustPIFCGA  
+** Short Desc: New Gift Addition details for Account Types - Trust, PIF, CGA  
+**    
+** Full Description    
+**      New Gift Addition details for Account Types - Trust, PIF, CGA  
+**    
+** Sample Call    
+        EXEC USP_KCo_NewGiftAdditionsTrustPIFCGA   
+   'CT', '1/1/2012', '10/31/2013', 'Yes'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries    
+** Created DT: 15-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_NewGiftAdditionsTrustPIFCGA] @ManagerCode AS VARCHAR(20)
+	,@GiftDateFrom AS DATE
+	,@GiftDateTo AS DATE
+	,@OrderByInvObjective AS VARCHAR(5)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @GW_ManagerCode AS CHAR(4)
+	DECLARE @GW_CGA_GiftTypeID AS INT
+	DECLARE @GW_PIF_GiftTypeID AS INT
+
+	--SELECT @GW_ManagerCode = 4195
+	SELECT @GW_ManagerCode = ClientID FROM SYN_GW_TBLClient WHERE ClientName ='kaspick'
+	
+	SELECT @GW_CGA_GiftTypeID = GiftTypeID
+	FROM SYN_GW_TBLGiftType
+	WHERE short = 'CGA'
+
+	SELECT @GW_PIF_GiftTypeID = GiftTypeID
+	FROM SYN_GW_TBLGiftType
+	WHERE short = 'PIF'
+
+	DECLARE @TBL_Remainderman_Trust TABLE (
+		CustomerAccountNumber VARCHAR(14)
+		,FASBRestrictionType VARCHAR(50)
+		,FundName VARCHAR(100)
+		,DesignationCode VARCHAR(15)
+		)
+	DECLARE @TBL_Gift TABLE (
+		ManagerCode CHAR(4)
+		,AllianceNumber CHAR(15)
+		,CustomerAccountNumber VARCHAR(14)
+		,ClientAccountCode1 VARCHAR(20)
+		,ClientAccountCode2 VARCHAR(20)
+		,ContactName VARCHAR(2000)
+		,Account1 VARCHAR(20)
+		,Account2 VARCHAR(20)
+		,Account3 VARCHAR(20)
+		,Account4 VARCHAR(20)
+		,Account5 VARCHAR(20)
+		,AccountType VARCHAR(20)
+		,AccountName VARCHAR(100)
+		,GiftDate DATETIME
+		,FundingType VARCHAR(100)
+		,AssetType VARCHAR(2000) --max
+		,AssetDescription VARCHAR(2000) --max
+		,GiftValue MONEY
+		,CostBasis MONEY
+		,DeliveryMethod VARCHAR(10)
+		,CharitableDeduction MONEY
+		,GiftRestriction VARCHAR(2000) --max
+		,InvestmentObjective VARCHAR(40)
+		,Comments VARCHAR(10)
+		,GiftID INT
+		)
+	
+	--Get the Remainderman details into a temp table  
+	INSERT INTO @TBL_Remainderman_Trust (
+		CustomerAccountNumber
+		,FASBRestrictionType
+		,FundName
+		,DesignationCode
+		)
+	SELECT DISTINCT AccMstr.CustomerAccountNumber
+		,CntAccRolEx.FasbRestrictionCode
+		,UDFContAccRole.UDFCAColumn010
+		,UDFContAccRole.UDFCAColumn009 AS DesignationCode
+	FROM SYN_IT_AccountMaster AccMstr
+	INNER JOIN SYN_IT_ContactAccountRoles ContAccRole
+		ON ContAccRole.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+			-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+			AND ContAccRole.ContactRoleCode = 22 -- 'Remainderman'
+	INNER JOIN SYN_IT_ContactMaster ContMstr
+		ON ContMstr.ContactID = ContAccRole.ContactID
+	LEFT OUTER JOIN SYN_IT_AccountManagerCodes AccMgrCode
+		ON AccMgrCode.ContactID = ContAccRole.ContactID
+	LEFT OUTER JOIN (
+		SELECT AccMas.CustomerAccountNumber
+			,cmREMDesig.ContactID
+			,carREMDesig.ContactRoleCode
+		FROM SYN_IT_AccountMaster AccMas
+		INNER JOIN SYN_IT_ContactAccountRoles carREMDesig
+			ON AccMas.CustomerAccountNumber = carREMDesig.CustomerAccountNumber
+				AND carREMDesig.ContactRoleCode = 530 --Remainderman Designation
+		INNER JOIN SYN_IT_UDF_ContactAccountRole udfcarREMDesig
+			ON udfcarREMDesig.ContactID_Key = carREMDesig.ContactID
+				AND udfcarREMDesig.CustomerAccountNumber_Key = carREMDesig.CustomerAccountNumber
+				AND udfcarREMDesig.ContactRoleCode_Key = carREMDesig.ContactRoleCode
+		INNER JOIN SYN_IT_ContactMaster cmREMDesig
+			ON cmREMDesig.ContactID = carREMDesig.ContactID
+		) RemDesig
+		ON AccMstr.CustomerAccountNumber = RemDesig.CustomerAccountNumber
+	LEFT OUTER JOIN SYN_IT_ContactAccountRolesEx CntAccRolEx
+		ON CntAccRolEx.ContactID = RemDesig.ContactID
+	LEFT OUTER JOIN SYN_IT_UDF_ContactAccountRole UDFContAccRole
+		ON UDFContAccRole.ContactID_Key = RemDesig.ContactID
+			AND AccMstr.CustomerAccountNumber = RemDesig.CustomerAccountNumber
+			AND ContactRoleCode_Key = RemDesig.ContactRoleCode
+	WHERE AccMstr.ManagerCode = @ManagerCode
+		AND AccMstr.ManagerCode IS NOT NULL -- IsExternal = 0
+
+	DECLARE @TBL_AssetInfo TABLE (
+		GiftAssetGiftID INT
+		,GiftDetailID INT
+		,Units DECIMAL(17, 8)
+		,InitialGift BIT
+		,GiftDate DATETIME
+		,AssetType VARCHAR(8000)
+		,AssetDescription VARCHAR(8000)
+		,GiftValue MONEY
+		,CostBasis MONEY
+		,GiftRestriction VARCHAR(8000)
+		,AssetTypePIFCGA VARCHAR(8000)
+		,AssetDescriptionPIFCGA VARCHAR(8000)
+		,GiftValuePIFCGA MONEY
+		,CostBasisPIFCGA MONEY
+		,CharitableDeductionPIFCGA MONEY
+		,GiftRestrictionPIFCGA VARCHAR(8000)
+		)
+
+	INSERT INTO @TBL_AssetInfo
+	SELECT GftAsst.GiftID
+		,GftDtl.GiftDetailID
+		,GftDtl.Units
+		,GftDtl.InitialGift
+		,Gft.GiftDate
+		,AssetType = STUFF((
+				SELECT DISTINCT '; ' + at.AssetType --+ CHAR(13)  
+				FROM SYN_PS_GiftAsset at
+				WHERE GftAsst.GiftID = at.GiftID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,AssetDescription = STUFF((
+				SELECT DISTINCT '; ' + at.Description --+ CHAR(13)  
+				FROM SYN_PS_GiftAsset at
+				WHERE GftAsst.GiftID = at.GiftID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,SUM(GftAsst.MarketValue) AS 'GiftValue'
+		,SUM(GftAsst.CostBasis) AS 'CostBasis'
+		,GiftRestriction = STUFF((
+				SELECT DISTINCT '; ' + rm.FASBRestrictionType
+				FROM @TBL_Remainderman_Trust rm
+				WHERE rm.CustomerAccountNumber = AccMas.CustomerAccountNumber
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		--CGA are all Additions  
+		-- PIF accounts from GiftWrap
+		,AssetTypePIFCGA = STUFF((
+				SELECT DISTINCT '; ' + CASE 
+						WHEN tl.DESCRIPTION = 'Cash'
+							THEN 'CASH'
+						ELSE tl.DESCRIPTION
+						END --+ CHAR(13)  
+				FROM dbo.SYN_GW_TBLLookup tl
+				INNER JOIN SYN_GW_TBLASSETDETAIL ad
+					ON tl.lookupid = ad.AssetTypeIDLookup
+				WHERE ad.GiftDetailID = GftDtl.GiftDetailID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,AssetDescriptionPIFCGA = STUFF((
+				SELECT DISTINCT '; ' + RTRIM(ad.AssetName) --+ CHAR(13)  
+				FROM SYN_GW_TBLASSETDETAIL ad
+				WHERE ad.GiftDetailID = GftDtl.GiftDetailID
+				FOR XML PATH('')
+					,root('MyString')
+					,type
+				).value('/MyString[1]', 'varchar(max)'), 1, 2, '')
+		,GftDtl.GiftAmount AS 'GiftValuePIFCGA'
+		,CostBasisPIFCGA = (
+			SELECT SUM(ad.AssetCostBasis)
+			FROM SYN_GW_TBLASSETDETAIL ad
+			WHERE ad.GiftDetailID = GftDtl.GiftDetailID
+			)
+		,GftDtl.CharitableDeduction AS 'CharitableDeductionPIFCGA'
+		,(
+			SELECT Description
+			FROM SYN_GW_TBLLookup
+			WHERE lookupid = tblGft.RestrictedIDLookup
+			) AS 'GiftRestrictionPIFCGA'
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN TBL_Lookup_Account LkpAccnt
+		ON LkpAccnt.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_PS_Gift Gft
+		ON LkpAccnt.AccountID = Gft.AccountID
+	LEFT OUTER JOIN SYN_PS_GiftAsset GftAsst
+		ON GftAsst.GiftID = Gft.GiftID
+	LEFT OUTER JOIN SYN_GW_TBLGiftDetail GftDtl
+		ON GftDtl.GiftID = Gft.GiftID
+	LEFT OUTER JOIN SYN_GW_TBLGift tblGft
+		ON tblGft.GiftID = Gft.GiftID
+	GROUP BY GftAsst.GiftID
+		,AccMas.ManagerCode
+		,AccMas.AllianceNumber
+		,AccMas.CustomerAccountNumber
+		,AccMas.TrustAccountNumber
+		,AccMas.AccountTypeCode
+		,AccMas.CustomerDescriptionLine1
+		,Gft.GiftDate
+		,AccMas.CustomerAccountNumber
+		,GftDtl.GiftDetailID
+		,GftDtl.GiftAmount
+		,GftDtl.CharitableDeduction
+		,tblGft.RestrictedIDLookup
+		,GftDtl.Units
+		,GftDtl.InitialGift
+
+	--Get Trust Accounts from Innotrust  
+	INSERT INTO @TBL_Gift (
+		ManagerCode
+		,AllianceNumber
+		,CustomerAccountNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,AccountType
+		,AccountName
+		,GiftDate
+		,FundingType
+		,AssetType
+		,AssetDescription
+		,GiftValue
+		,CostBasis
+		,DeliveryMethod
+		,CharitableDeduction
+		,GiftRestriction
+		,InvestmentObjective
+		,Comments
+		,GiftID
+		)
+	SELECT AccMas.ManagerCode AS 'ManagerCode'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,AccMas.TrustAccountNumber AS 'ClientAccountCode1'
+		,UDFAccMas.UDFAMColumn042 AS 'ClientAccountCode2'
+		,'' AS 'ContactName'
+		,'' AS 'Account1'
+		,'' AS 'Account2'
+		,'' AS 'Account3'
+		,'' AS 'Account4'
+		,'' AS 'Account5'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS 'AccountName'
+		,Gft.GiftDate AS 'GiftDate'
+		,'' AS 'FundingType'
+		,T.AssetType
+		,T.AssetDescription
+		,T.GiftValue
+		,T.CostBasis
+		,'' AS 'DeliveryMethod'
+		,'' AS 'CharitableDeduction'
+		,T.GiftRestriction
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,'' AS 'Comments'
+		,NULL AS 'GiftID'
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN TBL_Lookup_Account LkpAccnt
+		ON LkpAccnt.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_PS_Gift Gft
+		ON LkpAccnt.AccountID = Gft.AccountID
+	INNER JOIN SYN_PS_TBL_EIS_EX_GIFT_SUPPLEMENT gs
+		ON gs.GiftID = Gft.GiftID
+	INNER JOIN @TBL_AssetInfo T
+		ON T.GiftAssetGiftID = Gft.GiftID
+	LEFT OUTER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+		ON UDFAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_AccountProfile AccProf
+		ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccProf.ObjectiveCode
+	LEFT OUTER JOIN VW_ListItem fundType
+		ON fundType.ListTypeName = 'Funding Type'
+			AND gs.FUNDING_TYPE_ID = fundType.ListItemID
+	WHERE AccMas.AccountTypeCode NOT IN (
+			'PIF'
+			,'GAP'
+			,'GAPP'
+			,'GAPR'
+			)
+		AND Gft.GiftDate >= @GiftDateFrom
+		AND Gft.GiftDate <= @GiftDateTo
+		AND AccMas.ManagerCode = @ManagerCode
+	GROUP BY T.GiftAssetGiftID
+		,AccMas.ManagerCode
+		,AccMas.AllianceNumber
+		,AccMas.CustomerAccountNumber
+		,AccMas.TrustAccountNumber
+		,UDFAccMas.UDFAMColumn042
+		,AccMas.AccountTypeCode
+		,AccMas.CustomerDescriptionLine1
+		,AccMas.CustomerDescriptionLine2
+		,AccMas.CustomerDescriptionLine3
+		,AccMas.CustomerDescriptionLine4
+		,Gft.GiftDate
+		,fundType.ListItemName
+		,UDFAccMas.UDFAMColumn040
+		,inv.ObjectiveName
+		,AccMas.CustomerAccountNumber
+		,T.AssetType
+		,T.AssetDescription
+		,T.GiftValue
+		,T.CostBasis
+		,T.GiftRestriction
+
+	--CGA Accounts from Giftwrap  
+	INSERT INTO @TBL_Gift (
+		ManagerCode
+		,AllianceNumber
+		,CustomerAccountNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,AccountType
+		,AccountName
+		,GiftDate
+		,FundingType
+		,AssetType
+		,AssetDescription
+		,GiftValue
+		,CostBasis
+		,DeliveryMethod
+		,CharitableDeduction
+		,GiftRestriction
+		,InvestmentObjective
+		,Comments
+		,GiftID
+		)
+	SELECT AccMas.ManagerCode AS 'ManagerCode'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,'' AS 'ClientAccountCode1'
+		,'' AS 'ClientAccountCode2'
+		,LTRIM(RTRIM(gwp.FirstName) + SPACE(1) + RTRIM(gwp.LastName)) AS 'ContactName'
+		,tblGft.Account1 AS 'Account1'
+		,tblGft.Account2 AS 'Account2'
+		,tblGft.Account3 AS 'Account3'
+		,tblGft.Account4 AS 'Account4'
+		,tblGft.Account5 AS 'Account5'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS 'AccountName'
+		,T.GiftDate AS 'GiftDate'
+		,'Addition' AS 'FundingType'
+		,--CGA are all Additions  
+		T.AssetTypePIFCGA
+		,T.AssetDescriptionPIFCGA
+		,T.GiftValuePIFCGA AS 'GiftValue'
+		,T.CostBasisPIFCGA
+		,'' AS 'DeliveryMethod'
+		,T.CharitableDeductionPIFCGA AS 'CharitableDeduction'
+		,T.GiftRestrictionPIFCGA AS 'GiftRestriction'
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,'' AS 'Comments'
+		,tblGft.GiftID AS 'GiftID'
+	FROM dbo.SYN_GW_TBLGift tblGft
+	--INNER JOIN SYN_GW_TBLGiftDetail GftDtl ON GftDtl.GiftID = tblGft.GiftID
+	INNER JOIN @TBL_AssetInfo T
+		ON T.GiftAssetGiftID = tblGft.GiftID
+	INNER JOIN SYN_GW_TBLPersonGiftMap pg
+		ON tblGft.GiftID = pg.GiftID
+	INNER JOIN SYN_GW_TBLPerson gwp
+		ON gwp.PersonID = pg.PersonID
+	INNER JOIN SYN_GW_TBLOrganization gwo
+		ON gwo.OrgID = tblGft.OrgID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.ManagerCode = gwo.OrgNickName
+	LEFT OUTER JOIN TBL_INV_AccountProfile AccProf
+		ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccMas.ManagerCode
+	WHERE gwo.OrgNickName = @GW_ManagerCode
+		AND tblGft.GiftTypeID = @GW_CGA_GiftTypeID
+		AND T.GiftDate >= @GiftDateFrom
+		AND T.GiftDate <= @GiftDateTo
+		AND AccMas.ManagerCode = @ManagerCode
+
+	--PIF Accounts from Giftwrap  
+	INSERT INTO @TBL_Gift (
+		ManagerCode
+		,AllianceNumber
+		,CustomerAccountNumber
+		,ClientAccountCode1
+		,ClientAccountCode2
+		,ContactName
+		,Account1
+		,Account2
+		,Account3
+		,Account4
+		,Account5
+		,AccountType
+		,AccountName
+		,GiftDate
+		,FundingType
+		,AssetType
+		,AssetDescription
+		,GiftValue
+		,CostBasis
+		,DeliveryMethod
+		,CharitableDeduction
+		,GiftRestriction
+		,InvestmentObjective
+		,Comments
+		,GiftID
+		)
+	SELECT AccMas.ManagerCode AS 'ManagerCode'
+		,AccMas.AllianceNumber AS 'AllianceNumber'
+		,AccMas.CustomerAccountNumber AS 'CustomerAccountNumber'
+		,'' AS 'ClientAccountCode1'
+		,'' AS 'ClientAccountCode2'
+		,LTRIM(RTRIM(gwp.FirstName) + SPACE(1) + RTRIM(gwp.LastName)) AS 'ContactName'
+		,tblGft.Account1 AS 'Account1'
+		,tblGft.Account2 AS 'Account2'
+		,tblGft.Account3 AS 'Account3'
+		,tblGft.Account4 AS 'Account4'
+		,tblGft.Account5 AS 'Account5'
+		,AccMas.AccountTypeCode AS 'AccountType'
+		,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS 'AccountName'
+		,T.GiftDate AS 'GiftDate'
+		,CASE 
+			WHEN T.InitialGift = 1
+				THEN 'Initial'
+			ELSE 'Addition'
+			END AS 'FundingType'
+		,T.AssetTypePIFCGA AS 'AssetType'
+		,T.AssetDescriptionPIFCGA AS 'AssetDescription'
+		,T.GiftValuePIFCGA AS 'GiftValue'
+		,T.CostBasisPIFCGA AS 'CostBasis'
+		,'' AS 'DeliveryMethod'
+		,T.CharitableDeductionPIFCGA AS 'CharitableDeduction'
+		,T.GiftRestrictionPIFCGA
+		,inv.ObjectiveName AS 'InvestmentObjective'
+		,'' AS 'Comments'
+		,tblGft.GiftID AS 'GiftID'
+	FROM SYN_GW_TBLGift tblGft
+	INNER JOIN SYN_GW_TBLPersonGiftMap pg
+		ON tblGft.GiftID = pg.GiftID
+	INNER JOIN SYN_GW_TBLPerson gwp
+		ON gwp.PersonID = pg.PersonID
+	LEFT JOIN @TBL_AssetInfo T
+		ON T.GiftAssetGiftID = tblGft.GiftID
+	--LEFT JOIN SYN_GW_TBLGiftDetail GftDtl ON GftDtl.GiftID = tblGft.GiftID
+	LEFT JOIN SYN_GW_TBLASSETDETAIL ad
+		ON ad.GiftDetailID = T.GiftDetailID --GftDtl.GiftDetailID
+	INNER JOIN SYN_GW_TBLPIF pif
+		ON pif.PifID = tblGft.PifID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = pif.PifNickname
+	LEFT OUTER JOIN TBL_INV_AccountProfile AccProf
+		ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	LEFT JOIN TBL_INV_InvestmentObjective inv
+		ON inv.ObjectiveCode = AccProf.ObjectiveCode
+	LEFT JOIN SYN_GW_TBLPersonGiftMap pfm
+		ON (
+				pfm.GiftID = tblGft.GiftID
+				AND pfm.PersonID = pg.PersonID
+				)
+	WHERE pif.ClientID = @GW_ManagerCode
+		AND tblGft.GiftTypeID = @GW_PIF_GiftTypeID
+		AND T.GiftDate >= @GiftDateFrom
+		AND T.GiftDate <= @GiftDateTo
+		AND AccMas.ManagerCode = @ManagerCode
+		AND T.Units > 0
+		AND pfm.ASSOCIATIONID <> 11
+
+	IF (@OrderByInvObjective = 'Yes')
+	BEGIN
+		SELECT DISTINCT ManagerCode
+			,AllianceNumber
+			,CustomerAccountNumber
+			,ClientAccountCode1
+			,ClientAccountCode2
+			,SUBSTRING((
+					SELECT DISTINCT ('; ' + ContactName)
+					FROM @TBL_Gift g2
+					WHERE (
+							g2.AccountType = 'PIF'
+							OR g2.AccountType = 'GAP'
+							OR g2.AccountType = 'GAPP'
+							OR g2.AccountType = 'GAPR'
+							)
+						AND g2.GiftID = t.GiftID
+					FOR XML PATH('')
+					), 3, 2000) ContactName
+			,Account1
+			,Account2
+			,Account3
+			,Account4
+			,Account5
+			,AccountType
+			,AccountName
+			,GiftDate
+			,FundingType
+			,AssetType
+			,AssetDescription
+			,CASE 
+				WHEN GiftValue <> 0
+					THEN CONVERT(VARCHAR, GiftValue, 1)
+				ELSE NULL
+				END AS GiftValue
+			,CASE 
+				WHEN CostBasis <> 0
+					THEN CONVERT(VARCHAR, CostBasis, 1)
+				ELSE NULL
+				END AS CostBasis
+			,DeliveryMethod
+			,CASE 
+				WHEN CharitableDeduction <> 0
+					THEN CONVERT(VARCHAR, CharitableDeduction, 1)
+				ELSE NULL
+				END AS CharitableDeduction
+			,GiftRestriction
+			,InvestmentObjective
+			,Comments
+		FROM @TBL_Gift t
+		ORDER BY AllianceNumber
+			,InvestmentObjective
+			,AccountType
+			,GiftDate
+	END
+	ELSE
+	BEGIN
+		SELECT DISTINCT ManagerCode
+			,AllianceNumber
+			,CustomerAccountNumber
+			,ClientAccountCode1
+			,ClientAccountCode2
+			,SUBSTRING((
+					SELECT DISTINCT ('; ' + ContactName)
+					FROM @TBL_Gift g2
+					WHERE (
+							g2.AccountType = 'PIF'
+							OR g2.AccountType = 'GAP'
+							OR g2.AccountType = 'GAPP'
+							OR g2.AccountType = 'GAPR'
+							)
+						AND g2.GiftID = t.GiftID
+					FOR XML PATH('')
+					), 3, 2000) ContactName
+			,Account1
+			,Account2
+			,Account3
+			,Account4
+			,Account5
+			,AccountType
+			,AccountName
+			,GiftDate
+			,FundingType
+			,AssetType
+			,AssetDescription
+			,CASE 
+				WHEN GiftValue <> 0
+					THEN CONVERT(VARCHAR, GiftValue, 1)
+				ELSE NULL
+				END AS GiftValue
+			,CASE 
+				WHEN CostBasis <> 0
+					THEN CONVERT(VARCHAR, CostBasis, 1)
+				ELSE NULL
+				END AS CostBasis
+			,DeliveryMethod
+			,CASE 
+				WHEN CharitableDeduction <> 0
+					THEN CONVERT(VARCHAR, CharitableDeduction, 1)
+				ELSE NULL
+				END AS CharitableDeduction
+			,GiftRestriction
+			,InvestmentObjective
+			,Comments
+		FROM @TBL_Gift t
+		ORDER BY AllianceNumber
+			,GiftDate
+	END
+
+	SET NOCOUNT OFF;
+END

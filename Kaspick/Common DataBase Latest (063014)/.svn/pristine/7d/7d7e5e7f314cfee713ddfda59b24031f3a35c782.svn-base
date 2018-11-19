@@ -1,0 +1,152 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetDonorBeneStatus'
+		)
+BEGIN
+	DROP FUNCTION FN_GetDonorBeneStatus;
+
+	PRINT 'DROPPED FN_GetDonorBeneStatus';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : FN_GetDonorBeneStatus
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the ListItemName for the ListItemID
+**      
+** Sample Call      
+   SELECT dbo.[FN_GetDonorBeneStatus](1)
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 09/05/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_GetDonorBeneStatus]
+(
+	@CustomerAccountNumber VARCHAR(20)
+	,@ContactID	INT
+)
+RETURNS VARCHAR(100)
+AS
+BEGIN
+	DECLARE @ReturnValue VARCHAR(100), @DateOfDeath DATETIME, @BeneficiaryStatus VARCHAR(50), @DonorStatus VARCHAR(50)
+	DECLARE @ActiveFlag INT
+
+	SELECT @DateOfDeath = DateOfDeath FROM SYN_IT_ContactMaster WHERE ContactID = @ContactID
+
+	/* Check if any type of beneficiary */
+	IF EXISTS(	SELECT
+					 1
+				FROM
+					SYN_IT_ContactAccountRoles AS ConAccRol
+				WHERE
+					ConAccRol.ContactRoleCode IN
+									(
+										10
+										,21
+										,37
+									)
+					AND ConAccRol.ContactID = @ContactID
+					AND ConAccRol.CustomerAccountNumber = @CustomerAccountNumber
+			)
+	BEGIN
+		SET @ActiveFlag = (
+							SELECT
+								 TOP 1 ActiveFlag
+							FROM
+								SYN_IT_ContactAccountRoles car
+							INNER JOIN
+								SYN_IT_RemittanceInstructions ri
+							ON
+								car.CustomerAccountNumber = ri.CustomerAccountNumber
+							INNER JOIN
+								SYN_IT_BeneficiaryDistributions bd
+							ON
+								ri.InstructionID = bd.InstructionID
+								AND car.ContactID = bd.PayeeID 
+							WHERE
+								car.ContactRoleCode = 21 
+								AND car.ContactID = @ContactID
+						)
+		IF(@ActiveFlag = -1 AND ISNULL(@DateOfDeath, '') = '')
+		BEGIN
+			SET @BeneficiaryStatus = 'Beneficiary Active'
+		END
+		ELSE IF(@ActiveFlag <> -1 OR ISNULL(@DateOfDeath, '') <> '')
+		BEGIN
+			SET @BeneficiaryStatus = 'Beneficiary Inactive'
+		END
+		ELSE
+		BEGIN
+			SET @BeneficiaryStatus = 'Beneficiary Inactive'
+		END
+	END
+	
+	/* Check if any type of Donor */
+	IF EXISTS(	SELECT
+					 1
+				FROM
+					SYN_IT_ContactAccountRoles AS ConAccRol
+				WHERE
+					ConAccRol.ContactRoleCode IN
+									(
+										24
+									)
+					AND ConAccRol.ContactID = @ContactID
+					AND ConAccRol.CustomerAccountNumber = @CustomerAccountNumber
+			)
+	BEGIN
+		IF(ISNULL(@DateOfDeath, '') = '')
+		BEGIN
+			SET @DonorStatus = 'Donor Active'
+		END
+		ELSE
+		BEGIN
+			SET @DonorStatus = 'Donor Inactive'
+		END
+	END
+
+	SET @ReturnValue = @DonorStatus  + '/' + @BeneficiaryStatus
+	
+	IF(@ReturnValue IS NULL)
+	BEGIN
+		SET @ReturnValue = @DonorStatus
+
+		IF(@ReturnValue IS NULL)
+			SET @ReturnValue = @BeneficiaryStatus
+			
+			IF(@ReturnValue IS NULL)
+				SET @ReturnValue = ''
+	END
+
+	RETURN @ReturnValue
+END
+GO

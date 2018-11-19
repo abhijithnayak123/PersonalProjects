@@ -1,0 +1,85 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetManagerPaymentList]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetManagerPaymentList]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetManagerPaymentList]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetManagerPaymentList]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetManagerPaymentList                      
+** Short Desc: Procedure to generate the Manager Payment list report
+**                      
+** Full Description: Procedure to generate the Manager Payment list report
+**      
+**                              
+** Input Arguments:   	@ManagerCode CHAR(4)
+**	,@FromDate DATETIME
+**	,@ToDate DATETIME           
+** Sample Call     
+
+EXEC USP_PP_ReportGetManagerPaymentList 'TMC','02/14/2007','02/15/2008'  
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetManagerPaymentList] (
+	@ManagerCode CHAR(4)
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT AccMstr.TrustAccountNumber AS BriefName
+		,AccMstr.CustomerAccountNumber AS AdventID
+		,BenPymt.DocumentNumber AS CheckNumber
+		,rtrim(ltrim(ISNULL(AccMstr.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMstr.CustomerDescriptionLine4, ''))) AS TrustName
+		,BenPymt.PayeeName
+		,BenPymt.PaymentAmount
+		,convert(VARCHAR, BenPymt.PaymentDate, 101) AS PaymentDate
+	FROM SYN_IT_AccountMaster AccMstr
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPymt
+		ON AccMstr.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+			AND BenPymt.ManagerCode = @ManagerCode
+	WHERE BenPymt.PaymentDate BETWEEN @FromDate
+			AND @ToDate
+	ORDER BY AccMstr.CustomerAccountNumber
+		,BenPymt.PaymentDate
+		,BenPymt.DocumentNumber;
+
+	SET NOCOUNT OFF
+END

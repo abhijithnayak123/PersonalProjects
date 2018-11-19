@@ -1,0 +1,92 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetTradeAlert]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetTradeAlert]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                            
+** Name:     USP_TR_GetTradeAlert                            
+** Short Desc: To retrieve the Trade Alerts                   
+**                            
+** Full Description: To retrieve the Trade Alerts                   
+**                                                  
+** Sample Call                            
+**  EXEC USP_TR_GetTradeAlert 
+    '<CustomerAccountNumbers>
+    <EventId>59994</EventId>
+    <EventStatusID>3</EventStatusID>
+    <CustomerAccountNumber>ACADW</CustomerAccountNumber>
+    <EventAccountId>65696</EventAccountId>
+    <CustomerAccountNumber>ACBAD</CustomerAccountNumber>
+    <EventAccountId>65697</EventAccountId>
+    </CustomerAccountNumbers>'         
+             
+**                   
+** Return values: NONE          
+**                            
+**                            
+** Standard declarations                            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                            
+**                             
+** Created By: Chaithra Madappa                     
+** Company   : Kaspick & Company                            
+** Project   : Back Office Integration (T-Rex)                           
+** Created DT: Mar-27-2014                           
+**                                        
+*******************************************************************************                      
+**       Change History                            
+*******************************************************************************                      
+** Date:        Author:  Bug #     Description:                           Rvwd                      
+** --------  -------- ------    -------------------------------------- --------                      
+**            
+*******************************************************************************                            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetTradeAlert] (@CustomerAccountNumbers XML)
+AS
+BEGIN
+	--  Initial Set statements  --                
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds                
+
+	DECLARE @CustomerAccountNumberTable TABLE (CustomerAccountNumber VARCHAR(14))
+
+	INSERT INTO @CustomerAccountNumberTable (CustomerAccountNumber)
+	SELECT XMLDATA.ID.value('(.)', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/CustomerAccountNumber') AS XMLDATA(ID)
+
+	-- Body of procedure  --                
+	SELECT AlrtEvnt.Alertid
+		,AlrtEvnt.Alertdate AS DueDate
+		,AlrtEvnt.Alertstatus AS STATUS
+		,AlrtEvnt.Alertcause AS Cause
+		,AlrtEvnt.Alertcomment AS Comment
+		,AlrtEvnt.Customeraccountnumber AS CustomerAccountNumber
+	FROM TBL_BR_ALERTEVENT AlrtEvnt
+	INNER JOIN TBL_KS_USER USR ON AlrtEvnt.Assignedto = USR.Userid
+	WHERE AlrtEvnt.Customeraccountnumber IN (
+			SELECT CUSTOMERACCOUNTNUMBER
+			FROM @CUSTOMERACCOUNTNUMBERTABLE
+			)
+		AND AlrtEvnt.Alertstatus = 'PENDING'
+	ORDER BY AlrtEvnt.Alertdate
+		,AlrtEvnt.Customeraccountnumber
+		,AlrtEvnt.Alertcause
+		,AlrtEvnt.Alertcomment ASC
+END
+GO
+
+

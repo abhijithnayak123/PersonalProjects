@@ -1,0 +1,100 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetGiftwrap'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetGiftwrap;
+
+	PRINT 'DROPPED USP_EX_GetGiftwrap';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name : USP_EX_GetGiftwrap 
+** Old Name: It was not there in old it is new
+** Short Desc:	
+** Full Description
+**        This stored proc is used to populate Gift wrap details for DonorBeneAddressChange request type
+**
+** Sample Call
+	USP_EX_GetGiftwrap 'A8BBBA5C-D6DA-4A4F-8062-4443FF8CBBEF' 
+	
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Sanath 
+**	Company	  :	Opteamix
+**	Project	  :	Excelsior TAG
+**	Created DT:	10-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+** 
+*******************************************************************************/
+CREATE PROCEDURE [dbo].USP_EX_GetGiftwrap  
+(
+@Guid VARCHAR(255)
+)
+
+AS
+BEGIN
+     BEGIN TRY
+   SELECT ISNULL(GiftwrAddr.Street1, '') + ' ' + ISNULL(GiftwrAddr.Street2, '') +' ' + ISNULL(GiftwrAddr.City, '') + ' ' + ISNULL(GiftwrAddr.StateCode, '') + ' ' + ISNULL(GiftwrAddr.ZipCode, '') + ' ' + ISNULL(GiftwrAddr.Country, '') AS Giftwrap,
+    GiftwrAddrType.Short AS Type
+   FROM SYN_GW_TBLADDRESS GiftwrAddr 
+   INNER JOIN SYN_GW_TBLADDRESSTYPE GiftwrAddrType ON GiftwrAddr.AddressTypeID = GiftwrAddrType.AddressTypeID
+   INNER JOIN TBL_TAG_DonorBeneContactAddress DonoBeneAddr ON GiftwrAddr.AddressID = DonoBeneAddr.AddressID
+   INNER JOIN TBL_TAG_DBAddressChange AddChg ON DonoBeneAddr.DBAddressChangeID=AddChg.DBAddressChangeID
+	WHERE AddChg.GUID=@Guid	
+   END TRY
+  BEGIN CATCH
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_GetGiftwrap';
+
+		SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage,
+				-- Message text.
+				@ErrorSeverity,
+				-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH 
+ 	
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetGiftwrap'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetGiftwrap';
+END

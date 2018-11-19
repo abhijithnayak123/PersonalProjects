@@ -1,0 +1,89 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleResetPrivilege]    Script Date: 07/11/2013 09:22:21 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetActivityConsoleResetPrivilege]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_PP_GetActivityConsoleResetPrivilege]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetActivityConsoleResetPrivilege]    Script Date: 07/11/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetActivityConsoleResetPrivilege                      
+** Short Desc: To check if the user got the specific privilege
+**                      
+** Full Description:  To check if the user got the specific privilege          
+**        
+**                              
+** Input Arguments:  
+    @UserID INT     
+ 
+**         
+** Sample Call     
+        
+		Declare @ret varchar(100)        
+		EXEC USP_PP_GetActivityConsoleResetPrivilege 1,@ret output        
+		SELECT @ret 
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 11-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+  
+CREATE PROCEDURE [dbo].[USP_PP_GetActivityConsoleResetPrivilege]       
+	 @UserID		INT,      
+	 @ReturnStatus VARCHAR(100) OUTPUT        
+AS         
+        
+   	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+        
+-- Body of procedure  --        
+BEGIN        
+
+		IF EXISTS (SELECT 1 FROM    
+			TBL_KS_Role Role  
+			INNER JOIN TBL_KS_RolePrivilege RlPriv ON Role.RoleID	= RlPriv.RoleID  
+			INNER JOIN TBL_KS_UserRole UsrRl ON Role.RoleID		= UsrRl.RoleID   
+			INNER JOIN TBL_KS_Privilege Priv ON Priv.PrivilegeID	= RlPriv.PrivilegeID  
+		 WHERE  
+				 UserID	= @UserID   
+			 AND PrivilegeName IN    
+		 (  
+		  'GlobalContactWireInstruction_ResetWireRequest' ,  
+		  'DonorBeneficiaryWireInstruction_ResetWireRequest'  
+		 )  
+		)  
+		BEGIN  
+			SELECT @ReturnStatus = 'Payment Manager'  
+		END  
+	ELSE
+		BEGIN
+			SELECT @ReturnStatus = 'No Access' 
+		END
+
+END        
+    
+ 
+    
+  

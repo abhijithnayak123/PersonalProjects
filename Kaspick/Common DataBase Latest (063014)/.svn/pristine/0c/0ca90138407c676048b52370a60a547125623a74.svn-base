@@ -1,0 +1,49 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_SetJobStatus]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_SetJobStatus]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_SetJobStatus
+* File Name		  : USP_Lookup_SetJobStatus.SQL      
+* Description     : This SP SETS the SET OF THE JOB
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+CREATE PROCEDURE USP_Lookup_SetJobStatus(@RunID INT,@Status VARCHAR(20))
+AS
+BEGIN	
+	BEGIN TRY
+		
+		UPDATE	TBL_Lookup_JobRunLog 
+		SET		[Status] = @Status
+				,EndDate  = CASE WHEN @Status in ('Exit','Completed') THEN GetDate() ELSE NULL END
+		WHERE	RunID = @RunID
+				
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(max)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Error: ' + Error_Message() 
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	   
+	   	RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

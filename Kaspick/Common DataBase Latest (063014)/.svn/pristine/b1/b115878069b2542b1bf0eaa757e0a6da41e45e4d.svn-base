@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroup]    Script Date: 09/06/2013 14:55:56 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetScheduleIncomeEstimationGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroup]    Script Date: 09/06/2013 14:55:56 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name   :   USP_PP_GetScheduleIncomeEstimationGroup    
+** Short Desc : Get Schedule of Income Estimation Group    
+**    
+** Full Description    
+**            
+**    
+** Sample Call    
+        EXEC USP_PP_GetScheduleIncomeEstimationGroup  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Bandish Gupta
+** Company   : Kaspick & Company
+** Project   : BackOffice Integration
+** Created DT: 03-Sep-2013
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**  
+*******************************************************************************    
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroup]
+	-- parameters here    
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+-- Body of procedure  --    
+SELECT GroupID AS PaymentStagingGroupID
+	,GroupName AS PaymentStagingGroupName
+	,TaxYear
+FROM TBL_IE_Group 
+WHERE TaxYear = year(getdate())
+	AND IsOfficial = 1
+	AND IsDeleted = 0;
+
+SET NOCOUNT OFF;
+	-- End of procedure  --    
+GO
+
+

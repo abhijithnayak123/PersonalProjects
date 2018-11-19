@@ -1,0 +1,462 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveDataImportTransaction]    Script Date: 05/29/2014 16:16:40 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_SaveDataImportTransaction]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_SaveDataImportTransaction]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveDataImportTransaction]    Script Date: 05/29/2014 16:16:40 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name   :   USP_OP_SaveDataImportTransaction      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**      
+** Sample Call 
+	DECLARE  @XMLDATA XML,@ReturnStatus INT, @ErrorDesc VARCHAR(8000) 
+	SET @XMLDATA=
+	'<DataImport RunDate="05/12/2010 05:24:11"  RunUser="300010"  ToPostFileName="DataImportFolder\S2\topost.trn" CustodianCode="SS"> <Transactions>  </Transactions> </DataImport>'
+	EXEC USP_OP_SaveDataImportTransaction @XMLDATA , @ReturnStatus OUTput, @ErrorDesc output
+	select @ReturnStatus , @ErrorDesc 
+
+** Return values: NONE      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Katana     
+** Created DT :		
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** July/9/2009                  Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_OP_SaveDataImportTransaction]
+(
+	  @XMLDATA XML,  
+ @ReturnStatus INT OUTPUT,  
+ @ErrorDesc VARCHAR(8000) OUTPUT  
+)  
+AS  
+  
+BEGIN  
+  
+  
+SET NOCOUNT ON  
+
+BEGIN TRY  
+
+	  DECLARE @RunIDTable table (RunID int)
+	  
+	--variables  
+	DECLARE   
+	 @DataImportRunID INT,  
+	 @RunUser INT,  
+	 @RunDate DATETIME,  
+	 @CustodianCode VARCHAR(6),  
+	 @CustodianID INT,  
+	 @FileName VARCHAR(200),  
+	 @CustodialDataImportID INT  
+	  
+	IF EXISTS (SELECT * FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_CustodialTransactions]'))          
+	 DROP TABLE [DBO].[#TEMP_CustodialTransactions]  
+	  
+	--read the TransactionData XML into this table  
+	CREATE TABLE [#TEMP_CustodialTransactions]  
+	(  
+	 [ID]  INT IDENTITY(1,1),  
+	 [PortfolioCode]  VARCHAR (255)  NULL,  
+	 [Tran.Code]  VARCHAR (255)  NULL,  
+	 [TradeDate]  VARCHAR (255)  NULL,  
+	 [TradeAmount]  money  NULL,  
+	 [TransactionComment]  VARCHAR (70)  NULL,  
+	 [CustodianCode]  VARCHAR (255) NULL,  
+	 [CheckNumber]  VARCHAR (255) NULL,  
+	 [PaymentID] INT NULL,  
+	 [ExpenseCode] VARCHAR(15) NULL,  
+	 [ChargeType] CHAR(1) NULL,  
+	 [PaymentDate] DateTime NULL,  
+	 [PayeeName] VARCHAR(100) NULL,   
+	 [TaxYear] INT NULL,  
+	 [TaxYearAware] BIT NULL,  
+	 [ToReview] BIT NULL,  
+	 --[AccountID] INT NULL,  
+	 CustomerAccountNumber VARCHAR(50),
+	 [TransactionData] nvarchar(max) NULL,  
+	 [IsResolved] BIT NULL  
+	)  
+	  
+	Create Index indxTranCode on  [#TEMP_CustodialTransactions]([Tran.Code]) include (PortfolioCode, CheckNumber)   
+	  
+	SELECT     
+	 @RunDate = XMLDATA.item.value('@RunDate[1]', 'DateTime'),  
+	 @CustodianCode = XMLDATA.item.value('@CustodianCode[1]', 'varchar(6)'),  
+	 @FileName = XMLDATA.item.value('@ToPostFileName[1]', 'varchar(200)'),  
+	 @RunUser = XMLDATA.item.value('@RunUser[1]', 'int')  
+	FROM @XMLDATA.nodes('//DataImport') AS XMLDATA(item)  
+	  
+	SELECT @CustodianID = CustodianID FROM TBL_OP_Custodian WHERE CustodianCode = @CustodianCode  
+	  
+	--create new if record does not exist for given import date  
+	IF NOT EXISTS (SELECT top 1 1 FROM TBL_OP_DataImport di
+					Inner join TBL_OP_CustodialDataImport cdi on di.RunID=cdi.RunID
+					Inner Join TBL_OP_Custodian cd on cdi.CustodianID=cd.CustodianID
+					Inner join TBL_OP_CustodialDataImportTransactionToResolve trs on trs.CustodialDataImportID=cdi.CustodialDataImportID
+					WHERE cd.CustodianCode=@CustodianCode AND DATEDIFF(DAY, rundate, @RunDate)=0 and TradeBlottersGenerated=0)  
+	BEGIN  
+
+		BEGIN TRAN  
+		
+
+		SELECT @DataImportRunID=max(di.RunID) FROM TBL_OP_DataImport di 
+		Inner join TBL_OP_CustodialDataImport cdi on di.RunID=cdi.RunID
+		Inner Join TBL_OP_Custodian cd on cdi.CustodianID=cd.CustodianID
+		WHERE cd.CustodianCode<>@CustodianCode and TradeBlottersGenerated=0  AND DATEDIFF(DAY, di.rundate, @RunDate)=0 
+
+		if	isnull(@DataImportRunID,0)=0 
+		Begin
+			INSERT INTO TBL_OP_DataImport(RunDate, RunUserID, TradeBlottersGenerated) 
+				Output Inserted.RunID into @RunIDTable
+				VALUES (@RunDate, @RunUser, 0)  
+			
+			SELECT @DataImportRunID=RunID FROM @RunIDTable
+		END
+		 
+		--store transaction data xml into #TEMP_CustodialTransactions  table  
+		INSERT INTO #TEMP_CustodialTransactions   
+		(  
+		 [PortfolioCode],  
+		 [Tran.Code],  
+		 [TradeDate],  
+		 [TradeAmount],  
+		 [TransactionComment],  
+		 [CustodianCode],  
+		 [CheckNumber],  
+		 [PaymentID] ,  
+		 [ExpenseCode] ,  
+		 [ChargeType] ,  
+		 [PaymentDate] ,  
+		 [PayeeName] ,   
+		 [TaxYear] ,   [TaxYearAware] ,  
+		 [ToReview] ,  
+		 CustomerAccountNumber,  
+		 [TransactionData],  
+		 [IsResolved]  
+		)  
+		SELECT     
+		 XMLDATA.item.value('@PortfolioCode[1]', 'varchar(255)') AS PortfolioCode,  
+		 XMLDATA.item.value('@Tran.Code[1]', 'varchar(255)') AS [Tran.Code],  
+		 XMLDATA.item.value('@TradeDate[1]', 'varchar(255)') AS [TradeDate],  
+		 XMLDATA.item.value('@TradeAmount[1]', 'money') AS [TradeAmount],  
+		 XMLDATA.item.value('@Comment[1]', 'varchar(70)') AS [Comment],  
+		 XMLDATA.item.value('@CustodianCode[1]', 'varchar(255)') AS [CustodianCode],   
+		 --XMLDATA.item.value('@CheckNumber[1]', 'varchar(255)') AS [CheckNumber],  
+		 CAST(CAST(XMLDATA.item.value('@CheckNumber[1]', 'varchar(255)') AS INT) AS VARCHAR(10))AS [CheckNumber],
+		 0 as [PaymentID] ,  
+		 '' as [ExpenseCode] ,  
+		 '' as [ChargeType] ,  
+		 '01/01/1900' as [PaymentDate] ,  
+		 '' as [PayeeName] ,   
+		 0 as [TaxYear] ,  
+		 0 as [TaxYearAware] ,  
+		 0 as [ToReview] ,  
+		 XMLDATA.item.value('@PortfolioCode[1]', 'varchar(8)') AS CustomerAccountNumber,  
+		 XMLDATA.item.value('@Data[1]', 'nvarchar(max)') AS [Data],  
+		 0 as [IsResolved]  
+		FROM   
+		 @XMLDATA.nodes('//DataImport/Transactions/TransactionData') AS XMLDATA(item)  
+		 --left outer JOIN Deferredgiftaccount dga on XMLDATA.item.value('@PortfolioCode[1]', 'varchar(8)') = dga.Adventid  
+		  
+		----Match custodian transactions with Paragon posted payments  
+		----Match Check payments  
+		UPDATE [#TEMP_CustodialTransactions] SET   
+		 PaymentID = P.PaymentID,  
+		 ExpenseCode = ec.AXYS_ExpenseCode,  
+		 ChargeType = P.ChargeType,  
+		 PaymentDate = P.PaymentDate,  
+		 PayeeName = P.PayeeName,  
+		 TaxYear = P.TaxYear,  
+		 TaxYearAware = ISNULL(ec.TaxYearAware,0),   
+		 ToReview = ISNULL(ec.ToReview,0) ,  
+		 IsResolved = 1  
+		FROM   
+		 [#TEMP_CustodialTransactions] custodianTran  
+		 INNER JOIN TBL_PP_BeneficiaryPayment P on P.CustomerAccountNumber=custodianTran.CustomerAccountNumber and   
+		 custodianTran.CheckNumber=P.DocumentNumber AND  
+		 P.PaymentAmount=custodianTran.TradeAmount  
+		 LEFT OUTER JOIN dbo.TBL_OP_ExpenseCode ec on P.TaxCode=ec.InnoTrust_TaxCode  
+		where   
+		custodianTran.[Tran.Code]='lo' AND  
+		isnull(custodianTran.CheckNumber,0)<>0 and P.VoidDate is null and P.ClearDate is null
+		----End Match Check payments  
+		--   
+		--Match ACH Payments  
+		DECLARE @AccountID int  
+		DECLARE @TranID iNT  
+		DECLARE @CheckNum varchar(255)  
+		DECLARE @TranCod varchar(255)  
+		DECLARE @AdventID varchar(8)   
+		DECLARE @TranDate DateTime  
+		DECLARE @Amount money  
+		   
+		DECLARE @PaymentID int  
+		DECLARE @ExpenseCode varchar(15)  
+		DECLARE @ChargeType char(1)  
+		DECLARE @PaymentDate DateTime  
+		DECLARE @PayeeName varchar(100)  
+		DECLARE @TaxYear int  
+		DECLARE @TaxYearAware bit  
+		DECLARE @ToReview bit  
+		  
+		DECLARE @CustomerAccountNumber VARCHAR(50)  
+		  
+		DECLARE @getACHTrans CURSOR  
+		SET @getACHTrans = CURSOR FOR   
+			 SELECT ID, CustomerAccountNumber, CAST(TradeAmount as money) as Amount   
+			 FROM [#TEMP_CustodialTransactions] --WHERE isnull(CheckNumber,0)=0  
+			 WHERE   
+			  [Tran.code]='lo'  
+			  --AND Securitytype=caus( I will add this col.. not available now in the table)  
+			  AND ISNULL(checknumber,0)=0  
+			  AND CHARINDEX('MONEYLINK TRANSFER Tfr', TransactionComment)>0  
+			  AND CustodianCode not in (SELECT CustodianCode   
+					FROM TBL_OP_CustodialDataImport  cdi  
+					INNER JOIN TBL_OP_Custodian cd on cd.CustodianID = cdi.CustodianID  
+					INNER JOIN TBL_OP_DataImport di on cdi.runid=di.runid   
+					WHERE DATEDIFF(DAY, di.RunDate, @RunDate)=0)  
+		OPEN @getACHTrans  
+		FETCH NEXT FROM @getACHTrans INTO @TranID, @CustomerAccountNumber, @Amount  
+		  
+		WHILE @@FETCH_STATUS = 0  
+		BEGIN 
+		
+		  set @PaymentID = null
+		  set @ExpenseCode =null
+		  set @ChargeType =null
+		  set @PaymentDate =null
+		  set @PayeeName =null
+		  set @TaxYear =null
+		  set @TaxYearAware =null
+		  set @ToReview =null
+
+		 
+		 SELECT TOP 1   
+		  @PaymentID=Pay.PaymentID,  
+		  @ExpenseCode =ec.AXYS_ExpenseCode,
+		  @ChargeType =Pay.ChargeType ,  
+		  @PaymentDate =Pay.PaymentDate ,  
+		  @PayeeName =Pay.PayeeName,  
+		  @TaxYear =Pay.TaxYear ,  
+		  @TaxYearAware =ec.TaxYearAware,  
+		  @ToReview =ec.ToReview  
+		 FROM   
+		  TBL_PP_BeneficiaryPayment Pay   
+		  --INNER JOIN BenPayment bp on Pay.PaymentID=bp.PaymentID  
+		  LEFT OUTER JOIN TBL_OP_ExpenseCode ec on Pay.TaxCode=ec.InnoTrust_TaxCode
+		 WHERE   
+		  Pay.CustomerAccountNumber = @CustomerAccountNumber   
+		  AND Pay.PaymentAmount = @Amount  
+		  AND pay.PaymentMethod='ACH'   
+		  AND Pay.ClearDate is null   
+		  AND Pay.VoidDate is null 
+		  AND Pay.PaymentId NOT IN (SELECT PaymentID FROM #TEMP_CustodialTransactions)   
+		 ORDER BY Pay.PaymentID  
+		  
+		 IF ISNULL(@PaymentID, 0) > 0  
+		 BEGIN  
+		  UPDATE [#TEMP_CustodialTransactions] SET   
+		   PaymentID = @PaymentID,  
+		   ExpenseCode = @ExpenseCode,  
+		   ChargeType = @ChargeType,  
+		   PaymentDate = @PaymentDate,  
+		   PayeeName = @PayeeName,  
+		   TaxYear = @TaxYear,  
+		   TaxYearAware = @TaxYearAware,   
+		   ToReview = @ToReview,  
+		   IsResolved = 1 	   
+		  WHERE   
+		   ID=@TranID  
+		 END  
+		 
+		 
+		 set @TranID=0 
+		 set @AccountID=0 
+		 set @Amount  =0
+		 
+		 FETCH NEXT  
+		 FROM @getACHTrans INTO @TranID, @CustomerAccountNumber, @Amount  
+		END  
+		CLOSE @getACHTrans  
+		DEALLOCATE @getACHTrans  
+		--end match ACH payments  
+		  
+		--UPDATE Payment SET   
+		-- cleardate = TradeDate,  
+		-- ClearMethod = 'A'  
+		--FROM   
+		-- TBL_PP_BeneficiaryPayment P  
+		-- INNER JOIN [#TEMP_CustodialTransactions] trans on p.PaymentID=trans.PaymentID  
+		  
+		--UPDATE TBL_PP_Payment_Supplement SET   
+		--  MODIFIED_DATE =  GETDATE(),  
+		--  MODIFIED_USER_ID = @RunUser  
+		--FROM   
+		-- TBL_PP_Payment_Supplement  P  
+		-- INNER JOIN [#TEMP_CustodialTransactions] trans on p.PaymentID=trans.PaymentID  
+		----End Match ACH Paymnets  
+		  
+		IF NOT EXISTS (SELECT 1 FROM TBL_OP_CustodialDataImport WHERE RunID = @DataImportRunID AND CustodianID = @CustodianID)  
+		BEGIN  
+		 INSERT INTO TBL_OP_CustodialDataImport   
+		 (  
+		  RunID,  
+		  CustodianID,  
+		  ToPostTrnFile,  
+		  ImportUserID,
+		  ImportDate 
+		 )  
+		 VALUES  
+		 (  
+		  @DataImportRunID,  
+		  @CustodianID,  
+		  @FileName,  
+		  @RunUser,
+		  @RunDate  
+		 )  
+		END  
+		ELSE  
+		BEGIN  
+		 UPDATE TBL_OP_CustodialDataImport SET  
+		  ToPostTrnFile=@FileName,  
+		  ImportUserID=@RunUser,  
+		  ImportDate =@RunDate,
+		  ParsedTransactionsCount=NULL,  
+		  LOTransactionsCount=NULL,  
+		  AutoMatchedLOTransactionsCount=NULL,  
+		  ManualMatchedLOTransactionsCount=NULL,  
+		  ManualResolvedLOTransactionsCount=NULL,  
+		  NonExceptionsTransactionsCount=NULL,  
+		  ExceptionsTransactionsCount=NULL  
+		 WHERE RunID=@DataImportRunID AND CustodianID=@CustodianID  
+		END  
+		  
+		SELECT @CustodialDataImportID=CustodialDataImportID FROM TBL_OP_CustodialDataImport 
+		WHERE RunID=@DataImportRunID AND CustodianID=@CustodianID  
+		  
+		DELETE FROm TBL_OP_CustodialDataImportTransactionToResolve WHERE CustodialDataImportID = @CustodialDataImportID  
+		  
+		  
+		INSERT INTO TBL_OP_CustodialDataImportTransactionToResolve  
+		(  
+		 CustomerAccountNumber,  
+		 [TranCode],
+		 CustodialDataImportID,    
+		 TransactionComment,  
+		 CheckNumber,  
+		 Amount,  
+		 PaymentID,  
+		 ExpenseCode,  
+		 ChargeType,  
+		 [PaymentDate],  
+		 [PayeeName] ,  
+		 [TaxYear] ,  
+		 [TaxYearAware] ,  
+		 [ToReview] ,  
+		 TransactionData,  
+		 IsResolved,  
+		 ResolutionComments,  
+		 ResolutionUserID  
+		)  
+		SELECT  
+		 PortfolioCode,  
+		 [Tran.Code],
+		 @CustodialDataImportID,  
+		 TransactionComment,  
+		 CheckNumber,  
+		 TradeAmount,  
+		 PaymentID,  
+		 ExpenseCode,  
+		 ChargeType,  
+		 [PaymentDate],  
+		 [PayeeName] ,  
+		 [TaxYear] ,  
+		 [TaxYearAware] ,  
+		 [ToReview] ,  
+		 TransactionData ,  
+		 IsResolved,  
+		 (CASE WHEN IsResolved=1 then 'Auto-matched' else NULL end),  
+		 @RunUser  
+		FROM  
+		 #TEMP_CustodialTransactions  
+		  
+		--end save record into TBL_OP_CustodialDataImportTransactionsToResolve  
+		  
+		DECLARE @ParsedTransactionsCount INT  
+		DECLARE @LOTransactionsCount INT  
+		DECLARE @AutoMatchedLOTransactionsCount  INT  
+		--Get The trnsactionCount  
+		SELECT @ParsedTransactionsCount=COUNT(ID) FROM [#TEMP_CustodialTransactions]   
+		SELECT @LOTransactionsCount=COUNT(ID) FROM [#TEMP_CustodialTransactions] WHERE [Tran.Code]='lo'  
+		SELECT @AutoMatchedLOTransactionsCount=COUNT(ID) FROM [#TEMP_CustodialTransactions] WHERE [Tran.Code]='lo' AND ISNULL(PaymentID, 0)!=0  
+		  
+		UPDATE TBL_OP_CustodialDataImport SET  
+		 ParsedTransactionsCount = @ParsedTransactionsCount,  
+		 LOTransactionsCount = @LOTransactionsCount,  
+		 AutoMatchedLOTransactionsCount = @AutoMatchedLOTransactionsCount,  
+		 ImportUserID = @RunUser ,
+		 ImportDate =@RunDate
+		WHERE CustodialDataImportID = @CustodialDataImportID   
+		  
+		SET @ReturnStatus = @DataImportRunID  
+		SET @ErrorDesc = ''  
+		  
+		select @ReturnStatus as RunID  
+		--select * from #TEMP_CustodialTransactions  
+		--select @DataImportRunID as RunID, @CustodialDataImportID  
+		  
+		  
+		DROP TABLE #TEMP_CustodialTransactions  
+		  
+		COMMIT TRAN; 
+
+	END
+Else
+	BEGIN
+		--ROLLBACK TRAN;  
+		SET  @ReturnStatus =-1  
+		SET @ErrorDesc ='Custodial Transactions have been imported for the today, Pl. generate trade blotters before reimport' 
+	
+	END
+	 
+END TRY  
+  
+BEGIN CATCH  
+ ROLLBACK TRAN;  
+  
+ SET  @ReturnStatus =-1  
+ SET @ErrorDesc = ERROR_MESSAGE()  
+   
+
+  
+ 
+END CATCH  
+
+END  
+
+GO
+
+

@@ -1,0 +1,85 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllUnReconciledTrades]    Script Date: 05/20/2014 10:31:47 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllUnReconciledTrades]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_GetAllUnReconciledTrades]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllUnReconciledTrades]    Script Date: 05/20/2014 10:31:47 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetAllUnReconciledTrades      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_OP_GetAllUnReconciledTrades 
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Operations     
+** Created DT :		08/05/2009      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05/20/2014   Tanuj               Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_GetAllUnReconciledTrades]
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+	SELECT TI.CustomerAccountNumber AS CustomerAccountNumber
+		,DollarTradeAmt
+		,TradeQuantity
+		,SecuritySymbol
+		,SecurityType
+		,Source
+		,ApprovedDate
+		,TradeDate
+		,TradeStatus
+		,TradeType
+		,TradeID
+		,TradeIDEnfu
+	FROM TBL_TR_TradeImport TI
+	INNER JOIN SYN_IT_AccountMaster AM ON TI.CustomerAccountNumber = AM.CustomerAccountNumber
+	WHERE (
+			TradeStatus = 'executed'
+			OR TradeStatus = 'generated'
+			)
+		AND TI.TradeID NOT IN (
+			SELECT TradeID
+			FROM TBL_OP_TransactionReconciliation
+			)
+END
+GO
+
+

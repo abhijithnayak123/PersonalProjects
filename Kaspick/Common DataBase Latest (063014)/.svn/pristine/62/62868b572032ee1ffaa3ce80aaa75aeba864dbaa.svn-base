@@ -1,0 +1,93 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_FASB_GetTrustTypes'
+		)
+BEGIN
+	DROP FUNCTION FN_FASB_GetTrustTypes
+
+	PRINT 'DROPPED FN_FASB_GetTrustTypes'
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************      
+** Name : FN_FASB_GetTrustTypes
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the trust type for given label
+**      
+** Sample Call      
+   SELECT dbo.FN_FASB_GetTrustTypes('')
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: 
+** Company   : 
+** Project   : 
+** Created DT: 
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- -----
+** 09/05/2014	Srikanth R			Migrated for BOI
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_FASB_GetTrustTypes]
+(
+	@LabelID INT
+)
+RETURNS VARCHAR(500)
+AS
+BEGIN
+	DECLARE @RetValue VARCHAR(500);
+
+	SELECT
+		@RetValue = LEFT(Main.Items, LEN(Main.Items) - 1)
+	FROM
+		(
+		SELECT DISTINCT ST2.LabelID,
+						(SELECT ST1.ListItemName + ', ' AS [text()]            
+							FROM (SELECT MAP.labelID,MAP.List_Item_ID, LIST.ListItemName
+									FROM 
+										TBL_BR_FASBTrustTypeLabelMap MAP
+									INNER JOIN
+										TBL_ListItem LIST
+									ON
+										MAP.List_Item_ID = LIST.ListItemID
+									) ST1            
+							WHERE
+								ST1.LabelID = ST2.LabelID             
+							ORDER BY
+								ST1.LabelID
+							FOR XML PATH ('')
+							) [Items]      
+		FROM
+			(SELECT MAP.labelID,MAP.List_Item_ID, LIST.ListItemName
+				FROM
+					TBL_BR_FASBTrustTypeLabelMap MAP
+				INNER JOIN
+					TBL_ListItem LIST
+				ON
+					MAP.List_Item_ID = LIST.ListItemID
+				) ST2
+		)  [Main] 
+	WHERE Main.LabelID = @LabelID
+
+	RETURN LTRIM(RTRIM(@RetValue))
+END

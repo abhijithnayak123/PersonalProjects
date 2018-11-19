@@ -1,0 +1,462 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsGift'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsGift;
+
+	PRINT 'DROPPED USP_BR_FASB_InsGift';
+END
+GO
+/******************************************************************************            
+** Name       : USP_BR_FASB_InsGift
+** OldName    : USP_EIS_RPT_FASB_Gift_InsProc            
+** Short Desc : To insert data into staging table.  
+**            
+** Full Description            
+**                
+**            
+** Return values: NONE            
+**     
+** Sample Call delete TBL_EIS_RPT_FASB_STG_Gift  
+**      
+** EXEC USP_BR_FASB_InsGift 1114,'1,4,100001,100002,100003,100004,100005,100006,100007,100008','08-30-2012', 1          
+**             
+** Created By : Niveditha       
+** Company    : Kaspick & Company            
+** Project    : FASB            
+** Created DT : 09/20/2012            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------        
+** Oct/18/2012	Ganapati    Added additional parameters       
+** Jan/15/2013	Niveditha   NN:Bugfixes/Change Requests  
+** Mar/28/2013	Niveditha   Included logic for PayoutPercent,PaymentTimingID, TotalGiftAmount columns for 990  
+							Provided Alias for all columns in select statement for ease of identification  -----
+** 09/05/2014	Srikanth R	Changes for BOI
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsGift]
+(
+	@FASB_ClientID		INT
+	,@ReportPurpose		VARCHAR(50)
+	,@AsOfDate			DATETIME
+	,@Sel_ClientID		VARCHAR(1000)
+	,@MarketValueDate	DATETIME
+	,@CreatedUserID		INT
+	,@MortalityTable	VARCHAR(100)
+	,@RateOfReturn		DECIMAL(6, 2)
+)
+AS  
+BEGIN
+	RETURN -- TBD
+	DECLARE @TenantID INT
+
+	SELECT @TenantID = MAX(TenantID)
+	FROM TBL_BR_STG_FASBTenant
+
+	CREATE TABLE #Temp_ExcludeFromLife
+	(
+		Accountid				VARCHAR(20)
+		,Clientid				VARCHAR(10)
+		,Bene_count				INT
+		,ExcludeFromLife_Gr1	INT
+		,ExcludeFromLife_Lt1	INT
+	)  
+
+	INSERT INTO #Temp_ExcludeFromLife  
+	SELECT DISTINCT
+		acc.Accountid
+		,acc.clientid
+		,count(1)
+		,SUM(CASE
+				WHEN ExcludeFromLifeOfTrust = 1	THEN 1
+				ELSE 0
+		END)
+		,SUM(CASE
+				WHEN ExcludeFromLifeOfTrust = 0	THEN 1
+				ELSE 0
+		END)
+	FROM
+		VW_Beneficiary bene
+	INNER JOIN
+		VW_EX_Account acc
+	ON
+		acc.AccountID = bene.CustomerAccountNumber
+	WHERE
+		acc.ClientID IN (
+						SELECT *
+						FROM dbo.[fn_SPLITSTRINGTOROWS](@Sel_ClientID, ',')
+						)
+	GROUP BY
+		acc.AccountID, acc.ClientID
+
+	--AS staging table have relations, now Delete table are done in desc order        
+	--DELETE FROM TBL_EIS_RPT_FASB_STG_Gift;           
+	INSERT INTO TBL_BR_STG_FASBGift (  
+	GiftID  
+	,ClientID  
+	,GiftKey  
+	,TenantID  
+	,EX_ClientID_OrgID  
+	,OrgID  
+	,EX_AccountID  
+	,PifID  
+	,GiftTypeID  
+	,SubTypeID  
+	,FirstPaymentDate  
+	,PayoutPercent  
+	,Account1  
+	,Account2  
+	,Account3  
+	,Account4  
+	,Account5  
+	,RestrictedIDLookup  
+	,MarketValue  
+	,MarketValueDate  
+	,PaymentFrequencyID  
+	,PaymentTimingID  
+	,MonthsToPayment  
+	,TaxFormIDLookup  
+	,TrustId  
+	,AnnualValuationDate  
+	,TermTypeID  
+	,TermEndDate  
+	,TermYears  
+	,MakeupBalance  
+	,Purpose  
+	,AccountClosedDate  
+	,FinalValuationDate  
+	,CreditThroughDate  
+	,GiftStatusIDLookup  
+	,TotalGiftAmount  
+	,CreatedDate  
+	,CreatedUserID  
+	)  
+	SELECT STG.accountid AS GiftID  
+	,@FASB_ClientID AS ClientID  
+	,STG.accountid AS GiftKey  
+	,@TenantID AS TenantID  
+	,STG.CLIENTID AS EX_ClientID_OrgID  
+	,STG.CLIENTID AS OrgID  
+	,STG.accountid AS EX_AccountID  
+	,CASE   
+	WHEN (pif.PifID IS NOT NULL)  
+	THEN pif.PifId  
+	WHEN (pif.pifID IS NULL)  
+	THEN 0  
+	END AS PifID  
+	,TrType.GiftTypeID  
+	,SubType.SubTypeID  
+	,dbo.FnEIS_PP_CalcNextDate(STG.CreationDate, cycevnt.FirstEventDay, cycevnt.FirstEventMonth, cycevnt.FirstOccurrence, cycevnt.AnnualFrequency) AS FirstPaymentDate  
+	--,CASE   
+	-- WHEN (  
+	--   TrType.TranAcctTypeRefKey = 4  
+	--   OR TrType.TranAcctTypeRefKey = 5  
+	--   )  
+	--  AND (  
+	--   STG.InitialMarketValue > 0  
+	--   OR STG.InitialMarketValue > 0.00  
+	--   )  
+	--  THEN (STG.AnnuityAmount / STG.InitialMarketValue) * 100  
+	-- ELSE CASE   
+	--   WHEN STG.UnitrustPercentage IS NULL  
+	--    THEN 0  
+	--   ELSE STG.UnitrustPercentage  
+	--   END  
+	-- END AS PayoutPercent  
+	--Mar/28/2013:Niveditha   Included logic for PayoutPercent column for 990  
+	,CASE   
+	WHEN @ReportPurpose = 'FASB'  
+	THEN CASE   
+	WHEN (  
+	TrType.TranAcctTypeRefKey = 4  
+	OR TrType.TranAcctTypeRefKey = 5  
+	)  
+	AND (  
+	STG.InitialMarketValue > 0  
+	OR STG.InitialMarketValue > 0.00  
+	)  
+	THEN (cast(STG.AnnuityAmount as decimal) / cast (STG.InitialMarketValue as decimal)) * 100 
+	--THEN (cast((cast(STG.AnnuityAmount as decimal) / cast (STG.InitialMarketValue as decimal)) As decimal(12,10)) * 100 ) 
+	ELSE ISNULL(STG.UnitrustPercentage, 0)  
+	END  
+	WHEN @ReportPurpose = '990'  
+	THEN CASE   
+	WHEN (STG.AccountType = 'LEAD-FIXED'  OR STG.AccountType = 'CRAT')
+	AND (STG.InitialMarketValue > 0 OR STG.InitialMarketValue > 0.00)     
+	THEN (cast(STG.AnnuityAmount as decimal) / cast (STG.InitialMarketValue as decimal)) * 100  
+	--THEN (cast((cast(STG.AnnuityAmount as decimal) / cast (STG.InitialMarketValue as decimal)) As decimal(12,10)) * 100 ) 
+	ELSE ISNULL(STG.UnitrustPercentage, 0)  
+	END  
+	END AS PayoutPercent  
+	,CASE   
+	WHEN STG.BriefName = STG.AdventID  
+	THEN STG.AdventID  
+	ELSE STG.BriefName  
+	END AS Account1  
+	,CASE   
+	WHEN STG.BriefName = STG.AdventID  
+	THEN ''  
+	ELSE STG.AdventID  
+	END AS Account2  
+	,  
+	--case when VLIM.LIST_ITEM_NAME is null then ' '  else SUBSTRING(VLIM.LIST_ITEM_NAME,1,20) end as Account3,   //Commented out the old implementation for Account3 on 11th Jan 2013  
+	--NN:CHANGE REQUEST 1/3. Change this field to equal deferredgiftaccount.AccountID  
+	STG.AccountID AS Account3  
+	,  
+	--STG.RateOfReturn as Account4,  
+	--NN:CHANGE REQUEST 1/3. Account4 Field is limited to 20 charac, so abbreviate both rate of return type & mortality table and change in formula  
+	CASE   
+	WHEN @ReportPurpose = 'FASB'  
+	AND LI_RateofReturnType = 'One Rate'  
+	THEN CASE   
+	WHEN LI_MortalityTable = '1983 Basic'  
+	THEN '1983Basc'  
+	ELSE LI_MortalityTable  
+	END + ',' + replace(STG.RateOfReturn, 'One Rate', '1Rate')  
+	WHEN @ReportPurpose = 'FASB'  
+	AND LI_RateofReturnType IS NOT NULL  
+	THEN CASE   
+	WHEN LI_MortalityTable = '1983 Basic'  
+	THEN '1983Basc'  
+	ELSE LI_MortalityTable  
+	END + CASE   
+	WHEN LI_MortalityTable IS NULL  
+	OR LI_MortalityTable = ''  
+	THEN ''  
+	ELSE ','  
+	END + CASE   
+	WHEN LI_RateofReturnType = 'IRS Discount Rate'  
+	THEN 'IRSDi'  
+	WHEN LI_RateofReturnType = 'One Rate'  
+	THEN '1Rate'  
+	WHEN LI_RateofReturnType = 'PIF Highest 3 Yrs'  
+	THEN 'PIFH3Yrs'  
+	ELSE LI_RateofReturnType  
+	END  
+	WHEN @ReportPurpose = '990'  
+	THEN @MortalityTable + CASE   
+	WHEN @MortalityTable IS NULL  
+	OR @MortalityTable = ''  
+	THEN ''  
+	ELSE ','  
+	END + cast(@RateOfReturn AS VARCHAR(10))  
+	ELSE ' '  
+	END AS Account4  
+	,-- TO DO: Verify this.    
+	STG.Account5  
+	,dbo.FN_FASB_Get_RestrictedIdLookup(STG.accountid) AS RestrictedIDLookup  
+	,CASE   
+	WHEN AXYS.MarketValue IS NULL  
+	THEN 0  
+	ELSE AXYS.MarketValue  
+	END AS MarketValue  
+	,@MarketValueDate AS MarketValueDate  
+	,CASE   
+	WHEN AnnualFrequency = 1  
+	THEN 1  
+	WHEN AnnualFrequency = 2  
+	THEN 2  
+	WHEN AnnualFrequency = 4  
+	THEN 3  
+	ELSE 4  
+	END AS PaymentFrequencyID  
+	--,CASE   
+	-- WHEN TrType.TrustTypeCalcMethod = 'CLAT'  
+	--  OR TrType.TrustTypeCalcMethod = 'CRAT'  
+	--  THEN 2  
+	-- ELSE 0  
+	-- END AS PaymentTimingID  
+	--Mar/28/2013:Niveditha   Included logic for PaymentTimingID column for 990  
+	,CASE   
+	WHEN @ReportPurpose = 'FASB'  
+	THEN CASE   
+	WHEN TrType.TrustTypeCalcMethod = 'CLAT'  
+	OR TrType.TrustTypeCalcMethod = 'CRAT'  
+	THEN 2  
+	ELSE 0  
+	END  
+	WHEN @ReportPurpose = '990'  
+	THEN CASE   
+	WHEN STG.AccountType = 'LEAD-FIXED'  
+	OR STG.AccountType = 'CRAT'  
+	THEN 2  
+	ELSE 0  
+	END  
+	END AS PaymentTimingID  
+	,CASE   
+	WHEN AnnualFrequency = 1  
+	THEN 12  
+	WHEN AnnualFrequency = 2  
+	THEN 6  
+	WHEN AnnualFrequency = 4  
+	THEN 3  
+	ELSE 1  
+	END AS MonthsToPayment  
+	,49 AS TaxFormIDLookup  
+	,--TaxFormIDLookup not defined in the mapping document - Default to 49  
+	CASE   
+	WHEN STG.TaxID IS NOT NULL  
+	OR STG.TaxID <> ''  
+	THEN SUBSTRING(stg.TaxID, 1, 10)  
+	ELSE NULL  
+	END AS TrustId  
+	,cast('01-01-' + cast(year(@MarketValueDate) AS CHAR(4)) AS DATETIME) AS AnnualValuationDate  
+	--NN:CHANGE REQUEST 1/3. Simplified logic  
+	,CASE   
+	WHEN STG.TerminationType = 'L'  
+	AND STG.TermYearsBeyondLife < 1  
+	--and Excl.ExcludeFromLife_Lt1=Excl.Bene_count        
+	THEN 5  
+	--when STG.TerminationType='L' and         
+	--  STG.TermYearsBeyondLife<1 and        
+	--  Excl.ExcludeFromLife_Gr1>0         
+	--then 4         
+	WHEN STG.TerminationType = 'L'  
+	AND STG.TermYearsBeyondLife >= 1  
+	THEN 4  
+	WHEN STG.TerminationType = 'T'  
+	THEN 3  
+	WHEN STG.TerminationType = 'F'  
+	THEN 2  
+	WHEN STG.TerminationType = 'S'  
+	THEN 1  
+	ELSE 5 --Temp. fix for blank TermTypeID as per Rajesh  
+	END AS TermTypeID  
+	,CASE   
+	WHEN STG.ExpectedMatureDate IS NULL  
+	THEN NULL  
+	ELSE STG.ExpectedMatureDate  
+	END AS TermEndDate  
+	,STG.TermYearsBeyondLife  
+	,0 AS MakeupBalance  
+	,--'MakeupBalance Default to 0'          
+	case when ISNULL(GIFTPURPOSE,'')=''
+	then ''
+	when ISNULL(GIFTPURPOSE,'')<>''
+	then SUBSTRING(GIFTPURPOSE, 1, 80) 
+	end Purpose  
+	,STG.MatureDate AS AccountClosedDate  
+	,NULL AS FinalValuationDate  
+	,STG.MatureDate AS CreditThroughDate  
+	,CASE   
+	WHEN STG.MatureDate = ''  
+	OR STG.MatureDate IS NULL  
+	THEN 18  
+	ELSE 19  
+	END AS GiftStatusIDLookup  
+	--,CASE   
+	-- WHEN TrType.TrustTypeCalcMethod = 'CRAT'  
+	--  OR TrType.TrustTypeCalcMethod = 'CLAT'  
+	--  THEN STG.InitialMarketValue  
+	-- ELSE 0.01  
+	-- END AS TotalGiftAmount  
+	--Mar/28/2013:Niveditha   Included logic for TotalGiftAmount column for 990  
+	,CASE   
+	WHEN @ReportPurpose = 'FASB'  
+	THEN CASE   
+	WHEN TrType.TrustTypeCalcMethod = 'CRAT'  
+	OR TrType.TrustTypeCalcMethod = 'CLAT'  
+	THEN STG.InitialMarketValue  
+	ELSE 0.01  
+	END  
+	WHEN @ReportPurpose = '990'  
+	THEN CASE   
+	WHEN STG.AccountType = 'LEAD-FIXED'  
+	OR STG.AccountType = 'CRAT'  
+	THEN STG.InitialMarketValue  
+	ELSE 0.01  
+	END  
+	END AS TotalGiftAmount  
+	,GETDATE() AS CreatedDate  
+	,@CreatedUserID AS CreatedUserID  
+	FROM
+		TBL_BR_STG_FASBManagerProfile STG -- select top 10 * from TBL_BR_STG_FASBManagerProfile
+	INNER JOIN
+		TBL_ListItem LI
+	ON
+		LI.ListItemID = STG.STATUS_ID
+	--09042012- Added the below joins to remove the function implementation in select clause          
+	LEFT OUTER JOIN
+		VW_ListItem AccType
+	ON
+		AccType.ListTypeName = 'Account Type'
+		AND AccType.ListItemName = STG.AccountType
+	LEFT OUTER JOIN
+		VW_ListItem PgmType
+	ON
+		PgmType.ListTypeName = 'Program Type'
+		AND PgmType.ListItemName = STG.ProgramType
+	LEFT JOIN
+		 TBL_BR_STG_FASBPIF pif
+	ON
+		LTRIM(RTRIM(RIGHT(pifnickname, (LEN(pifnickname) - (CHARINDEX(' ', pifnickname)))))) = STG.AccountType
+		AND pif.EX_ManagerCode_OrgID = STG.ManagerCode
+	LEFT OUTER JOIN
+		TBL_BR_FASBTrustTypeTranslation TrType
+	ON
+		TrType.InnotrustAccountType = AccType.ListItemName  
+		AND @ReportPurpose = TrType.RepPurpose  
+		AND STG.CalculationMethod = TrType.TrustTypeCalcMethod  
+	LEFT OUTER JOIN
+		TBL_BR_FASBSubTypeTranslation SubType
+	ON
+		SubType.AccountType = AccType.ListItemName  
+		AND SubType.TrustTypeCalcMethod = TrType.TrustTypeCalcMethod  
+		AND @ReportPurpose = SubType.RepPurpose  
+		AND ISNULL(SubType.Lead_Trust_Taxation_ID, 0) = ISNULL(STG.LEAD_TRUST_TAXATION_ID, 0)  
+	--LEFT OUTER JOIN
+	--	cyclicevent cycevnt-- TBD
+	--ON
+	--	cycevnt.AccountID = STG.AccountID  -- TBD
+	--	AND Eventtype = 'P'-- TBD  
+	LEFT OUTER JOIN
+		#Temp_ExcludeFromLife Excl
+	ON
+		Excl.AccountID = STG.AccountID  
+		AND Excl.Clientid = STG.ClientID  
+	--LEFT OUTER JOIN V_EIS_LIST_ITEMS VLIM ON VLIM.LIST_TYPE_NAME = 'Mortality Table'  
+	-- AND STG.MortalityTable = VLIM.LIST_ITEM_ID  
+	--LEFT OUTER JOIN V_EIS_LIST_ITEMS VLIR ON VLIR.LIST_TYPE_NAME = 'Rate of Return Type'  
+	-- AND STG.RateOf_ReturnType = VLIR.LIST_ITEM_ID  
+	--AND STG.CalculationMethod = TrType.TrustTypeCalcMethod  
+	LEFT OUTER JOIN
+		TBL_BR_FASBAXYSMarketValue AXYS
+	ON
+		AXYS.AccountID = STG.AccountID  
+	WHERE
+		STG.accountid NOT IN (  
+					SELECT CL.AccountID  
+					FROM TBL_BR_FASBAccountExclusionConditionList CL  
+					INNER JOIN TBL_BR_FASBProfileInformation PF ON PF.FASB_InstanceID = CL.FASB_InstanceID  
+					AND PF.ClientID = STG.ClientID  
+					AND MarketValueMonth = month(@MarketValueDate)  
+					AND CL.ListType = (  
+									SELECT LI.ListItemID
+									FROM TBL_ListItem LI  
+									INNER JOIN TBL_ListItemType LT ON LI.ListTypeID = LT.ListTypeID  
+									AND LT.ListTypeName = 'FASB AdventID'  
+									AND LI.ListTypeName = 'Excluded'  
+									)  
+					AND @ReportPurpose = 'FASB'  
+							)
+END 
+GO
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsGift'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_InsGift';
+END
+

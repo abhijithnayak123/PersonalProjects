@@ -1,0 +1,102 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllAccountTypes]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetAllAccountTypes]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetAllAccountTypes]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllAccountTypes]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetManagerAccount                      
+** Short Desc: Get list of account type for Sub-Accounting
+** Full Description: Get list of account type for Sub-Accounting
+** Input Arguments:  
+** Sample Call          
+ EXEC USP_SIT_GetAllAccountTypes
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetAllAccountTypes
+	-- paremeters here    
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET ANSI_NULLS OFF;
+	SET QUOTED_IDENTIFIER OFF;
+
+	--  Variable Declarations  --    
+	--  Variable Data Assignment  --    
+	-- Body of procedure  --  
+	--SELECT LI.ListItemID
+	--	,LI.ListItemName
+	--FROM TBL_ListItem LI
+	--INNER JOIN TBL_ListType LT ON LT.ListTypeID = LI.ListTypeID
+	--WHERE LT.ListTypeName = 'SUBACCOUNTING ACCOUNT TYPES';
+	
+	-- Sub Accounting account Types
+	SELECT 1 AS ListItemID
+		,'DAF' AS ListItemName
+	
+	UNION
+		
+	SELECT 2
+		,'DDF'
+	
+	UNION
+	
+	SELECT 3
+		,'END'
+	
+	UNION
+	
+	SELECT 4
+		,'ENDT'
+	
+	UNION
+	
+	SELECT 5
+		,'ENDQ'
+	
+	UNION
+	
+	SELECT 6
+		,'GAP'
+	
+	UNION
+
+	SELECT 7
+		,'POOL'
+
+	SET NOCOUNT OFF;
+END

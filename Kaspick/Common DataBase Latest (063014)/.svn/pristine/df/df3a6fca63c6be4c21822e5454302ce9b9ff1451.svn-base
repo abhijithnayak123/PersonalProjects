@@ -1,0 +1,124 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportConditionDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetRptReportConditionDetail;
+
+	PRINT 'DROPPED USP_EX_GetRptReportConditionDetail';
+END
+GO
+
+/******************************************************************************                      
+** Name : USP_EX_GetRptReportConditionDetail
+** Old Name:     USP_EIS_RPT_REPORT_CONDITION_DTLSelProc                       
+** Short Desc: To Insert/Update the Profile Reporting Conditions for the particular Entity                
+**                      
+** Full Description: To Insert/Update the Profile Reporting Conditions for the particular Entity                
+**                              
+** Input Arguments: @USERID  : user who is Updating/Inserting/Deleting the conditions.          
+**     @CondtionXML: This xml contains Condition status, comments, Entity Type  and Entity ID    
+** Sample Call                      
+**  DECLARE @xmlstring VARCHAR(MAX)      
+  EXEC USP_EIS_RPT_REPORT_CONDITION_DTLSelProc     
+   @ENTITYID = 200172 ,    
+   @ENTITYTYPE = 'CLIENT',    
+   @CONDITIONXML = @xmlstring OUTPUT     
+  SELECT @xmlstring    
+**             
+** Return values: NONE                      
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu               
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 06/08/2009                      
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd           
+** --------  -------- ------    -------------------------------------- --------                
+** 4-Apr-2014  Yugandhar  EXCREQ 5.4   
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted  
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [USP_EX_GetRptReportConditionDetail] --'acl', 'Client',''                  
+	(
+	@ENTITYID VARCHAR(15)
+	,@ENTITYTYPE VARCHAR(50)
+	,@CONDITIONXML VARCHAR(max) = NULL OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --          
+	SET @procname = 'USP_EX_GetRptReportConditionDetail';
+
+	DECLARE @CONDITION TABLE (
+		REPORTTYPE VARCHAR(50)
+		,COMMENTS VARCHAR(1000)
+		,STATUSID INT
+		,FREQUENCYID INT
+		)
+
+	INSERT INTO @CONDITION (
+		REPORTTYPE
+		,COMMENTS
+		,STATUSID
+		,FREQUENCYID
+		)
+	SELECT VwLstItm.LISTITEMNAME AS REPORTTYPE
+		,COMMENTS AS COMMENTS
+		,STATUS_ID AS STATUSID
+		,FREQUENCYID AS FREQUENCYID
+	FROM TBL_BR_ReportCondition RptCndtn
+	INNER JOIN VW_EX_ListItem VwLstItm ON RptCndtn.REPORT_TYPE_ID = VwLstItm.LISTITEMID
+		AND VwLstItm.LISTTYPENAME = 'Report Type'
+	WHERE @ENTITYID = (
+			CASE @ENTITYTYPE
+				WHEN 'MANAGER'
+					THEN RptCndtn.ManagerCode
+				WHEN 'ALLIANCE'
+					THEN RptCndtn.AllianceNumber
+				WHEN 'ACCOUNT'
+					THEN RptCndtn.CustomerAccountNumber
+				WHEN 'BENEFICIARY'
+					THEN CAST(RptCndtn.ContactID AS VARCHAR(15))
+				END
+			)
+
+	SET @CONDITIONXML = (
+			SELECT REPORTTYPE
+				,COMMENTS
+				,STATUSID
+				,FREQUENCYID
+			FROM @CONDITION AS CONDITION
+			FOR XML AUTO
+			)
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetRptReportConditionDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetRptReportConditionDetail';
+END

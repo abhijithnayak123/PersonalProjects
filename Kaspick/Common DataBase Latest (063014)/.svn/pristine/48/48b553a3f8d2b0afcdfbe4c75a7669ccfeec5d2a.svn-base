@@ -1,0 +1,123 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroupAccount]    Script Date: 09/06/2013 14:55:39 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetScheduleIncomeEstimationGroupAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroupAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetScheduleIncomeEstimationGroupAccount]    Script Date: 09/06/2013 14:55:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_PP_GetScheduleIncomeEstimationGroupAccount        
+** Short Desc : Get Schedule of Income Estimation Group Accounts
+**        
+** Full Description        
+**                
+**        
+** Sample Call        
+	EXEC USP_PP_GetScheduleIncomeEstimationGroupAccount
+	@XMLManagerCode =       
+	'<ManagerCodeDetailCollection>
+            <ManagerDetail ManagerCode="WS" />
+            <ManagerDetail ManagerCode="PLF" />
+            <ManagerDetail ManagerCode="PKE" />
+	</ManagerCodeDetailCollection>'   
+	
+	EXEC USP_PP_GetScheduleIncomeEstimationGroupAccount
+	@XMLManagerCode =       
+	'<ManagerCodeDetailCollection>
+            <ManagerDetail ManagerCode="All" />
+	</ManagerCodeDetailCollection>'      
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By: Bandish Gupta
+** Company   : Kaspick & Company
+** Project   : BackOffice Integration
+** Created DT: 03-Sep-2013
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+**       
+*******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetScheduleIncomeEstimationGroupAccount]
+	-- parameters here        
+	@XMLManagerCode XML
+AS
+--  Initial Set statements  --        
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds        
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+-- Body of procedure  --        
+DECLARE @TmpManagerCode TABLE (ManagerCode CHAR(4))
+
+-- Inserting input XML data into temp table
+INSERT INTO @TmpManagerCode
+SELECT x.item.value('@ManagerCode[1]', 'char(4)') AS ManagerCode
+FROM @XMLManagerCode.nodes('//ManagerCodeDetailCollection/ManagerDetail') AS x(item)
+
+DECLARE @ReadyToPaymentStatus INT
+
+SELECT @ReadyToPaymentStatus = StatusID
+FROM TBL_IE_Status
+WHERE STATUS = 'Ready For Pmt'
+
+DECLARE @OffGroupId INT
+
+SELECT @OffGroupId = GroupID
+FROM TBL_IE_Group
+WHERE TaxYear = YEAR(getdate())
+	AND IsOfficial = 1
+	AND Isdeleted = 0
+
+IF EXISTS (
+		SELECT 1
+		FROM @TmpManagerCode
+		WHERE ManagerCode = 'All'
+		)
+	SELECT EstmtStg.StagingID
+		,EstmtStg.CustomerAccountNumber AS CustomerAccountNumber
+		,ISNULL(EstmtStg.Ca_NetIncomeEstimateUsedForPmt, 0) AS Ca_NetIncomeEstimateUsedForPmt
+		,EstmtStg.AccountType -- #ET 8815
+	FROM TBL_IE_STG_Estimate EstmtStg
+	WHERE EstmtStg.StatusID = @ReadyToPaymentStatus
+		AND EstmtStg.GroupID = @OffGroupId
+	ORDER BY CustomerAccountNumber
+ELSE
+	SELECT EstmtStg.StagingID
+		,EstmtStg.CustomerAccountNumber AS CustomerAccountNumber
+		,ISNULL(EstmtStg.Ca_NetIncomeEstimateUsedForPmt, 0) AS Ca_NetIncomeEstimateUsedForPmt
+		,EstmtStg.AccountType -- #ET 8815
+	FROM TBL_IE_STG_Estimate EstmtStg
+	INNER JOIN @TmpManagerCode MgrCd ON EstmtStg.ManagerCode = MgrCd.ManagerCode
+	WHERE EstmtStg.StatusID = @ReadyToPaymentStatus
+		AND EstmtStg.GroupID = @OffGroupId
+	ORDER BY CustomerAccountNumber
+
+SET NOCOUNT OFF;
+	-- End of procedure  --
+GO
+
+

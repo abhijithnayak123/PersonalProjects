@@ -1,0 +1,195 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentAmount]    Script Date: 10/04/2013 10:08:01 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentAmount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentAmount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentAmount]    Script Date: 10/04/2013 10:08:02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_PP_GetCalcEngineBeneficiaryPaymentAmount
+** Short Desc: Get Calcuation Engine Benepayment amount      
+**      
+** Full Description      
+**        Get Calcuation Engine Benepayment amount     
+**      
+** Sample Call   
+
+
+EXEC USP_PP_GetCalcEngineBeneficiaryPaymentAmount 
+'<CustomerAccountNumberCollection>
+<SelectList>
+<CustomerAccountNumberItem CustomerAccountNumber="7775218" FMVAsOfDate="06/30/2013" />
+<CustomerAccountNumberItem CustomerAccountNumber="7776983" FMVAsOfDate="06/30/2013" />
+<CustomerAccountNumberItem CustomerAccountNumber="7773869" FMVAsOfDate="07/30/2013" />
+<CustomerAccountNumberItem CustomerAccountNumber="7777668" FMVAsOfDate="06/30/2013"/>
+<CustomerAccountNumberItem CustomerAccountNumber="ACADW" FMVAsOfDate="06/30/2013" />
+</SelectList>
+</CustomerAccountNumberCollection>',2013
+
+    
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Mohamed Salih      
+** Company   : Kaspick & Company      
+** Project   : Back Office Integration - Paragon
+** Created DT: 10/04/2013      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 02/17/2014  Salih			   Q5 Valuation- Outstanding BenPayments changes
+** 06/24/2014  Saravanan		   Modified join with TBL_PP_BeneficiaryPayment from Inner join to left outer join. To return all the records
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetCalcEngineBeneficiaryPaymentAmount]
+	-- paremeters here      
+	@XMLDATA XML
+	,@TaxYear INT
+AS
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds
+
+--  Variable Declarations  --  
+DECLARE @NextDate DATETIME;
+
+--  Variable Data Assignment  --      
+SET @NextDate = CAST('01/01/' + CAST(@TaxYear + 1 AS VARCHAR) AS DATETIME);
+
+-- Body of procedure  --   
+IF EXISTS (
+		SELECT *
+		FROM TEMPDB.DBO.SYSOBJECTS
+		WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpCustomerAccountNumber]')
+		)
+BEGIN
+	DROP TABLE [DBO].[#TmpCustomerAccountNumber]
+END
+
+IF EXISTS (
+		SELECT *
+		FROM TEMPDB.DBO.SYSOBJECTS
+		WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#BenePaymentData]')
+		)
+BEGIN
+	DROP TABLE [DBO].[#BenePaymentData]
+END
+
+CREATE TABLE #TmpCustomerAccountNumber (
+	CustomerAccountNumber VARCHAR(14)
+	,FMVAsOfDate DATETIME
+	)
+
+CREATE TABLE #BenePaymentData (
+	CustomerAccountNumber CHAR(14)
+	,TaxYear INT
+	,BenePaymentAmount MONEY DEFAULT(0)
+	,EarlyTradedPayment MONEY DEFAULT(0)
+	,LateTradedPayment MONEY DEFAULT(0)
+	)
+
+--Store XML input data into Temp tables
+INSERT INTO #TmpCustomerAccountNumber (
+	CustomerAccountNumber
+	,FMVAsOfDate
+	)
+SELECT XMLData.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+	,XMLData.item.value('@FMVAsOfDate[1]', 'Datetime') AS FMVAsOfDate
+FROM @XMLDATA.nodes('//CustomerAccountNumberCollection/SelectList/CustomerAccountNumberItem') AS XMLData(Item)
+
+-- BenePayment Amount calculation 
+INSERT INTO #BenePaymentData (
+	CustomerAccountNumber
+	,TaxYear
+	,BenePaymentAmount
+	)
+SELECT XmlInput.CustomerAccountNumber
+	,@TaxYear
+	,ISNULL(SUM(PaymentAmount),0) AS BenePaymentAmount
+FROM #TmpCustomerAccountNumber XmlInput
+LEFT OUTER JOIN TBL_PP_BeneficiaryPayment AS BenePaymnt
+	ON BenePaymnt.CustomerAccountNumber = XmlInput.CustomerAccountNumber
+		AND BenePaymnt.TaxYear = @TaxYear
+WHERE BenePaymnt.VoidDate IS NULL
+GROUP BY XmlInput.CustomerAccountNumber
+	,TaxYear
+
+-- Calculation Of EarlyTradedPayment
+INSERT INTO #BenePaymentData (
+	CustomerAccountNumber
+	,TaxYear
+	,EarlyTradedPayment
+	)
+SELECT AccntPayout.CustomerAccountNumber
+	,AccntPayout.PayoutYear
+	,SUM(BenPymt.PaymentAmount)
+FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+INNER JOIN #TmpCustomerAccountNumber XmlInput
+	ON AccntPayout.CustomerAccountNumber = XmlInput.CustomerAccountNumber
+		AND AccntPayout.PayoutYear = @TaxYear
+INNER JOIN TBL_PP_BeneficiaryPayment BenPymt
+	ON AccntPayout.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+		AND AccntPayout.PayoutYear = BenPymt.TaxYear
+WHERE XmlInput.FMVAsOfDate > BenPymt.postdate
+	AND BenPymt.PaymentDate > XmlInput.FMVAsOfDate
+GROUP BY AccntPayout.CustomerAccountNumber
+	,AccntPayout.PayoutYear
+
+-- Calculation Of LateTradedPayment
+INSERT INTO #BenePaymentData (
+	CustomerAccountNumber
+	,TaxYear
+	,LateTradedPayment
+	)
+SELECT AccntPayout.CustomerAccountNumber
+	,AccntPayout.PayoutYear
+	,SUM(BenPymt.PaymentAmount)
+FROM TBL_PP_AnnualAccountPayoutInfo AccntPayout
+INNER JOIN #TmpCustomerAccountNumber XmlInput
+	ON AccntPayout.CustomerAccountNumber = XmlInput.CustomerAccountNumber
+		AND AccntPayout.PayoutYear = @TaxYear
+INNER JOIN TBL_PP_BeneficiaryPayment BenPymt
+	ON AccntPayout.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+		AND AccntPayout.PayoutYear = BenPymt.TaxYear
+WHERE XmlInput.FMVAsOfDate > BenPymt.PaymentDate
+	AND BenPymt.PostDate > XmlInput.FMVAsOfDate
+GROUP BY AccntPayout.CustomerAccountNumber
+	,AccntPayout.PayoutYear
+	
+-- Return Data
+SELECT CustomerAccountNumber
+	,TaxYear
+	,SUM(BenePaymentAmount) AS BenePaymentAmount
+	,SUM(EarlyTradedPayment) AS EarlyTradedPayment
+	,SUM(LateTradedPayment) AS LateTradedPayment
+FROM #BenePaymentData
+GROUP BY CustomerAccountNumber
+	,TaxYear
+
+SET NOCOUNT OFF;
+	-- End of procedure  --   
+GO
+
+

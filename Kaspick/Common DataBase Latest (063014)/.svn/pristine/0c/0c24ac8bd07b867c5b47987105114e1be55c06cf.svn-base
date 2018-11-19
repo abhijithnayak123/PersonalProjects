@@ -1,0 +1,150 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc';
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************                      
+** Name:     USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc                      
+** Short Desc: Retrieves value of UnitrustPercentage for deliverable items.     
+**                      
+** Full Description: To retrieve  details    
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+**      
+ DECLARE @XMLDeliverableItems XML    
+    SET @XMLDeliverableItems =  
+'<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList>  
+<DeliverableItemsDataToValidate AccountID="100293"  BeneficiaryID="102298"  ClientEmployeeID="0"  ClientID="100002"  DeliverableItemID="4498"    
+DeliverableQueueID="1"  DonorID="116323"  TrustparticipantID="102090"      
+DeliverableFrequency="A"  />  
+<DeliverableItemsDataToValidate AccountID="100940"  BeneficiaryID="101494"  ClientEmployeeID="0"  ClientID="100033"  DeliverableItemID="447"    
+DeliverableQueueID="1"  DonorID="100975"  TrustparticipantID="101396"      
+DeliverableFrequency="A"  />  
+</SelectList></DeliverableItemsDataToValidateCollection>'     
+ EXEC USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc    
+    @XMLDeliverableItems    
+     
+     
+**             
+** Return values: Null    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Venugopal B    
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 08/14/2009                      
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:              Bug #     Description:             Rvwd                
+** --------  --------               ------    ---------------------- --------                
+** <11/12/2010> Chaithra Madappa   
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted    
+** 10-Jul-2014		Geervani	 Changed name from TBL_EIS_DT_Validation_Rules to TBL_DLV_ValidationRule to refer to kaspick DB
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc]
+	-- paremeters here          
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --          
+	--SET NOCOUNT ON;          
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds          
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;          
+	--  Variable Declarations  --          
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --          
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		,AnnualFrequency INT
+		,Accounttype VARCHAR(max)
+		);
+
+	--  Variable Data Assignment  --          
+	SET @procname = 'USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc';
+
+	-- Body of procedure  --          
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID
+			,CE.ANNUALFREQUENCY
+			,VA.ACCOUNTTYPE
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		INNER JOIN V_EIS_EX_ACCOUNT VA ON VA.ACCOUNTID = XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int')
+		LEFT JOIN CYCLICEVENT CE ON CE.AccountID = VA.AccountID
+			AND CE.EventType = 'P'
+		WHERE VA.Accounttype <> 'PIF'
+
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,(
+				SELECT ValidationRuleID
+				FROM TBL_DLV_ValidationRule --Changed name from TBL_EIS_DT_Validation_Rules to TBL_DLV_ValidationRule to refer to kaspick DB
+				WHERE RuleName = 'Override likely, does not pay'
+				) AS RuleID
+			,'PaymentFrequency' AS Attribute
+			,AnnualFrequency AS ActualValue
+			,'' AS DisplayMessage
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+		LEFT JOIN @DeliverableItemData ID ON id.DeliverableItemID = XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int')
+		WHERE AnnualFrequency IS NULL
+			AND Accounttype <> 'PIF'
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --    
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_DR_PaymentFrequency_SelProc';
+END

@@ -1,0 +1,130 @@
+/****** Object:  UserDefinedFunction [dbo].[FN_GetNextDate]    Script Date: 10/21/2013 14:00:23 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetNextDate'
+		)
+BEGIN
+	DROP FUNCTION FN_GetNextDate;
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name:     FN_GetNextDate                      
+** Short Desc: To Get Next date
+**                      
+** Full Description:  To Get Next date         
+**                              
+** Input Arguments:  
+ @CrDt DateTime,   
+ @FDay INT,   
+ @FMonth INT,   
+ @FOccur Varchar(25), 
+ @Freq As INT  
+   
+**         
+** Sample Call     
+        
+ select dbo.FN_GetNextDate
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti Kalita    
+** Company   : Kaspick & Company                      
+** Project   : Back Office Integration                      
+** Created DT: 21-Oct-2012                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 6/6/2014   Salih               Modified the function for the fix of "out-of-range value" 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_GetNextDate] (
+	@CrDt DATETIME
+	,@FDay INT
+	,@FMonth INT
+	,@FOccur VARCHAR(25)
+	,-- L,F,O  
+	@Freq AS INT
+	)
+RETURNS DATETIME
+AS
+BEGIN
+	DECLARE @NxtDt DATETIME
+	DECLARE @Incr INT
+	DECLARE @ReturnDate DATETIME
+	DECLARE @DTString VARCHAR(12)
+
+	IF (
+			@Freq < 1
+			OR @Freq > 12
+			) -- 6/6/2014- Salih :   Modified the function for the fix of "out-of-range value" 
+		OR (
+			@FDay < 1
+			OR @FMonth < 1
+			)
+	BEGIN
+		SET @ReturnDate = NULL
+
+		RETURN @ReturnDate
+	END
+
+	IF @FOccur = 'L'
+	BEGIN
+		SET @NxtDt = convert(DATETIME, '1' + '/' + cast(@FMonth AS VARCHAR) + '/' + cast((Year(@CrDt) - 1) AS VARCHAR), 103)
+		SET @NxtDt = DateAdd(month, 1, @NxtDt) - 1
+	END
+	ELSE
+		IF @FOccur = 'F'
+			SET @NxtDt = convert(DATETIME, '1' + '/' + cast(@FMonth AS VARCHAR) + '/' + cast((Year(@CrDt) - 1) AS VARCHAR), 103)
+		ELSE
+			IF @FOccur = 'O'
+			BEGIN
+				SET @DTString = cast(@FMonth AS VARCHAR) + '/' + cast(@FDay AS VARCHAR) + '/' + cast((Year(@CrDt) - 1) AS VARCHAR)
+
+				--SET @NxtDt = convert(DATETIME, cast(@FDay AS VARCHAR) + '/' + cast(@FMonth AS VARCHAR) + '/' + cast((Year(@CrDt) - 1) AS VARCHAR), 103)
+				IF ISDATE(@DTString) = 1
+					SET @NxtDt = @DTString
+				ELSE
+					RETURN NULL
+			END
+			ELSE
+			BEGIN
+				SET @ReturnDate = NULL
+			END
+
+	SET @Incr = 12 / @Freq
+
+	WHILE (@NxtDt <= @CrDt)
+	BEGIN
+		SET @NxtDt = DateAdd(month, @Incr, @NxtDt)
+
+		IF @FOccur = 'L'
+		BEGIN
+			SET @NxtDt = convert(DATETIME, '1' + '/' + cast(Month(@NxtDt) AS VARCHAR) + '/' + cast((Year(@NxtDt)) AS VARCHAR), 103)
+			SET @NxtDt = DateAdd(month, 1, @NxtDt) - 1
+		END
+	END
+
+	SET @ReturnDate = @NxtDt
+
+	RETURN @ReturnDate
+END
+GO
+
+

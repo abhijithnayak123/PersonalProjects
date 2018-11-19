@@ -1,0 +1,71 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetDTYearType')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetDTYearType;
+        PRINT 'DROPPED USP_RP_GetDTYearType';
+    END
+GO
+
+
+/******************************************************************************   
+** New SP Name : USP_RP_GetDTYearType
+** Name:     USP_EIS_DT_List_YearType                          
+**        
+** Short Desc:         
+**        
+** Full Description:         
+**                                  
+** Input Arguments:         
+**             
+** Sample Call         
+ EXEC USP_RP_GetDTListYearType 0       
+**                 
+** Return values: Return Status        
+**                          
+** Standard declarations                          
+**                           
+** Created By: Soorya      
+**        
+** Company   : Kaspick & Company                          
+** Project   : Deliverable Tool        
+** Created DT: 17-Oct-2011                    
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------                    
+** 09-06-2014	RAJ			SP Name Renamed and Formatted        
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/        
+CREATE PROCEDURE [dbo].[USP_RP_GetDTYearType]  
+(  
+ @DeliverableID BIGINT = 0  
+)        
+AS   
+BEGIN  
+ SELECT   
+  LI.LISTITEMID AS DDVALUE,   
+  LI.LISTITEMNAME AS DDTEXT  
+ FROM TBL_DLV_DeliverableYearType DYT   
+  INNER JOIN TBL_LISTITEM LI ON LI.LISTITEMID = DYT.YearTypeID  
+  INNER JOIN TBL_LISTTYPE LT ON LT.LISTTYPEID = LI.LISTTYPEID  
+ WHERE LT.LISTTYPENAME = 'Year Type' AND DYT.DeliverableID = @DeliverableID  
+ ORDER BY LI.LISTITEMNAME ASC   
+END  
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetDTYearType') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetDTYearType';
+	END

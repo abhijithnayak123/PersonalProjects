@@ -1,0 +1,122 @@
+IF EXISTS (
+		SELECT Object_ID
+		FROM sys.objects
+		WHERE NAME = 'USP_IE_SaveAppSettings'
+			AND type = 'p'
+		)
+	DROP PROCEDURE dbo.USP_IE_SaveAppSettings
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_SaveAppSettings  
+** Short Desc: Save changes made to group(s) from GUI  
+**  
+** Full Description  
+**        accepts a XML document. XML contains app settings details
+**  
+** Sample Call  
+ Declare @Status varchar(max);  
+   
+ EXEC USP_IE_SaveAppSettings  -- parameters  
+  '<AppSettingsCollection>  
+  <UpdateList>  
+  <AppSettings SettingID="0" SettingField="Inv. Alloc. Variance (Gross)" SettingValue="1 ." CreatedDate="01/01/2001" /> 
+  <AppSettings SettingID="0" SettingField="Axys Variance (Gross)" SettingValue="2 ." CreatedDate="1/1/2001" /> 
+  </UpdateList>  
+  </AppSettingsCollection>'   
+
+ ,@Status   
+**  
+** Return values: NONE  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Aashay Thodar  
+** Company   : Kaspick & Company  
+** Project   : Income Estimation  
+** Created DT: 06/19/2014
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 06/19/2014   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_SaveAppSettings]
+	-- paremeters here  
+	@XMLDATA XML
+	,@return_status VARCHAR(MAX)
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+--  Temp tables, Cursors, Table Variables  --    
+DECLARE @TBL_App_Settings TABLE (
+	SettingID INT
+	,SettingField VARCHAR(50)
+	,SettingValue VARCHAR(50)
+	,CreatedDate DATETIME
+	);
+
+--  Variable Data Assignment  --    
+SET @return_status = '';
+
+-- Body of procedure  --    
+BEGIN TRY
+	--  Transactions    
+	BEGIN TRANSACTION
+
+	--WITH TBL_Delete_Group_Accounts (GroupID, AdventID, TaxYear, UserID) AS
+	--	(
+	INSERT INTO @TBL_App_Settings
+	SELECT XMLDATA.item.value('@SettingID[1]', 'int') AS SettingID
+		,XMLDATA.item.value('@SettingField[1]', 'varchar(50)') AS SettingField
+		,XMLDATA.item.value('@SettingValue[1]', 'varchar(50)') AS SettingValue
+		,XMLDATA.item.value('@CreatedDate[1]', 'datetime') AS CreatedDate
+	FROM @XMLDATA.nodes('//AppSettingsCollection/UpdateList/AppSettings') AS XMLDATA(item)
+
+	--	)        
+	--If settingfield given in XML exists in table then update else insert new record
+	UPDATE TBL_IE_ApplicationSetting
+	SET SettingValue = t.SettingValue
+	FROM TBL_IE_ApplicationSetting app
+	INNER JOIN @TBL_App_Settings t ON app.SettingField = t.SettingField
+
+	INSERT INTO TBL_IE_ApplicationSetting (
+		SettingField
+		,SettingValue
+		,CreatedDate
+		)
+	SELECT SettingField
+		,SettingValue
+		,getdate() AS CreatedDate
+	FROM @TBL_App_Settings
+	WHERE SettingField NOT IN (
+			SELECT SettingField
+			FROM TBL_IE_ApplicationSetting
+			)
+
+	COMMIT TRANSACTION;
+
+	SET NOCOUNT OFF;
+END TRY
+
+BEGIN CATCH
+	EXEC USP_IE_RethrowError;
+
+	ROLLBACK TRANSACTION;
+END CATCH;
+	-- End of procedure  --

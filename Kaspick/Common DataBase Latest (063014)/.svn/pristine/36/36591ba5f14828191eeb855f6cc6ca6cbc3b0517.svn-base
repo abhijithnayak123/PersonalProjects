@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetApplicationInnoTrustKey]    Script Date: 04/15/2014 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetApplicationInnoTrustKey]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetApplicationInnoTrustKey]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetApplicationInnoTrustKey]    Script Date: 04/15/2014 12:11:16 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_KS_GetApplicationInnoTrustKey                      
+** Short Desc	:	To Get Application Innotrust Keys configuration details from TBL_KS_ApplicationInnoTrustKeys
+*                  
+**                      
+** Full Description: To Get Application Innotrust Keys configuration details from TBL_KS_ApplicationInnoTrustKeys 
+**  for the specific AccountName              
+** Input Arguments:  ApplicationName AS VARCHAR(50)
+**         
+** Sample Call     
+        
+	 EXEC USP_KS_GetApplicationInnoTrustKey 'Payments'
+	 EXEC USP_KS_GetApplicationInnoTrustKey 'Middleware'
+	 EXEC USP_KS_GetApplicationInnoTrustKey 'T-Rex'
+	 EXEC USP_KS_GetApplicationInnoTrustKey 'Period End Valuation Automation'
+	 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Saravanan P Muthu
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 15-Apr-14                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+******************************************************************************* 
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetApplicationInnoTrustKey] @ApplicationName AS VARCHAR(50)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT InnTrstKey.ApplicationID
+		,InnTrstKey.[Key]
+		,InnTrstKey.[Value]
+	FROM TBL_KS_ApplicationInnoTrustKey InnTrstKey
+	INNER JOIN TBL_KS_Application KsApp
+		ON KsApp.ApplicationID = InnTrstKey.ApplicationID
+	WHERE KsApp.ApplicationName = @ApplicationName
+
+	SET NOCOUNT OFF
+END

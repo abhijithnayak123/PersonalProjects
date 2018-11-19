@@ -1,0 +1,292 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_CompareUniverse]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_CompareUniverse]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_CompareUniverse]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_CompareUniverse]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_CompareUniverse    
+** Short Desc:     
+**    
+** Full Description    
+**            
+**    
+** Sample Call    
+  Declare @status int    
+        EXEC USP_IE_CompareUniverse  @return_status  = @status OUT-- parameters    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/02/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_CompareUniverse] @return_status INT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --    
+	DECLARE @OfficialGroupID INT;
+
+	--  Temp tables, Cursors, Table Variables  --    
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#FlippedAccounts]')
+			)
+	BEGIN
+		DROP TABLE #FlippedAccounts
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#Official_Group_Members]')
+			)
+	BEGIN
+		DROP TABLE #Official_Group_Members
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#Compare_Universe]')
+			)
+	BEGIN
+		DROP TABLE #Compare_Universe
+	END
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#Current_Universe]')
+			)
+	BEGIN
+		DROP TABLE #Current_Universe
+	END
+
+	CREATE TABLE #FlippedAccounts (CustomerAccountNumber VARCHAR(14) NOT NULL)
+
+	CREATE TABLE #Current_Universe (
+		CustomerAccountNumber VARCHAR(14)
+		,AccountType VARCHAR(20)
+		,CreationDate DATETIME
+		,MatureDate DATETIME
+		)
+
+	CREATE TABLE #Compare_Universe (
+		StagingID INT
+		,GroupID INT
+		,TaxYear SMALLINT
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountType VARCHAR(20)
+		,CreationDate DATETIME
+		,MatureDate DATETIME
+		,StatusID INT
+		,STATUS VARCHAR(20)
+		,Change VARCHAR(20)
+		)
+
+	CREATE TABLE #Official_Group_Members (
+		StagingID INT
+		,GroupID INT
+		,TaxYear SMALLINT
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountType VARCHAR(20)
+		,CreationDate DATETIME
+		,MatureDate DATETIME
+		,StatusID INT
+		,STATUS VARCHAR(20)
+		)
+
+	--  Variable Data Assignment  --    
+	SET @return_status = 0;
+	SET @OfficialGroupID = 0;
+
+	-- Body of procedure  --    
+	--Check if offcial group is created before Compare Universe    
+	SELECT @OfficialGroupID = GroupID
+	FROM TBL_IE_Group
+	WHERE TAXYear = YEAR(GETDATE())
+		AND IsOfficial = 1
+
+	IF @OfficialGroupID = 0
+	BEGIN
+		SET @return_status = 1;
+
+		RETURN (0);
+	END
+
+	--Store offical group members    
+	INSERT INTO #Official_Group_Members (
+		StagingID
+		,GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,STATUS
+		)
+	SELECT StagingID
+		,GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StgEst.StatusID
+		,STATUS
+	FROM TBL_IE_STG_Estimate StgEst
+	INNER JOIN TBL_IE_Status St ON StgEst.StatusID = St.StatusID
+	WHERE GroupID = (
+			SELECT TOP 1 GroupID
+			FROM TBL_IE_Group
+			WHERE TaxYear = YEAR(GETDATE())
+				AND IsOfficial = 1
+			)
+		AND IsDeleted = 0
+		AND ParentStagingID IS NULL
+
+	--Query current Universe  
+	DECLARE @appflipdate DATETIME
+
+	SET @appflipdate = CAST('01/01/' + CAST(YEAR(GETDATE()) AS VARCHAR) AS DATETIME)
+
+	INSERT INTO #FlippedAccounts
+	SELECT DISTINCT CustomerAccountNumber_Key
+	FROM SYN_IT_UDF_AccountMaster
+	WHERE UDFAMColumn009 IS NOT NULL
+		AND UDFAMColumn009 <= @appflipdate
+
+	INSERT INTO #Current_Universe (
+		CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		)
+	SELECT AccMas.CustomerAccountNumber
+		,AccMas.AccountTypeCode
+		,AccMas.DateOpened AS CreationDate
+		,UAccMas.UDFAMColumn030 AS MatureDate
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_UDF_AccountMaster UAccMas ON AccMas.CustomerAccountNumber = UAccMas.CustomerAccountNumber_Key
+	WHERE UAccMas.UDFAMColumn001 = 'Y' -- Requires Income Estimate
+		AND AccMas.ClosedFlag <> - 1 -- Account not closed 
+		AND AccMas.ActiveFlag = - 1 -- Account in Active status
+		AND AccMas.CustomerAccountNumber NOT IN (
+			SELECT CustomerAccountNumber
+			FROM #FlippedAccounts
+			) -- Accounts which are not flipped
+	ORDER BY AccMas.CustomerAccountNumber
+
+	--Compare I    
+	--Present in Official group but not in Current Universe i.e. Excelsior DB    
+	--Change=Remove    
+	INSERT INTO #Compare_Universe (
+		StagingID
+		,GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,STATUS
+		,Change
+		)
+	SELECT StagingID
+		,GroupID
+		,YEAR(GETDATE()) AS TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,STATUS
+		,'Remove' AS Change
+	FROM #Official_Group_Members
+	WHERE CustomerAccountNumber NOT IN (
+			SELECT CustomerAccountNumber
+			FROM #Current_Universe
+			)
+
+	--Compare II    
+	--Present in Current Universe i.e. Excelsior DB (Not in Official Group)     
+	--Change=Add    
+	INSERT INTO #Compare_Universe (
+		StagingID
+		,GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,STATUS
+		,Change
+		)
+	SELECT 0 AS StagingID
+		,@OfficialGroupID AS GroupID
+		,YEAR(GETDATE()) AS TaxYear
+		,CustomerAccountNumber
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,1 AS StatusID
+		,'New' AS STATUS
+		,'Add' AS Change
+	FROM #Current_Universe
+	WHERE CustomerAccountNumber NOT IN (
+			SELECT CustomerAccountNumber
+			FROM #Official_Group_Members
+			)
+
+	SELECT StagingID
+		,GroupID
+		,TaxYear
+		,CustomerAccountNumber AS AdventID
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,STATUS
+		,Change
+	FROM #Compare_Universe
+	ORDER BY CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

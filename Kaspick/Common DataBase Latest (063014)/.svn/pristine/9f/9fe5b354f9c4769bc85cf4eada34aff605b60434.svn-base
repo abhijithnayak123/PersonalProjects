@@ -1,0 +1,121 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetNonStandardUserPrivilegeFilter]    Script Date: 07/02/2013 09:46:06 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetNonStandardUserPrivilegeFilter]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetNonStandardUserPrivilegeFilter]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetNonStandardUserPrivilegeFilter]    Script Date: 07/02/2013 09:46:06 ******/
+/******************************************************************************                    
+** Name:     USP_KS_GetNonStandardUserPrivilegeFilter                    
+**  
+** Short Desc: To Retrieve all Non-Standard user privileges.  
+**  
+** Full Description:   To Retrieve all Non-Standard privileges from 
+   TBL_KS_USER and TBL_KS_USEREXCEPTION tables based on the USERID       
+   passed as parameter to get this in cross tabular form on the page                             
+** Input Arguments:   
+**       
+** Sample Call   
+ exec USP_KS_GetNonStandardUserPrivilegeFilter  100336,'ModuleTradingTasks_Close'
+ exec USP_KS_GetNonStandardUserPrivilegeFilter  9, 'ModuleTradingTasks_Trading'
+**           
+** Return values: Return Status  
+**                    
+** Standard declarations                    
+**                     
+** Created By: Niveditha Narasimha  
+**  
+** Company   : Kaspick & Company                    
+** Project   : Kasper  
+** Created DT: 2-July-2013              
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetNonStandardUserPrivilegeFilter] (
+	@UserID INT
+	,@PrivilegeName VARCHAR(50)
+	)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	CREATE TABLE #TmpUserPrivilege (
+		ApplicationName VARCHAR(50)
+		,Description VARCHAR(255)
+		,PrivilegeName VARCHAR(50)
+		,NonStandard INT
+		,NonStandardValue BIT
+		)
+
+	INSERT INTO #TmpUserPrivilege
+	SELECT App.ApplicationName AS ApplicationName
+		,Priv.Description
+		,Priv.PrivilegeName
+		,Priv.PrivilegeID AS NonStandard
+		,0 AS NonStandardValue
+	FROM TBL_KS_Privilege Priv
+	INNER JOIN TBL_KS_Module Mod
+		ON Priv.ModuleID = Mod.ModuleID
+	INNER JOIN TBL_KS_Application App
+		ON App.ApplicationID = Mod.ApplicationID
+	INNER JOIN TBL_KS_Function Func
+		ON Func.FunctionID = Priv.FunctionID
+			AND FunctionName = 'NON-STANDARD'
+
+	UPDATE #TmpUserPrivilege
+	SET NonStandardValue = 1
+	FROM #TmpUserPrivilege UserPriv
+	INNER JOIN TBL_KS_Privilege Priv
+		ON Priv.PrivilegeID = UserPriv.NonStandard
+	INNER JOIN TBL_KS_RolePrivilege RolePriv
+		ON RolePriv.PrivilegeID = Priv.PrivilegeID
+	INNER JOIN TBL_KS_UserRole UserRole
+		ON UserRole.RoleID = RolePriv.RoleID
+	INNER JOIN TBL_KS_Function Func
+		ON Func.FunctionID = Priv.FunctionID
+			AND FunctionName = 'NON-STANDARD'
+			AND UserRole.UserID = @UserID
+
+	UPDATE #TmpUserPrivilege
+	SET NonStandardValue = 1
+	FROM #TmpUserPrivilege UserPriv
+	INNER JOIN TBL_KS_Privilege Priv
+		ON Priv.PrivilegeID = UserPriv.NonStandard
+	INNER JOIN TBL_KS_UserException UserExcep
+		ON UserExcep.PrivilegeID = Priv.PrivilegeID
+	INNER JOIN TBL_KS_Function Func
+		ON Func.FunctionID = Priv.FunctionID
+			AND FunctionName = 'NON-STANDARD'
+			AND UserExcep.UserID = @UserID
+			AND (
+				(
+					AddORSubtract = '+'
+					AND EndDate >= GETDATE()
+					)
+				OR (
+					AddORSubtract = '-'
+					AND EndDate < GETDATE()
+					)
+				)
+
+	SELECT NonStandardValue
+	FROM #TmpUserPrivilege
+	WHERE PrivilegeName = @PrivilegeName
+END
+
+SET NOCOUNT OFF

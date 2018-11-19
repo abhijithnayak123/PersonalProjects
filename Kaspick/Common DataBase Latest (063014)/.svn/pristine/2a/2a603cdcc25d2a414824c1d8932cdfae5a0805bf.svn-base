@@ -1,0 +1,144 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftTerminationShiftOfInterest'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftTerminationShiftOfInterest;
+
+	PRINT 'DROPPED USP_EX_GetWftTerminationShiftOfInterest';
+END
+GO
+
+/******************************************************************************  
+** Name : USP_EX_GetWftTerminationShiftOfInterest
+** Old Name:     [sp_wft_get_Termination_Shift_Of_Interest]  
+** Short Desc:   
+**  
+** Full Description  
+**          
+**  
+** Sample Call  
+ [sp_wft_get_Termination_Shift_Of_Interest] 'A8219637-6A9B-45E7-A368-EE1E288349A1' 
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Sandesh  
+** Company   : Kaspick & Company  
+** Project   : Excelsior WFT  
+** Created DT: 12-April-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 22-Mar-2014  Abhijith  EXCREQ9.1 Modified  
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftTerminationShiftOfInterest] (@Guid VARCHAR(255))
+AS
+BEGIN
+	SELECT trust_termination_id
+		,GUID
+		,form_id
+		,WftTrstTrmntn.CustomerAccountNumber AS accountid
+		,WftTrstTrmntn.ManagerCode AS clientid
+		,WftTrstTrmntn.ManagerCodeName AS client_name
+		,WftTrstTrmntn.CustomerAccountNumber AS adventid
+		,account_name
+		,account_type
+		,reason_for_notification
+		,relinquished
+		,partial_distribution
+		,liquidate_assets
+		,WftTrstTrmntn.comments
+		,ContactID AS participantid
+		,beneficiary_name
+		,beneficiary_ssn
+		,date_of_death
+		,documentation_of_death
+		,successor_beneficiaries
+		,multiple_account
+		,use_different_address
+		,mfc_add1
+		,mfc_add2
+		,mfc_add3
+		,mfc_city
+		,mfc_state
+		,mfc_zip
+		,mfc_country
+		,percent_of_liquidation
+		,fixed_distribution_amount
+		,distribution_method
+		,check_mail_add1
+		,check_mail_add3
+		,check_mail_add2
+		,check_mail_city
+		,check_mailing_state
+		,check_mail_zip
+		,check_mail_country
+		,custodial_account_number
+		,journal_account_number
+		,asset_description
+		,use_standing_wire_instruction
+		,bank_name
+		,account_registration_name
+		,aba_number
+		,account_number
+		,--used in section5 bank account number  
+		wire_mail_address_line1
+		,wire_mail_address_line2
+		,wire_mail_city
+		,wire_mail_state
+		,wire_mail_zip
+		,wire_mail_country
+		,others_instruction
+		,client_manager
+		,trust_administrator
+		,signature
+		,pxy_userid
+		,pxy_username
+		,pxy_useremail
+		,org_userid
+		,org_useremail
+		,org_username
+		,ta_authorization_level
+		,im_authorization_level
+		,notification_date
+		,effective_date
+		,modified
+		,modified_by
+		,submitted_by
+		,team_folder_name
+		,OldTerminationRequest AS OldTerminationRequest
+		,AccMstr.ExternalCustomerID AS dga_account_number
+		,action_on_account
+		,action_on_distribution
+		,action_on_liquidate_assets
+	FROM TBL_WFT_TrustTermination WftTrstTrmntn
+	INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = WftTrstTrmntn.CustomerAccountNumber
+	WHERE Guid = @Guid
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftTerminationShiftOfInterest'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftTerminationShiftOfInterest';
+END

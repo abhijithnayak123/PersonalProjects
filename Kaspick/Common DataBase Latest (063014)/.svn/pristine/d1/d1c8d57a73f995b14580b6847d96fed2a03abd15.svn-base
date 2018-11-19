@@ -1,0 +1,94 @@
+USE [msdb]
+GO
+
+IF  EXISTS (SELECT job_id FROM msdb.dbo.sysjobs_view WHERE name = N'Kaspickdb_LookupTables_Refresh')
+EXEC msdb.dbo.sp_delete_job @job_name = N'Kaspickdb_LookupTables_Refresh' , @delete_unused_schedule=1
+
+USE [msdb]
+GO
+
+BEGIN TRANSACTION
+		DECLARE @ReturnCode INT
+		SELECT  @ReturnCode = 0
+
+		DECLARE @jobId BINARY(16)
+
+		--Job
+		EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'Kaspickdb_LookupTables_Refresh', 
+				@enabled=0, 
+				@notify_level_eventlog=2, 
+				@notify_level_email=0, 
+				@notify_level_netsend=0, 
+				@notify_level_page=0, 
+				@delete_level=0, 
+				@description=N'No description available.', 
+				@job_id = @jobId OUTPUT
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+		/****** Object:  Step1 [JobStart Step] ******/
+		EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'JobStart Step', 
+			@step_id=1, 
+			@cmdexec_success_code=0, 
+			@on_success_action=3, 
+			@on_success_step_id=0, 
+			@on_fail_action=2, 
+			@on_fail_step_id=0, 
+			@retry_attempts=0, 
+			@retry_interval=0, 
+			@os_run_priority=0, @subsystem=N'TSQL', 
+			@command=N'Select ''Job has been started.'' ', 
+			@database_name=N'master', 
+			@flags=0
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+	
+		--JobStep
+		EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'ExecutePackage', 
+				@step_id=2, 
+				@cmdexec_success_code=0, 
+				@on_success_action=1, 
+				@on_success_step_id=0, 
+				@on_fail_action=2, 
+				@on_fail_step_id=0, 
+				@retry_attempts=5, 
+				@retry_interval=2, 
+				@os_run_priority=0, @subsystem=N'SSIS', 
+				@command=N'/FILE "$(PackagePath)\LookupTable_Load.dtsx" /CONFIGFILE "$(ConfigPath)\LookupTable_Load.dtsConfig" /CHECKPOINTING OFF /REPORTING E', 
+				@database_name=N'master', 
+				@flags=0
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+
+		EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+		--Schedule
+		EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'EveryOneHour', 
+				@enabled=1, 
+				@freq_type=8, 
+				@freq_interval=127, 
+				@freq_subday_type=8, 
+				@freq_subday_interval=1, 
+				@freq_relative_interval=0, 
+				@freq_recurrence_factor=1, 
+				@active_start_date=20140506, 
+				@active_end_date=99991231, 
+				@active_start_time=0, 
+				@active_end_time=235959, 
+				@schedule_uid=N'af31f891-26c9-4cbd-8694-f60599550cd1'		
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+			
+		EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'$(JobServer)'	
+		IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+COMMIT TRANSACTION
+GOTO EndSave
+	
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+
+EndSave:
+
+GO
+
+

@@ -1,0 +1,99 @@
+  IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTFilters')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTFilters;
+    PRINT 'DROPPED USP_RP_GetBRDTFilters';
+END
+GO
+  
+/************************************r******************************************                    
+** Old Name:     USP_EIS_BR_DT_Filters_SelProc 
+**                  
+** Name:     USP_RP_GetBRDTFilters
+**
+** Short Desc: To retrieve Filter Section details  
+**                    
+** Full Description: o retrieve Filter Section details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  [USP_RP_GetBRDTFilters]  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/24/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- ----,----              
+** 15-Oct-2009  Venugopal ET	#10471 1.ReportAnalystLoginName is added in SELECT query  
+									   2.Comma is added after lastname for ClientManagerUsers, ReportAnalystUsers   
+   01-Dec-2009  Venugopal ET	#10869 Updated logic to get Reporting Analysts & Client managers from TBL_EIS_USER_ROLE table.  
+         
+** 27-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB  
+         
+** 14-Jul-2014 Geervani			Updated SP to use view for client manager, report analyst,relationship manager
+                                     
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE [dbo].[USP_RP_GetBRDTFilters]                   
+AS              
+BEGIN       
+ 
+	SELECT AccMgrCode.ManagerCode AS ClientID,  
+	AccMgrCode.ManagerCode AS ClientBriefName,
+	AccProf.CustomerAccountNumber as AccountID,  
+	AccProf.CustomerAccountNumber as AdventID,  
+	AccMstr.AccountTypeCode AS AccountType,  
+	SRClientManager.UserID AS ClientManagerUsersID,  
+	SRReportAnalyst.userid AS ReportAnalystUsersID,  
+	ClientManagerUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from TBL_KS_User where userid = SRClientManager.userid),  
+	ReportAnalystUsers= (SELECT RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,''))  from tbl_KS_User where userid = SRReportAnalyst.userid),  
+	ReportAnalystLoginName= (select LOGINNAME from tbl_KS_user where userid = SRReportAnalyst.userid)   
+	FROM TBL_INV_AccountProfile AccProf     
+	INNER JOIN SYN_IT_AccountMaster AccMstr ON AccProf.CustomerAccountNumber = AccMstr.CustomerAccountNumber 
+	INNER JOIN dbo.SYN_IT_AllianceNumbers AS AlnsNmbr ON AlnsNmbr.AllianceNumber = AccMstr.AllianceNumber
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCode ON AccMgrCode.ManagerCode = AlnsNmbr.AllianceNumber
+	LEFT OUTER JOIN VW_RP_ClientManager SRClientManager ON SRClientManager.ManagerCode = AccMgrCode.ManagerCode 
+	LEFT OUTER JOIN VW_RP_ReportAnalyst SRReportAnalyst ON SRReportAnalyst.ManagerCode = AccMgrCode.ManagerCode
+  --Below code added for ET #10869  
+        --ET #10869    
+  UNION   
+	SELECT '0' AS ClientID,  '' AS ClientBriefName, '0' AS AccountID, '' AS AdventID, '' AS AccountType, 
+	0 AS ClientManagerUsersID, RA.userid AS ReportAnalystUsersID,'' AS ClientManagerUsers,  
+	RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,'')) AS ReportAnalystUsers,  
+	LOGINNAME AS ReportAnalystLoginName  
+	FROM TBL_KS_User RA   
+	WHERE RA.USERID IN (SELECT USERID from TBL_KS_UserRole WHERE ROLEID IN (11,20)) --11 Reporting, 20 REPORTING MANAGER  
+  UNION   
+    SELECT '0' AS ClientID, '' AS ClientBriefName, '0' AS AccountID, '' AS AdventID, '' AS AccountType, CM.UserID AS ClientManagerUsersID, 
+    0 AS ReportAnalystUsersID,  RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)),'')='') THEN '' ELSE (LASTNAME ) END) + (CASE WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)),'')='') THEN '' ELSE (', ' + FIRSTNAME ) END) + ' '+ ISNULL(MIDDLENAME,'')) AS ClientManagerUsers,  
+	'' AS ReportAnalystUsers,  '' AS ReportAnalystLoginName  
+	FROM TBL_KS_User CM   
+	WHERE CM.UserID IN (SELECT USERID from TBL_KS_UserRole WHERE ROLEID = 5) --5 GA CM   
+     --End ET #10869     
+  
+END  
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTFilters')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTFilters';
+    END

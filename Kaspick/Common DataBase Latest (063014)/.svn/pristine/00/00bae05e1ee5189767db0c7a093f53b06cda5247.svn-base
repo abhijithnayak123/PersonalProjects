@@ -1,0 +1,198 @@
+/****** Object:  StoredProcedure [dbo].[sp_dsGetLocation]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_dsGetLocation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_dsGetLocation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_dsGetLocation]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_dsGetLocation                      
+** Short Desc: Helper function used by sp_DeliverableSchedule
+**                      
+** Full Description: Helper function used by sp_DeliverableSchedule. Uses naming conventions to determine file and folder name for a specific DeliverableDetail 
+and Due date. Also generates web display text per naming rules.  
+**
+** Input Arguments:   
+**         
+** Sample Call     
+**                     
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_dsGetLocation @DetailID INT
+	,@DueDate DATETIME
+	,@FolderName VARCHAR(255)
+OUTPUT
+	,@FileName VARCHAR(255)
+OUTPUT
+	,@WebText VARCHAR(255)
+OUTPUT AS
+
+DECLARE @RootFolder VARCHAR(255)
+	,@DelName VARCHAR(255)
+	,@DelID INT
+	,@VerName VARCHAR(255)
+	,@VerID INT
+	,@SetID INT
+	,@Freq VARCHAR(20)
+	,@FreqCode VARCHAR(1)
+	,@Period INT
+	,@CliName VARCHAR(20)
+	,@cnt INT
+	,@PeriodAsString VARCHAR(3)
+	,@doscmd VARCHAR(500)
+
+SELECT @FolderName = NULL
+	,@FileName = NULL
+	,@WebText = NULL
+
+/* Get deliverable info for specified deliverableDetail */
+SELECT @RootFolder = d.RootFolder
+	,@DelName = d.SystemName
+	,@DelID = d.DeliverableID
+	,@Freq = dd.DerivedFrequency
+	,@VerName = dv.FullName
+	,@VerID = dv.VersionID
+	,@CliName = c.BriefName
+	,@SetID = ds.DeliverableSetID
+FROM Deliverable d
+	,DeliverableDetail dd
+	,DeliverableSet ds
+	,DeliverableVersion dv
+	,Client c
+WHERE dd.DeliverableDetailID = @DetailID
+	AND dd.DeliverableSetID = ds.DeliverableSetID
+	AND dd.ClientID = c.ClientID
+	AND ds.DeliverableID = d.DeliverableID
+	AND ds.VersionID = dv.VersionID
+	AND d.IsMVD = 1
+
+/* Don't bother if this isn't a Website/MVD Set */
+SELECT @cnt = ds.DeliverableSetID
+FROM DeliverableSet ds
+	,DeliverableMedia dm
+	,DeliverableFormat df
+WHERE ds.MediaID = dm.MediaID
+	AND ds.FormatID = df.FormatID
+	AND dm.FullName = 'Website'
+	AND df.FullName = 'MVD'
+	AND ds.DeliverableSetID = @SetID
+
+IF @cnt IS NULL
+	RETURN
+
+/* Look up frequency code */
+SELECT @FreqCode = FrequencyCode
+FROM DeliverableHistoryRules
+WHERE DerivedFrequency = @Freq
+
+IF @FreqCode IS NULL
+	SELECT @FreqCode = 'O'
+
+/* Calculate reporting period */
+SELECT @Period = CASE @FreqCode
+		WHEN 'D'
+			THEN DATEPART(dayofyear, @DueDate) --  Daily  
+		WHEN 'W'
+			THEN DATEPART(week, @DueDate) --  Weekly  
+		WHEN 'M'
+			THEN DATEPART(month, @DueDate) --  Monthly  
+		WHEN 'B'
+			THEN CEILING(CONVERT(FLOAT, DATEPART(month, @DueDate) / 2.0)) --  Bimonthly  
+		WHEN 'Q'
+			THEN DATEPART(quarter, @DueDate) --  Quarterly  
+		WHEN 'S'
+			THEN CEILING(CONVERT(FLOAT, DATEPART(quarter, @DueDate) / 2.0)) --  Semi Annually  
+		WHEN 'A'
+			THEN 1 --  Annually  
+		ELSE DATEPART(dayofyear, @DueDate)
+		END
+
+/* Convert period to string, with leading zero's */
+SELECT @PeriodAsString = CONVERT(VARCHAR(3), @Period)
+
+IF (LEN(@PeriodAsString) < 2)
+	SELECT @PeriodAsString = REPLICATE('0', 2 - LEN(@PeriodAsString)) + @PeriodAsString
+
+/*Build Folder Name */
+SELECT @FolderName = CONVERT(VARCHAR(4), DATEPART(year, @DueDate)) + @FreqCode + @PeriodAsString
+
+/* Create Folder */
+IF RIGHT(@RootFolder, 1) <> '\'
+	SELECT @RootFolder = @RootFolder + '\'
+
+SELECT @doscmd = 'md "' + @RootFolder + @FolderName + '"'
+
+EXEC master.dbo.xp_cmdshell @doscmd
+	,no_output
+
+/* How many MVD sets are there for this deliverable */
+SELECT @cnt = COUNT(*)
+FROM DeliverableSet ds
+	,DeliverableMedia dm
+	,DeliverableFormat df
+WHERE ds.MediaID = dm.MediaID
+	AND ds.FormatID = df.FormatID
+	AND ds.DeliverableID = @DelID
+	AND dm.FullName = 'Website'
+	AND df.FullName = 'MVD'
+
+/* If more than one set, how many clients receive THIS set? */
+IF @cnt > 1
+BEGIN
+	/* If more than one client recieves this set, it is not client-specific */
+	SELECT @cnt = COUNT(*)
+	FROM DeliverableDetail
+	WHERE DeliverableSetID = @SetID
+		AND IsClosed = 0
+
+	IF @cnt > 1
+		SELECT @CliName = 'XX'
+END
+
+/* Build File Name */
+SELECT @FileName = @DelName + '_' + @VerName + '_' + @CliName + '_' + CONVERT(VARCHAR(4), DATEPART(year, @DueDate)) + @FreqCode + @PeriodAsString + '.pdf'
+
+/* Determine Web Display Text */
+SELECT @WebText = CASE @FreqCode
+		WHEN 'M'
+			THEN DATENAME(month, @DueDate) + ', ' + --Monthly  
+				CONVERT(VARCHAR(4), DATEPART(year, @DueDate))
+		WHEN 'B'
+			THEN DATENAME(month, @DueDate) + ', ' + --Bimonthly  
+				CONVERT(VARCHAR(4), DATEPART(year, @DueDate))
+		WHEN 'Q'
+			THEN 'Quarter ' + --Quarterly   
+				CONVERT(VARCHAR(1), DATEPART(quarter, @DueDate)) + ', ' + CONVERT(VARCHAR(4), DATEPART(year, @DueDate))
+		WHEN 'S'
+			THEN DATENAME(month, @DueDate) + ', ' + --SemiAnnually  
+				CONVERT(VARCHAR(4), DATEPART(year, @DueDate))
+		WHEN 'A'
+			THEN 'Year ' + --Annually  
+				CONVERT(VARCHAR(4), DATEPART(year, @DueDate))
+		ELSE NULL
+		END

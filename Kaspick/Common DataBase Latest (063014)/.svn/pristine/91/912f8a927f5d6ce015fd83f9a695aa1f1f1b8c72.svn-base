@@ -1,0 +1,76 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftRequestFlowAuditList')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetWftRequestFlowAuditList;
+        PRINT 'DROPPED USP_EX_GetWftRequestFlowAuditList';
+    END
+GO
+  
+/******************************************************************************  
+** Name:  USP_EX_GetWftRequestFlowAuditList
+** Old  Name:     sp_wft_get_request_flow_Audit_list  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to fetch the audit trail for the given requestid.  
+**  
+** Sample Call  
+   USP_EX_GetWftRequestFlowAuditList 33209
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Abhishek  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 8/3/2009  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 6/30/2014    Sanath              Excelsior Prime project, pointing to new Database  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftRequestFlowAuditList]  
+-- paremeters here  
+ @request_id int  
+AS   
+  
+ select   
+  r.Request_id,r.ManagerCode as Clientid,r.FormID,ff.flow_number,   
+  fsFrom.flow_status_name as 'from_flow_status_name', fsTo.flow_status_name as 'to_flow_status_name',  
+  rfa.audit_datetime, u.loginname, rfa.flow_status_comment  
+ from TBL_WFT_RequestFlowAudit rfa  
+  inner join TBL_WFT_RequestFlow rf on rfa.request_flow_id=rf.request_flow_id  
+  inner join tbl_WFT_Request r on rf.request_id=r.request_id  
+  inner join tbl_wft_formflow ff on ff.form_flow_id = rf.form_flow_id  
+  inner join tbl_ks_user u on rfa.audit_user_id = u.userid  
+  left outer join tbl_wft_flowstatus fsFrom on rfa.from_flow_status_id = fsFrom.flow_status_id  
+  left outer join tbl_wft_flowstatus fsTo on rfa.to_flow_status_id = fsTo.flow_status_id  
+ where r.request_id =  @request_id  
+ order by ff.flow_number,rfa.audit_datetime,request_flow_audit_id  
+  
+ GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftRequestFlowAuditList')
+    BEGIN
+       
+        PRINT 'CREATED USP_EX_GetWftRequestFlowAuditList';
+    END
+
+  
+  
+  

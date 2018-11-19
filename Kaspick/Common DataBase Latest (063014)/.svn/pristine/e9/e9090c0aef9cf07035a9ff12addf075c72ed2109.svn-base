@@ -1,0 +1,125 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEnginePaymentCondition]    Script Date: 10/15/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEnginePaymentCondition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEnginePaymentCondition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEnginePaymentCondition]    Script Date: 10/15/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEnginePaymentCondition                      
+** Short Desc: To get Data from PaymentCondition Table
+**                      
+** Full Description:  The sp accepts EntityTypeID. This parameter distinguish between Manager/Account/Contact.      
+**  The second parameter is EntityID which is ManagerCOde/AccountID/ContactID.      
+**  The output includes all columns from the table       
+**                              
+** Input Arguments: 
+  @EntityID VARCHAR(15),       
+  @EntityType VARCHAR(10) 
+
+**         
+** Sample Call    
+  EXEC USP_PP_GetValidationEnginePaymentCondition
+  @EntityID = 'TMC',        
+  @EntityType ='Manager'       
+    
+   
+  EXEC USP_PP_GetValidationEnginePaymentCondition     
+  @EntityType ='Account' ,      
+  @EntityID = 'BRCAR'    
+    
+  EXEC USP_PP_GetValidationEnginePaymentCondition 
+  @EntityID = '129584' ,      
+  @EntityType ='Contact'      
+ 
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 15-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 5/20/2014	Saravanan	Added List Type Condition and RTrim function
+**5/22/2014		Saravanan			Fixed Review comments 
+ 5/29/2014		Saravanan	Added alias Name (ManagerCode and CustomerAccountNUmber)
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+
+      
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEnginePaymentCondition]      
+ -- paremeters here 
+  @EntityID VARCHAR(15),       
+  @EntityType VARCHAR(10)      
+    
+AS       
+      
+	BEGIN TRY        
+        
+		--  Initial Set statements  --        
+		SET NOCOUNT ON;        
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds     
+      
+   
+      
+	-- Body of procedure  --      
+	SELECT ConditionID
+		,EntityTypeId
+		,RTRIM(ManagerCode) AS ManagerCode
+		,RTRIM(CustomerAccountNumber) AS CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,AccountType
+		,ISNULL(Comments, '') AS Comments
+		,StatusID
+		,ValidationEngineResultType
+		,PmntCndn.ModifiedDate
+		,ModifiedBy
+		,PmntCndn.CreatedDate
+		,CreatedBy
+	FROM TBL_PP_PaymentCondition PmntCndn
+      INNER JOIN dbo.TBL_ListItem ListItem ON ListItem.ListItemID = PmntCndn.EntityTypeId
+      INNER JOIN TBL_ListType ListType ON ListType.ListTypeID = ListItem.ListTypeID
+      	WHERE (
+			CASE 
+				WHEN @EntityType = 'Manager'
+					THEN RTRIM(PmntCndn.ManagerCode)
+				WHEN @EntityType = 'Account'
+					THEN RTRIM(PmntCndn.CustomerAccountNumber)
+				WHEN @EntityType = 'Contact'
+					THEN CAST(PmntCndn.ContactID AS Varchar(20))
+				END
+			) = @EntityID
+		AND ListItem.ListItemName = @EntityType AND ListType.ListTypeName = 'Entity'
+     
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH 
+  

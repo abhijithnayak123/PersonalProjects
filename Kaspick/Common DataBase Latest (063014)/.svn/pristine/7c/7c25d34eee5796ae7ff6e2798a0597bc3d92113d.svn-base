@@ -1,0 +1,118 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeGroupData'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradeGroupData;
+
+	PRINT 'DROPPED USP_EX_GetTradeGroupData';
+END
+GO
+
+/******************************************************************************                          
+** Name: USP_EX_GetTradeGroupData
+** Old Name:     USP_EIS_EX_TRADE_GROUP_DATA_SELPROC                          
+** Short Desc: To retrieve the Trade Group Accounts Data                
+**                          
+** Full Description: To retrieve the Trade Group Accounts Data                
+**                                  
+** Input Arguments: NONE        
+**             
+** Sample Call                          
+**  EXEC USP_EX_GetTradeGroupData 'New', 113 ,'TCCOY'      
+           
+**                 
+** Return values: NONE        
+**                          
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Soorya                   
+** Company   : Kaspick & Company                          
+** Project   : Excelsior  - Enfuego3B                          
+** Created DT: 12/03/2010                          
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------                    
+** 8-Apr-2014   Abhijith        EXCREQ 7.4
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradeGroupData] (
+	@Mode VARCHAR(10)
+	,@GroupID BIGINT
+	,@AccountID CHAR(14)
+	)
+AS
+BEGIN
+	--  Variable Declarations  --              
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @ClientID VARCHAR(15);
+	-- Variables used for error handling - uncomment if needed              
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_EX_GetTradeGroupData';
+
+	-- Body of procedure  --              
+	BEGIN TRY
+		SELECT GroupName
+		FROM TBL_TR_TradeGroup
+		WHERE GroupID = @GroupID
+
+		SELECT @ClientID = ClientID
+		FROM VW_EX_Account
+		WHERE AccountID = @AccountID;
+
+		SELECT AdventID
+		FROM VW_EX_Account
+		WHERE ClientID = @ClientID
+			AND AdventID NOT IN (
+				SELECT CustomerAccountNumber
+				FROM TBL_TR_TradeGroupAccount
+				)
+		ORDER BY AdventID
+
+		SELECT CustomerAccountNumber AS AdventID
+		FROM TBL_TR_TradeGroupAccount
+		WHERE GroupID = @GroupID
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_GetTradeGroupData: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --              
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeGroupData'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetTradeGroupData';
+END

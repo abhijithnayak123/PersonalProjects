@@ -1,0 +1,468 @@
+ 
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_WFT_GetEmailRuleEngineTemplateAttributeDetails')
+    BEGIN
+        DROP PROCEDURE USP_WFT_GetEmailRuleEngineTemplateAttributeDetails;
+        PRINT 'DROPPED USP_WFT_GetEmailRuleEngineTemplateAttributeDetails';
+    END
+GO
+  
+/******************************************************************************  
+** Name:     [USP_WFT_GetEmailRuleEngineTemplateAttributeDetails]  
+** Short Desc:   
+**  
+** Full Description  
+**          
+**  
+** Sample Call  
+ [USP_WFT_GetEmailRuleEngineTemplateAttributeDetails] '<root><templateRule><ID>10</ID><param1>3063</param1><param2>16</param2><param3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>1</ID><param1>1</param1><param2>1</param2><pa
+ram3></param3><param4></param4><param5></param5></templateRule><templateRule><ID>27</ID><param1>3065</param1><param2>35</param2><param3></param3><param4></param4><param5></param5></templateRule></root>'  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Abhishek  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 20-April-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineTemplateAttributeDetails] @emailTemplateXML XML  
+AS  
+BEGIN  
+ DECLARE @XmlRequestInfo TABLE (  
+  ID INT IDENTITY(1, 1)  
+  ,emailTemplateRuleid INT  
+  ,request_id INT  
+  ,emailruleid INT  
+  ,param3 VARCHAR(255)  
+  ,param4 VARCHAR(255)  
+  ,param5 VARCHAR(255)  
+  ,[guid] VARCHAR(255)  
+  ,formid INT  
+  )  
+  
+ INSERT INTO @XmlRequestInfo (  
+  emailTemplateRuleid  
+  ,request_id  
+  ,emailruleid  
+  ,param3  
+  ,param4  
+  ,param5  
+  ,[guid]  
+  ,formid  
+  )  
+ SELECT XmlInput.value('ID[1]', 'int') AS emailTemplateRuleid  
+  ,XmlInput.value('param1[1]', 'int') AS requestid  
+  ,XmlInput.value('param2[1]', 'int') AS param2  
+  ,XmlInput.value('param3[1]', 'varchar(255)') AS param3  
+  ,XmlInput.value('param4[1]', 'varchar(255)') AS param4  
+  ,XmlInput.value('param5[1]', 'varchar(255)') AS param5  
+  ,WftReq.guid  
+  ,WftReq.formid  
+ FROM @emailTemplateXML.nodes('//templateRule') AS a(XmlInput)  
+ INNER JOIN TBL_WFT_Request WftReq  
+  ON WftReq.request_id = XmlInput.value('param1[1]', 'int')  
+  
+ --form_id = 89  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN TrstTrm.account_name  
+   WHEN EmlRulAttr.attribute_name = 'donor_beneficiary_name'  
+    THEN TrstTrm.beneficiary_name  
+     --when EmlRulAttr.attribute_name ='action_on_account' then tt.action_on_account  
+   WHEN EmlRulAttr.attribute_name = 'advent_id'  
+    THEN TrstTrm.CustomerAccountNumber  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_TrustTermination TrstTrm  
+  ON WftReq.guid = TrstTrm.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ --form_id = 91 templateruleid = 1  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,NameChng.donor_bene_name AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_NameChange NameChng  
+  ON WftReq.guid = NameChng.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 92  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,AdrsChg.donor_bene_name AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_AddressChange AdrsChg  
+  ON WftReq.guid = AdrsChg.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION 
+ 
+ 
+  ----form_id = 92  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,AdrsChg.donorbenename AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_TAG_DBADDRESSCHANGE AdrsChg  
+  ON WftReq.guid = AdrsChg.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 93  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,ThrdPrty.donor_bene_name AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_ThirdPartyChange ThrdPrty  
+  ON WftReq.guid = ThrdPrty.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ --form_id = 94  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,BnkPymtChg.donor_bene_name AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_BankPaymentChange BnkPymtChg  
+  ON WftReq.guid = BnkPymtChg.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 128  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN ChkReq.account_name  
+   WHEN EmlRulAttr.attribute_name = 'amount_requested'  
+    THEN CONVERT(VARCHAR(100), CAST(ChkReq.payment_amount AS DECIMAL(38, 2)))  
+   WHEN EmlRulAttr.attribute_name = 'make_check_payable_to'  
+    THEN ChkReq.check_payable_to  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_CheckRequest ChkReq  
+  ON WftReq.guid = ChkReq.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 132, templateruleid-   
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN MultBene.account_name  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_MultipleBeneficiary MultBene  
+  ON WftReq.guid = MultBene.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 133  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN NeTrstInf.account_name  
+   WHEN EmlRulAttr.attribute_name = 'completed_by'  
+    THEN NeTrstInf.submitted_by  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'trustee_name'  
+    THEN NeTrstInf.ManagerCodeName  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_NewTrustInfo NeTrstInf  
+  ON WftReq.guid = NeTrstInf.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 152  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN DntdAsst.account_name  
+   WHEN EmlRulAttr.attribute_name = 'total_gift_value'  
+    THEN cast(DntdAsst.total_asset_value AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'advent_id'  
+    THEN DntdAsst.CustomerAccountNumber  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_AdditionalDonatedAssset DntdAsst  
+  ON WftReq.guid = DntdAsst.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 153  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN AddToTrst.account_name  
+   WHEN EmlRulAttr.attribute_name = 'advent_id'  
+    THEN AddToTrst.CustomerAccountNumber  
+   WHEN EmlRulAttr.attribute_name = 'asset_type1'  
+    THEN ISNULL(AddToTrst.asset_type1, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type2'  
+    THEN ISNULL(AddToTrst.asset_type2, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type3'  
+    THEN ISNULL(AddToTrst.asset_type3, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type4'  
+    THEN ISNULL(AddToTrst.asset_type4, '')  
+   WHEN EmlRulAttr.attribute_name = 'completed_by'  
+    THEN AddToTrst.submitted_by  
+   WHEN EmlRulAttr.attribute_name = 'gift_date'  
+    THEN cast(AddToTrst.gift_date AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'total_gift_value'  
+    THEN cast(AddToTrst.total_gift_value AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_AdditionToTrust AddToTrst  
+  ON WftReq.guid = AddToTrst.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 154  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN PGDataAsst.account_name  
+   WHEN EmlRulAttr.attribute_name = 'donor_beneficiary_name'  
+    THEN isnull(PGDataAsst.bene1_first_name, '') + '' + isnull(bene1_last_name, '')  
+   WHEN EmlRulAttr.attribute_name = 'advent_id'  
+    THEN PGDataAsst.CustomerAccountNumber  
+   WHEN EmlRulAttr.attribute_name = 'asset_type1'  
+    THEN ISNULL(PGDataAsst.asset_type1, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type2'  
+    THEN ISNULL(PGDataAsst.asset_type2, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type3'  
+    THEN ISNULL(PGDataAsst.asset_type3, '')  
+   WHEN EmlRulAttr.attribute_name = 'asset_type4'  
+    THEN ISNULL(PGDataAsst.asset_type4, '')  
+   WHEN EmlRulAttr.attribute_name = 'completed_by'  
+    THEN PGDataAsst.submitted_by  
+   WHEN EmlRulAttr.attribute_name = 'gift_date'  
+    THEN cast(PGDataAsst.gift_date AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   WHEN EmlRulAttr.attribute_name = 'total_gift_value'  
+    THEN cast(PGDataAsst.total_gift_value AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_PifGapcontactDataAssetValution PGDataAsst  
+  ON WftReq.guid = PGDataAsst.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 155  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN TrstAsstVal.account_name  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_TrustAssetValuation TrstAsstVal  
+  ON WftReq.guid = TrstAsstVal.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+   
+ UNION  
+   
+ ----form_id = 157  
+ SELECT WftReq.request_id  
+  ,EmlRul.email_template_rule_id  
+  ,ReqInf.emailruleid  
+  ,EmlRulAttr.attribute_name  
+  ,CASE   
+   WHEN EmlRulAttr.attribute_name = 'account_name'  
+    THEN InvDrc.account_name  
+   WHEN EmlRulAttr.attribute_name = 'advent_id'  
+    THEN InvDrc.CustomerAccountNumber  
+   WHEN EmlRulAttr.attribute_name = 'completed_by'  
+    THEN InvDrc.submitted_by  
+   WHEN EmlRulAttr.attribute_name = 'current_investment_objective'  
+    THEN InvDrc.current_investment_objective  
+   WHEN EmlRulAttr.attribute_name = 'invest_trade_by_exception'  
+    THEN CASE   
+      WHEN isnull(InvDrc.is_invest_or_trade_by_exception, 0) = 0  
+       THEN 'No'  
+      ELSE 'Yes'  
+      END  
+   WHEN EmlRulAttr.attribute_name = 'investment_per_policy'  
+    THEN CASE   
+      WHEN isnull(InvDrc.is_investment_per_policy, 0) = 0  
+       THEN 'No'  
+      ELSE 'Yes'  
+      END  
+   WHEN EmlRulAttr.attribute_name = 'reason_for_change'  
+    THEN InvDrc.comments  
+   WHEN EmlRulAttr.attribute_name = 'reason_for_submission'  
+    THEN InvDrc.reason_for_submission  
+   WHEN EmlRulAttr.attribute_name = 'request_id'  
+    THEN cast(WftReq.request_id AS VARCHAR)  
+   ELSE NULL  
+   END AS actualAttributeValue  
+ FROM TBL_WFT_Request WftReq  
+ INNER JOIN @XmlRequestInfo ReqInf  
+  ON WftReq.request_id = ReqInf.request_id  
+ INNER JOIN TBL_WFT_InvestmentDirective InvDrc  
+  ON WftReq.guid = InvDrc.guid  
+ INNER JOIN TBL_EML_EmailTemplateRule EmlRul  
+  ON ReqInf.emailTemplateRuleid = EmlRul.email_template_rule_id  
+ LEFT OUTER JOIN TBL_EML_EmailTemplateRuleAttribute EmlRulAttr  
+  ON EmlRul.email_template_rule_id = EmlRulAttr.email_template_rule_id  
+END  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_WFT_GetEmailRuleEngineTemplateAttributeDetails') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_WFT_GetEmailRuleEngineTemplateAttributeDetails';
+	END

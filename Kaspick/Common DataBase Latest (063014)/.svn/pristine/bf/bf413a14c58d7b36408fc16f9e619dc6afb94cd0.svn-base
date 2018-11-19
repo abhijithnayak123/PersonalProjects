@@ -1,0 +1,213 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentDetail]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SavePaymentDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SavePaymentDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentDetail]    Script Date: 09/18/2013 09:43:32 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name:     [USP_PP_SavePaymentDetail]        
+** Short Desc: Save changes made to Payment from UI        
+**        
+** Full Description        
+**        Accepts a XML document. XML contains Payment details      
+**        
+** Sample Call     
+ 
+ Declare @ret INT  
+ EXEC [USP_PP_SavePaymentDetail]      
+ '<PaymentCollection><InsertList></InsertList><UpdateList><Payment PaymentID="1134847"  PaymentDate="1/16/2014 12:00:00 AM"  IssueDate="1/1/1900 12:00:00 AM"  VoidDate="1/16/2014 12:00:00 AM"  TaxYear="2014"  ClearDate="1/1/1900 12:00:00 AM"  PaymentMethod="WIRE"  PostDate="1/13/2014 12:35:58 AM"  Comment="VGVzdCBDb21tZW50cyBmb3IgVm9pZGluZyBQYXltZW50DQpTYXJhdmFuYW4gYW5kIHRoZW4gVW4tVm9pZCBhbmQgdGhlbiBSZS1Jc3N1ZWQ="  Memo="UmVJc3N1ZWQ="  ReissueAs="0"  ReissueOf="0"  StatusID="Reissue"  ClearMethod=""  PaymentType="B"  DisplayVoidPaymentInWeb="0"  RecordVersion="0x0000000000426FEB"  /></UpdateList><DeleteList></DeleteList></PaymentCollection>',  
+'<ArrayOfListItem pageNumber="1" pageSize="" type="" code="" message="" refCode="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><ListItem xsi:type="ScheduledPayments"><__RowState>Added</__RowState><InnotrustTransactionID>21323200966</InnotrustTransactionID><CheckNumber></CheckNumber><CustomerAccountNumber>PSDAV</CustomerAccountNumber><InstructionID>3782</InstructionID><BeneficiaryDistributionID>251336</BeneficiaryDistributionID><ParagonScheduleID>621983</ParagonScheduleID><FailFlag></FailFlag><ContactId>0</ContactId><CustomerShortName></CustomerShortName><AccountTypeCode></AccountTypeCode><TrustTypeCode></TrustTypeCode><ManagerCode></ManagerCode><TaxID></TaxID><ContactName></ContactName><PayeeName></PayeeName><PayeeAddress1></PayeeAddress1><PayeeAddress2></PayeeAddress2><PayeeAddress3></PayeeAddress3><PayeeAddressCity></PayeeAddressCity><PayeeAddressState></PayeeAddressState><PayeeAddressZip></PayeeAddressZip><PayeeAddressCountry></PayeeAddressCountry><SourceBankName></SourceBankName><SourceBankAddress></SourceBankAddress><SourceBankABA></SourceBankABA><SourceBankFRNumber></SourceBankFRNumber><SourceAccount></SourceAccount><PayorBriefName></PayorBriefName><AllianceDesc></AllianceDesc><PayorName></PayorName><PayorAddress1></PayorAddress1><PayorAddress2></PayorAddress2><PayorAddress3></PayorAddress3><PayorAddressCity></PayorAddressCity><PayorAddressState></PayorAddressState><PayorAddressZip></PayorAddressZip><PayorAddressCountry></PayorAddressCountry><DestBankName></DestBankName><DestBankABA></DestBankABA><DestAccount></DestAccount><DestFFC></DestFFC><DestAccountType></DestAccountType><TaxCode></TaxCode><ChargeType></ChargeType><ProxyContactID>0</ProxyContactID><PaymentMethod></PaymentMethod><MailingAddress1></MailingAddress1><MailingAddress2></MailingAddress2><MailingAddress3></MailingAddress3><MailingAddressCity></MailingAddressCity><MailingAddressState></MailingAddressState><MailingAddressZip></MailingAddressZip><MailingAddressCountry></MailingAddressCountry><PrintAdvice>0</PrintAdvice><PaymentFrequency>0</PaymentFrequency><PrimaryLastName></PrimaryLastName><PaidForAddress1></PaidForAddress1><PaidForAddress2></PaidForAddress2><PaidForAddress3></PaidForAddress3><PaidForAddressCity></PaidForAddressCity><PaidForAddressState></PaidForAddressState><PaidForAddressZip></PaidForAddressZip><PaidForAddressCountry></PaidForAddressCountry><PaymentAmount>139.03</PaymentAmount><PaymentDate>2014-01-15T13:30:00.0000000-05:00</PaymentDate><TaxYear>2014</TaxYear><ParagonPaymentType>B</ParagonPaymentType><ErrorMessage></ErrorMessage></ListItem></ArrayOfListItem>',
+ 1, @ret output  
+ SELECT  @ret 
+   
+    
+**        
+** Return values: NONE        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By: Venkatesham        
+** Company   : Kaspick & Company        
+** Project   : BackOffice Integration        
+** Created DT: 10-Sep-2013        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+  16-jan-2014	Saravanan P Muthu	CAST Comments to Varchar and Updated the StatusID columnName in XML attribute
+									Removed Record Version Check (Separate SP has been written).
+  23-may-2014   Salih               Modified Sample Call XML forr the column Change from ExpenseCode to TaxCode
+  10-Jun-2014   Ashvin              Added TransactionNumber in xml to update TBL_PP_BeneficiaryPayment
+									
+*******************************************************************************        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SavePaymentDetail] @XMLUpdateData XML
+	,@XMLPostingData XML
+	,@UserID INT = 1
+	,@Returnstatus INT
+OUTPUT AS
+
+BEGIN
+	BEGIN TRY
+		--  Initial Set statements  --          
+		SET NOCOUNT ON;
+		SET LOCK_TIMEOUT 30000;-- 30 seconds          
+			--  Variable Data Assignment  --          
+		SET @Returnstatus = 0
+
+		-- Body of procedure  --          
+		--  Temp tables, Table Variables  --      
+		--DECLARE #Payment TABLE 
+		CREATE TABLE #Payment (
+			PaymentID INT
+			,RecordVersion VARBINARY(8)
+			,Returnstatus VARCHAR(20)
+			,TransactionNumber VARCHAR(11)
+			)
+
+		DECLARE @PaymentID INT
+			,@VoidDate DATETIME
+			,@Comment VARCHAR(1000)
+			,@Memo VARCHAR(100)
+			,@ClearDate DATETIME
+			,@ClearMethod CHAR(1)
+			,@Status VARCHAR(50)
+			,@RecordVersion VARCHAR(20)
+			,@DisplayVoidPaymentInWeb BIT
+			,@GSOInfo VARCHAR(255)
+			,@DirectDepositFlag BIT
+			,@ReissueOf VARCHAR(15)
+			,@ReissueAs VARCHAR(15)
+			,@TransactionNumber VARCHAR(20)
+
+		-- Parse the XML   CAST(XMLDATA.item.value('@Comment[1]', 'varbinary(max)') AS VARCHAR(MAX)),    
+		SELECT @PaymentId = XMLUpdateData.item.value('@PaymentID[1]', 'int')
+			,@VoidDate = XMLUpdateData.item.value('@VoidDate[1]', 'datetime')
+			,@Comment = CAST(XMLUpdateData.item.value('@Comment[1]', 'varbinary(1000)') AS VARCHAR(1000))
+			,@ClearDate = XMLUpdateData.item.value('@ClearDate[1]', 'datetime')
+			,@ClearMethod = XMLUpdateData.item.value('@ClearMethod[1]', 'char(1)')
+			,@Status = XMLUpdateData.item.value('@StatusID[1]', 'varchar(50)')
+			,@RecordVersion = XMLUpdateData.item.value('@RecordVersion[1]', 'varchar(20)')
+			,@DisplayVoidPaymentInWeb = XMLUpdateData.item.value('@DisplayVoidPaymentInWeb[1]', 'bit')
+			,@TransactionNumber = XMLUpdateData.item.value('@TransactionNumber[1]', 'VARCHAR(20)')
+		FROM @XMLUpdateData.nodes('//PaymentCollection/UpdateList/Payment') AS XMLUpdateData(item)
+
+		BEGIN TRANSACTION
+
+		IF (@Status = 'REISSUE')
+			OR (@Status = 'VOIDANDREISSUE')
+		BEGIN
+			--   INSERT INTO #Payment    
+			EXEC [USP_PP_SavePaymentReIssue] @XMLPostingData = @XMLPostingData
+				,@XMLUpdateData = @XMLUpdateData
+				,@UserID = @UserID
+				,@Returnstatus = @Returnstatus OUTPUT
+
+			IF @Returnstatus <> - 1
+			BEGIN
+				SELECT PaymentID
+					,RecordVersion
+					,Returnstatus
+					,TransactionNumber
+				FROM #Payment
+			END
+		END
+		ELSE
+		BEGIN
+			UPDATE TBL_PP_BeneficiaryPayment
+			SET VoidDate = CASE 
+					WHEN YEAR(@VOIDDATE) = 1900
+						THEN NULL
+					ELSE @VOIDDATE
+					END
+				,ClearDate = CASE 
+					WHEN YEAR(@CLEARDATE) = 1900
+						THEN NULL
+					ELSE @ClearDate
+					END
+				,ClearMethod = @ClearMethod
+				,DisplayVoidPaymentsInWeb = CASE 
+					WHEN YEAR(@VOIDDATE) = 1900
+						THEN NULL
+					ELSE @DisplayVoidPaymentInWeb
+					END
+				,Comment = @Comment
+				,TransactionNumber = @TransactionNumber
+				,ModifiedDate = GETDATE()
+				,ModifiedBy = @UserID
+				,[Status] = (
+					CASE 
+						WHEN [Status] <> 'ACHSent'
+							THEN (
+									CASE 
+										WHEN (
+												(@Status = 'REISSUE')
+												OR (@Status = 'VOIDANDREISSUE')
+												)
+											THEN 'Posted'
+										ELSE @Status
+										END
+									)
+						ELSE 'ACHSent'
+						END
+					)
+			WHERE PaymentId = @PaymentId
+
+			SELECT PaymentId
+				,CAST(RecordVersion AS VARBINARY(8)) AS RecordVersion
+				,@Returnstatus AS Returnstatus
+				,TransactionNumber
+			FROM TBL_PP_BeneficiaryPayment
+			WHERE PaymentId = @PaymentId
+		END
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		IF XACT_STATE() <> 0
+			ROLLBACK TRANSACTION
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		SET @ReturnStatus = - 1
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH
+END
+GO
+
+

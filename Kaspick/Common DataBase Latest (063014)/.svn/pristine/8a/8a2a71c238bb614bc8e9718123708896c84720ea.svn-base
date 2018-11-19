@@ -1,0 +1,110 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationGiftAddition]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationGiftAddition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationGiftAddition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationGiftAddition]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationGiftAddition                      
+** Short Desc: Get pending giftwrap severances for given valuation ids. This excludes    
+** the reconcilled and discarded transaction
+**                      
+** Full Description: Get pending giftwrap severances for given valuation ids. This excludes    
+** the reconcilled and discarded transaction
+**      
+**                              
+** Input Arguments:   	@ValuationDate DATETIME
+**	,@CustomerAccountNumber VARCHAR(14)
+**	,@ValuationID INT             
+** Sample Call     
+
+ EXEC USP_PV_GetValuationGiftAddition  '06/28/2009','RUGAP',6 
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationGiftAddition] (
+	@ValuationDate DATETIME
+	,@CustomerAccountNumber VARCHAR(14)
+	,@ValuationID INT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	IF @ValuationID = 0
+	BEGIN
+		SELECT TOP 1 @ValuationID = ValuationID
+		FROM TBL_PV_Valuation
+		WHERE ValuationDate = @ValuationDate
+			AND CustomerAccountNumber = @CustomerAccountNumber
+		ORDER BY ValuationID DESC
+	END
+
+	SELECT TransactionID
+		,ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,OrgID
+		,OrgAccount1
+		,GiftDate
+		,GiftType
+		,GiftAmount
+		,MarketValue
+		,MarketValueDate
+		,GiftStatus
+		,GiftKey
+		,AccountClosedDate
+		,Distributions
+		,PersonGiftMapID
+		,Association
+		,PersonID
+		,PersonName
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+	FROM TBL_PV_ValuationGiftwrapTransaction
+	WHERE ValuationID = @ValuationID
+		AND GiftStatus = 'Current'
+
+	SET NOCOUNT OFF;
+END

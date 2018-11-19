@@ -1,0 +1,71 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE (
+				type = 'FN'
+				OR TYPE = 'TF'
+				)
+			AND NAME = 'Fn_TBL_Retrieve_FileType'
+		)
+BEGIN
+	DROP FUNCTION Fn_TBL_Retrieve_FileType
+END
+GO
+
+/******************************************************************************                      
+** Name:     Fn_TBL_Retrieve_FileType                      
+** Short Desc: 
+**                      
+** Full Description: Get Mapping Value from TBL_EIS_SIT_FieldValueMatrix table for a given FieldValue and FieldName
+** Input Arguments: GEt File Type From 
+**         
+** Sample Call     
+Select dbo.Fn_TBL_Retrieve_FileType('1', '1')
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration 
+** Created DT: 18-Aug-2014
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE FUNCTION [dbo].[Fn_TBL_Retrieve_FileType] (
+	@valuationID INT
+	,@fileTypeName VARCHAR(100)
+	)
+RETURNS BIT
+AS
+BEGIN
+	DECLARE @filetype BIT
+
+	SELECT @filetype = 'true'
+	FROM TBL_SIT_InterfaceFileGenerationLog IL
+	INNER JOIN TBL_SIT_FileType FT ON IL.FileTypeID = FT.FileTypeID
+	WHERE ValuationID = @valuationID
+		AND FileTypeName = @fileTypeName
+
+	RETURN @filetype
+END
+GO
+
+
+

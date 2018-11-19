@@ -1,0 +1,231 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveMatchTransactions]    Script Date: 05/20/2014 18:45:18 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_SaveMatchTransactions]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_OP_SaveMatchTransactions]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_SaveMatchTransactions]    Script Date: 05/20/2014 18:45:18 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_SaveMatchTransactions      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call 
+EXEC USP_OP_SaveMatchTransactions 
+'<ReconMatchCollection><InsertList><ReconMatch TransactionID="1065709"  TradeID="1085529"  Comments=" : 05/21/2014 12:00 : tgupta_test"  TrAdventId="JHOGI"  TrTradeQuantity="-430.474950462217"  TrSecuritySymbol="VSIS.X"  TrTradeDate="03/06/2014 12:40:47:000"  TnAdventId="jhogi"  TnTradeQuantity="0.663"  TnSecuritySymbol="IRFI.X"  TnTradeDate="03/06/2014 12:00:00:000"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></ReconMatchCollection>'
+,'' ,100313,-1,''     
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		
+** Company  :		Kaspick & Company      
+** Project  :		Operations     
+** Created DT :		05/20/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 05/20/2014          Tanuj        Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_OP_SaveMatchTransactions] (
+	@XMLDATA XML
+	,@GroupComment VARCHAR(200)
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+	DECLARE @MATCHGROUPID AS INT
+	DECLARE @TRANSTATUSID AS CHAR(10)
+	DECLARE @UserRole TABLE (
+		ManagerCode VARCHAR(10)
+		,contactID INT
+		,ContactName VARCHAR(100)
+		,contactrolecode INT
+		,ContactRoleCodeDesc VARCHAR(100)
+		,userid INT
+		,firstname VARCHAR(50)
+		,lastname VARCHAR(50)
+		)
+
+	INSERT INTO @UserRole
+	EXEC USP_KS_GetUserRole
+
+	BEGIN TRY
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_RECONMATCH]')
+				)
+			DROP TABLE [DBO].[#TEMP_RECONMATCH]
+
+		CREATE TABLE #TEMP_RECONMATCH (
+			MATCHID BIGINT IDENTITY(1, 1)
+			,[TransactionID] BIGINT
+			,[TradeID] INT
+			,[Comments] VARCHAR(200)
+			)
+
+		INSERT INTO #TEMP_RECONMATCH (
+			[TransactionID]
+			,[TradeID]
+			,[Comments]
+			)
+		SELECT TempReconMatchTable.ReconMatchColumns.value('@TransactionID', 'BIGINT')
+			,TempReconMatchTable.ReconMatchColumns.value('@TradeID', 'INT')
+			,TempReconMatchTable.ReconMatchColumns.value('@Comments', 'VARCHAR(200)')
+		FROM @XMLDATA.nodes('//ReconMatchCollection/InsertList/ReconMatch') AS TempReconMatchTable(ReconMatchColumns)
+
+		BEGIN TRANSACTION
+
+		INSERT INTO [TBL_OP_RECONCILIATIONGROUP] ([COMMENTS])
+		VALUES (@GroupComment)
+
+		SELECT @MATCHGROUPID = MAX(RECONCILIATIONGROUPID)
+		FROM TBL_OP_RECONCILIATIONGROUP
+
+		SELECT @TRANSTATUSID = STATUSID
+		FROM TBL_OP_TRANSACTIONSTATUS
+		WHERE STATUSDESCRIPTION = 'ReadyForReview'
+
+		INSERT INTO TBL_OP_TransactionReconciliation (
+			ReConDateTime
+			,TradeID
+			,TransactionID
+			,ReConUserID
+			,ReconciliationGroupID
+			)
+		SELECT GETDATE()
+			,TradeID
+			,TransactionID
+			,@UserID
+			,@MATCHGROUPID
+		FROM #TEMP_RECONMATCH
+
+		BEGIN
+			UPDATE TBL_OP_Transaction
+			SET TransactionComment = TEMPRM.Comments + ' : MatchComments' + CHAR(10) + ISNULL(TransactionComment, '')
+				,CurrentReconStatus = @TRANSTATUSID
+			FROM TBL_OP_Transaction TR
+			INNER JOIN #TEMP_RECONMATCH TEMPRM ON TEMPRM.TransactionID = TR.TransactionID
+		END
+
+		SELECT TR.TRANSACTIONID
+			,TR.CustomerAccountNumber
+			,AM.ManagerCode AS ManagerCode
+			,(ISNULL(ClntMngr.FirstName, '') + ' ' + ISNULL(ClntMngr.LastName, '')) AS CLIENTMANAGER
+			,(ISNULL(TrstAdmin.FirstName, '') + ' ' + ISNULL(TrstAdmin.LastName, '')) AS TRUSTADMINISTRATOR
+			,(ISNULL(trdr.FirstName, '') + ' ' + ISNULL(trdr.LastName, '')) AS TRADER
+			,(ISNULL(OpsAdmin.FirstName, '') + ' ' + ISNULL(OpsAdmin.LastName, '')) AS PORTFOLIOADMINISTRATOR
+			,TR.TRANSACTIONDESCRIPTION
+			,TR.TRANSACTIONCODE
+			,TR.SECURITYSYMBOL
+			,TR.TRADEDATE
+			,TR.TRADEQUANTITY
+			,TR.TRADEAMOUNT
+			,(
+				CASE 
+					WHEN isnull(TR.AccountFMV, 0) <> 0
+						THEN ISNULL(((TR.TRADEAMOUNT) / (TR.AccountFMV)), 0)
+					ELSE 0
+					END
+				) AS NEWDOLLARSAMOUNT
+			,ISNULL(TR.ACCOUNTFMV, 0) AS ACCOUNTFMV
+			,TR.TRANSACTIONCOMMENT
+			,TR.CurrentErrorResponse
+			,TR.CurrentReconResponse
+			,isnull(ERR.ResponseDescription, '') AS ErrorResponseDescription
+			,isnull(RRR.ResponseDescription, '') AS ReconResponseDescription
+			,TR.SourceType
+			,TR.SecurityType AS SECURITYTYPE
+			--,D.AccountID AS ACCOUNTNUMBER
+			,TR.CurrentReconStatus
+			,TR.CurrentErrorStatus
+			,TRDTIMP.RunStartDateTime AS IMPORTDATE
+			,TR.RunID
+			,TR.OrigninalCostDate
+			,TR.SourceSymbol
+			,TR.LotLocation
+			,TR.Broker
+			,TR.Commission
+			,TR.LotID
+			,TR.AXYSComment
+			,TR.AXYSPostDate
+			,TR.AXYSTransactionID
+			,TR.UserDefinedCode
+			,TR.IsError
+			,TR.IsRecon
+			,TR.IsSigCash
+			,TRR.ReconciliationGroupID AS GroupID
+			,TR.RecordVersion
+			,TR.LastModifiedUserID
+			,TR.LastModifiedDate
+			,TR.IsManagedAccount
+		FROM TBL_OP_Transaction TR
+		INNER JOIN TBL_OP_TransactionStatus TS ON TS.StatusID = TR.CurrentReconStatus
+		INNER JOIN SYN_IT_AccountMaster AM ON TR.CustomerAccountNumber = AM.CustomerAccountNumber
+		INNER JOIN TBL_OP_TransactionDataImport TRDTIMP ON TR.RunID = TRDTIMP.RunID
+		LEFT OUTER JOIN TBL_OP_ResolutionResponse RRR ON TR.CurrentReconResponse = RRR.ResponseID
+		LEFT OUTER JOIN TBL_OP_ResolutionResponse ERR ON TR.CurrentErrorResponse = ERR.ResponseID
+		LEFT OUTER JOIN TBL_OP_TransactionReconciliation TRR ON TRR.TransactionID = TR.TransactionID
+		LEFT OUTER JOIN @UserRole ClntMngr ON ClntMngr.ManagerCode = am.ManagerCode
+			AND ClntMngr.ContactRoleCode IN (2)
+		LEFT OUTER JOIN @UserRole TrstAdmin ON TrstAdmin.ManagerCode = am.ManagerCode
+			AND TrstAdmin.ContactRoleCode IN (510)
+		LEFT OUTER JOIN @UserRole trdr ON trdr.ManagerCode = am.ManagerCode
+			AND trdr.ContactRoleCode IN (515)
+		LEFT OUTER JOIN @UserRole OpsAdmin ON OpsAdmin.ManagerCode = am.ManagerCode
+			AND OpsAdmin.ContactRoleCode IN (517)
+		WHERE TR.TRANSACTIONID IN (
+				SELECT XMLDATA.item.value('@TransactionID[1]', 'INT') AS TrID
+				FROM @XMLDATA.nodes('//ReconMatchCollection/InsertList/ReconMatch') AS XMLDATA(item)
+				)
+
+		IF (@@ERROR > 0)
+		BEGIN
+			ROLLBACK TRANSACTION
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+		SET @ReturnStatus = - 1;
+
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+
+

@@ -1,0 +1,70 @@
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetWithHoldingAmountForTrust'
+		)
+BEGIN
+	DROP FUNCTION FN_GetWithHoldingAmountForTrust
+END
+GO	
+
+/******************************************************************************                      
+** Name:     FN_GetWithHoldingAmountForTrust                      
+** Short Desc: To get withholding amount 
+**                      
+** Full Description: To get withholding amount for Tax Withholding Beneficiary        
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+        
+select dbo.FN_GetWithHoldingAmountForTrust(101201,'2010-09-30') AS Withholding  
+**              
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti Kalita    
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Nov-2013                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE FUNCTION [dbo].[FN_GetWithHoldingAmountForTrust]  
+(  
+ @ContactID INT,  
+ @PaymentDate DATETIME,  
+ @TaxYear INT  
+)  
+RETURNS Money  
+AS  
+BEGIN  
+ DECLARE @Withholding MONEY
+   
+ SET @Withholding = 0;  
+  
+ 
+ SELECT @Withholding = SUM(ScheduledAmount) FROM TBL_PP_BeneficiaryPayoutSchedule    
+ WHERE    
+  DATEDIFF(DAY, PaymentDate, @PaymentDate) = 0 
+  AND  TAXYear = @TaxYear 
+  AND ContactID in (SELECT BenPay.ContactID FROM TBL_PP_BeneficiaryPayoutSchedule BenPay 
+					INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt ON BenPay.ContactID = BenPmnt.ContactID 
+					WHERE BenPmnt.PaidforContactID = @ContactID ) 
+  AND PaymentID NOT IN (SELECT PaymentID FROM TBL_PP_BeneficiaryPayment WHERE VoidDate IS NOT NULL)    
+             GROUP BY PaymentDate,TaxYear  
+  
+ RETURN @Withholding  
+END  

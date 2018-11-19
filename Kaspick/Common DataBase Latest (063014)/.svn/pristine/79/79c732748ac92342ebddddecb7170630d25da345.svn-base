@@ -1,0 +1,177 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRVEDeliverableItems'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_UpdBRVEDeliverableItems;
+
+	PRINT 'DROPPED USP_RP_UpdBRVEDeliverableItems';
+END
+GO
+
+/**********************************************************************************************
+** New Name :  USP_RP_UpdBRVEDeliverableItems                  
+** Old Name :  USP_EIS_RPT_BR_VE_DeliverableItems_UpdProc                    
+** Short Desc:   
+**                    
+** Full Description: Update the staus of DeliverableItem to Error.  
+**                            
+** Input Arguments: 
+**       
+** Sample Call                    
+**  EXEC USP_RP_UpdBRVEDeliverableItems     
+    '<DeliverableItemsDataToValidateCollection><InsertList><DeliverableItemsDataToValidate AccountID="0"  BeneficiaryID="0"  ClientEmployeeID="0"  ClientID="0"  
+DeliverableItemID="49"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="0"  DeliverableFrequency="A"  UserID="1"  /><DeliverableItemsDataToValidate AccountID="0"  BeneficiaryID="0"  ClientEmployeeID="0"  ClientID="0"  
+DeliverableItemID="10806"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="0"  DeliverableFrequency="A"  UserID="1"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList></SelectList>
+</DeliverableItemsDataToValidateCollection>'     
+**           
+** Return values: NONE  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Venugopal. B  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/30/2009                    
+**                                
+**********************************************************************************************              
+**       Change History                    
+**********************************************************************************************              
+** Date:    Author:   Bug #   Description:                           Rvwd              
+** --------  -------- ------    -----------  ---------------------------   --------              
+** 11/25/2009  Venugopal.B   Updated to Update only the status of primary deliverable items
+							by adding the condition check with DeliveryMethodID
+** 01/07/2009 Venugopal.B  ROLLBACK TRAN is added.
+** 01/07/2009 Venugopal.B  ET #11231: Added inner join with the table TBL_EIS_DT_Delivery_Type_Methods
+** 03/12/2012	  Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.   
+** 03/14/2012	  Anand Kumar    ERD changes implemetation. 
+** 06-Jun-2014	  Mukesh			SP Name Renamed and Formatted 
+*********************************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*********************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RP_UpdBRVEDeliverableItems] (@XMLData XML)
+AS
+BEGIN
+	--  Initial Set statements  --        
+	--SET NOCOUNT ON;        
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds        
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;        
+	--  Variable Declarations  --        
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	--DECLARE @idoc INT;  Delete       
+	-- Variables used for error handling - uncomment if needed        
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --        
+	DECLARE @DeliverableItemsResulted TABLE (
+		DeliverableItemID INT
+		,DeliverableQueueID INT
+		,UserID INT
+		)
+
+	--  Variable Data Assignment  --        
+	SET @procname = 'USP_RP_UpdBRVEDeliverableItems';
+
+	-- Body of procedure  --        
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO @DeliverableItemsResulted
+		SELECT XMLDoc.item.value('@DeliverableItemID', 'int') AS DeliverableItemID
+			,XMLDoc.item.value('@DeliverableQueueID', 'int') AS DeliverableQueueID
+			,XMLDoc.item.value('@UserID[1]', 'int') AS UserID
+		FROM @XMLData.nodes('//DeliverableItemsDataToValidateCollection/InsertList/DeliverableItemsDataToValidate') AS XMLDoc(item)
+
+		INSERT INTO TBL_DLV_MethodStatusChangeLog (
+			New_StatusID
+			,Old_StatusID
+			,Comment
+			,StatusChangeUserID
+			,StatusChangeDT
+			,ItemMethodStatusID
+			)
+		-- SELECT   (SELECT DeliverableItemStatusID from TBL_EIS_DT_DeliverableProcess_Statuses WHERE StatusName = 'Error' AND DeliverableTypeID = DQ.DeliverableTypeID) AS New_StatusID,
+		SELECT (
+				SELECT DeliverableItemStatusID
+				FROM TBL_DLV_DeliverableProcessStatus
+				WHERE StatusName = 'Error'
+					AND DeliverableProcessID = DD.DeliverableProcessID
+				) AS New_StatusID
+			,IMS.DeliverableItemStatusID
+			,IMS.Comments
+			,DI.UserID
+			,GETDATE()
+			,IMS.ItemMethodStatusID
+		FROM TBL_DLV_ItemMethodStatus IMS
+		INNER JOIN @DeliverableItemsResulted DI ON IMS.DeliverableItemID = DI.DeliverableItemID
+		INNER JOIN TBL_DLV_DeliverableQueue DQ ON DI.DeliverableQueueID = DQ.DeliverableQueueID
+		INNER JOIN TBL_DLV_Deliverable DD ON DD.DeliverableID = DQ.DeliverableID
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+		INNER JOIN TBL_DLV_DeliverableMethod DM ON IMS.DeliveryMethodID = DM.DeliveryMethodID --ET #11231
+			AND DQ.DeliverableID = DM.DeliverableID
+			AND DM.IsPrimary = 1
+		WHERE DIS.StatusName <> 'Error'
+
+		UPDATE TBL_DLV_ItemMethodStatus
+		SET DeliverableItemStatusID =
+			--(SELECT DeliverableItemStatusID from TBL_EIS_DT_DeliverableProcess_Statuses WHERE StatusName = 'Error' AND DeliverableTypeID = DQ.DeliverableTypeID), 
+			(
+				SELECT DeliverableItemStatusID
+				FROM TBL_DLV_DeliverableProcessStatus
+				WHERE StatusName = 'Error'
+					AND DeliverableProcessID = DD.DeliverableProcessID
+				)
+			,ModifiedDate = GETDATE()
+			,ModifiedUserID = DI.UserID
+		FROM TBL_DLV_ItemMethodStatus IMS
+		INNER JOIN @DeliverableItemsResulted DI ON IMS.DeliverableItemID = DI.DeliverableItemID
+		INNER JOIN TBL_DLV_DeliverableQueue DQ ON DI.DeliverableQueueID = DQ.DeliverableQueueID
+		INNER JOIN TBL_DLV_Deliverable DD ON DD.DeliverableID = DQ.DeliverableID
+		INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+		INNER JOIN TBL_DLV_DeliverableMethod DM ON IMS.DeliveryMethodID = DM.DeliveryMethodID --ET #11231
+			AND DQ.DeliverableID = DM.DeliverableID
+			AND DM.IsPrimary = 1
+		WHERE DIS.StatusName <> 'Error'
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		IF @@TRANCOUNT > 0
+		BEGIN
+			ROLLBACK TRANSACTION
+		END
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_RP_UpdBRVEDeliverableItems: Cannot Delete.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --        
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_UpdBRVEDeliverableItems'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_UpdBRVEDeliverableItems';
+END

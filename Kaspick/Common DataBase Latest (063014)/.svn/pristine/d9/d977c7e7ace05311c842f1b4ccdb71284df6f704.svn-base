@@ -1,0 +1,176 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewCalcNetIncomeYield]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewCalcNetIncomeYield]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewCalcNetIncomeYield]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewCalcNetIncomeYield]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewCalcNetIncomeYield    
+** Short Desc:  Used for Net Income Calculation in Data Review Module     
+**    
+** Full Description : Used for Net Income Calculation in Data Review Module 
+**            
+**    
+** Sample Call    
+  Declare @XMLDATA XML  
+	set @XMLDATA =   '<ImportStagingCollection>  
+  <InsertList>  
+   <ImportStaging StagingID="12" />  
+   <ImportStaging StagingID="13" />  
+   <ImportStaging StagingID="14" />  
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>  
+	</ImportStagingCollection>'  
+	EXEC USP_IE_ReviewCalcNetIncomeYield  @XMLDATA    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/19/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewCalcNetIncomeYield] @XMLDATA XML AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --  
+	IF OBJECT_ID('tempdb..#TBLAccountsToBeImported') IS NOT NULL
+		DROP TABLE #TBLAccountsToBeImported
+
+	CREATE TABLE #TBLAccountsToBeImported (StagingID INT NOT NULL)
+
+	BEGIN TRY
+		--  Transactions  
+		BEGIN TRANSACTION
+
+		--Get acounts to be imported from xml  
+		INSERT INTO #TBLAccountsToBeImported
+		SELECT XMLInput.Item.value('@StagingID[1]', 'int') AS StagingID
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XMLInput(Item)
+
+		--reset all values previously calculated  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_NetIncomeYieldOnStartDate = 0
+			,Ca_PmtYield = 0
+			,Ca_NetPriorYearQ1_Q4Var = 0
+			,Ca_NetPriorYearTotalVar = 0
+			,Ca_InvAllocNetYieldVar = 0
+			,Ca_NetMidYearVar = 0
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Net Income Yield on start date  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_NetIncomeYieldOnStartDate = CASE 
+				WHEN ISNULL(Ax_FMVOnStartDate, 0) = 0
+					OR Ax_FMVOnStartDate = 0
+					THEN 0
+				ELSE ISNULL(Ca_NewNetIncomeEstimate, 0) / Ax_FMVOnStartDate
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		
+		--Payment Yield %  
+		--Prior Year Q1-Q4 Variance (Net)  
+		--'= IF(NetIncomeYield%onJan1 = 0, 0, ((Net Income Estimate used for Payment/Year-1 Q1-Q4 Payments) -1 ) * 100  
+		--Prior Year Total Variance (Net)  
+		--'= IF(NetIncomeYield%onJan1 = 0, 0, ((Net Income Estimate used for Payment/Year -1 Total Payments) -1 ) * 100 
+		--Inv Alloc Net Yield Variance
+		--Mid Year Variance  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_PmtYield = CASE 
+				WHEN ISNULL(Ax_FMVOnStartDate, 0) = 0
+					OR Ax_FMVOnStartDate = 0
+					THEN 0
+				ELSE ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / Ax_FMVOnStartDate
+				END
+			,Ca_NetPriorYearQ1_Q4Var = CASE 
+				WHEN ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) = 0
+					OR PP_Q1_Q4PaymentsPriorYear1 = 0
+					THEN 0
+				ELSE ((ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / PP_Q1_Q4PaymentsPriorYear1) - 1)
+				END
+			,Ca_NetPriorYearTotalVar = CASE 
+				WHEN ISNULL(PP_TotalPaymentsPriorYear1, 0) = 0
+					OR PP_TotalPaymentsPriorYear1 = 0
+					THEN 0
+				ELSE ((ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / PP_TotalPaymentsPriorYear1) - 1)
+				END
+			,Ca_InvAllocNetYieldVar = CASE 
+				WHEN ISNULL(PP_InvestmentAllocationYield, 0) = 0
+					OR PP_InvestmentAllocationYield = 0
+					THEN 0
+				ELSE ((Ax_NetIncomeYieldOnStartDate / (PP_InvestmentAllocationYield)) - 1)
+				END
+			,Ca_NetMidYearVar = CASE 
+				WHEN ISNULL(PP_ScheduledPaymentAmount, 0) = 0
+					OR PP_ScheduledPaymentAmount = 0
+					THEN 0
+				ELSE ((Ca_NetIncomeEstimateUsedForPmt / (PP_ScheduledPaymentAmount)) - 1)
+				END
+			,ModifiedDate = GETDATE()
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

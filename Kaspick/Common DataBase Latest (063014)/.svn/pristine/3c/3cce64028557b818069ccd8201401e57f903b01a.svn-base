@@ -1,0 +1,170 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryExclusionRule]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryExclusionRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryExclusionRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryExclusionRule]    Script Date: 08/14/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryExclusionRule                      
+** Short Desc: To check if Exclusion rule exists for a check method payment
+**                      
+** Full Description: To check if Exclusion rule exists for a check method payment for a Beneficairy
+**        
+**                              
+** Input Arguments: 
+		@UserID INT,
+		@Type Bit =1--auto 
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryExclusionRule     1  ,0 
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 7/29/2014 Anand		Updated for reading Exclusion rule from Contact/Account/Manager level
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryExclusionRule] @UserID INT
+	,@Type BIT = 1 --auto     
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	---Declare Variable
+	DECLARE @RuleID INT
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Exclusion rule exists for a check method payment'
+		AND RuleCategory = 'Beneficiary payment'
+
+	-- Body of procedure  --            
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpExclusionData]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpExclusionData]
+	END
+
+	CREATE TABLE #TmpExclusionData (
+		ContactID INT
+		,IsExclusion BIT
+		)
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Exclusion rule exists for a check method payment'
+		AND RuleCategory = 'Beneficiary payment'
+
+	-- Body of procedure  --         
+	--Contact Exclusion rule   
+	INSERT INTO #TmpExclusionData
+	SELECT StgData.ContactID
+		,CnctRule.IsExclusion
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN dbo.TBL_PP_ContactRule CnctRule ON StgData.CustomerAccountNumber = CnctRule.CustomerAccountNumber
+		AND StgData.ContactID = CnctRule.ContactID
+
+	IF NOT EXISTS (
+			SELECT 1
+			FROM #TmpExclusionData
+			)
+	BEGIN
+		--Account Exclusion rule   
+		INSERT INTO #TmpExclusionData
+		SELECT DISTINCT StgData.ContactID
+			,AcctRule.IsExclusion
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN dbo.TBL_PP_AccountRule AcctRule ON StgData.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+			AND AcctRule.IsExclusion = 1
+	END
+
+	IF NOT EXISTS (
+			SELECT 1
+			FROM #TmpExclusionData
+			)
+	BEGIN
+		--Manager Exclusion rule   
+		INSERT INTO #TmpExclusionData
+		SELECT DISTINCT StgData.ContactID
+			,MgrRule.IsExclusion
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN SYN_IT_AccountMaster AccMst ON AccMst.CustomerAccountNumber = StgData.CustomerAccountNumber
+		INNER JOIN dbo.TBL_PP_ManagerRule MgrRule ON MgrRule.ManagerCode = AccMst.ManagerCode
+		WHERE MgrRule.IsExclusion = 1
+	END
+
+	SELECT PaymentType
+		,StgData.ScheduleID
+		,@RuleID AS RuleID
+		,'IsExclusion' AS Attribute
+		,CASE 
+			WHEN IsExclusion = 1
+				THEN 'False'
+			WHEN IsExclusion = 0
+				THEN 'True'
+			END AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN #TmpExclusionData CnctRule ON StgData.ContactID = CnctRule.ContactID
+	--INNER JOIN dbo.TBL_PP_ContactRule CnctRule
+	--ON StgData.CustomerAccountNumber = CnctRule.CustomerAccountNumber
+	--	AND StgData.ContactID = CnctRule.ContactID
+	WHERE StgData.PaymentType IN (
+			'Beneficiarypayment'
+			,'PGCalcImport'
+			)
+		AND StgData.PaymentMethod = 'CHECK'
+		AND UserID = @UserID
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpExclusionData]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpExclusionData]
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

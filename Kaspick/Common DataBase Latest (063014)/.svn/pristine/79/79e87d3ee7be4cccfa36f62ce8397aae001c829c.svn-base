@@ -1,0 +1,76 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetAdminPaymentProcess]    Script Date: 08/29/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetAdminPaymentProcess]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetAdminPaymentProcess]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetAdminPaymentProcess]    Script Date: 08/29/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetAdminPaymentProcess                      
+** Short Desc: To get Payment posting process details
+**                      
+** Full Description:To get last 60 Payment posting process details from PaymentPostingProcessLog table        
+**        
+**                              
+** Input Arguments: None
+**         
+** Sample Call     
+EXEC USP_PP_GetAdminPaymentProcess        
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE dbo.[USP_PP_GetAdminPaymentProcess]
+AS
+BEGIN TRY
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	-- Body of procedure  -- 
+	-- Top 60 is added to fetch the last 60 processes based on ProcessStartDate     
+	SELECT TOP (60) PaymentPostingProcessLogID
+		,ProcessStartDateTime
+		,ProcessEndDateTime
+		,Status
+		,FailureDescription
+		,PaymentsPosted
+		,PaymentsNotPosted
+		,PaymentsValidated
+		,PaymentsFailed
+	FROM TBL_PP_PaymentPostingProcessLog
+	ORDER BY ProcessStartDateTime DESC
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

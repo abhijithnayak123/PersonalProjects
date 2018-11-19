@@ -1,0 +1,78 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAssetYield]    Script Date: 06/19/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetAssetYield]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetAssetYield]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetAssetYield]    Script Date: 06/19/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_GetAssetYield  
+** Short Desc: Put in Short Description  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+        EXEC USP_IE_GetAssetYield  -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Aashay Thodar  
+** Company   : Kaspick & Company  
+** Project   : Income Estimation  
+** Created DT: 06/19/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 06/19/2014  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetAssetYield]
+	-- paremeters here  
+AS
+BEGIN
+	--  Initial Set statements  --  
+	--SET NOCOUNT ON;  
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	-- Body of procedure  --  
+	SELECT PayDate
+		,SecuritySymbol
+		,CUSIP
+		,EstimatedDividend
+		,ActualDividend
+		,RecordDate
+		,XDate
+		,EstimatedSTG
+		,EstimatedLTG
+		,ActualSTG
+		,ActualLTG
+		,QualifiedDividend
+		,ConfirmedRecordDate
+	FROM TBL_IE_AssetYield
+	ORDER BY PayDate
+		,SecuritySymbol
+END
+	-- End of procedure  --  

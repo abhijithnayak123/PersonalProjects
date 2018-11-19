@@ -1,0 +1,386 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetClearedAndUnclearedPmt]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetClearedAndUnclearedPmt]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_PP_ReportGetClearedAndUnclearedPmt  
+** Short Desc: Procedure to get data for the cleared and uncleared payments report
+**    
+**    
+** Sample Call    
+		
+		EXEC USP_PP_ReportGetClearedAndUnclearedPmt null,'DCPIF4','1/1/2013','1/1/2014',null,null,null,'ClearedPayments','AllPayments','CustomerAccountNumber','PaymentDate'
+        EXEC USP_PP_ReportGetClearedAndUnclearedPmt null,null,'05/03/2000','06/04/2008',null,null,null,'UnclearedPayments','AllPayments','PaymentDate','CustomerAccountNumber'
+        EXEC USP_PP_ReportGetClearedAndUnclearedPmt null,'DCPIF4','05/03/2000','06/04/2008',null,null,null,'UnclearedPayments','AllPayments','PaymentDate','CustomerAccountNumber'
+
+**    --AllPayments or ClearedPayments or UnclearedPayments
+		AllPayments or Beneficiarypayments or VendorPayments
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar 
+** Company   : Ciber Offshore    
+** Project   : Reports & Queries - Paragon    
+** Created DT: 06/11/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetClearedAndUnclearedPmt] @ManagerCode CHAR(4) = NULL
+	,@CustomerAccountNumber CHAR(14) = NULL
+	,@PmtFromDate DATETIME = NULL
+	,@PmtToDate DATETIME = NULL
+	,@TaxYear INT = NULL
+	,@ClrFromDate DATETIME = NULL
+	,@ClrToDate DATETIME = NULL
+	,@IncludeLine1 VARCHAR(50)
+	,--AllPayments or ClearedPayments or UnclearedPayments
+	@IncludeLine2 VARCHAR(50)
+	,--AllPayments or Beneficiarypayments or VendorPayments
+	@Sort1 VARCHAR(50)
+	,--CustomerAccountNumber or PaymentDate 
+	@Sort2 VARCHAR(50) --CustomerAccountNumber or PaymentDate 
+	-- @Sort3 Varchar(25)				--CustomerAccountNumber or PaymentDate or PaymentBatch
+AS
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+IF OBJECT_ID('tempdb..#TmpBenPaymentInfo') IS NOT NULL
+	DROP TABLE #TmpBenPaymentInfo
+
+IF OBJECT_ID('tempdb..#TmpVendorPaymentInfo') IS NOT NULL
+	DROP TABLE #TmpVendorPaymentInfo
+
+IF @Sort1 = 'AdventID'
+	SET @Sort1 = 'AdventID'
+
+IF @Sort1 = 'PaymentDate'
+	SET @Sort1 = 'PaymentDate'
+
+IF @Sort2 = 'AdventID'
+	SET @Sort2 = 'AdventID'
+
+IF @Sort2 = 'PaymentDate'
+	SET @Sort2 = 'PaymentDate'
+
+IF OBJECT_ID('tempdb..#TmpBenPaymentInfo') IS NOT NULL
+	DROP TABLE #TmpBenPaymentInfo
+
+IF OBJECT_ID('tempdb..#TmpVendorPaymentInfo') IS NOT NULL
+	DROP TABLE #TmpVendorPaymentInfo
+
+SELECT CONVERT(VARCHAR, BenPaymt.PaymentDate, 101) AS PaymentDate
+	,AccMas.CustomerAccountNumber AS AdventID
+	,BenPaymt.DocumentNumber AS CheckNumber
+	,BenPaymt.PaymentAmount
+	,CONVERT(VARCHAR, BenPaymt.ClearDate, 101) AS ClearDate
+	,BenPaymt.PayeeName
+	,BenPaymt.TaxYear
+	,AccMas.Managercode
+	,CASE 
+		WHEN BenPaymt.PaymentMethod = 'ACH'
+			THEN 'ACH'
+		ELSE (UPPER(LEFT(LOWER(BenPaymt.PaymentMethod), 1)) + SUBSTRING(LOWER(BenPaymt.PaymentMethod), 2, LEN(BenPaymt.PaymentMethod)))
+		END AS FundingMethod
+	,BenPaymt.PaymentDate AS PmtDate
+	,RTRIM(LTRIM((ISNULL(AccMas.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMas.CustomerDescriptionLine4, '')))) AS AccountName
+INTO #TmpBenPaymentInfo
+FROM SYN_IT_AccountMaster AccMas
+INNER JOIN TBL_PP_Beneficiarypayment BenPaymt ON AccMas.CustomerAccountNumber = BenPaymt.CustomerAccountNumber
+	AND BenPaymt.VoidDate IS NULL
+WHERE (
+		@ManagerCode IS NULL
+		OR (
+			@ManagerCode IS NOT NULL
+			AND AccMas.ManagerCode = @ManagerCode
+			)
+		)
+	AND (
+		@CustomerAccountNumber IS NULL
+		OR (
+			@CustomerAccountNumber IS NOT NULL
+			AND AccMas.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		)
+	AND (
+		@TaxYear IS NULL
+		OR (
+			@TaxYear IS NOT NULL
+			AND BenPaymt.TaxYear = @TaxYear
+			)
+		)
+	AND (
+		(
+			@PmtFromDate IS NULL
+			OR @PmtToDate IS NULL
+			)
+		OR (
+			(
+				@PmtFromDate IS NOT NULL
+				AND @PmtToDate IS NOT NULL
+				)
+			AND BenPaymt.PaymentDate BETWEEN @PmtFromDate
+				AND @PmtToDate
+			)
+		)
+	AND (
+		(
+			@ClrFromDate IS NULL
+			OR @ClrToDate IS NULL
+			)
+		OR (
+			(
+				@ClrFromDate IS NOT NULL
+				AND @ClrToDate IS NOT NULL
+				)
+			AND BenPaymt.ClearDate BETWEEN @ClrFromDate
+				AND @ClrToDate
+			)
+		)
+	AND (
+		@IncludeLine1 IS NULL
+		OR (
+			@IncludeLine1 = 'ClearedPayments'
+			AND BenPaymt.ClearDate IS NOT NULL
+			)
+		OR (
+			@IncludeLine1 = 'UnClearedPayments'
+			AND BenPaymt.ClearDate IS NULL
+			)
+		)
+ORDER BY CASE 
+		WHEN @Sort1 = 'AdventID'
+			AND @Sort2 IS NULL
+			THEN 'AccMas.CustomerAccountNumber'
+		WHEN @Sort2 = 'PaymentDate'
+			AND @Sort1 IS NULL
+			THEN 'BenPaymt.PaymentDate'
+		WHEN @Sort1 = 'PaymentDate'
+			AND @Sort2 IS NULL
+			THEN 'BenPaymt.PaymentDate'
+		WHEN @Sort2 = 'AdventID'
+			AND @Sort1 IS NULL
+			THEN 'AccMas.CustomerAccountNumber'
+		WHEN (
+				(
+					@Sort1 = 'AdventID'
+					AND @Sort2 = 'PaymentDate'
+					)
+				OR (
+					@Sort1 = 'PaymentDate'
+					AND @Sort2 = 'AdventID'
+					)
+				)
+			THEN 'BenPaymt.PaymentDate'
+		ELSE 'AccMas.CustomerAccountNumber, BenPaymt.PaymentDate'
+		END
+
+SELECT CONVERT(VARCHAR, CashTrsn.TradeDate, 101) AS PaymentDate
+	,CashTrsn.CustomerAccountNumber AS AdventID
+	,CashDsbn.DocumentNumber AS CheckNumber
+	,CashTrsn.Amount AS PaymentAmount
+	,CashTrsn.SettleDate AS ClearDate
+	,CashDsbn.PaidToContactName AS PayeeName
+	,CashTrsn.Taxyear
+	,AccMas.ManagerCode
+	,convert(VARCHAR(25), PaidToPaymentMethodID) AS FundingMethod
+	,-- Need a case statement
+	CashTrsn.TradeDate AS PmtDate
+	,AccMas.CustomerShortName AS AccountName
+INTO #TmpVendorPaymentInfo
+FROM SYN_IT_CashDisbursements CashDsbn
+INNER JOIN SYN_IT_CashTransaction CashTrsn ON CashDsbn.TransactionNumber = CashTrsn.TransactionNumber
+INNER JOIN SYN_IT_AccountMaster AccMas ON CashTrsn.CustomerAccountNumber = AccMas.CustomerAccountNumber
+LEFT OUTER JOIN SYN_IT_CashTransactionExt catex ON catex.TransactionNumber = CashTrsn.TransactionNumber
+AND
+TaxCode NOT IN (
+		570
+		,009
+		,052
+		,737
+		,691
+		,697
+		,595
+		,596
+		,601
+		,602
+		)
+WHERE (
+		@ManagerCode IS NULL
+		OR (
+			@ManagerCode IS NOT NULL
+			AND AccMas.ManagerCode = @ManagerCode
+			)
+		)
+	AND (
+		@CustomerAccountNumber IS NULL
+		OR (
+			@CustomerAccountNumber IS NOT NULL
+			AND AccMas.CustomerAccountNumber = @CustomerAccountNumber
+			)
+		)
+	AND (
+		@TaxYear IS NULL
+		OR (
+			@TaxYear IS NOT NULL
+			AND CashTrsn.Taxyear = @TaxYear
+			)
+		)
+	AND (
+		(
+			@PmtFromDate IS NULL
+			OR @PmtToDate IS NULL
+			)
+		OR (
+			(
+				@PmtFromDate IS NOT NULL
+				AND @PmtToDate IS NOT NULL
+				)
+			AND CashTrsn.TradeDate BETWEEN @PmtFromDate
+				AND @PmtToDate
+			)
+		)
+	AND (
+		(
+			@ClrFromDate IS NULL
+			OR @ClrToDate IS NULL
+			)
+		OR (
+			(
+				@ClrFromDate IS NOT NULL
+				AND @ClrToDate IS NOT NULL
+				)
+			AND CashTrsn.SettleDate BETWEEN @ClrFromDate
+				AND @ClrToDate
+			)
+		)
+	AND (
+		@IncludeLine1 IS NULL
+		OR (
+			@IncludeLine1 = 'ClearedPayments'
+			AND CashTrsn.SettleDate IS NOT NULL
+			)
+		OR (
+			@IncludeLine1 = 'UnClearedPayments'
+			AND CashTrsn.SettleDate IS NULL
+			)
+		)
+ORDER BY CASE 
+		WHEN @Sort1 = 'AdventID'
+			AND @Sort2 IS NULL
+			THEN 'AccMas.CustomerAccountNumber'
+		WHEN @Sort2 = 'PaymentDate'
+			AND @Sort1 IS NULL
+			THEN 'CashTrsn.TradeDate'
+		WHEN @Sort1 = 'PaymentDate'
+			AND @Sort2 IS NULL
+			THEN 'CashTrsn.TradeDate'
+		WHEN @Sort2 = 'CustomerAccountNumber'
+			AND @Sort1 IS NULL
+			THEN 'AccMas.CustomerAccountNumber'
+		WHEN (
+				(
+					@Sort1 = 'AdventID'
+					AND @Sort2 = 'PaymentDate'
+					)
+				OR (
+					@Sort1 = 'PaymentDate'
+					AND @Sort2 = 'AdventID'
+					)
+				)
+			THEN 'CashTrsn.TradeDate'
+		ELSE 'AccMas.CustomerAccountNumber, CashTrsn.TradeDate'
+		END
+
+IF (@IncludeLine2 = 'Beneficiarypayments')
+BEGIN
+	SELECT PaymentDate
+		,AdventID
+		,CheckNumber
+		,PaymentAmount
+		,ClearDate
+		,PayeeName
+		,TaxYear
+		,Managercode
+		,FundingMethod
+		,PmtDate
+		,AccountName
+	FROM #TmpBenPaymentInfo
+END
+ELSE IF (@IncludeLine2 = 'VendorPayments')
+BEGIN
+	SELECT PaymentDate
+		,AdventID
+		,CheckNumber
+		,PaymentAmount
+		,ClearDate
+		,PayeeName
+		,TaxYear
+		,Managercode
+		,FundingMethod
+		,PmtDate
+		,AccountName
+	FROM #TmpVendorPaymentInfo
+END
+ELSE IF (@IncludeLine2 = 'AllPayments')
+BEGIN
+	SELECT PaymentDate
+		,AdventID
+		,CheckNumber
+		,PaymentAmount
+		,ClearDate
+		,PayeeName
+		,TaxYear
+		,Managercode
+		,FundingMethod
+		,PmtDate
+		,AccountName
+	FROM #TmpBenPaymentInfo
+	
+	UNION
+	
+	SELECT PaymentDate
+		,AdventID
+		,CheckNumber
+		,PaymentAmount
+		,ClearDate
+		,PayeeName
+		,TaxYear
+		,Managercode
+		,FundingMethod
+		,PmtDate
+		,AccountName
+	FROM #TmpVendorPaymentInfo
+END
+ELSE IF (@IncludeLine2 = 'None')
+BEGIN
+	SELECT *
+	FROM #TmpBenPaymentInfo
+	WHERE - 1 = 0
+END
+GO

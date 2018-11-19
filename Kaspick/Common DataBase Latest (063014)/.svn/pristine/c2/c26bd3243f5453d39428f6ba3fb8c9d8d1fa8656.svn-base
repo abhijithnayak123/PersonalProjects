@@ -1,0 +1,11 @@
+--This script is to update the beneficiary taxcode value in the TBL_KS_ApplicationInnoTrustKey table.
+SET NOCOUNT ON
+DECLARE @ApplicationID INT
+
+SELECT @ApplicationID = ApplicationID
+FROM TBL_KS_Application
+WHERE ApplicationName = 'Period End Valuation Automation'
+
+UPDATE TBL_KS_ApplicationInnoTrustKey Set [Value] = '570,595,596,601,602,691,697,698' Where [ApplicationID] = @ApplicationID and [Key] = 'BenePayDisTaxCode'
+
+UPDATE TBL_KS_ApplicationInnoTrustKey Set [Value] = 'ACHDSB,CHECKDSB,CSHDSBAJ,JNLDSB,WIREDSB' Where [ApplicationID] = @ApplicationID and [Key] = 'BenePayDisTransactionCode'

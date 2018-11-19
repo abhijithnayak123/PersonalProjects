@@ -1,0 +1,466 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveOtherReceiptAndExpense]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_SaveOtherReceiptAndExpense]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_SaveOtherReceiptAndExpense]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_SaveOtherReceiptAndExpense]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_SaveOtherReceiptAndExpense    
+** Short Desc: Get details from AccountValueonStatement table for the given valuationid.    
+**    
+** Full Description : Get details from AccountValueonStatement table for the given valuationid.  
+**            
+**    
+** Sample Call    
+       Declare @XMLdata XML
+  Declare @ReturnStatus INT
+  Declare @ErrorDesc Varchar(100)
+  SET @XMLdata = '<OtherReceiptsAndExpensesCollection>
+	<InsertList>
+	<OtherReceiptsAndExpenses ValuationID= "1" CustomerAccountNumber="ACADW" />
+	</InsertList>
+	</OtherReceiptsAndExpensesCollection>'
+        EXEC USP_SIT_SaveOtherReceiptAndExpense  @XMLdata ,1, @ReturnStatus OUTPUT , @ErrorDesc OUTPUT
+  SELECT @ReturnStatus,@ErrorDesc
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 08/28/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [USP_SIT_SaveOtherReceiptAndExpense] @XMLdata XML
+	,@UserID INT
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF OBJECT_ID('tempdb..[#Tmp_OtherReceiptAndExpense]') IS NOT NULL
+			DROP TABLE [#Tmp_OtherReceiptAndExpense]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+
+		CREATE TABLE #Tmp_CustomerAccountNumber (
+			ValuationID INT
+			,XmlCustomerAccountNumber VARCHAR(14)
+			)
+
+		CREATE TABLE #Tmp_OtherReceiptAndExpense (
+			ValuationID INT
+			,CustomerAccountNumber VARCHAR(14)
+			,StatementDate DateTime
+			,OtherRecieptsA DECIMAL(28, 4)
+			,OtherRecieptsB DECIMAL(28, 4)
+			,PrincipalDistributionA DECIMAL(28, 4)
+			,PrincipalDistributionB DECIMAL(28, 4)
+			,IncomeDistribution DECIMAL(28, 4) 
+			,CustodyFeeA DECIMAL(28, 4) 
+			,CustodyFeeB DECIMAL(28, 4) 
+			,InvestmentMgmtExpnseA DECIMAL(28, 4) 
+			,InvestmentMgmtExpnseB DECIMAL(28, 4) 
+			,MiscFeeA DECIMAL(28, 4)
+			,MiscFeeB DECIMAL(28, 4)
+			)
+
+		DECLARE @Colname VARCHAR(100)
+		DECLARE @SelColname VARCHAR(1000)
+		DECLARE @Qry VARCHAR(500)
+		DECLARE @TableName VARCHAR(100);
+		DECLARE @TransactionDetailID INT
+
+		SET @TableName = 'TBL_SIT_EBROtherReceiptAndExpense'
+
+		INSERT INTO #Tmp_CustomerAccountNumber (
+			ValuationID
+			,XmlCustomerAccountNumber
+			)
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS ValuationID
+			,XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS XmlCustomerAccountNumber
+		FROM @XMLDATA.nodes('//OtherReceiptsAndExpensesCollection/InsertList/OtherReceiptsAndExpenses') AS XmlInput(Item)
+	
+		
+		DELETE TBL_SIT_EBROtherReceiptAndExpense
+		WHERE ValuationID IN (
+				SELECT ValuationID
+				FROM #Tmp_CustomerAccountNumber
+				)
+
+		SELECT @Colname = ISNULL(@Colname + ',', '') + QUOTENAME(TransactionCode)
+		FROM (
+			SELECT DISTINCT TransactionCode
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+
+		SELECT @SelColname = ISNULL(@SelColname + ',', '') + QUOTENAME(TransactionCode) + ' as ' + KaspickColumnName
+		FROM (
+			SELECT DISTINCT TransactionCode
+				,ColumnSequence
+				,KaspickColumnName
+				,ROW_NUMBER() OVER (
+					PARTITION BY TransactionCode ORDER BY TransactionCode
+					) AS RowNum
+			FROM TBL_SIT_InnotrustFieldMapping
+			WHERE KaspickTableName = @TableName
+			) TmpTranCode
+		WHERE Rownum = 1
+		ORDER BY ColumnSequence
+
+		SET @Qry = ' SELECT ValuationID,CustomerAccountNumber,StatementDate,' 
+		+ @SelColname + '
+		FROM SYN_IT_Stmt_TransactionSummary TranSmry
+		INNER JOIN #Tmp_CustomerAccountNumber TmpInput
+			ON TranSmry.CustomerAccountNumber = TmpInput.XmlCustomerAccountNumber
+		PIVOT(MAX(TransactionTotal) FOR TransactionCategoryCode IN (
+        ' + @Colname + '
+        )) p'
+
+		INSERT INTO #Tmp_OtherReceiptAndExpense (
+			ValuationID
+			,CustomerAccountNumber
+			,StatementDate
+			,OtherRecieptsA 
+			,OtherRecieptsB 
+			,PrincipalDistributionA 
+			,PrincipalDistributionB 
+			,IncomeDistribution 
+			,CustodyFeeA 
+			,CustodyFeeB
+			,InvestmentMgmtExpnseA 
+			,InvestmentMgmtExpnseB 
+			,MiscFeeA
+			,MiscFeeB
+			)
+		EXECUTE (@Qry)
+
+		-- Transaction : Other  Receipts
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='OTHER RECEIPTS'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(OtherRecieptsA,0)+ISNULL(OtherRecieptsB,0))
+			,0
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : PRINCIPAL DISTRIBUTION
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='PRINCIPAL DISTRIBUTION'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(PrincipalDistributionA,0)+ISNULL(PrincipalDistributionB,0))
+			,0
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : INCOME DISTRIBUTION
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='INCOME DISTRIBUTION'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(IncomeDistribution,0))
+			,0
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		---- Transaction : TRANSFER TO ANOTHER ACCOUNT
+		--SELECT @TransactionDetailID = TransactionDetailID 
+		--FROM TBL_SIT_TransactionDetailMaster 
+		--WHERE TransactionDetailName='TRANSFER TO ANOTHER ACCOUNT'
+		
+		--INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+		--	ValuationID
+		--	,TransactionDetailID
+		--	,TransactionDate
+		--	,PrincipalValue
+		--	,IncomeValue
+		--	,ModifiedDate
+		--	,ModifiedBy
+		--	,CreatedDate
+		--	,CreatedBy
+		--	)
+		--SELECT ValuationID
+		--	,@TransactionDetailID
+		--	,Max(StatementDate)
+		--	,SUM(ISNULL(TransferAccount,0))
+		--	,0
+		--	,GETDATE()
+		--	,@UserID
+		--	,GETDATE()
+		--	,@UserID
+		--FROM #Tmp_OtherReceiptAndExpense
+		--GROUP BY ValuationID
+		
+		-- Transaction : CUSTODY FEE
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='CUSTODY FEE'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(CustodyFeeA,0))
+			,SUM(ISNULL(CustodyFeeB,0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : RECORDKEEPING FEE
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='RECORDKEEPING FEE'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,0
+			,0
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : INVESTMENT MANAGEMENT EXPENSE
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='INVESTMENT MANAGEMENT EXPENSE'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(InvestmentMgmtExpnseA,0))
+			,SUM(ISNULL(InvestmentMgmtExpnseB,0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : MISC FEE
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='MISC FEE'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,SUM(ISNULL(MiscFeeA,0))
+			,SUM(ISNULL(MiscFeeB,0))
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		-- Transaction : TRUSTEE FEE
+		SELECT @TransactionDetailID = TransactionDetailID 
+		FROM TBL_SIT_TransactionDetailMaster 
+		WHERE TransactionDetailName='TRUSTEE FEE'
+		
+		INSERT INTO TBL_SIT_EBROtherReceiptAndExpense (
+			ValuationID
+			,TransactionDetailID
+			,TransactionDate
+			,PrincipalValue
+			,IncomeValue
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT ValuationID
+			,@TransactionDetailID
+			,Max(StatementDate)
+			,0
+			,0
+			,GETDATE()
+			,@UserID
+			,GETDATE()
+			,@UserID
+		FROM #Tmp_OtherReceiptAndExpense
+		GROUP BY ValuationID
+		
+		
+		IF OBJECT_ID('tempdb..[#Tmp_OtherReceiptAndExpense]') IS NOT NULL
+			DROP TABLE [#Tmp_OtherReceiptAndExpense]
+
+		IF OBJECT_ID('tempdb..[#Tmp_CustomerAccountNumber]') IS NOT NULL
+			DROP TABLE [#Tmp_CustomerAccountNumber]
+			
+		SET @ReturnStatus = 0
+		SET @ErrorDesc = '';
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

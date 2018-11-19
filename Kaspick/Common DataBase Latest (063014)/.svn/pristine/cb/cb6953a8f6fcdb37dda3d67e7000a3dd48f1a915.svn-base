@@ -1,0 +1,127 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineScheduleRecordVersion]    Script Date: 09/23/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineScheduleRecordVersion]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineScheduleRecordVersion]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineScheduleRecordVersion]    Script Date: 09/23/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineScheduleRecordVersion                      
+** Short Desc: Dirty Write Check
+**                      
+** Full Description: IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2         
+**        
+**                              
+** Input Arguments: ScheduleIDXML
+    
+
+**         
+** Sample Call     
+
+ Declare @Ret INT            
+ EXEC USP_PP_GetValidationEngineScheduleRecordVersion      
+			'<ValidationDataSourceCollection>
+			<SelectList>
+			<ValidationDataSource PaymentType ="BeneficiaryPayment" ScheduleID="100029" RecordVersion="0x00000000000B983E"  />
+			<ValidationDataSource PaymentType ="BeneficiaryPayment" ScheduleID="100030" RecordVersion="0x0000000000ECB9A8"  />
+			</SelectList>
+			</ValidationDataSourceCollection>'  
+	,@Ret output  
+	Select @Ret  
+	     
+
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Nov-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 01/29/2014 Salih      Changed table variables with temp tables 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineScheduleRecordVersion] @ScheduleXml XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+		--  Variable Data Assignment  --            
+	SET @ReturnStatus = 0;
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpScheduledata]') IS NOT NULL
+		DROP TABLE [#TmpScheduledata]
+
+	-- Body of procedure  --            
+	CREATE TABLE #TmpScheduledata (
+		ID INT IDENTITY(1, 1)
+		,PaymentType VARCHAR(20)
+		,ScheduleID INT
+		,RecordVersion VARCHAR(1000)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	---Inserting input data into Temp Table	        
+	INSERT INTO #TmpScheduledata (
+		PaymentType
+		,ScheduleID
+		,RecordVersion
+		)
+	SELECT XMLDATA.item.value('@PaymentType[1]', 'Varchar(20)') AS PaymentType
+		,XMLDATA.item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		,XMLDATA.item.value('@RecordVersion[1]', 'VARCHAR(100)') AS RecordVersion
+	FROM @ScheduleXml.nodes('//ValidationDataSourceCollection/SelectList/ValidationDataSource') AS XMLDATA(item)
+
+	--Dirty Write Check      
+	-- IF record version is changed PRIOR TO this SAVE then flag those records WITH ReturnStatus AS -2 
+	--- Set ReturnStatus to -2 even if a single record is found with dirty write	
+	UPDATE #TmpScheduledata
+	SET @ReturnStatus = - 2
+	FROM #TmpScheduledata Tmpdata
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON BenPay.BPScheduleID = Tmpdata.ScheduleID
+	WHERE Tmpdata.PaymentType = 'BeneficiaryPayment'
+		AND CONVERT(varchar(20),CAST(BenPay.RecordVersion AS varbinary(8)),1) <> Tmpdata.RecordVersion
+
+	UPDATE #TmpScheduledata
+	SET @ReturnStatus = - 2
+	FROM #TmpScheduledata Tmpdata
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+		ON PGCalc.MergedPGCalcPaymentID = Tmpdata.ScheduleID
+	WHERE Tmpdata.PaymentType = 'PGCalcImport'
+		AND CONVERT(varchar(20),CAST(PGCalc.RecordVersion AS varbinary(8)),1) <> Tmpdata.RecordVersion
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpScheduledata]') IS NOT NULL
+		DROP TABLE [#TmpScheduledata]
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

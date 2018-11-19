@@ -1,0 +1,63 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetListItemValue]    Script Date: 06/28/2013 11:15:58 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetListItemValue]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetListItemValue]
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetListItemValue]    Script Date: 06/28/2013 11:15:58 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetListItemValue                      
+** Short Desc: To retrieve the list items to populate the dropdown  
+**                      
+** Full Description: To retrieve the list items to populate the dropdown      
+**                              
+** Input Arguments:  
+	@ListTypeName		: List type name for which the list is to be fetched.
+**         
+** Sample Call     
+        
+ EXEC USP_PP_GetListItemValue   'Logical Value'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 28-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetListItemValue] (@ListTypeName VARCHAR(100))
+AS
+BEGIN
+	SELECT ListItemID DDVALUE
+		,ListItemName DDTEXT
+	FROM dbo.TBL_ListItem ListItem
+	INNER JOIN dbo.TBL_ListType ListType ON ListItem.ListTypeID = ListType.ListTypeID
+	WHERE ListTypeName = @ListTypeName
+	ORDER BY DisplaySequence
+END

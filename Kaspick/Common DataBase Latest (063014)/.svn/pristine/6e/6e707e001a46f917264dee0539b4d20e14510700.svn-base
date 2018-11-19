@@ -1,0 +1,150 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingPaging'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradingPaging;
+
+	PRINT 'DROPPED USP_EX_GetTradingPaging';
+END
+GO
+
+/******************************************************************************    
+** Name:     USP_EX_GetTradingPaging  
+** Old Name : USP_EIS_EX_TRADING_PAGING_SelProc  
+** Short Desc:   
+**    
+** Full Description    
+**   
+**    
+** Sample Call    
+  USP_EX_GetTradingPaging   
+ @startrow = 1,  
+ @endrow = 19,  
+ @SearchColumnName = 'ADVENT_ID',  
+ @SearchCriteria = 0,  
+ @strSearch = '',  
+ @Filtercolumnname = '',  
+ @strFilter = '',  
+ @sortcolumnname = 'ADVENT_ID',  
+ @SortOrder = 'ASC',  
+ @AccountID = '',  
+ @View_Condition = 'LOOKFOR',  
+ @StatusValue = ''  
+    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: N.R.AMARNATH  
+** Company   : Kaspick & Company    
+** Project   : Excelsior  -- IM PROFILE  
+** Created DT: <03/23/2007>    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 17-Mar-2014   Yugandhar  INVREQ3.1 Modified  
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted 
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradingPaging] (
+	@startrow INT
+	,-- start row for the page  
+	@endrow INT
+	,-- end row for the page  
+	@searchcolumnname VARCHAR(100)
+	,-- this will be used when user wants to search a string within a column.  
+	-- ''  
+	@searchcriteria TINYINT
+	,-- 0-Begins with, 1-Contains  
+	@strsearch VARCHAR(255)
+	,-- search string that will be located in column provided above.  
+	@filtercolumnname VARCHAR(100)
+	,-- Column on which the default filtering will be done  
+	@strfilter VARCHAR(255)
+	,-- for filtering the char/varchar, which will work on filter control  
+	@sortcolumnname VARCHAR(100)
+	,-- column on which the sorting should work  
+	@sortorder VARCHAR(5)
+	,-- ASC or DESC   
+	@accountid CHAR(14)
+	,@view_condition VARCHAR(50)
+	,@statusvalue VARCHAR(50)
+	)
+AS
+DECLARE @duedatevalue VARCHAR(20);
+
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+SET @duedatevalue = 'TodayAndBackward';
+
+-- Body of procedure  --  
+IF (@view_condition = 'LOOKFOR')
+	EXEC USP_EX_GetTradingLf @startrow
+		,@endrow
+		,@searchcolumnname
+		,@searchcriteria
+		,@strsearch
+		,@filtercolumnname
+		,@strfilter
+		,@sortcolumnname
+		,@sortorder
+		,@accountid
+ELSE IF (
+		(@view_condition = 'TODAYANDBACKWARD')
+		OR (@view_condition = 'ALL')
+		)
+	EXEC USP_EX_GetTradingAllTodayAndBackwardLf @startrow
+		,@endrow
+		,@searchcolumnname
+		,@searchcriteria
+		,@strsearch
+		,@filtercolumnname
+		,@strfilter
+		,@sortcolumnname
+		,@sortorder
+		,@view_condition
+		,@statusvalue
+ELSE IF (@view_condition = 'TODAY')
+	EXEC USP_EX_GetTradingTodayLf @startrow
+		,@endrow
+		,@searchcolumnname
+		,@searchcriteria
+		,@strsearch
+		,@filtercolumnname
+		,@strfilter
+		,@sortcolumnname
+		,@sortorder
+		,@statusvalue
+ELSE IF (@view_condition = 'TODAYANDFORWARD')
+	EXEC USP_EX_GetTradingTodayForwardLf @startrow
+		,@endrow
+		,@searchcolumnname
+		,@searchcriteria
+		,@strsearch
+		,@filtercolumnname
+		,@strfilter
+		,@sortcolumnname
+		,@sortorder
+		,@statusvalue
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradingPaging'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetTradingPaging';
+END

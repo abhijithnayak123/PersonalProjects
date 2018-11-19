@@ -1,0 +1,101 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SYSErrorHandler'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SYSErrorHandler;
+
+	PRINT 'DROPPED USP_EX_SYSErrorHandler';
+END
+GO
+
+/******************************************************************************  
+** Name : USP_EX_SYSErrorHandler
+** Old Name:     spSYS_ErrorHandler  
+** Short Desc: Generic Error Handler  
+**  
+** Full Description  
+**        This procedure should be used by all procedures to handle error  
+**   situations.  It should be called within the CATCH block.  
+**  
+**   Allows for the passing of up to 4 pieces of data that can be  
+**   used to identify the row in error - should be the elements of   
+**   the primary key of the table that is the target of the   
+*8   transaction.  Pass in numerics as varchar(30)  
+**  
+** Sample Call  
+        EXEC spSYS_ErrorHandler  @codename = 'test', @@ErrorMessage = 'test error',  
+   @ErrorNumber = 50000, @val1 = '12', @val1str = 'empid'  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Rod Prince  
+** Company   : Kaspick & Company  
+** Project   : System Procedure  
+** Created DT: 10/06/2006  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**    2/26/14 sanath Investment Allocation description  
+**    4/11/14  mallikarjun modified
+*******************************************************************************  
+** Copyright (C) 2006 Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SYSErrorHandler] @CodeName VARCHAR(60)
+	,@ErrorMessage VARCHAR(1000)
+	,@ErrorNumber INT
+	,@val1 VARCHAR(30)
+	,@val1str VARCHAR(30)
+	,@val2 VARCHAR(30) = ''
+	,@val2str VARCHAR(30) = ''
+	,@val3 VARCHAR(30) = ''
+	,@val3str VARCHAR(30) = ''
+	,@val4 VARCHAR(30) = ''
+	,@val4str VARCHAR(30) = ''
+AS
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @ErrorString VARCHAR(2000);
+
+SET @ErrorString = @val1 + ' - ' + @val1str + ', ' + @val2 + ' - ' + @val2str + ', ' + @val3 + ' - ' + @val3str + ', ' + @val4 + ' - ' + @val4str + ', '
+SET @ErrorString = @ErrorString + ' ' + Cast(@ErrorNumber AS VARCHAR(30)) + ' - ' + @ErrorMessage;
+
+RAISERROR (
+		'%s - Failed for identifiers %s'
+		,16
+		,1
+		,@CodeName
+		,@ErrorString
+		)
+
+SELECT @codename 'Source'
+	,@ErrorString 'Identifiers'
+	,@ErrorNumber AS ErrorNumber
+	,@ErrorMessage AS ErrorMessage;
+
+RETURN @ErrorNumber;
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SYSErrorHandler'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SYSErrorHandler';
+END

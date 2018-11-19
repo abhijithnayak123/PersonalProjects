@@ -1,0 +1,102 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTDeliverableInstance'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetBRDTDeliverableInstance;
+
+	PRINT 'DROPPED USP_RP_GetBRDTDeliverableInstance';
+END
+GO
+
+
+/******************************************************************************                      
+** New Name: USP_RP_GetBRDTDeliverableInstance 
+** Old Name: USP_EIS_BR_DT_DeliverableInstance_SelProc                      
+** Short Desc: Select Deliverable Instances from  'TBL_EIS_DT_Deliverable_Queue' table      
+**                      
+** Full Description: Get Deliverable Instances           
+**                              
+** Input Arguments:     
+**         
+** Sample Call     
+       
+ EXEC USP_EIS_BR_DT_DeliverableInstance_SelProc    
+**             
+** Return values: Return Status    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By:     
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 25-Sep-09                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+** Jun-09-2014 Abhijith  Sp name renamed as per Kaspick naming convention standard
+** 22-08-2014	RAJ				SET TRANSACTION ISOLATION LEVEL SNAPSHOT; - Removed
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_GetBRDTDeliverableInstance    
+    
+AS    
+    
+BEGIN    
+ --  Initial Set statements  --                
+ SET NOCOUNT ON;                
+ SET LOCK_TIMEOUT                30000;   -- 30 seconds                
+ SET ARITHABORT ON               
+  
+ SELECT     
+  DQ.DeliverableQueueID AS InstanceID,    
+  DQ.DeliverableQueueYear AS InstanceYear,    
+  DQ.DeliverableQueueName AS InstanceName,    
+  DQ.DeliverableQueueBriefName AS InstanceBriefName,    
+  DQS.StatusName AS Status,    
+  DQ.DeliverableEndDate AS AsOfDate,    
+  D.DeliverableID AS TypeID,    
+  D.DeliverableName AS TypeName,     
+  Frequency = CAST(DQ.FrequencyID AS VARCHAR(5)),   
+  DQ.CreatedDate,    
+  InstanceOwner =   
+   (  
+   SELECT     
+   (CASE WHEN (ISNULL(LTRIM(RTRIM(LastName)), '') = '')     
+   THEN ''     
+   ELSE (LastName )     
+   END) +     
+   (CASE WHEN (ISNULL(LTRIM(RTRIM(FirstName)), '') = '')     
+   THEN ''     
+   ELSE (', ' + FirstName )     
+   END) +     
+   ' ' +     
+   ISNULL(MiddleName, '') FROM TBL_KS_User WHERE UserID = DQ.CreatedUserID  
+   )    
+ FROM TBL_DLV_DeliverableQueue DQ    
+  INNER JOIN TBL_DLV_QueueStatus DQS ON DQ.QueueStatusID = DQS.QueueStatusID    
+  INNER JOIN TBL_DLV_Deliverable D ON D.DeliverableID = DQ.DeliverableID  
+ ORDER BY DQ.DeliverableEndDate   
+END  
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTDeliverableInstance'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetBRDTDeliverableInstance';
+END

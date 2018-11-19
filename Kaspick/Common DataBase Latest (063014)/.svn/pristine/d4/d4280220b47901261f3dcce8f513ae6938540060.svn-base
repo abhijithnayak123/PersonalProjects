@@ -1,0 +1,193 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStategicallocationsetDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveEnfStategicallocationsetDetails;
+
+	PRINT 'DROPPED USP_EX_SaveEnfStategicallocationsetDetails';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** New Name:	 USP_EX_SaveEnfStategicallocationsetDetails
+** Old Name:     <USP_EIS_ENF_STRATEGICALLOCATIONSET_DETAILS_INSUPDPROC>                
+** Short Desc: Put in Short Description                
+**                
+** Full Description                
+**        More detailed description if necessary                
+**                
+** Sample Call                
+ EXEC USP_EX_SaveEnfStategicallocationsetDetails  -- parameters    
+              
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET NOCOUNT             ON                
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                
+**                 
+** Created By: Soorya                
+** Company   : Kaspick & Company                
+** Project   : Enfuego4                
+** Created DT: 09/Feb/2010                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**03/22/2014  Sanath              Requirement INVERQ 3.1
+**23-May-2014  Sanath            Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveEnfStategicallocationsetDetails] (
+	@StrategicSetName VARCHAR(30)
+	,@StrategicSetDescription VARCHAR(1000)
+	,@IsActive BIT
+	,@UserName VARCHAR(50)
+	,@SelectedAllocationXmlData XML
+	,@IS_Deleted VARCHAR(20) OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	DECLARE @SetName VARCHAR(30);
+	DECLARE @SetID BIGINT;
+	DECLARE @UserID BIGINT;
+
+	--  Variable Data Assignment  --          
+	SET @ProcName = 'USP_EX_SaveEnfStategicallocationsetDetails';
+	SET @IS_Deleted = 'FALSE'
+
+	-- Body of procedure  --          
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		SELECT @UserID = [UserID]
+		FROM TBL_KS_User
+		WHERE LoginName = @UserName
+
+		IF EXISTS (
+				SELECT StrategicAllocationSetName
+				FROM TBL_INV_StrategicAllocationSet
+				WHERE StrategicAllocationSetName = @StrategicSetName
+				)
+		BEGIN
+			IF (@IsActive = 1)
+			BEGIN
+				UPDATE TBL_INV_StrategicAllocationSet
+				SET IsActive = @IsActive
+					,ModifiedDate = GETDATE()
+					,ModifiedBy = @UserID
+					,Description = @StrategicSetDescription
+				WHERE StrategicAllocationSetName = @StrategicSetName
+			END
+			ELSE
+			BEGIN
+				SELECT @SetID = StrategicAllocationSetID
+				FROM TBL_INV_StrategicAllocationSet
+				WHERE StrategicAllocationSetName = @StrategicSetName
+
+				IF EXISTS (
+						SELECT *
+						FROM TBL_INV_ClientStrategicAllocation
+						WHERE StrategicAllocationSetID = @SetID
+						)
+				BEGIN
+					SET @IS_Deleted = 'FALSE'
+				END
+				ELSE
+				BEGIN
+					UPDATE TBL_INV_StrategicAllocationSet
+					SET IsActive = @IsActive
+						,ModifiedDate = GETDATE()
+						,ModifiedBy = @UserID
+						,Description = @StrategicSetDescription
+					WHERE StrategicAllocationSetName = @StrategicSetName
+
+					SET @IS_Deleted = 'TRUE'
+				END
+			END
+		END
+		ELSE
+		BEGIN
+			INSERT INTO TBL_INV_StrategicAllocationSet (
+				[StrategicAllocationSetName]
+				,[IsActive]
+				,[ModifiedDate]
+				,[ModifiedBy]
+				,[Description]
+				)
+			VALUES (
+				@StrategicSetName
+				,1
+				,GETDATE()
+				,@UserID
+				,@StrategicSetDescription
+				)
+		END
+
+		SELECT @SetID = StrategicAllocationSetID
+		FROM TBL_INV_StrategicAllocationSet
+		WHERE StrategicAllocationSetName = @StrategicSetName
+
+		IF (@IsActive = 1)
+		BEGIN
+			DELETE TBL_INV_StrategicAllocationSetDetail
+			WHERE StrategicAllocationSetID = @SetID
+
+			INSERT INTO TBL_INV_StrategicAllocationSetDetail
+			SELECT XMLDATA.item.value('@ItemID[1]', 'INT') AS AllocationID
+				,@SetID
+			FROM @SelectedAllocationXmlData.nodes('//ListItemCollection/InsertList/ListItem') AS XMLDATA(item)
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveEnfStategicallocationsetDetails: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  --          
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStategicallocationsetDetails'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveEnfStategicallocationsetDetails';
+END
+GO
+

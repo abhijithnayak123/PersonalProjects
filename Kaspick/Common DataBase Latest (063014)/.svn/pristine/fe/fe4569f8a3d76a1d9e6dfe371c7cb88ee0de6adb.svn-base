@@ -1,0 +1,180 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveSystemAdministration]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveSystemAdministration]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveSystemAdministration]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name:     USP_PP_SaveSystemAdministration          
+** Short Desc: Save System Administration Details  
+**          
+** Full Description          
+**        Save System Administration Details          
+**          
+** Sample Call          
+ Declare @ret int             
+           
+    EXEC USP_PP_SaveSystemAdministration  -- parameters          
+  @XMLDATA, @ret OUTPUT          
+
+select * from TBL_PP_SystemAdministration          
+Declare @ret int
+EXEC USP_PP_SaveSystemAdministration  '<SystemAdministrationCollection><InsertList><SystemAdministration MinimumCheckPostingDays = "3" MinimumNonCheckPostingDays = "1" PaymentProcessStartTime = "02:00" WireThresholdAmount = "50000.00" MinimumWirePostingDays = "5" UserID = "1"/></InsertList></SystemAdministrationCollection>',  @ret OUTPUT                   
+select * from TBL_PP_SystemAdministration
+          
+          
+select * from TBL_PP_SystemAdministration
+delete from TBL_PP_sYSTEMADMINISTRATION
+Declare @ret int          
+EXEC USP_PP_SaveSystemAdministration  '<SystemAdministrationCollection><InsertList><SystemAdministration MinimumCheckPostingDays = "3" MinimumNonCheckPostingDays = "2" PaymentProcessStartTime = "02:00" WireThresholdAmount = "50000.00" MinimumWirePostingDays = "5" UserID = "1"/></InsertList></SystemAdministrationCollection>',  @ret OUTPUT          
+select @ret 
+select * from TBL_PP_SystemAdministration
+ 
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By: Bandish Gupta            
+** Company   : Kaspick & Company            
+** Project   : BackOffice Integration            
+** Created DT: 02-Sep-2013          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**       
+*******************************************************************************          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveSystemAdministration]
+	-- paremeters here          
+	@XMLDATA XML
+	,@return_status INT
+OUTPUT AS
+
+--  Initial Set statements  --          
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds          
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;          
+
+--  Temp tables, Table Variables  --          
+DECLARE @TmpSysAdmin TABLE (
+	MinimumCheckPostingDays INT NULL
+	,MinimumNonCheckPostingDays INT NULL
+	,MinimumWirePostingDays INT NULL
+	,PaymentProcessStartTime VARCHAR(5) NULL
+	,UserID INT NULL
+	,WireThresholdAmount MONEY NULL
+	);
+
+-- Body of procedure  --          
+SET @return_status = '0';
+
+BEGIN TRY
+	BEGIN TRAN
+
+	--Inert SystemAdmin          
+	INSERT INTO @TmpSysAdmin (
+		MinimumCheckPostingDays
+		,MinimumNonCheckPostingDays
+		,MinimumWirePostingDays
+		,PaymentProcessStartTime
+		,UserID
+		,WireThresholdAmount
+		)
+	SELECT x.SystemAdministration.value('@MinimumCheckPostingDays[1]', 'int') AS MinimumCheckPostingDays
+		,x.SystemAdministration.value('@MinimumNonCheckPostingDays[1]', 'int') AS MinimumNonCheckPostingDays
+		,x.SystemAdministration.value('@MinimumWirePostingDays[1]', 'int') AS MinimumWirePostingDays
+		,x.SystemAdministration.value('@PaymentProcessStartTime[1]', 'varchar(5)') AS PaymentProcessStartTime
+		,x.SystemAdministration.value('@UserID[1]', 'int') AS UserID
+		,x.SystemAdministration.value('@WireThresholdAmount[1]', 'Money') AS WireThresholdAmount
+	FROM @XMLDATA.nodes('//SystemAdministrationCollection/InsertList/SystemAdministration') AS x(SystemAdministration)
+
+	IF EXISTS (
+			SELECT 1
+			FROM TBL_PP_SystemAdministration
+			)
+	BEGIN
+		UPDATE TBL_PP_SystemAdministration
+		SET MinimumCheckPostingDays = TmpSAdm.MinimumCheckPostingDays
+			,MinimumNonCheckPostingDays = TmpSAdm.MinimumNonCheckPostingDays
+			,MinimumWirePostingDays = TmpSAdm.MinimumWirePostingDays
+			,PaymentProcessStartTime = TmpSAdm.PaymentProcessStartTime
+			,WireThresholdAmount = TmpSAdm.WireThresholdAmount
+			,ModifiedDate = getDate()
+			,ModifiedBy = TmpSAdm.UserID
+		FROM @TmpSysAdmin TmpSAdm
+	END
+	ELSE
+	BEGIN
+		INSERT INTO TBL_PP_SystemAdministration (
+			MinimumCheckPostingDays
+			,MinimumNonCheckPostingDays
+			,MinimumWirePostingDays
+			,PaymentProcessStartTime
+			,WireThresholdAmount
+			,CreatedDate
+			,CreatedBy
+			,ModifiedDate
+			,ModifiedBy
+			)
+		SELECT TmpSAdm.MinimumCheckPostingDays
+			,TmpSAdm.MinimumNonCheckPostingDays
+			,TmpSAdm.MinimumWirePostingDays
+			,TmpSAdm.PaymentProcessStartTime
+			,WireThresholdAmount
+			,getDate()
+			,TmpSAdm.UserID
+			,getDate()
+			,TmpSAdm.UserID
+		FROM @TmpSysAdmin TmpSAdm
+	END
+
+	SET NOCOUNT OFF;
+
+	COMMIT TRAN
+END TRY
+
+BEGIN CATCH
+	SET @return_status = '-1';
+
+	ROLLBACK TRANSACTION;
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+	-- End of procedure  --    

@@ -1,0 +1,238 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllValuation]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetAllValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetAllValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetAllValuation]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetAllValuation                      
+** Short Desc: Select a list of valuation for sub accounting
+** Full Description: Select a list of valuation for sub accounting
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_GetAllValuation 0,'2014-01-01','2014-12-31','ALL','All','All' 
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetAllValuation @statusID INT
+	,@periodStartDate DATETIME
+	,@periodEndDate DATETIME
+	,@accountType VARCHAR(20)
+	,@selectedCustomerAccount VARCHAR(100)
+	,@subAccountingSystem VARCHAR(20)
+AS
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+--  Variable Declarations  --      
+DECLARE @procname VARCHAR(60);
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_SIT_GetAllValuation';
+
+-- Body of procedure  --      
+IF (@accountType = 'ALL')
+BEGIN
+	SELECT DISTINCT PV.ValuationID
+		,PV.ValuationDate
+		,PV.CustomerAccountNumber
+		--,PV.AccountID
+		,PV.AccountType
+		,SCL.NewStatusID
+		,SCL.OldStatusID
+		,STNew.StatusName AS NewStatusName
+		,STOld.StatusName AS OldStatusName
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'EBR'), 0) AS EBRFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'NewGift'), 0) AS NewGiftFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Payment'), 0) AS PaymentFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Severance'), 0) AS SeveranceFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'AuditSummary'), 0) AS AuditSummaryFile
+		,(
+			CASE 
+				WHEN IsNull(CP.GroupID, 0) = '0'
+					THEN PV.CustomerAccountNumber
+				ELSE CONVERT(VARCHAR(20), CP.GroupID)
+				END
+			) AS GroupID
+		,CP.IsSubAccountingSystemFIMS
+	FROM TBL_PV_Valuation PV
+	LEFT OUTER JOIN TBL_SIT_InterfaceFileGenerationLog IL ON PV.ValuationID = IL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_FileType FT ON IL.FileTypeID = FT.FileTypeID
+	INNER JOIN TBL_SIT_StatusChangeLog SCL ON SCL.ValuationID = PV.ValuationID
+	INNER JOIN TBL_SIT_Status STNew ON STNew.SITStatusID = SCL.NewStatusID
+	INNER JOIN TBL_SIT_Status STOld ON STOld.SITStatusID = SCL.OldStatusID
+	LEFT OUTER JOIN dbo.TBL_PV_ManagerCodeParameter CP ON PV.CustomerAccountNumber = CP.CustomerAccountNumber
+	WHERE PV.ValuationDate BETWEEN @periodStartDate
+			AND @periodEndDate
+		AND SCL.NewStatusID = (
+			CASE 
+				WHEN @statusID = 0
+					THEN SCL.NewStatusID
+				ELSE @statusID
+				END
+			)
+		AND PV.AccountType IN (
+			'GAP'
+			,'DAF'
+			,'DDF'
+			,'END'
+			,'ENDQ'
+			,'ENDT'
+			)
+		AND PV.CustomerAccountNumber IN (
+			CASE 
+				WHEN @selectedCustomerAccount = 'All'
+					THEN PV.CustomerAccountNumber
+				ELSE @selectedCustomerAccount
+				END
+			)
+		AND PV.CustomerAccountNumber IN (
+			SELECT ownerid
+			FROM TBL_PolicyItem
+			WHERE PolicyLevel = 300
+				AND PolicyDropDownID = (
+					SELECT PolicyDropDownID
+					FROM TBL_PolicyDropDown
+					WHERE DropDownText = 'Sub-Accounting'
+					)
+				AND PolicyDimensionID = (
+					SELECT PolicyDimensionID
+					FROM TBL_PolicyDimension
+					WHERE FullName = 'Accounting Routine'
+					)
+			)
+		AND SCL.StatusChangeLogID = (
+			SELECT TOP 1 SCL.StatusChangeLogID
+			FROM TBL_SIT_StatusChangeLog SCL
+			WHERE SCL.ValuationID = PV.ValuationID
+			ORDER BY StatusChangeDate DESC
+			)
+		AND CP.IsSubAccountingSystemFIMS IN (
+			CASE 
+				WHEN @subAccountingSystem = 'All'
+					THEN CP.IsSubAccountingSystemFIMS
+				WHEN @subAccountingSystem = 'FMIS'
+					THEN 1
+				WHEN @subAccountingSystem = 'Datahub'
+					THEN 0
+				END
+			)
+	ORDER BY PV.CustomerAccountNumber
+END
+ELSE
+BEGIN
+	SELECT DISTINCT PV.ValuationID
+		,PV.ValuationDate
+		,PV.CustomerAccountNumber
+		--,PV.AccountID
+		,PV.AccountType
+		,SCL.NewStatusID
+		,SCL.OldStatusID
+		,STNew.StatusName AS NewStatusName
+		,STOld.StatusName AS OldStatusName
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'EBR'), 0) AS EBRFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'NewGift'), 0) AS NewGiftFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Payment'), 0) AS PaymentFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'Severance'), 0) AS SeveranceFile
+		,isnull(dbo.Fn_TBL_Retrieve_FileType(PV.ValuationID, 'AuditSummary'), 0) AS AuditSummaryFile
+		,(
+			CASE 
+				WHEN IsNull(CP.GroupID, 0) = '0'
+					THEN PV.CustomerAccountNumber
+				ELSE CONVERT(VARCHAR(20), CP.GroupID)
+				END
+			) AS GroupID
+	FROM TBL_PV_Valuation PV
+	LEFT OUTER JOIN TBL_SIT_InterfaceFileGenerationLog IL ON PV.ValuationID = IL.ValuationID
+	LEFT OUTER JOIN TBL_SIT_FileType FT ON IL.FileTypeID = FT.FileTypeID
+	INNER JOIN TBL_SIT_StatusChangeLog SCL ON SCL.ValuationID = PV.ValuationID
+	INNER JOIN TBL_SIT_Status STNew ON STNew.SITStatusID = SCL.NewStatusID
+	INNER JOIN TBL_SIT_Status STOld ON STOld.SITStatusID = SCL.OldStatusID
+	LEFT OUTER JOIN dbo.TBL_PV_ManagerCodeParameter CP ON PV.CustomerAccountNumber = CP.CustomerAccountNumber
+	WHERE PV.ValuationDate BETWEEN @periodStartDate
+			AND @periodEndDate
+		AND SCL.NewStatusID = (
+			CASE 
+				WHEN @statusID = 0
+					THEN SCL.NewStatusID
+				ELSE @statusID
+				END
+			)
+		AND PV.AccountType = @accountType
+		AND PV.CustomerAccountNumber IN (
+			CASE 
+				WHEN @selectedCustomerAccount = 'All'
+					THEN PV.CustomerAccountNumber
+				ELSE @selectedCustomerAccount
+				END
+			)
+		AND PV.CustomerAccountNumber IN (
+			SELECT ownerid
+			FROM TBL_PolicyItem
+			WHERE policylevel = 300
+				AND PolicyDropDownID = (
+					SELECT PolicyDropDownID
+					FROM TBL_PolicyDropDown
+					WHERE DropDownText = 'Sub-Accounting'
+					)
+				AND PolicyDimensionID = (
+					SELECT PolicyDimensionID
+					FROM TBL_PolicyDimension
+					WHERE FullName = 'Accounting Routine'
+					)
+			)
+		AND SCL.StatusChangeLogID = (
+			SELECT TOP 1 SCL.StatusChangeLogID
+			FROM TBL_SIT_StatusChangeLog SCL
+			WHERE SCL.ValuationID = PV.ValuationID
+			ORDER BY StatusChangeDate DESC
+			)
+		AND CP.IsSubAccountingSystemFIMS IN (
+			CASE 
+				WHEN @subAccountingSystem = 'All'
+					THEN CP.IsSubAccountingSystemFIMS
+				WHEN @subAccountingSystem = 'FMIS'
+					THEN 1
+				WHEN @subAccountingSystem = 'Datahub'
+					THEN 0
+				END
+			)
+	ORDER BY PV.CustomerAccountNumber
+END
+
+SET NOCOUNT OFF;
+ 

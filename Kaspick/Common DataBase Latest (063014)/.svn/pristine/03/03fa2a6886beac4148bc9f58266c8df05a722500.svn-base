@@ -1,0 +1,233 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentSchedule]    Script Date: 10/28/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPaymentSchedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPaymentSchedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentSchedule]    Script Date: 10/28/2013 14:22:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** Name   :   USP_PP_GetPaymentSchedule                
+** Short Desc : Get Payment Schedule details.                
+**                
+** Full Description :Get Payment Schedule details for BeneficiaryDistributionID
+**                        
+**                
+** Sample Call                
+  EXEC USP_PP_GetPaymentSchedule
+  '<PaymentScheduleCollection>
+  <InsertList>
+  <PaymentSchedule ScheduleID="711781" /> 
+   <PaymentSchedule ScheduleID="669364" /> 
+  </InsertList> </PaymentScheduleCollection>'
+  ,0
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET LOCK_TIMEOUT         30000   --30 seconds        
+**                 
+** Created By: Debajyoti kalita         
+** Company   : Kaspick & Company            
+** Project   : BackOffice Integration            
+** Created DT: 10/28/2013            
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- -----               
+** 06/03/2014	Anand              Added condition for rest wire request manually  
+** 06/03/2014	Anand              Removed EPD condition from manual post
+** 06/12/2014	Anand              Modified Payment date to WirePurpose               
+*******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetPaymentSchedule] @XMLData XML = NULL
+	,@IsAutoPost BIT = 1
+AS
+BEGIN TRY
+	--  Initial Set statements  --            
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+	--- Declare Variables    
+	DECLARE @CurrentDate DATETIME
+	DECLARE @TaxYear INT
+	DECLARE @AmountThreshold MONEY
+
+	SELECT @CurrentDate = GETDATE()
+
+	SELECT @TaxYear = YEAR(@CurrentDate)
+
+	SELECT @AmountThreshold = ISNULL(WireThresholdAmount, 0)
+	FROM dbo.TBL_PP_SystemAdministration
+
+	-- Auto wire generation
+	IF @IsAutoPost = 'True'
+	BEGIN
+		SELECT BenPmnt.BeneficiaryDistributionID
+			,CustomerAccountNumber
+			,BenPmnt.ContactID
+			,BenPmnt.PaymentID
+			,AccountType
+			,BenPay.EPD
+			,CONVERT(varchar(10),BenPay.PaymentDate,101)+' Beneficiary Payment' as WirePurpose   
+			,BenPmnt.TaxYear
+			,('$' + CONVERT(VARCHAR, CAST(BenPay.ScheduledAmount AS MONEY), 1)) AS DistributionAmount
+			,BenPay.ScheduledAmount AS PaymentAmount
+			,PayeeName
+			,BenPmnt.IsBackBuilt
+			,BenPmnt.Memo
+			,VoidDate
+			,WirePDFFileCreationDate
+			,ReissueAs
+			,'' AS ClientAuth
+			,@AmountThreshold AS AmountThreshold
+			,'Signature (Kaspick Authorized Signer)' AS SignerText
+			,BenPmnt.RecordVersion
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON BenPmnt.PaymentID = BenPay.PaymentID
+			AND BenPmnt.PaymentID = BenPay.PaymentID
+			AND Convert(VARCHAR, BenPmnt.PaymentDate, 106) = Convert(VARCHAR, BenPay.PaymentDate, 106)
+		WHERE @XMLData IS NULL
+			AND PaymentMethod = 'WIRE'
+			AND BenPmnt.STATUS = 'Posted'
+			AND ISNull(WirePDFFileCreationDate, '') = ''
+			AND BenPmnt.TaxYear = @TaxYear
+			AND Convert(VARCHAR, EPD, 106) = Convert(VARCHAR, @CurrentDate, 106)
+		
+		UNION ALL
+		
+		SELECT BenPmnt.BeneficiaryDistributionID
+			,BenPmnt.CustomerAccountNumber
+			,BenPmnt.ContactID
+			,BenPmnt.PaymentID
+			,AccountType
+			,PgCalc.EPD
+			,CONVERT(varchar(10),Pgcalc.PaymentDate,101)+' Beneficiary Payment' as WirePurpose 
+			,BenPmnt.TaxYear
+			,('$' + CONVERT(VARCHAR, CAST(PGcalc.PaymentAmount AS MONEY), 1)) AS DistributionAmount
+			,Pgcalc.PaymentAmount
+			,BenPmnt.PayeeName
+			,BenPmnt.IsBackBuilt
+			,BenPmnt.Memo
+			,VoidDate
+			,WirePDFFileCreationDate
+			,ReissueAs
+			,'' AS ClientAuth
+			,@AmountThreshold AS AmountThreshold
+			,'Signature (Kaspick Authorized Signer)' AS SignerText
+			,BenPmnt.RecordVersion
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged Pgcalc ON BenPmnt.PaymentID = Pgcalc.PaymentID
+			AND BenPmnt.PaymentDate = Pgcalc.PaymentDate
+		WHERE @XMLData IS NULL
+			AND PaymentMethod = 'WIRE'
+			AND BenPmnt.STATUS = 'Posted'
+			AND ISNull(WirePDFFileCreationDate, '') = ''
+			AND BenPmnt.TaxYear = @TaxYear
+			AND Convert(VARCHAR, EPD, 106) = Convert(VARCHAR, @CurrentDate, 106)
+	END
+			--- For manual wire generation
+	ELSE
+	BEGIN
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpPaymentSchedule]')
+				)
+		BEGIN
+			DROP TABLE [DBO].[#TmpPaymentSchedule]
+		END
+
+		CREATE TABLE #TmpPaymentSchedule (ScheduleID INT)
+
+		INSERT INTO #TmpPaymentSchedule (ScheduleID)
+		SELECT XmlData.Item.value('@ScheduleID[1]', 'INT') AS ScheduleID
+		FROM @XMLDATA.nodes('//PaymentScheduleCollection/InsertList/PaymentSchedule') AS XmlData(Item)
+
+		SELECT BenPmnt.BeneficiaryDistributionID
+			,CustomerAccountNumber
+			,BenPmnt.ContactID
+			,BenPmnt.PaymentID
+			,AccountType
+			,BenPay.EPD
+			,CONVERT(varchar(10),BenPay.PaymentDate,101)+' Beneficiary Payment' as WirePurpose 
+			,BenPmnt.TaxYear
+			,('$' + CONVERT(VARCHAR, CAST(BenPay.ScheduledAmount AS MONEY), 1)) AS DistributionAmount
+			,BenPay.ScheduledAmount AS PaymentAmount
+			,PayeeName
+			,BenPmnt.IsBackBuilt
+			,BenPmnt.Memo
+			,VoidDate
+			,WirePDFFileCreationDate
+			,ReissueAs
+			,'' AS ClientAuth
+			,@AmountThreshold AS AmountThreshold
+			,'Signature (Kaspick Authorized Signer)' AS SignerText
+			,BenPmnt.RecordVersion
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON BenPmnt.PaymentID = BenPay.PaymentID
+			AND BenPmnt.PaymentID = BenPay.PaymentID
+			AND Convert(VARCHAR, BenPmnt.PaymentDate, 106) = Convert(VARCHAR, BenPay.PaymentDate, 106)
+		INNER JOIN #TmpPaymentSchedule TmpSchedule ON BenPay.BPScheduleID = TmpSchedule.ScheduleID
+		WHERE PaymentMethod = 'WIRE'
+			AND BenPmnt.STATUS = 'Posted'
+			AND ISNull(WirePDFFileCreationDate, '') = ''
+			AND BenPmnt.TaxYear = @TaxYear
+			--AND Convert(VARCHAR, EPD, 106) = Convert(VARCHAR, @CurrentDate, 106)
+		
+		UNION ALL
+		
+		SELECT BenPmnt.BeneficiaryDistributionID
+			,BenPmnt.CustomerAccountNumber
+			,BenPmnt.ContactID
+			,BenPmnt.PaymentID
+			,AccountType
+			,PgCalc.EPD
+			,CONVERT(varchar(10),Pgcalc.PaymentDate,101)+' Beneficiary Payment' as WirePurpose 
+			,BenPmnt.TaxYear
+			,('$' + CONVERT(VARCHAR, CAST(PGcalc.PaymentAmount AS MONEY), 1)) AS DistributionAmount
+			,Pgcalc.PaymentAmount
+			,BenPmnt.PayeeName
+			,BenPmnt.IsBackBuilt
+			,BenPmnt.Memo
+			,VoidDate
+			,WirePDFFileCreationDate
+			,ReissueAs
+			,'' AS ClientAuth
+			,@AmountThreshold AS AmountThreshold
+			,'Signature (Kaspick Authorized Signer)' AS SignerText
+			,BenPmnt.RecordVersion
+		FROM TBL_PP_BeneficiaryPayment BenPmnt
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged Pgcalc ON BenPmnt.PaymentID = Pgcalc.PaymentID
+			AND BenPmnt.PaymentDate = Pgcalc.PaymentDate
+		INNER JOIN #TmpPaymentSchedule TmpSchedule ON Pgcalc.MergedPGCalcPaymentID = TmpSchedule.ScheduleID
+		WHERE PaymentMethod = 'WIRE'
+			AND BenPmnt.STATUS = 'Posted'
+			AND ISNull(WirePDFFileCreationDate, '') = ''
+			AND BenPmnt.TaxYear = @TaxYear
+			--AND Convert(VARCHAR, EPD, 106) = Convert(VARCHAR, @CurrentDate, 106)
+
+		DROP TABLE [DBO].[#TmpPaymentSchedule]
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

@@ -1,0 +1,112 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_InvestmentGridCheck]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_InvestmentGridCheck]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_InvestmentGridCheck  
+** Short Desc: Generate report for the investment grid  
+**    
+** Full Description    
+**      Generate report for the investment grid  
+**    
+** Sample Call    
+EXEC USP_KCo_InvestmentGridCheck 2015
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : BOI: Reports & Queries     
+** Created DT: 24-04-2014  
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_InvestmentGridCheck] @TaxYear INT
+AS
+BEGIN
+	--InvGridCheck
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,UAccMas.UDFAMColumn009 AS FlipDate
+		,UAccMas.UDFAMColumn006 AS FlipProvision
+		,AccMas.AccountTypeCode AS AccountType
+		,TInvAccProf.SchwabMasterID
+		,AccMas.ExternalCustomerID AS CustodialAccount
+		,TInvAccProf.FSITypeCode
+		,TInvAccProf.ObjectiveCode
+		,AccMas.ActiveFlag AS AccountStatusCode
+		,TInvAccProf.TradeStatusCode
+		,TInvAccProf.InvestmentTypeCode
+		,TInvAccProf.InvestmentTaxStatusCode
+		,TinvAccProf.LotAccountingCode
+		,CASE 
+			WHEN TInvAccProf.ByPolicy = 0
+				THEN 'N'
+			ELSE 'Y'
+			END AS ByPol
+		,CASE 
+			WHEN TInvAccProf.ExceptionDoc = 0
+				THEN CASE 
+						WHEN (
+								CASE 
+									WHEN TInvAccProf.ByPolicy = 0
+										THEN 'N'
+									ELSE 'Y'
+									END
+								) = 'Y'
+							THEN 'NA'
+						ELSE 'N'
+						END
+			ELSE 'Y'
+			END AS PolExcDoc
+		,TTrgtFAlln.CashBalanceCode
+		,CASE 
+			WHEN TInvAccProf.DiscretionaryTrade = 0
+				THEN 'N'
+			ELSE 'Y'
+			END AS FullDiscretion
+		,CASE 
+			WHEN TInvAccProf.AssetsUnderMgmt = 0
+				THEN 'N'
+			ELSE 'Y'
+			END AS KCoMgd
+		,TInvAccProf.TrancheStatusCode
+		,convert(VARCHAR(1000), TInvAccProf.InvestmentComment) AS InvestmentComment
+		,TInvAccProf.SubstituteAssetWeight
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_UDF_AccountMaster UAccMas
+		ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_AccountProfile TInvAccProf
+		ON TInvAccProf.CustomeraccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_TargetFundAllocation TTrgtFAlln
+		ON TTrgtFAlln.ObjectiveCode = TInvAccProf.ObjectiveCode
+	ORDER BY AccMas.AccountTypeCode
+
+	SET NOCOUNT OFF;
+END

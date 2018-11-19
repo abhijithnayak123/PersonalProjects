@@ -1,0 +1,389 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport2]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentSummarySubReport2]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport2]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport2]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentSummarySubReport2                      
+** Short Desc:  Procedure to generate Payment summary report 
+**                      
+** Full Description:   Procedure to generate Payment summary report section2
+**					               
+**        
+**                              
+** Input Arguments:    @CustomerAccountNumber VARCHAR(14) ,@TaxYear INT
+**         
+** Sample Call     
+
+EXEC USP_PP_ReportGetPaymentSummarySubReport2  '353C134',2013   
+EXEC USP_PP_ReportGetPaymentSummarySubReport2  'AMGIL', 2013    
+EXEC USP_PP_ReportGetPaymentSummarySubReport2  'AMGIL', 2014   
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-JAN-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+** 21-Jul-2014 Saravanan		Optimized function Calls Fn_ReportGetDateProrate(@GiftDate), dbo.Fn_ReportGetTerminationFactor(@TaxYear,@varMatureDate,@varFinalPaymentType,@varMatureReason)
+								And updated the Parameters for function call Fn_ReportGetTerminationFactor
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport2]
+	-- paremeters here                                
+	@CustomerAccountNumber VARCHAR(14)
+	,@TaxYear INT
+AS
+--  Initial Set statements  --        
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+-- Body of procedure  --        
+BEGIN TRY
+	---Declare Variable
+	DECLARE @varAccountTypeCode VARCHAR(20)
+	DECLARE @varPayoutPercentage FLOAT
+	DECLARE @CYDistAmount MONEY
+	DECLARE @varDateOpened DATETIME
+	DECLARE @varFinalPaymentType TINYINT
+	DECLARE @varMatureDate DATETIME
+	DECLARE @varMatureReason TINYINT
+	DECLARE @varFixedPayment BIT
+	DECLARE @TrustType VARCHAR(200)
+	DECLARE @Valuation MONEY
+	DECLARE @ValuationDate DATETIME
+	DECLARE @minId INT
+	DECLARE @maxId INT
+	DECLARE @GiftDate DATETIME
+	DECLARE @MarketValue MONEY
+	DECLARE @TotalInitialGift INT
+	DECLARE @cRet MONEY
+	DECLARE @GiftValuation MONEY
+	DECLARE @RecordCount INT
+	DECLARE @varDateofFinalPayment DATETIME
+	DECLARE @FirstEventDay INT
+	DECLARE @FirstEventMonth VARCHAR(3)
+	DECLARE @FirstOccurrence VARCHAR(1)
+	DECLARE @Begin DATETIME
+	DECLARE @AccountType VARCHAR(20)
+	DECLARE @FlipDate DATETIME
+	DECLARE @FlipType VARCHAR(20)
+	DECLARE @CurrentTrustType VARCHAR(25)
+	DECLARE @DateProrate FLOAT
+	DECLARE @TerminationFactor FLOAT
+	-- DECLARE	@AnnualFrequency varchar(4) To Do
+	DECLARE @TmpGiftDetail TABLE (
+		RecordId INT identity
+		,PayoutRate FLOAT
+		,TaxYearValuation VARCHAR(25)
+		,GiftDate DATETIME
+		,MarketValue MONEY
+		,TotalInitialGift INT
+		,GiftType VARCHAR(100)
+		,FundedDays INT
+		,DaysInYear INT
+		,ProratedGiftValue MONEY
+		,ProratedGiftValue1 MONEY
+		,UnitrustTotal MONEY
+		,UnitrustTotal1 MONEY
+		,Valuation MONEY
+		,Valuation1 MONEY
+		,DaysInFinalYearofTrust INT
+		,DaysPriortoTermination INT
+		,TerminationPercent FLOAT
+		,TerminationPercent1 MONEY
+		,DateofFinalPayment DATETIME
+		,FinalPaymentRule VARCHAR(50)
+		,EstimatedPaymentAmount MONEY
+		,TaxYear INT
+		,MatureDate DATETIME
+		,FinalPaymentType INT
+		,TrustType VARCHAR(25)
+		,ShowUnitrustTotal INT
+		)
+
+	SELECT @varAccountTypeCode = AccntMstr.AccountTypeCode
+		,@varPayoutPercentage = CTAccntDtls.PayoutPercentage
+		,@CYDistAmount = CTAccntDtls.CYDistAmount
+		,@varDateOpened = AccntMstr.DateOpened
+		,@varFinalPaymentType = UDFAccntMstr.UDFAMColumn017
+		,@varMatureDate = UDFAccntMstr.UDFAMColumn030
+		,@varMatureReason = UDFAccntMstr.UDFAMColumn019
+	FROM SYN_IT_AccountMaster AccntMstr
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccntMstr
+		ON AccntMstr.CustomerAccountNumber = UDFAccntMstr.CustomerAccountNumber_Key
+			AND CustomerAccountNumber = @CustomerAccountNumber
+	INNER JOIN SYN_IT_CTAccountDetails CTAccntDtls
+		ON AccntMstr.CustomerAccountNumber = CTAccntDtls.CustomerAccountNumber
+
+	SELECT @Valuation = valuation
+	FROM TBL_PP_AnnualAccountPayoutInfo
+	WHERE PayoutYear = @TaxYear
+		AND CustomerAccountNumber = @CustomerAccountNumber
+
+	SELECT @FirstEventDay = UDFAMColumn025
+		,@FirstEventMonth = UDFAMColumn024
+		,@FirstOccurrence = UDFAMColumn023
+	--,@AnnualFrequency = UDFAMColumn021 To DO
+	FROM SYN_IT_UDF_AccountMaster
+	WHERE CustomerAccountNumber_Key = @CustomerAccountNumber
+
+	--    Use last day of previous year as starting point  
+	SET @Begin = convert(DATETIME, '31' + '/' + '12' + '/' + cast((@TaxYear - 1) AS VARCHAR), 103)
+	SET @ValuationDate = isnull(dbo.Fn_ReportCalcNextDate(@Begin, @FirstEventDay, @FirstEventMonth, @FirstOccurrence), 0)
+
+	INSERT INTO @TmpGiftDetail (
+		GiftDate
+		,MarketValue
+		,GiftType
+		)
+	SELECT '2013-04-22 00:00:00.000'
+		,50.00
+		,'Addition: '
+
+	--INSERT INTO @TmpGiftDetail (
+	--	GiftDate
+	--	,MarketValue
+	--	,TotalInitialGift
+	--	)
+	--SELECT MAX(Gift.GiftDate) AS GiftDate
+	--	,SUM(MarketValue) AS MarketValue
+	--	,SUM(CONVERT(INT, IsInitialGift)) AS TotalInitialGift
+	--FROM Gift
+	--	,GiftAsset
+	--WHERE Gift.GiftID = GiftAsset.GiftID
+	--	AND Gift.AccountID = @varAccountId
+	--	AND DATEPART(year, GiftDate) = @TaxYear
+	--GROUP BY Gift.GiftID
+	SELECT @RecordCount = count(*)
+	FROM @TmpGiftDetail
+
+	IF (@RecordCount = 0)
+	BEGIN
+		INSERT INTO @TmpGiftDetail (
+			GiftDate
+			,MarketValue
+			,TotalInitialGift
+			)
+		VALUES (
+			NULL
+			,0
+			,0
+			)
+	END
+
+	SELECT @minId = 1
+
+	SELECT @maxId = max(RecordId)
+	FROM @TmpGiftDetail
+
+	SET @cRet = 0
+
+	WHILE (@minId <= @maxId)
+	BEGIN
+		SET @DateProrate = 0
+		SELECT @GiftDate = GiftDate
+			,@MarketValue = MarketValue
+			,@TotalInitialGift = TotalInitialGift
+		FROM @TmpGiftDetail
+		WHERE RecordId = @minId
+
+		IF @TotalInitialGift > 0
+		BEGIN
+			UPDATE @TmpGiftDetail
+			SET GiftType = convert(VARCHAR, @GiftDate, 101) + ' Initial Gift: '
+			WHERE RecordId = @minId
+		END
+		ELSE
+		BEGIN
+			UPDATE @TmpGiftDetail
+			SET GiftType = convert(VARCHAR, @GiftDate, 101) + ' Addition: '
+			WHERE RecordId = @minId
+		END
+
+		SET @DateProrate = dbo.Fn_ReportGetDateProrate(@GiftDate)
+		
+		UPDATE @TmpGiftDetail
+		SET FundedDays = datediff(day, @GiftDate, cast('12/31/' + cast(year(@GiftDate) AS VARCHAR) AS DATETIME)) + 1
+			,ProratedGiftValue = @DateProrate * @MarketValue
+			,ProratedGiftValue1 = Round(Round((@DateProrate * @MarketValue), 2) * (@varPayoutPercentage / 100), 2)
+		WHERE RecordId = @minId
+
+		SET @cRet = @cRet + @DateProrate * @MarketValue
+
+		SELECT @cRet = Round(@cRet, 2)
+
+		IF (@GiftDate > @ValuationDate)
+			OR (@TotalInitialGift > 0)
+		BEGIN
+			SET @GiftValuation = @GiftValuation + (@DateProrate * @MarketValue)
+		END
+
+		SET @minId = @minId + 1
+	END
+
+	UPDATE @TmpGiftDetail
+	SET DaysInYear = dbo.Fn_ReportGetDaysInYear(@TaxYear)
+		,PayoutRate = @varPayoutPercentage
+		,TaxYearValuation = cast(@TaxYear AS VARCHAR) + ' Valuation:'
+		,Valuation = @Valuation
+
+	IF @Valuation > 0
+	BEGIN
+		UPDATE @TmpGiftDetail
+		SET Valuation1 = @Valuation * (@varPayoutPercentage / 100)
+	END
+
+	IF @cRet > 0
+	BEGIN
+		SET @cRet = ((@Valuation + @cRet) * (@varPayoutPercentage / 100))
+
+		UPDATE @TmpGiftDetail
+		SET UnitrustTotal = @Valuation + @GiftValuation
+			,UnitrustTotal1 = @cRet
+			,ShowUnitrustTotal = 1 --Unitrust Total is visible    
+	END
+	ELSE
+	BEGIN
+		SET @cRet = (@Valuation * (@varPayoutPercentage / 100))
+
+		UPDATE @TmpGiftDetail
+		SET ShowUnitrustTotal = 0
+	END
+
+	IF @varMatureDate IS NOT NULL
+		AND year(@varMatureDate) = @TaxYear
+	BEGIN
+	
+		SET @TerminationFactor = dbo.Fn_ReportGetTerminationFactor(@TaxYear,@varMatureDate,@varFinalPaymentType,@varMatureReason)
+	
+		UPDATE @TmpGiftDetail
+		SET DaysInFinalYearofTrust = dbo.Fn_ReportGetDaysInYear(@TaxYear)
+			,DaysPriortoTermination = datediff(day, cast('1/1/' + cast(@TaxYear AS VARCHAR) AS DATETIME), @varMatureDate)
+			,TerminationPercent = round(@TerminationFactor * 100, 4)
+			,TerminationPercent1 = (
+				CASE 
+					WHEN isnull(@cRet, 0) = 0
+						THEN round(@CYDistAmount * @TerminationFactor, 4)
+					ELSE @cRet * @TerminationFactor
+					END
+				)
+
+		IF @varFinalPaymentType = 1
+		BEGIN
+			SELECT @varDateofFinalPayment = [dbo].[Fn_ReportPayDatePrecedingTerm](@FirstOccurrence, @FirstEventDay, @FirstEventMonth, @TaxYear, @varDateOpened, @varMatureDate)
+
+			UPDATE @TmpGiftDetail
+			SET DateofFinalPayment = @varDateofFinalPayment
+				,FinalPaymentRule = 'Payment Preceding D.O.D.'
+		END
+		ELSE
+			UPDATE @TmpGiftDetail
+			SET FinalPaymentRule = 'Pro-rated to Termination Date'
+	END
+
+	SELECT @AccountType = AccntMstr.AccountTypeCode
+		,@FlipDate = UDFAccntMstr.UDFAMColumn009
+		,@FlipType = UDFAccntMstr.UDFAMColumn010
+	FROM SYN_IT_AccountMaster AccntMstr
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccntMstr
+		ON AccntMstr.CustomerAccountNumber = UDFAccntMstr.CustomerAccountNumber_Key
+			AND CustomerAccountNumber = @CustomerAccountNumber
+
+	IF @FlipDate IS NULL
+		SET @CurrentTrustType = @AccountType
+	ELSE
+		IF @TaxYear >= Year(@FlipDate)
+			SET @CurrentTrustType = 'CRUT'
+		ELSE
+			IF len(ltrim(rtrim(@FlipType))) = 0
+				SET @CurrentTrustType = @AccountType
+			ELSE
+				SET @CurrentTrustType = len(ltrim(rtrim(@FlipType)))
+
+	--05-feb-2014-Salih: Account Type mapping changes
+	IF (
+			@CurrentTrustType NOT IN (
+				'CRAT'
+				,'GLAT'
+				,'NLAT'
+				,'CRUT'
+				,'GLUT'
+				,'NLUT'
+				)
+			)
+	BEGIN
+		UPDATE @TmpGiftDetail
+		SET EstimatedPaymentAmount = (
+				SELECT EstAnnualPayout
+				FROM TBL_PP_AnnualAccountPayoutInfo
+				WHERE CustomerAccountNumber = @CustomerAccountNumber
+					AND PayoutYear = @TaxYear
+				)
+	END
+
+	UPDATE @TmpGiftDetail
+	SET TaxYear = @TaxYear
+		,MatureDate = @varMatureDate
+		,FinalPaymentType = @varFinalPaymentType
+		,TrustType = @varAccountTypeCode
+
+	-- Displaying Result
+	SELECT PayoutRate
+		,TaxYearValuation
+		,convert(VARCHAR, GiftDate, 101) AS GiftDate
+		,MarketValue
+		,TotalInitialGift
+		,GiftType
+		,FundedDays
+		,DaysInYear
+		,ProratedGiftValue
+		,ProratedGiftValue1
+		,UnitrustTotal
+		,Round(UnitrustTotal1, 2) AS UnitrustTotal1
+		,Valuation
+		,Valuation1
+		,DaysInFinalYearofTrust
+		,DaysPriortoTermination
+		,TerminationPercent
+		,TerminationPercent1
+		,convert(VARCHAR, DateofFinalPayment, 101) AS DateofFinalPayment
+		,FinalPaymentRule
+		,EstimatedPaymentAmount
+		,TaxYear
+		,convert(VARCHAR, MatureDate, 101) AS MatureDate
+		,FinalPaymentType
+		,TrustType
+		,ShowUnitrustTotal
+	FROM @TmpGiftDetail
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH

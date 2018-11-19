@@ -1,0 +1,116 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetParagonPaymentsSummary]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetParagonPaymentsSummary]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetParagonPaymentsSummary]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetParagonPaymentsSummary]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetParagonPaymentsSummary                      
+** Short Desc: get paragon payment summary.
+** Full Description: get paragon payment summary.
+** Input Arguments:   	@AsOfDate, @XMLCustomerAccountNumber XML
+** Sample Call     
+        
+DECLARE @AsOfDate datetime
+DECLARE @XMLCustomerAccountNumber XML
+SET @AsOfDate = '2013-12-15'
+ SET  @XMLCustomerAccountNumber = 
+		'<CustomerAccountCollection>    
+		  <InsertList>    
+			<CustomerAccount CustomerAccountNumber="CCGAP" />    
+		  </InsertList>    
+		</CustomerAccountCollection>'        
+ EXEC USP_PV_GetParagonPaymentsSummary @AsOfDate, @XMLCustomerAccountNumber
+
+**
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetParagonPaymentsSummary] (
+	@AsOfDate DATETIME
+	,@XMLCustomerAccountNumber XML
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	--un-cleared payments as of date  
+	WITH PAragonExtract
+	AS (
+		SELECT benepay.CustomerAccountNumber
+			,SUM(benepay.PaymentAmount) AS OutstandingPaymentAmount
+			,0 AS ACHPaymentAmount
+		FROM TBL_PP_BeneficiaryPayment benepay
+		INNER JOIN TBL_PP_PGCAlcPaymentData PGCAlcPay ON benepay.paymentid = PGCAlcPay.paymentid
+		WHERE benepay.PaymentDate < @AsOfDate
+			AND (
+				benepay.ClearDate > @AsOfDate
+				OR benepay.ClearDate IS NULL
+				)
+			AND benepay.VoidDate IS NULL
+			AND benepay.CustomerAccountNumber IN (
+				SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS org_pk
+				FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLDATA(item)
+				)
+		GROUP BY benepay.CustomerAccountNumber
+		
+		UNION ALL
+		
+		--cleared payments before scheduled payment date  
+		SELECT benepay.CustomerAccountNumber
+			,0 AS OutstandingPaymentAmount
+			,SUM(benepay.PaymentAmount) AS ACHPaymentAmount
+		FROM TBL_PP_BeneficiaryPayment benepay
+		WHERE benepay.PaymentDate >= @AsOfDate
+			AND (
+				benepay.ClearDate <= @AsOfDate
+				AND benepay.ClearDate IS NOT NULL
+				)
+			AND voiddate IS NULL
+			AND benepay.CustomerAccountNumber IN (
+				SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS org_pk
+				FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLDATA(item)
+				)
+		GROUP BY benepay.CustomerAccountNumber
+		)
+	SELECT prgext.CustomerAccountNumber
+		,SUM(OutstandingPaymentAmount) AS OutstandingPaymentAmount
+		,SUM(ACHPaymentAmount) AS ACHPaymentAmount
+	FROM ParagonExtract prgext
+	GROUP BY prgext.CustomerAccountNumber
+	ORDER BY prgext.CustomerAccountNumber
+END
+ 

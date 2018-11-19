@@ -1,0 +1,84 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllActiveFilters]    Script Date: 05/30/2014 16:48:53 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllActiveFilters]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetAllActiveFilters]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllActiveFilters]    Script Date: 05/30/2014 16:48:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetAllActiveFilters      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_OP_GetAllActiveFilters '<RequiredFilterName><Filter Name="SigCash"/><Filter Name="Error"/><Filter Name="ReCon"/></RequiredFilterName>'
+**      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Tanuj Gupta 
+** Company  :		Kaspick & Company      
+** Project  :		Payments      
+** Created DT :		May/13/2007      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** May/30/2014   Tanuj             Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/      
+CREATE PROCEDURE [dbo].[USP_OP_GetAllActiveFilters] --300008    
+(@XMLDATA XML)
+AS       
+	
+BEGIN
+
+select fl.* from TBL_OP_Filter fl
+INNER JOIN TBL_OP_FilterTypeLink fltl on fl.FilterID=fltl.FilterID
+INNER JOIN TBL_OP_FilterType flt on fltl.FilterTypeID=flt.FilterTypeID
+Inner join (SELECT 		
+				XMLDATA.item.value('@Name[1]', 'varchar(100)') AS FilterName
+				FROM @XMLDATA.nodes('//RequiredFilterName/Filter') AS XMLDATA(item)) ReqType
+			On flt.TypeName=ReqType.FilterName
+where fl.isactive=1 order by fl.FilterID
+
+
+select flca.* from TBL_OP_FilterCriteriaAttribute flca
+INNER JOIN TBL_OP_Filter fl on fl.FilterID=flca.FilterID
+INNER JOIN TBL_OP_FilterTypeLink fltl on fl.FilterID=fltl.FilterID
+INNER JOIN TBL_OP_FilterType flt on fltl.FilterTypeID=flt.FilterTypeID
+Inner join (SELECT 		
+				XMLDATA.item.value('@Name[1]', 'varchar(100)') AS FilterName
+				FROM @XMLDATA.nodes('//RequiredFilterName/Filter') AS XMLDATA(item)) ReqType
+			On flt.TypeName=ReqType.FilterName
+where flca.isactive=1 order by flca.ExecutionOrder
+
+
+
+select flra.* from TBL_OP_FilterResultAttribute flra
+INNER JOIN TBL_OP_Filter fl on fl.FilterID=flra.FilterID
+INNER JOIN TBL_OP_FilterTypeLink fltl on fl.FilterID=fltl.FilterID
+INNER JOIN TBL_OP_FilterType flt on fltl.FilterTypeID=flt.FilterTypeID
+Inner join (SELECT 		
+				XMLDATA.item.value('@Name[1]', 'varchar(100)') AS FilterName
+				FROM @XMLDATA.nodes('//RequiredFilterName/Filter') AS XMLDATA(item)) ReqType
+			On flt.TypeName=ReqType.FilterName
+where flra.isactive=1 
+End
+GO
+
+

@@ -1,0 +1,125 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_BeneVendorList]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_BeneVendorList]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_KCo_BeneVendorList      
+** Short Desc:  Fetch All Bene Vendor List   
+**      
+** Full Description      
+**        Get Bene Vendor List In Report Module      
+**      
+** Sample Call       
+**      USP_KCo_BeneVendorList 'Beneficiary Payment', '<BeneVendorList>  
+												  <List ID="588939" />
+												  <List ID="606910" />
+												  <List ID="610006" />
+												 </BeneVendorList>'
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Asit Kar      
+** Company   : Ciber offshore      
+** Project   : BOI: Reports & Queries      
+** Created DT: 04/28/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** <mm/dd/yyyy>      
+*******************************************************************************      
+** Copyright (C) 2014, Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_BeneVendorList] (
+	@PaymentType VARCHAR(50)
+	,@XMLBeneVendorList XML
+	)
+AS
+SET NOCOUNT ON
+
+IF (@PaymentType = 'Beneficiary Payment')
+BEGIN
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,BenDist.BeneficiaryDistributionID AS BeneficiaryID
+		,ContMas.ContactName AS PaymentName
+		,CASE 
+			WHEN ContPaymtMeth.PaymentType = 'Jrnl'
+				THEN 'JOURNAL'
+			ELSE ContPaymtMeth.PaymentType
+			END AS PaymentMethod
+		,ABVrfn.BankName AS 'Destination Bank'
+		,ABNumCd.ABANumberCode AS 'Destination Bank ABA'
+		,ContPaymtMeth.CreditAcctNumber AS DepositoryAccount
+		,ContMas.ContactName AS ClientName
+	FROM SYN_IT_BeneficiaryDistributions BenDist
+	INNER JOIN SYN_IT_ContactMaster ContMas
+		ON BenDist.PayeeID = ContMas.ContactID
+	INNER JOIN SYN_IT_ContactPaymentMethods ContPaymtMeth
+		ON BenDist.PayeePaymentMethodID = ContPaymtMeth.ID
+	INNER JOIN SYN_IT_ContactAccountRoles ContAcntRol
+		ON ContAcntRol.Contactid = ContMas.ContactId
+			AND ContAcntRol.CONTACTROLECODE = 21 -- Beneficiary
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = ContAcntRol.CustomerAccountNumber
+	INNER JOIN SYN_IT_ABANumberCodes ABNumCd
+		ON ContPaymtMeth.ABANumberCode = ABNumCd.ABANumberCode
+	INNER JOIN SYN_IT_ABAVerification ABVrfn
+		ON ABVrfn.ABANumber = ABNumCd.ABANumberCode
+	WHERE BenDist.BeneficiaryDistributionID IN (
+			SELECT XmlInput.Item.value('@ID[1]', 'INT') AS BeneficiaryID
+			FROM @XMLBeneVendorList.nodes('//BeneVendorList/List') AS XmlInput(Item)
+			)
+END
+ELSE
+BEGIN
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,ContMas.ContactId AS VendorID
+		,ContMas.ContactName AS PaymentName
+		,CASE 
+			WHEN ContPaymtMeth.PaymentType = 'Jrnl'
+				THEN 'JOURNAL'
+			ELSE ContPaymtMeth.PaymentType
+			END AS PaymentMethod
+		,ABVrfn.BankName AS 'Destination Bank'
+		,ABNumCd.ABANumberCode AS 'Destination Bank ABA'
+		,ContPaymtMeth.CreditAcctNumber AS DepositoryAccount
+		,ContMas.ContactName AS ClientName
+	FROM SYN_IT_ContactMaster AS ContMas
+	INNER JOIN SYN_IT_ContactAccountRoles ContAcntRol
+		ON ContAcntRol.Contactid = ContMas.ContactId
+			AND ContAcntRol.CONTACTROLECODE = 540 -- Vendor Payment
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = ContAcntRol.CustomerAccountNumber
+	INNER JOIN SYN_IT_ContactPaymentMethods ContPaymtMeth
+		ON ContMas.ContactID = ContPaymtMeth.ContactID
+	INNER JOIN SYN_IT_ABANumberCodes ABNumCd
+		ON ContPaymtMeth.ABANumberCode = ABNumCd.ABANumberCode
+	INNER JOIN SYN_IT_ABAVerification ABVrfn
+		ON ABVrfn.ABANumber = ABNumCd.ABANumberCode
+	WHERE ContMas.ContactId IN (
+			SELECT XmlInput.Item.value('@ID[1]', 'INT') AS VendorID
+			FROM @XMLBeneVendorList.nodes('//BeneVendorList/List') AS XmlInput(Item)
+			)
+END
+GO
+
+

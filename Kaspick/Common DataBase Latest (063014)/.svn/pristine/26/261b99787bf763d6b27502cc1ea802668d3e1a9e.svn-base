@@ -1,0 +1,101 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetManagerAndAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetManagerAndAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetManagerAndAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetManagerAndAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_GetManagerAndAccount    
+** Short Desc: Get manager account details    
+**    
+** Full Description : Get manager account details    
+**            
+**    
+** Sample Call    
+        EXEC USP_IE_GetManagerAndAccount   
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/08/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetManagerAndAccount]
+AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	-- Body of procedure  --      
+	SELECT UDFAcc.UDFAMColumn045 AS AccountFullName
+		,AccMas.CustomerAccountNumber
+		,AccMas.AccountTypeCode
+		,AccMgr.ManagerCode AS ClientBriefName
+		,CntctMstr.ContactName AS ClientFullName
+		,CASE 
+			WHEN AccMgr.ActiveFlag = - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsClientActive
+		,CASE 
+			WHEN AccMas.ActiveFlag = - 1
+				AND AccMas.ClosedFlag <> - 1
+				THEN 'TRUE'
+			ELSE 'FALSE'
+			END AS IsAccountActive
+		,UDFAcc.UDFAMColumn030 AS MatureDate
+		,AccMas.DateOpened AS CreationDate
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgr
+		ON AccMas.ManagerCode = AccMgr.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster CntctMstr
+		ON AccMgr.ContactID = CntctMstr.ContactID
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAcc
+		ON UDFAcc.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_IT_CTAccountDetails CTAccDet
+		ON CTAccDet.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	WHERE AccMgr.ActiveFlag = - 1
+		AND AccMas.AccountTypeCode IN (
+			'CRUT'
+			,'CRAT'
+			,'GLUT'
+			,'NLUT'
+			)
+	ORDER BY AccMgr.ManagerCode
+		,CTAccDet.PayoutPercentage
+		,AccMas.CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END
+
+

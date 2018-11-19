@@ -1,0 +1,134 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdPaymentScheduleFilename]    Script Date: 08/14/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_UpdPaymentScheduleFilename]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_UpdPaymentScheduleFilename]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_UpdPaymentScheduleFilename]    Script Date: 10/23/2013 14:22:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** Name   :   USP_PP_UpdPaymentScheduleFilename                
+** Short Desc : Update Payment Schedule Filename.                
+**                
+** Full Description :Update Payment Schedule Filename.
+**                        
+**                
+** Sample Call                
+  DECLARE @RecordVersionReturn VARBINARY(8)   
+  EXEC USP_PP_UpdPaymentScheduleFilename 1134834, 'ABC'  ,     
+  'DonorBeneficiary', 'NA', '1', '0x00000000011319FB', '0', @RecordVersionReturn output  
+  SELECT @RecordVersionReturn --parameters              
+  
+  DECLARE @RecordVersionReturn VARBINARY(8)   
+  EXEC USP_PP_UpdPaymentScheduleFilename 1, 'BGGAP_20120706_0130563835_NAC_B.pdf'  ,     
+  'DonorBeneficiary', 'CGA', '100019', '0x00000000002F7F2A', '1', @RecordVersionReturn output  
+  SELECT @RecordVersionReturn --parameters           
+  
+  DECLARE @RecordVersionReturn VARBINARY(8)   
+  EXEC USP_PP_UpdPaymentScheduleFilename 100003, 'BGGAP_20120706_0130563835_NAC_B.pdf'  ,     
+  'DonorBeneficiary', 'NA', '1', '0x0000000000049910', '0', @RecordVersionReturn output  
+  SELECT @RecordVersionReturn --parameters  
+  
+  DECLARE @RecordVersionReturn VARBINARY(8)   
+  EXEC USP_PP_UpdPaymentScheduleFilename 100003, 'NULL'  ,     
+  'DonorBeneficiary', 'NA', '100019', '0x00000000002F7F30', '1', @RecordVersionReturn output  
+  SELECT @RecordVersionReturn --parameters
+      
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET LOCK_TIMEOUT         30000   --30 seconds        
+**                 
+** Created By: Bandish Gupta            
+** Company   : Kaspick & Company            
+** Project   : BackOffice Integration            
+** Created DT: 05-Sep-2013            
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- -----               
+**             
+*******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_UpdPaymentScheduleFilename] @ENTITYID INT
+	,@FILENAME VARCHAR(100)
+	,@ENTITYTYPE VARCHAR(50)
+	,@ACCOUNTTYPE VARCHAR(50)
+	,@UserID INT
+	,@RecordVer VARCHAR(100)
+	,@Regenerate BIT
+	,@RecordVersionReturn VARBINARY(8)
+OUTPUT AS
+
+BEGIN TRY
+	-- SET NOCOUNT ON added to prevent extra result sets from            
+	-- interfering with SELECT statements.            
+	SET NOCOUNT ON;
+
+	BEGIN TRANSACTION
+
+	UPDATE TBL_PP_BeneficiaryPayment
+	SET WirePDFFileName = @FILENAME
+		,ModifiedBy = (
+			CASE 
+				WHEN @Regenerate = 0
+					THEN ModifiedBy
+				WHEN @Regenerate = 1
+					THEN @UserID
+				END
+			)
+		,ModifiedDate = GETDATE()
+		,WirePDFFileCreationDate = GETDATE()
+	WHERE PaymentID = @ENTITYID
+		AND CONVERT(VARCHAR(20), CAST(RecordVersion AS VARBINARY(8)), 1) = @RecordVer
+		AND @ENTITYTYPE = 'DonorBeneficiary'
+
+	SELECT @RecordVersionReturn = RecordVersion
+	FROM TBL_PP_BeneficiaryPayment
+	WHERE PaymentID = @ENTITYID
+		AND @ENTITYTYPE = 'DonorBeneficiary'
+
+	SET NOCOUNT OFF;
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

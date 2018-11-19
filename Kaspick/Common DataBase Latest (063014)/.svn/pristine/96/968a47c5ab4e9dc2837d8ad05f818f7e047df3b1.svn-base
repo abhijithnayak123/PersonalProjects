@@ -1,0 +1,84 @@
+  
+IF EXISTS (SELECT * FROM sysobjects
+WHERE type = 'P'
+	AND name = 'USP_EX_GetSysadminBenereportcommentsDetail') 
+BEGIN
+	DROP PROCEDURE USP_EX_GetSysadminBenereportcommentsDetail;
+PRINT 'DROPPED USP_EX_GetSysadminBenereportcommentsDetail';
+END
+GO 
+  
+/******************************************************************************
+** Name : USP_EX_GetSysadminBenereportcommentsDetail
+** Old Name:     USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_DTLSelProc
+** Short Desc:	This procedure is used to get the details of a particular BeneReportComment
+**				corresponding to CommentID passed as parameter
+**
+** Full Description
+**        More detailed description if necessary
+**
+** Sample Call
+        EXEC USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_DTLSelProc 266
+**
+** Return values: @RETURN_VALUE: Returns details of selected record
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**		 SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+**	
+**	Created By: Amarnath.N.R
+**	Company	  :	Kaspick & Company
+**	Project	  :	IM Profiles
+**	Created DT:	03/15/2007
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 20-March-2014  Sanath  EXCREQ 3.1 Modified
+*******************************************************************************
+** Copyright (C) <CopyrightYear,2007,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+  
+  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetSysadminBenereportcommentsDetail]  
+ -- paremeters here    
+ @BRCommentID INT    
+AS     
+    
+--  Variable Declarations  --    
+Declare @procname    varchar(60);    
+Declare @errmsg     varchar(1000);    
+Declare @errnbr     int;    
+    
+-- Variables used for error handling     
+--  Variable Data Assignment  --    
+Set @procname = '[USP_EX_GetSysadminBenereportcommentsDetail]';    
+    
+-- Body of procedure  --    
+    
+SELECT  BenRptCmnt.BRCommentID,    
+  BenRptCmnt.PortfolioCode,    
+  BenRptCmnt.PORTFOLIOLABEL,    
+  BenRptCmnt.PORTFOLIODESCRIPTION,    
+  ModifiBenRptCmnt.ModifiedBy,    
+  ModifiBenRptCmnt.ModifiedDate   
+FROM TBL_INV_BeneReportComment BenRptCmnt INNER JOIN    
+  TBL_INV_BeneReportComment ModifiBenRptCmnt ON BenRptCmnt.BRCOMMENTID = ModifiBenRptCmnt.BRCOMMENTID     
+WHERE BenRptCmnt.BRCOMMENTID = @BRCommentID    
+     
+GO
+IF EXISTS (SELECT
+	*
+FROM sysobjects
+WHERE type = 'P'
+AND name = 'USP_EX_GetSysadminBenereportcommentsDetail') 
+BEGIN
+
+PRINT 'CREATED USP_EX_GetSysadminBenereportcommentsDetail';
+END

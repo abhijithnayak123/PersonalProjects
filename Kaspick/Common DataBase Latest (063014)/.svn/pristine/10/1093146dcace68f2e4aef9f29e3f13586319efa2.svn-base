@@ -1,0 +1,148 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAdditionToTrustDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftAdditionToTrustDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftAdditionToTrustDetail';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftAdditionToTrustDetail
+** Old Name :  [sp_wft_get_addition_to_trust_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate Addition to Trust detail
+**
+** Sample Call
+	[sp_wft_get_addition_to_trust_detail] '00F1784C-38F4-4903-A355-7DC06B9DECB6'
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Vshivhare
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior WFT
+**	Created DT:	12-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 22-Mar-2014  Abhijith  EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftAdditionToTrustDetail] (@Guid VARCHAR(255))
+AS
+SELECT notification_date
+	,is_revised_submission
+	,revision_date
+	,submitted_by
+	,ta_authorization_level
+	,im_authorization_level
+	,pxy_username
+	,ManagerCodeName AS client_name
+	,account_name
+	,AccMstr.CustomerAccountNumber AS advent_id
+	,account_type
+	,AccMstr.ExternalCustomerID AS account_number
+	,reason_for_submission
+	,AdtnTrst.comments
+	,asset_delivery_arrival
+	,expected_asset_arrival_date
+	,gift_date
+	,asset_type1
+	,ticker_symbol1
+	,price_source1
+	,number_of_share1
+	,high_price1
+	,donors_date_of_acquisition1
+	,chkbx_long_term_holding1
+	,average_price1
+	,donors_cost_basis1
+	,zero_cost_basis1
+	,asset_value1
+	,delivery_method1
+	,asset_description1
+	,asset_type2
+	,ticker_symbol2
+	,price_source2
+	,number_of_share2
+	,high_price2
+	,donors_date_of_acquisition2
+	,chkbx_long_term_holding2
+	,average_price2
+	,donors_cost_basis2
+	,zero_cost_basis2
+	,asset_value2
+	,delivery_method2
+	,asset_description2
+	,asset_type3
+	,ticker_symbol3
+	,price_source3
+	,number_of_share3
+	,high_price3
+	,donors_date_of_acquisition3
+	,chkbx_long_term_holding3
+	,average_price3
+	,donors_cost_basis3
+	,zero_cost_basis3
+	,asset_value3
+	,delivery_method3
+	,asset_description3
+	,asset_type4
+	,ticker_symbol4
+	,price_source4
+	,number_of_share4
+	,high_price4
+	,donors_date_of_acquisition4
+	,chkbx_long_term_holding4
+	,average_price4
+	,donors_cost_basis4
+	,zero_cost_basis4
+	,asset_value4
+	,delivery_method4
+	,asset_description4
+	,value_of_additional_gifted_assets
+	,total_gift_value
+	,total_cost_basis
+	,investment_trading_strategy
+	,current_investment_objective
+	,trading_policy_additions_sell
+	,trading_policy_additions_invest
+	,client_manager
+	,trust_administrator
+	,low_price1
+	,low_price2
+	,low_price3
+	,low_price4
+	,gift_restriction
+FROM TBL_WFT_AdditionToTrust AdtnTrst
+INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = AdtnTrst.CustomerAccountNumber
+WHERE Guid = @Guid
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAdditionToTrustDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftAdditionToTrustDetail';
+END

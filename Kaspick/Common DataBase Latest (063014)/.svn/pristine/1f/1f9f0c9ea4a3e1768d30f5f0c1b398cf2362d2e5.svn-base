@@ -1,0 +1,114 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_UpdProfileTaxConditionDetail')
+    BEGIN
+        DROP PROCEDURE USP_EX_UpdProfileTaxConditionDetail;
+        PRINT 'DROPPED USP_EX_UpdProfileTaxConditionDetail';
+    END
+GO
+
+/**************************************************************************                            
+* New Procedure Name : USP_EX_UpdProfileTaxConditionDetail  
+* Old PROCEDURE NAME  : USP_EIS_EX_PROFILE_TAX_CONDITION_DTLUpdProc                            
+* DESCRIPTION     : UPDATES 'ACCOUNT TAX CONDITIONS' WITH THE PARAMETERS SUPPLIED      
+*      
+* INPUT           :  [USP_EIS_EX_PROFILE_TAX_CONDITION_DTLUpdProc] 2927,660,'Active',2010,0,'Testing IRiS for Excelsior Tax Condition Comments. Increasing the character limit to 255.',100048    
+* MODIFICATION LOG:      
+*                                                        
+* DATE   CREATED BY  DESCRIPTION      
+*-------------------------------------------------------------------------                    
+* 25-Sept-07 Chirag Parekh CREATED  
+* 04-Apr-14 Yugandhar  EXCREQ 7.4     
+* 23/05/2014  Mallikarjun  SP Name Renamed and Formatted  
+****************************************************************************/  
+CREATE PROCEDURE USP_EX_UpdProfileTaxConditionDetail (  
+ @TAX_CONDITION_ID INT  
+ ,@CONDITION_ID INT  
+ ,@STATUS VARCHAR(25)  
+ ,@START_YEAR INT  
+ ,@END_YEAR INT  
+ ,@COMMENTS VARCHAR(1000)  
+ ,@MODIFIED_USER_ID INT  
+ )  
+AS  
+BEGIN  
+	BEGIN TRY
+   BEGIN TRANSACTION  
+  
+ DECLARE @COND_STATUS_ID INT  
+ DECLARE @STATUSFLAG BIT  
+  
+
+  
+ EXEC USP_EX_GetDeleteStatus @TABLE_NAME = 'TBL_IRS_ProfileTaxCondition'  
+  ,@FIELD_NAME = 'TAX_CONDITION_ID'  
+  ,@FIELD_VALUE = @TAX_CONDITION_ID  
+  ,@STATUS = @STATUSFLAG OUTPUT  
+  
+ IF (@STATUSFLAG = 1)  
+  RAISERROR 50001 'RECORD DELETED'  
+ ELSE  
+ BEGIN  
+  EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'TAX CONDITIONS STATUS'  
+   ,@LIST_ITEM_NAME = @STATUS  
+   ,@LIST_ITEM_ID = @COND_STATUS_ID OUTPUT  
+  
+  UPDATE TBL_IRS_ProfileTaxCondition  
+  SET CONDITION_ID = @CONDITION_ID  
+   ,STATUS_ID = @COND_STATUS_ID  
+   ,START_YEAR = @START_YEAR  
+   ,END_YEAR = @END_YEAR  
+   ,COMMENTS = @COMMENTS  
+   ,MODIFIED_USER_ID = @MODIFIED_USER_ID  
+   ,MODIFIED_DATE = GETDATE()  
+  WHERE TAX_CONDITION_ID = @TAX_CONDITION_ID  
+  
+  IF (@@error != 0)  
+  BEGIN  
+   RAISERROR 10001 'USP_EX_UpdProfileTaxConditionDetail: Cannot update'  
+  
+   ROLLBACK TRANSACTION  
+  
+   RETURN (- 1)  
+  END  
+  
+ END  
+  
+ COMMIT TRANSACTION  
+ END TRY
+ 
+  BEGIN CATCH  
+  ROLLBACK TRANSACTION  
+  
+  DECLARE @ProcName VARCHAR(60);  
+  DECLARE @ErrorMessage NVARCHAR(4000);  
+  DECLARE @ErrorSeverity INT;  
+  DECLARE @ErrorState INT;  
+  
+  SET @ProcName = 'USP_EX_UpdProfileTaxConditionDetail';  
+  
+  SELECT @ErrorMessage = ERROR_MESSAGE()  
+   ,@ErrorSeverity = ERROR_SEVERITY()  
+   ,@ErrorState = ERROR_STATE();  
+  
+   RAISERROR (
+                        @ErrorMessage
+                        ,-- Message text.
+                        @ErrorSeverity
+                        ,-- Severity.
+                        @ErrorState -- State.
+                        );    
+	                    
+	END CATCH 
+END  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_UpdProfileTaxConditionDetail') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_UpdProfileTaxConditionDetail';
+	END

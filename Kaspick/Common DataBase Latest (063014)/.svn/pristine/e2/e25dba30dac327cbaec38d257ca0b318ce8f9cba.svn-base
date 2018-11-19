@@ -1,0 +1,2400 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfClientPolicyRuleSetDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveEnfClientPolicyRuleSetDetails;
+
+	PRINT 'DROPPED USP_EX_SaveEnfClientPolicyRuleSetDetails';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                    
+** New Name:	 USP_EX_SaveEnfClientPolicyRuleSetDetails
+** Old Name:     USP_EIS_ENF_CLIENTPOLICY_RULESETDETAILS_InsUpdProc                    
+** Short Desc: To save the Client Investment Policy - Rule Set details           
+**                    
+** Full Description: To save the Client Investment Policy - Rule Set details           
+**                            
+** Input Arguments: NONE  
+**       
+** Sample Call                    
+**  EXEC USP_EIS_ENF_CLIENTPOLICY_RULESETDETAILS_InsUpdProc  
+		@Mode = 'EDIT', 
+		@ClientID = 100010, 
+		@IPTrustTypeID = 7, 
+		@TrustTypeDetail = '<TrustTypeDetail>
+							  <TrustTypeInfo>
+								<Name>Annuity Trusts With Horizon less than 7 years</Name>
+								<TrustType>CRAT</TrustType>
+								<MinHorizonOperator />
+								<MinHorizonValue />
+								<MaxHorizonOperator>&lt;=</MaxHorizonOperator>
+								<MaxHorizonValue>7</MaxHorizonValue>
+							  </TrustTypeInfo>
+							</TrustTypeDetail>', 
+		@RuleSetDetail = '<RuleSetCollection>
+							  <RuleSet>
+								<IPTrustTypeID>7</IPTrustTypeID>
+								<ClientInvestmentPolicyDetailsID>6</ClientInvestmentPolicyDetailsID>
+								<StrategicAllocationID>2</StrategicAllocationID>
+								<StrategicAllocationName>Kaspick &amp; Company Aggressive</StrategicAllocationName>
+								<MinPayoutValue>1</MinPayoutValue>
+								<MinPayoutCond>&gt;=</MinPayoutCond>
+								<MaxPayoutValue>6</MaxPayoutValue>
+								<MaxPayoutCond>&lt;=</MaxPayoutCond>
+								<TacticalAllocation>Agg</TacticalAllocation>
+							  </RuleSet>
+						 </RuleSetCollection>',
+		@UserID = 1,
+		@NewIPTrustTypeID = 0
+     
+**           
+** Return values: NONE  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Soorya            
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - Enfuego4C                    
+** Created DT: 18/Aug/2010                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 21-Feb-2014 Mallikarjun  Modified   EXCREQ 3.1
+** 23-May-2014  Sanath   Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveEnfClientPolicyRuleSetDetails] (
+	@Mode VARCHAR(10)
+	,@ManagerCode VARCHAR(15)
+	,@IPTrustTypeID BIGINT
+	,@TrustTypeDetail XML
+	,@RuleSetDetail XML
+	,@UserID INT
+	,@NewIPTrustTypeID INT OUTPUT
+	)
+AS
+BEGIN
+	--  Variable Declarations  --          
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @RuleSetCount INT
+		,@ID INT;
+	DECLARE @ObjectiveCode VARCHAR(20);
+	DECLARE @OrderBy INT;
+	DECLARE @InvestmentObjectivePolicyID INT;
+	DECLARE @ClientInvestmentPolicyDetailsID INT;
+	DECLARE @StrategicAllocationID INT
+		,@MinPayoutValue FLOAT
+		,@MinPayoutCond CHAR(2)
+		,@MaxPayoutValue FLOAT
+		,@MaxPayoutCond CHAR(2);
+	DECLARE @TacticalAllocation VARCHAR(20);
+	DECLARE @TrustTypeName VARCHAR(100)
+		,@TrustTypeID VARCHAR(20)
+		,@MinHorizonValue INT
+		,@MinHorizonCond CHAR(2)
+		,@MaxHorizonValue INT
+		,@MaxHorizonCond CHAR(2);
+	DECLARE @Review BIT
+		,@MinReviewValue INT
+		,@MinReviewCond CHAR(2)
+		,@MaxReviewValue INT
+		,@MaxReviewCond CHAR(2);
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --          
+	DECLARE @RuleSet TABLE (
+		RuleSetID INT IDENTITY
+		,IPTrustTypeID INT
+		,ClientInvestmentPolicyDetailID INT
+		,StrategicAllocationID INT
+		,StrategicAllocationName VARCHAR(100)
+		,MinPayoutValue FLOAT
+		,MinPayoutCond CHAR(2)
+		,MaxPayoutValue FLOAT
+		,MaxPayoutCond CHAR(2)
+		,TacticalAllocation VARCHAR(20)
+		);
+
+	--  Variable Data Assignment  --          
+	SET @ProcName = 'USP_EX_SaveEnfClientPolicyRuleSetDetails';
+
+	IF (@IPTrustTypeID = 0)
+	BEGIN
+		SET @Mode = 'NEW'
+	END
+
+	-- Body of procedure  --          
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		CREATE TABLE #TEMP_ClientInvestmentPolicyTrustType (
+			AuditUserID INT
+			,AuditDatetime DATETIME
+			,AuditFlag CHAR(1)
+			,AuditTable VARCHAR(100)
+			,AuditDetail VARCHAR(100)
+			,IPTrustTypeID INT
+			,ManagerCode CHAR(4)
+			,TrustTypeID INT
+			,TrustTypeIPName VARCHAR(255)
+			,MinHorizonValue INT
+			,MinHorizonCond CHAR(2)
+			,MaxHorizonValue INT
+			,MaxHorizonCond CHAR(2)
+			,Review BIT
+			,MinReviewValue INT
+			,MinReviewCond CHAR(2)
+			,MaxReviewValue INT
+			,MaxReviewCond CHAR(2)
+			,CreatedDate DATETIME
+			,CreatedBy INT
+			)
+
+		CREATE TABLE #TEMP_ClientInvestmentPolicyDetail (
+			AuditUserID INT
+			,AuditDatetime DATETIME
+			,AuditFlag CHAR(1)
+			,AuditTable VARCHAR(100)
+			,AuditDetail VARCHAR(100)
+			,ClientInvestmentPolicyDetailID INT
+			,IPTrustTypeID INT
+			,StrategicAllocationID INT
+			,TrustTypeID VARCHAR(20)
+			,MinPayoutValue FLOAT
+			,MinPayoutCond CHAR(2)
+			,MaxPayoutValue FLOAT
+			,MaxPayoutCond CHAR(2)
+			,CreatedDate DATETIME
+			,CreatedBy INT
+			)
+
+		CREATE TABLE #TEMP_ClientInvestmentObjective (
+			AuditUserID INT
+			,AuditDatetime DATETIME
+			,AuditFlag CHAR(1)
+			,AuditTable VARCHAR(100)
+			,AuditDetail VARCHAR(100)
+			,ManagerCode CHAR(4)
+			,ObjectiveCode VARCHAR(30)
+			,ObjectivePolicyAssigned BIT
+			,OrderBy INT
+			)
+
+		CREATE TABLE #TEMP_InvestmentObjectivePolicy (
+			AuditUserID INT
+			,AuditDatetime DATETIME
+			,AuditFlag CHAR(1)
+			,AuditTable VARCHAR(100)
+			,AuditDetail VARCHAR(100)
+			,InvestmentObjectivePolicyID INT
+			,MaxLifeExpectancy INT
+			,AccountType VARCHAR(20)
+			,ManagerCode CHAR(4)
+			,UnitrustPercentage FLOAT
+			,ObjectiveCode VARCHAR(30)
+			,MaxUTPct FLOAT
+			,ObjectiveCodeClientSpecific VARCHAR(30)
+			,MinLifeExpectancy INT
+			,MinLifeExpectancyCond INT
+			,MaxLifeExpectancyCond INT
+			,MinUPCond INT
+			,MaxUPCond INT
+			,ClientInvestmentPolicyDetailID INT
+			)
+
+		IF (@Mode = 'NEW')
+		BEGIN
+			SELECT @TrustTypeID = XMLDATA.Item.value('TrustType[1]', 'VARCHAR(20)')
+				,@TrustTypeName = XMLDATA.Item.value('Name[1]', 'VARCHAR(100)')
+				,@MinHorizonValue = XMLDATA.Item.value('MinHorizonValue[1]', 'INT')
+				,@MinHorizonCond = XMLDATA.Item.value('MinHorizonOperator[1]', 'CHAR(2)')
+				,@MaxHorizonValue = XMLDATA.Item.value('MaxHorizonValue[1]', 'INT')
+				,@MaxHorizonCond = XMLDATA.Item.value('MaxHorizonOperator[1]', 'CHAR(2)')
+				,@Review = XMLDATA.Item.value('NoPolicy[1]', 'BIT')
+				,@MinReviewValue = XMLDATA.Item.value('MinNoPolicyValue[1]', 'INT')
+				,@MinReviewCond = XMLDATA.Item.value('MinNoPolicyOperator[1]', 'CHAR(2)')
+				,@MaxReviewValue = XMLDATA.Item.value('MaxNoPolicyValue[1]', 'INT')
+				,@MaxReviewCond = XMLDATA.Item.value('MaxNoPolicyOperator[1]', 'CHAR(2)')
+			FROM @TrustTypeDetail.nodes('/TrustTypeDetail/TrustTypeInfo') AS XMLDATA(Item)
+
+			INSERT INTO TBL_INV_ClientInvestmentPolicyTrustType
+			VALUES (
+				@ManagerCode
+				,CASE 
+					WHEN @TrustTypeID = 'CRAT'
+						THEN 1
+					ELSE CASE 
+							WHEN @TrustTypeID = 'CRUT'
+								THEN 2
+							ELSE 0
+							END
+					END
+				,@TrustTypeName
+				,@MinHorizonValue
+				,@MinHorizonCond
+				,@MaxHorizonValue
+				,@MaxHorizonCond
+				,@Review
+				,@MinReviewValue
+				,@MinReviewCond
+				,@MaxReviewValue
+				,@MaxReviewCond
+				,GETDATE()
+				,@UserID
+				)
+
+			SELECT @IPTrustTypeID = IDENT_CURRENT('TBL_INV_ClientInvestmentPolicyTrustType');
+
+			SET @NewIPTrustTypeID = @IPTrustTypeID;
+
+			-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType ----------------------------------  
+			INSERT INTO #TEMP_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT @userid
+				,GETDATE()
+				,'I'
+				,'TBL_INV_ClientInvestmentPolicyTrustType'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM TBL_INV_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM #TEMP_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			------------------------------------End Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType -----------------------------
+			INSERT INTO @RuleSet
+			SELECT XMLDATA.Item.value('IPTrustTypeID[1]', 'INT') AS IPTrustTypeID
+				,XMLDATA.Item.value('ClientInvestmentPolicyDetailID[1]', 'INT') AS ClientInvestmentPolicyDetailID
+				,XMLDATA.Item.value('StrategicAllocationID[1]', 'INT') AS StrategicAllocationID
+				,LTRIM(RTRIM(XMLDATA.Item.value('StrategicAllocationName[1]', 'VARCHAR(100)'))) AS StrategicAllocationName
+				,XMLDATA.Item.value('MinPayoutValue[1]', 'FLOAT') AS MinPayoutValue
+				,XMLDATA.Item.value('MinPayoutCond[1]', 'CHAR(2)') AS MinPayoutCond
+				,XMLDATA.Item.value('MaxPayoutValue[1]', 'FLOAT') AS MaxPayoutValue
+				,XMLDATA.Item.value('MaxPayoutCond[1]', 'CHAR(2)') AS MaxPayoutCond
+				,LTRIM(RTRIM(XMLDATA.Item.value('TacticalAllocation[1]', 'CHAR(20)'))) AS TacticalAllocation
+			FROM @RuleSetDetail.nodes('/RuleSetCollection/RuleSet') AS XMLDATA(Item)
+
+			SELECT @RuleSetCount = COUNT(*)
+			FROM @RuleSet
+
+			SET @ID = 0;
+
+			WHILE (@ID < @RuleSetCount)
+			BEGIN
+				SELECT @StrategicAllocationID = (
+						CASE 
+							WHEN StrategicAllocationID = 0
+								THEN NULL
+							ELSE StrategicAllocationID
+							END
+						)
+					,@MinPayoutValue = MinPayoutValue
+					,@MinPayoutCond = MinPayoutCond
+					,@MaxPayoutValue = MaxPayoutValue
+					,@MaxPayoutCond = MaxPayoutCond
+					,@ObjectiveCode = TacticalAllocation
+				FROM @RuleSet
+				WHERE RuleSetID = @ID + 1
+
+				INSERT INTO TBL_INV_ClientInvestmentPolicyDetail
+				VALUES (
+					@IPTrustTypeID
+					,@StrategicAllocationID
+					,@TrustTypeID
+					,@MinPayoutValue
+					,@MinPayoutCond
+					,@MaxPayoutValue
+					,@MaxPayoutCond
+					,GETDATE()
+					,@UserID
+					)
+
+				SELECT @ClientInvestmentPolicyDetailsID = IDENT_CURRENT('TBL_INV_ClientInvestmentPolicyDetail');
+
+				-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail ----------------------------------  
+				INSERT INTO #TEMP_ClientInvestmentPolicyDetail (
+					AuditUserID
+					,AuditDatetime
+					,AuditFlag
+					,AuditTable
+					,AuditDetail
+					,ClientInvestmentPolicyDetailID
+					,IPTrustTypeID
+					,StrategicAllocationID
+					,TrustTypeID
+					,MinPayoutValue
+					,MinPayoutCond
+					,MaxPayoutValue
+					,MaxPayoutCond
+					,CreatedDate
+					,CreatedBy
+					)
+				SELECT @userid
+					,GETDATE()
+					,'I'
+					,'TBL_INV_ClientInvestmentPolicyDetail'
+					,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+					,ClientInvestmentPolicyDetailID
+					,IPTrustTypeID
+					,StrategicAllocationID
+					,TrustTypeID
+					,MinPayoutValue
+					,MinPayoutCond
+					,MaxPayoutValue
+					,MaxPayoutCond
+					,CreatedDate
+					,CreatedBy
+				FROM TBL_INV_ClientInvestmentPolicyDetail
+				WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+				INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyDetail (
+					AuditUserID
+					,AuditDatetime
+					,AuditFlag
+					,AuditTable
+					,AuditDetail
+					,ClientInvestmentPolicyDetailID
+					,IPTrustTypeID
+					,StrategicAllocationID
+					,TrustTypeID
+					,MinPayoutValue
+					,MinPayoutCond
+					,MaxPayoutValue
+					,MaxPayoutCond
+					,CreatedDate
+					,CreatedBy
+					)
+				SELECT AuditUserID
+					,AuditDatetime
+					,AuditFlag
+					,AuditTable
+					,AuditDetail
+					,ClientInvestmentPolicyDetailID
+					,IPTrustTypeID
+					,StrategicAllocationID
+					,TrustTypeID
+					,MinPayoutValue
+					,MinPayoutCond
+					,MaxPayoutValue
+					,MaxPayoutCond
+					,CreatedDate
+					,CreatedBy
+				FROM #TEMP_ClientInvestmentPolicyDetail
+				WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+				------------------------------------End Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail -----------------------------
+				
+				
+				IF EXISTS (
+						SELECT *
+						FROM TBL_INV_ClientInvestmentObjective
+						WHERE ManagerCode = @ManagerCode
+							AND ObjectiveCode = @ObjectiveCode
+						)
+				BEGIN
+					-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+						INSERT INTO #TEMP_ClientInvestmentObjective(
+						AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+						SELECT 
+					@userid,GETDATE(),'U',
+								'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+					          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+						FROM TBL_INV_ClientInvestmentObjective where ManagerCode = @ManagerCode
+						INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+						AuditUserID,AuditDatetime,AuditFlag,
+						AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+						SELECT 
+					   AuditUserID,AuditDatetime,AuditFlag,
+						AuditTable,AuditDetail,
+					            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+						FROM #TEMP_ClientInvestmentObjective where ManagerCode = @ManagerCode 
+					------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ---------------------
+					UPDATE TBL_INV_ClientInvestmentObjective
+					SET ObjectivePolicyAssigned = 1
+					WHERE ManagerCode = @ManagerCode
+						AND ObjectiveCode = @ObjectiveCode
+						END
+				ELSE
+
+					BEGIN
+						SELECT TOP 1 @OrderBy = OrderBy
+						FROM TBL_INV_ClientInvestmentObjective
+						WHERE ManagerCode = @ManagerCode
+						ORDER BY OrderBy DESC
+
+						IF (@OrderBy IS NULL)
+						BEGIN
+							SET @OrderBy = 0
+						END
+
+						INSERT INTO TBL_INV_ClientInvestmentObjective
+						VALUES (
+							@ManagerCode
+							,@ObjectiveCode
+							,1
+							,@OrderBy + 1
+							)
+							-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+								INSERT INTO #TEMP_ClientInvestmentObjective(
+								AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+								SELECT 
+							@userid,GETDATE(),'I',
+										'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+							          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+								FROM TBL_INV_ClientInvestmentObjective where ManagerCode = @ManagerCode
+								INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+								AuditUserID,AuditDatetime,AuditFlag,
+								AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+								SELECT 
+							AuditUserID,AuditDatetime,AuditFlag,
+								AuditTable,AuditDetail,
+							            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+								FROM #TEMP_ClientInvestmentObjective where ManagerCode = @ManagerCode
+							------------------------------------End Insert Audit Log TBL_INV_AUDIT_ClientInvestmentObjective -----------		
+					END
+				
+			 IF EXISTS (
+						SELECT *
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE AccountType = @TrustTypeID
+							AND ManagerCode = @ManagerCode
+							AND ObjectiveCode = @ObjectiveCode
+							AND (
+								ClientInvestmentPolicyDetailID IS NULL
+								OR ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+								)
+						)
+				BEGIN
+	-------------------------------Begin Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+					INSERT INTO #TEMP_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT @userid
+						,GETDATE()
+						,'U'
+						,'TBL_INV_InvestmentObjectivePolicy'
+						,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM TBL_INV_InvestmentObjectivePolicy
+					WHERE managercode = @ManagerCode
+						AND AccountType = @TrustTypeID
+						AND ObjectiveCode = @ObjectiveCode
+
+					INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM #TEMP_InvestmentObjectivePolicy
+					WHERE managercode = @ManagerCode
+						AND AccountType = @TrustTypeID
+						AND ObjectiveCode = @ObjectiveCode
+
+					------------------------------------End Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+					UPDATE TBL_INV_InvestmentObjectivePolicy
+					SET MaxLifeExpectancy = (
+							CASE 
+								WHEN @MaxHorizonValue = 0
+									THEN NULL
+								ELSE @MaxHorizonValue
+								END
+							)
+						,UnitrustPercentage = @MinPayoutValue
+						,MaxUTPct = @MaxPayoutValue
+						,ObjectiveCodeClientSpecific = @ObjectiveCode
+						,MinLifeExpectancy = (
+							CASE 
+								WHEN @MinHorizonValue = 0
+									THEN NULL
+								ELSE @MinHorizonValue
+								END
+							)
+						,MinLifeExpectancyCond = (
+							CASE 
+								WHEN @MinHorizonCond = '>'
+									THEN 1
+								WHEN @MinHorizonCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,MaxLifeExpectancyCond = (
+							CASE 
+								WHEN @MaxHorizonCond = '<'
+									THEN 1
+								WHEN @MaxHorizonCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,MinUPCond = (
+							CASE 
+								WHEN @MinPayoutCond = '>'
+									THEN 1
+								WHEN @MinPayoutCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,MaxUPCond = (
+							CASE 
+								WHEN @MaxPayoutCond = '<'
+									THEN 1
+								WHEN @MaxPayoutCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+					WHERE AccountType = @TrustTypeID
+						AND ManagerCode = @ManagerCode
+						AND ObjectiveCode = @ObjectiveCode
+						AND (
+							ClientInvestmentPolicyDetailID IS NULL
+							OR ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+							)
+				END
+				ELSE
+				BEGIN
+					SELECT TOP 1 @InvestmentObjectivePolicyID = ISNULL(InvestmentObjectivePolicyID, 0)
+					FROM TBL_INV_InvestmentObjectivePolicy
+					ORDER BY InvestmentObjectivePolicyID DESC
+
+					IF (@InvestmentObjectivePolicyID IS NULL)
+					BEGIN
+						SET @InvestmentObjectivePolicyID = 0
+					END
+
+					INSERT INTO TBL_INV_InvestmentObjectivePolicy
+					VALUES (
+						@InvestmentObjectivePolicyID + 1
+						,(
+							CASE 
+								WHEN @MaxHorizonValue = 0
+									THEN NULL
+								ELSE @MaxHorizonValue
+								END
+							)
+						,@TrustTypeID
+						,@ManagerCode
+						,@MinPayoutValue
+						,@ObjectiveCode
+						,@MaxPayoutValue
+						,@ObjectiveCode
+						,(
+							CASE 
+								WHEN @MinHorizonValue = 0
+									THEN NULL
+								ELSE @MinHorizonValue
+								END
+							)
+						,(
+							CASE 
+								WHEN @MinHorizonCond = '>'
+									THEN 1
+								WHEN @MinHorizonCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,(
+							CASE 
+								WHEN @MaxHorizonCond = '<'
+									THEN 1
+								WHEN @MaxHorizonCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,(
+							CASE 
+								WHEN @MinPayoutCond = '>'
+									THEN 1
+								WHEN @MinPayoutCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,(
+							CASE 
+								WHEN @MaxPayoutCond = '<'
+									THEN 1
+								WHEN @MaxPayoutCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,@ClientInvestmentPolicyDetailsID
+						)
+	-------------------------------Begin Insert Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+					INSERT INTO #TEMP_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT @userid
+						,GETDATE()
+						,'I'
+						,'TBL_INV_InvestmentObjectivePolicy'
+						,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM TBL_INV_InvestmentObjectivePolicy
+					WHERE managercode = @ManagerCode
+						AND AccountType = @TrustTypeID
+						AND ObjectiveCode = @ObjectiveCode
+
+					INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM #TEMP_InvestmentObjectivePolicy
+					WHERE managercode = @ManagerCode
+						AND AccountType = @TrustTypeID
+						AND ObjectiveCode = @ObjectiveCode
+
+					------------------------------------End Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+				END
+
+				SET @ID = @ID + 1;
+			END
+		END
+
+		IF (@Mode = 'EDIT')
+		BEGIN
+			SET @NewIPTrustTypeID = @IPTrustTypeID;
+
+			SELECT @TrustTypeID = XMLDATA.Item.value('TrustType[1]', 'VARCHAR(20)')
+				,@TrustTypeName = XMLDATA.Item.value('Name[1]', 'VARCHAR(100)')
+				,@MinHorizonValue = XMLDATA.Item.value('MinHorizonValue[1]', 'INT')
+				,@MinHorizonCond = XMLDATA.Item.value('MinHorizonOperator[1]', 'CHAR(2)')
+				,@MaxHorizonValue = XMLDATA.Item.value('MaxHorizonValue[1]', 'INT')
+				,@MaxHorizonCond = XMLDATA.Item.value('MaxHorizonOperator[1]', 'CHAR(2)')
+				,@Review = XMLDATA.Item.value('NoPolicy[1]', 'BIT')
+				,@MinReviewValue = XMLDATA.Item.value('MinNoPolicyValue[1]', 'INT')
+				,@MinReviewCond = XMLDATA.Item.value('MinNoPolicyOperator[1]', 'CHAR(2)')
+				,@MaxReviewValue = XMLDATA.Item.value('MaxNoPolicyValue[1]', 'INT')
+				,@MaxReviewCond = XMLDATA.Item.value('MaxNoPolicyOperator[1]', 'CHAR(2)')
+			FROM @TrustTypeDetail.nodes('/TrustTypeDetail/TrustTypeInfo') AS XMLDATA(Item)
+
+			------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType ----------------------------------  
+			INSERT INTO #TEMP_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT @userid
+				,GETDATE()
+				,'U'
+				,'TBL_INV_ClientInvestmentPolicyTrustType'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM TBL_INV_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM #TEMP_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType -----------------------------
+			UPDATE TBL_INV_ClientInvestmentPolicyTrustType
+			SET TrustTypeID = CASE 
+					WHEN @TrustTypeID = 'CRAT'
+						THEN 1
+					ELSE CASE 
+							WHEN @TrustTypeID = 'CRUT'
+								THEN 2
+							ELSE 0
+							END
+					END
+				,TrustTypeIPName = @TrustTypeName
+				,MinHorizonValue = @MinHorizonValue
+				,MinHorizonCond = @MinHorizonCond
+				,MaxHorizonValue = @MaxHorizonValue
+				,MaxHorizonCond = @MaxHorizonCond
+				,MinReviewValue = @MinReviewValue
+				,MinReviewCond = @MinReviewCond
+				,MaxReviewValue = @MaxReviewValue
+				,MaxReviewCond = @MaxReviewCond
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			INSERT INTO @RuleSet
+			SELECT XMLDATA.Item.value('IPTrustTypeID[1]', 'INT') AS IPTrustTypeID
+				,XMLDATA.Item.value('ClientInvestmentPolicyDetailID[1]', 'INT') AS ClientInvestmentPolicyDetailsID
+				,XMLDATA.Item.value('StrategicAllocationID[1]', 'INT') AS StrategicAllocationID
+				,LTRIM(RTRIM(XMLDATA.Item.value('StrategicAllocationName[1]', 'VARCHAR(100)'))) AS StrategicAllocationName
+				,XMLDATA.Item.value('MinPayoutValue[1]', 'FLOAT') AS MinPayoutValue
+				,XMLDATA.Item.value('MinPayoutCond[1]', 'CHAR(2)') AS MinPayoutCond
+				,XMLDATA.Item.value('MaxPayoutValue[1]', 'FLOAT') AS MaxPayoutValue
+				,XMLDATA.Item.value('MaxPayoutCond[1]', 'CHAR(2)') AS MaxPayoutCond
+				,LTRIM(RTRIM(XMLDATA.Item.value('TacticalAllocation[1]', 'CHAR(20)'))) AS TacticalAllocation
+			FROM @RuleSetDetail.nodes('/RuleSetCollection/RuleSet') AS XMLDATA(Item)
+
+			-------------------------------Begin Delete Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+			INSERT INTO #TEMP_InvestmentObjectivePolicy (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+				)
+			SELECT @userid
+				,GETDATE()
+				,'D'
+				,'TBL_INV_InvestmentObjectivePolicy'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+			FROM TBL_INV_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID NOT IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM @RuleSet
+					)
+				AND ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+			FROM #TEMP_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID NOT IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM @RuleSet
+					)
+				AND ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			------------------------------------End Delete Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+			DELETE TBL_INV_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID NOT IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM @RuleSet
+					)
+				AND ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			-------------------------------Begin Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail ----------------------------------  
+			INSERT INTO #TEMP_ClientInvestmentPolicyDetail (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT @userid
+				,GETDATE()
+				,'D'
+				,'TBL_INV_ClientInvestmentPolicyDetail'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+			FROM TBL_INV_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID IN (
+					SELECT IPTrustTypeID
+					FROM @RuleSet
+					)
+				AND StrategicAllocationID NOT IN (
+					SELECT StrategicAllocationID
+					FROM @RuleSet
+					)
+
+			INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyDetail (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+			FROM #TEMP_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID IN (
+					SELECT IPTrustTypeID
+					FROM @RuleSet
+					)
+				AND StrategicAllocationID NOT IN (
+					SELECT StrategicAllocationID
+					FROM @RuleSet
+					)
+
+			------------------------------------End Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail -----------------------------
+			DELETE TBL_INV_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID IN (
+					SELECT IPTrustTypeID
+					FROM @RuleSet
+					)
+				AND StrategicAllocationID NOT IN (
+					SELECT StrategicAllocationID
+					FROM @RuleSet
+					)
+
+			SELECT @RuleSetCount = COUNT(*)
+			FROM @RuleSet
+
+			SET @ID = 0;
+
+			WHILE (@ID < @RuleSetCount)
+			BEGIN
+				SELECT @ClientInvestmentPolicyDetailsID = ClientInvestmentPolicyDetailID
+					,@StrategicAllocationID = (
+						CASE 
+							WHEN StrategicAllocationID = 0
+								THEN NULL
+							ELSE StrategicAllocationID
+							END
+						)
+					,@MinPayoutValue = MinPayoutValue
+					,@MinPayoutCond = MinPayoutCond
+					,@MaxPayoutValue = MaxPayoutValue
+					,@MaxPayoutCond = MaxPayoutCond
+					,@ObjectiveCode = RTRIM(LTRIM(TacticalAllocation))
+				FROM @RuleSet
+				WHERE RuleSetID = @ID + 1
+
+				IF EXISTS (
+						SELECT *
+						FROM TBL_INV_ClientInvestmentPolicyDetail
+						WHERE IPTrustTypeID = @IPTrustTypeID
+							AND ISNULL(StrategicAllocationID, 0) = ISNULL(@StrategicAllocationID, 0)
+						)
+				BEGIN
+					-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail ----------------------------------  
+					INSERT INTO #TEMP_ClientInvestmentPolicyDetail (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+						)
+					SELECT @userid
+						,GETDATE()
+						,'U'
+						,'TBL_INV_ClientInvestmentPolicyDetail'
+						,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+						AND ISNULL(StrategicAllocationID, 0) = ISNULL(@StrategicAllocationID, 0)
+
+					INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyDetail (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+						)
+					SELECT AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+					FROM #TEMP_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+						AND ISNULL(StrategicAllocationID, 0) = ISNULL(@StrategicAllocationID, 0)
+
+					------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail -----------------------------
+					UPDATE TBL_INV_ClientInvestmentPolicyDetail
+					SET TrustTypeID = @TrustTypeID
+						,MinPayoutValue = @MinPayoutValue
+						,MinPayoutCond = @MinPayoutCond
+						,MaxPayoutValue = @MaxPayoutValue
+						,MaxPayoutCond = @MaxPayoutCond
+					WHERE IPTrustTypeID = @IPTrustTypeID
+						AND ISNULL(StrategicAllocationID, 0) = ISNULL(@StrategicAllocationID, 0)
+
+					-------------------------------Begin Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+					INSERT INTO #TEMP_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT @userid
+						,GETDATE()
+						,'U'
+						,'TBL_INV_InvestmentObjectivePolicy'
+						,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM TBL_INV_InvestmentObjectivePolicy
+					WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+					INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+						)
+					SELECT AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,InvestmentObjectivePolicyID
+						,MaxLifeExpectancy
+						,AccountType
+						,ManagerCode
+						,UnitrustPercentage
+						,ObjectiveCode
+						,MaxUTPct
+						,ObjectiveCodeClientSpecific
+						,MinLifeExpectancy
+						,MinLifeExpectancyCond
+						,MaxLifeExpectancyCond
+						,MinUPCond
+						,MaxUPCond
+						,ClientInvestmentPolicyDetailID
+					FROM #TEMP_InvestmentObjectivePolicy
+					WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+					------------------------------------End Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+					UPDATE TBL_INV_InvestmentObjectivePolicy
+					SET AccountType = @TrustTypeID
+						,MaxLifeExpectancy = (
+							CASE 
+								WHEN @MaxHorizonValue = 0
+									THEN NULL
+								ELSE @MaxHorizonValue
+								END
+							)
+						,MinLifeExpectancy = (
+							CASE 
+								WHEN @MinHorizonValue = 0
+									THEN NULL
+								ELSE @MinHorizonValue
+								END
+							)
+						,MinLifeExpectancyCond = (
+							CASE 
+								WHEN @MinHorizonCond = '>'
+									THEN 1
+								WHEN @MinHorizonCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,MaxLifeExpectancyCond = (
+							CASE 
+								WHEN @MaxHorizonCond = '<'
+									THEN 1
+								WHEN @MaxHorizonCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,ObjectiveCode = @ObjectiveCode
+						,ObjectiveCodeClientSpecific = @ObjectiveCode
+						,UnitrustPercentage = @MinPayoutValue
+						,MaxUTPct = @MaxPayoutValue
+						,MinUPCond = (
+							CASE 
+								WHEN @MinPayoutCond = '>'
+									THEN 1
+								WHEN @MinPayoutCond = '>='
+									THEN 0
+								ELSE NULL
+								END
+							)
+						,MaxUPCond = (
+							CASE 
+								WHEN @MaxPayoutCond = '<'
+									THEN 1
+								WHEN @MaxPayoutCond = '<='
+									THEN 0
+								ELSE NULL
+								END
+							)
+					WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID;
+				END
+				ELSE
+				BEGIN
+					INSERT INTO TBL_INV_ClientInvestmentPolicyDetail
+					VALUES (
+						@IPTrustTypeID
+						,(
+							CASE 
+								WHEN @StrategicAllocationID = 0
+									THEN NULL
+								ELSE @StrategicAllocationID
+								END
+							)
+						,@TrustTypeID
+						,@MinPayoutValue
+						,@MinPayoutCond
+						,@MaxPayoutValue
+						,@MaxPayoutCond
+						,GETDATE()
+						,@UserID
+						)
+
+					SELECT @ClientInvestmentPolicyDetailsID = IDENT_CURRENT('TBL_INV_ClientInvestmentPolicyDetail');
+
+					-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail ----------------------------------  
+					INSERT INTO #TEMP_ClientInvestmentPolicyDetail (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+						)
+					SELECT @userid
+						,GETDATE()
+						,'I'
+						,'TBL_INV_ClientInvestmentPolicyDetail'
+						,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+					INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyDetail (
+						AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+						)
+					SELECT AuditUserID
+						,AuditDatetime
+						,AuditFlag
+						,AuditTable
+						,AuditDetail
+						,ClientInvestmentPolicyDetailID
+						,IPTrustTypeID
+						,StrategicAllocationID
+						,TrustTypeID
+						,MinPayoutValue
+						,MinPayoutCond
+						,MaxPayoutValue
+						,MaxPayoutCond
+						,CreatedDate
+						,CreatedBy
+					FROM #TEMP_ClientInvestmentPolicyDetail
+					WHERE ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+
+					------------------------------------End Insert Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail -----------------------------
+					IF EXISTS (
+							SELECT *
+							FROM TBL_INV_InvestmentObjectivePolicy
+							WHERE AccountType = @TrustTypeID
+								AND ManagerCode = @ManagerCode
+								AND ObjectiveCode = @ObjectiveCode
+							)
+					BEGIN
+						-------------------------------Begin Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+						INSERT INTO #TEMP_InvestmentObjectivePolicy (
+							AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+							)
+						SELECT @userid
+							,GETDATE()
+							,'U'
+							,'TBL_INV_InvestmentObjectivePolicy'
+							,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+							AND AccountType = @TrustTypeID
+							AND ObjectiveCode = @ObjectiveCode
+
+						INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+							AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+							)
+						SELECT AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+						FROM #TEMP_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+							AND AccountType = @TrustTypeID
+							AND ObjectiveCode = @ObjectiveCode
+
+						------------------------------------End Update Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+						UPDATE TBL_INV_InvestmentObjectivePolicy
+						SET MaxLifeExpectancy = (
+								CASE 
+									WHEN @MaxHorizonValue = 0
+										THEN NULL
+									ELSE @MaxHorizonValue
+									END
+								)
+							,UnitrustPercentage = @MinPayoutValue
+							,MaxUTPct = @MaxPayoutValue
+							,ObjectiveCodeClientSpecific = @ObjectiveCode
+							,MinLifeExpectancy = (
+								CASE 
+									WHEN @MinHorizonValue = 0
+										THEN NULL
+									ELSE @MinHorizonValue
+									END
+								)
+							,MinLifeExpectancyCond = (
+								CASE 
+									WHEN @MinHorizonCond = '>'
+										THEN 1
+									WHEN @MinHorizonCond = '>='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,MaxLifeExpectancyCond = (
+								CASE 
+									WHEN @MaxHorizonCond = '<'
+										THEN 1
+									WHEN @MaxHorizonCond = '<='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,MinUPCond = (
+								CASE 
+									WHEN @MinPayoutCond = '>'
+										THEN 1
+									WHEN @MinPayoutCond = '>='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,MaxUPCond = (
+								CASE 
+									WHEN @MaxPayoutCond = '<'
+										THEN 1
+									WHEN @MaxPayoutCond = '<='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,ClientInvestmentPolicyDetailID = @ClientInvestmentPolicyDetailsID
+						WHERE AccountType = @TrustTypeID
+							AND ManagerCode = @ManagerCode
+							AND ObjectiveCode = @ObjectiveCode
+					END
+					ELSE
+					BEGIN
+						SELECT TOP 1 @InvestmentObjectivePolicyID = ISNULL(InvestmentObjectivePolicyID, 0)
+						FROM TBL_INV_InvestmentObjectivePolicy
+						ORDER BY InvestmentObjectivePolicyID DESC
+
+						IF (@InvestmentObjectivePolicyID IS NULL)
+						BEGIN
+							SET @InvestmentObjectivePolicyID = 0
+						END
+
+						INSERT INTO TBL_INV_InvestmentObjectivePolicy
+						VALUES (
+							@InvestmentObjectivePolicyID + 1
+							,(
+								CASE 
+									WHEN @MaxHorizonValue = 0
+										THEN NULL
+									ELSE @MaxHorizonValue
+									END
+								)
+							,@TrustTypeID
+							,@ManagerCode
+							,@MinPayoutValue
+							,@ObjectiveCode
+							,@MaxPayoutValue
+							,@ObjectiveCode
+							,(
+								CASE 
+									WHEN @MinHorizonValue = 0
+										THEN NULL
+									ELSE @MinHorizonValue
+									END
+								)
+							,(
+								CASE 
+									WHEN @MinHorizonCond = '>'
+										THEN 1
+									WHEN @MinHorizonCond = '>='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,(
+								CASE 
+									WHEN @MaxHorizonCond = '<'
+										THEN 1
+									WHEN @MaxHorizonCond = '<='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,(
+								CASE 
+									WHEN @MinPayoutCond = '>'
+										THEN 1
+									WHEN @MinPayoutCond = '>='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,(
+								CASE 
+									WHEN @MaxPayoutCond = '<'
+										THEN 1
+									WHEN @MaxPayoutCond = '<='
+										THEN 0
+									ELSE NULL
+									END
+								)
+							,@ClientInvestmentPolicyDetailsID
+							)
+
+						-------------------------------Begin Insert Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+						INSERT INTO #TEMP_InvestmentObjectivePolicy (
+							AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+							)
+						SELECT @userid
+							,GETDATE()
+							,'I'
+							,'TBL_INV_InvestmentObjectivePolicy'
+							,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+
+						INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+							AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+							)
+						SELECT AuditUserID
+							,AuditDatetime
+							,AuditFlag
+							,AuditTable
+							,AuditDetail
+							,InvestmentObjectivePolicyID
+							,MaxLifeExpectancy
+							,AccountType
+							,ManagerCode
+							,UnitrustPercentage
+							,ObjectiveCode
+							,MaxUTPct
+							,ObjectiveCodeClientSpecific
+							,MinLifeExpectancy
+							,MinLifeExpectancyCond
+							,MaxLifeExpectancyCond
+							,MinUPCond
+							,MaxUPCond
+							,ClientInvestmentPolicyDetailID
+						FROM #TEMP_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+							------------------------------------End Insert Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+					END
+				END
+
+				IF EXISTS (
+						SELECT *
+						FROM TBL_INV_ClientInvestmentObjective
+						WHERE ManagerCode = @ManagerCode
+							AND ObjectiveCode = @ObjectiveCode
+						)
+				BEGIN
+					-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+						INSERT INTO #TEMP_ClientInvestmentObjective(
+						AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+						SELECT 
+					@userid,GETDATE(),'U',
+								'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+					          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+						FROM TBL_INV_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode=@ObjectiveCode
+						INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+						AuditUserID,AuditDatetime,AuditFlag,
+						AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+						SELECT 
+						AuditUserID,AuditDatetime,AuditFlag,
+						AuditTable,AuditDetail,
+					            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+						FROM #TEMP_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode=@ObjectiveCode
+					------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ---------------------
+					UPDATE TBL_INV_ClientInvestmentObjective
+					SET ObjectivePolicyAssigned = 1
+					WHERE ManagerCode = @ManagerCode
+						AND ObjectiveCode = @ObjectiveCode
+				END
+				ELSE
+				BEGIN
+					SELECT TOP 1 @OrderBy = OrderBy
+					FROM TBL_INV_ClientInvestmentObjective
+					WHERE ManagerCode = @ManagerCode
+					ORDER BY OrderBy DESC
+
+					IF (@OrderBy IS NULL)
+					BEGIN
+						SET @OrderBy = 0
+					END
+
+					INSERT INTO TBL_INV_ClientInvestmentObjective
+					VALUES (
+						@ManagerCode
+						,@ObjectiveCode
+						,1
+						,@OrderBy + 1
+						)
+				END
+
+				-------------------------------Begin Insert Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+					INSERT INTO #TEMP_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				@userid,GETDATE(),'I',
+							'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM TBL_INV_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode=@ObjectiveCode
+					INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,
+					AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				   AuditUserID,AuditDatetime,AuditFlag,
+					AuditTable,AuditDetail,
+				            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM #TEMP_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode=@ObjectiveCode
+				------------------------------------End Insert Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ---------------------
+				-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+					INSERT INTO #TEMP_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				@userid,GETDATE(),'U',
+							'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM TBL_INV_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode NOT IN (
+								SELECT ObjectiveCode
+								FROM TBL_INV_InvestmentObjectivePolicy
+								WHERE ManagerCode = @ManagerCode
+								)
+					INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,
+					AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,
+				            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM #TEMP_ClientInvestmentObjective where ManagerCode = @ManagerCode and ObjectiveCode NOT IN (
+								SELECT ObjectiveCode
+								FROM TBL_INV_InvestmentObjectivePolicy
+								WHERE ManagerCode = @ManagerCode
+								)
+				------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ---------------------
+				UPDATE TBL_INV_ClientInvestmentObjective
+				SET ObjectivePolicyAssigned = 0
+				WHERE ManagerCode = @ManagerCode
+					AND ObjectiveCode NOT IN (
+						SELECT ObjectiveCode
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+						)
+
+				-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+					INSERT INTO #TEMP_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				@userid,GETDATE(),'U',
+							'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM TBL_INV_ClientInvestmentObjective WHERE ManagerCode = @ManagerCode
+							AND ObjectiveCode IN (
+								SELECT ObjectiveCode
+								FROM TBL_INV_InvestmentObjectivePolicy
+								WHERE ManagerCode = @ManagerCode
+								)
+					INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+					AuditUserID,AuditDatetime,AuditFlag,
+					AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+					SELECT 
+				AuditUserID,AuditDatetime,AuditFlag,
+					AuditTable,AuditDetail,
+				            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+					FROM #TEMP_ClientInvestmentObjective WHERE ManagerCode = @ManagerCode
+							AND ObjectiveCode IN (
+								SELECT ObjectiveCode
+								FROM TBL_INV_InvestmentObjectivePolicy
+								WHERE ManagerCode = @ManagerCode
+								)
+				------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ---------------------
+				UPDATE TBL_INV_ClientInvestmentObjective
+				SET ObjectivePolicyAssigned = 1
+				WHERE ManagerCode = @ManagerCode
+					AND ObjectiveCode IN (
+						SELECT ObjectiveCode
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+						)
+
+				SET @ID = @ID + 1;
+			END
+		END -- END 'EDIT'  
+
+		IF (@Mode = 'DELETE')
+		BEGIN
+			SET @NewIPTrustTypeID = 0;
+
+			-------------------------------Begin Delete Audit Log TBL_INV_Audit_InvestmentObjectivePolicy ----------------------------------  
+			INSERT INTO #TEMP_InvestmentObjectivePolicy (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+				)
+			SELECT @userid
+				,GETDATE()
+				,'D'
+				,'TBL_INV_InvestmentObjectivePolicy'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+			FROM TBL_INV_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			INSERT INTO TBL_INV_AUDIT_InvestmentObjectivePolicy (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,InvestmentObjectivePolicyID
+				,MaxLifeExpectancy
+				,AccountType
+				,ManagerCode
+				,UnitrustPercentage
+				,ObjectiveCode
+				,MaxUTPct
+				,ObjectiveCodeClientSpecific
+				,MinLifeExpectancy
+				,MinLifeExpectancyCond
+				,MaxLifeExpectancyCond
+				,MinUPCond
+				,MaxUPCond
+				,ClientInvestmentPolicyDetailID
+			FROM #TEMP_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			------------------------------------End Delete Audit Log TBL_INV_Audit_InvestmentObjectivePolicy -----------
+			DELETE TBL_INV_InvestmentObjectivePolicy
+			WHERE ClientInvestmentPolicyDetailID IN (
+					SELECT ClientInvestmentPolicyDetailID
+					FROM TBL_INV_ClientInvestmentPolicyDetail
+					WHERE IPTrustTypeID = @IPTrustTypeID
+					)
+
+			-------------------------------Begin Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail ----------------------------------  
+			INSERT INTO #TEMP_ClientInvestmentPolicyDetail (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT @userid
+				,GETDATE()
+				,'D'
+				,'TBL_INV_ClientInvestmentPolicyDetail'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+			FROM TBL_INV_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyDetail (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,ClientInvestmentPolicyDetailID
+				,IPTrustTypeID
+				,StrategicAllocationID
+				,TrustTypeID
+				,MinPayoutValue
+				,MinPayoutCond
+				,MaxPayoutValue
+				,MaxPayoutCond
+				,CreatedDate
+				,CreatedBy
+			FROM #TEMP_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			----------------------------------End Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyDetail -----------------------------
+			DELETE TBL_INV_ClientInvestmentPolicyDetail
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			-----------------------------Begin Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType ----------------------------------  
+			INSERT INTO #TEMP_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT @userid
+				,GETDATE()
+				,'D'
+				,'TBL_INV_ClientInvestmentPolicyTrustType'
+				,' ''LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM TBL_INV_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			INSERT INTO TBL_INV_AUDIT_ClientInvestmentPolicyTrustType (
+				AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+				)
+			SELECT AuditUserID
+				,AuditDatetime
+				,AuditFlag
+				,AuditTable
+				,AuditDetail
+				,IPTrustTypeID
+				,ManagerCode
+				,TrustTypeID
+				,TrustTypeIPName
+				,MinHorizonValue
+				,MinHorizonCond
+				,MaxHorizonValue
+				,MaxHorizonCond
+				,Review
+				,MinReviewValue
+				,MinReviewCond
+				,MaxReviewValue
+				,MaxReviewCond
+				,CreatedDate
+				,CreatedBy
+			FROM #TEMP_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			------------------------------------End Delete Audit Log TBL_INV_AUDIT_ClientInvestmentPolicyTrustType -----------------------------
+			DELETE TBL_INV_ClientInvestmentPolicyTrustType
+			WHERE IPTrustTypeID = @IPTrustTypeID
+
+			-------------------------------Begin Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ----------------------------------  
+				INSERT INTO #TEMP_ClientInvestmentObjective(
+				AuditUserID,AuditDatetime,AuditFlag,AuditTable,AuditDetail,ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+				SELECT 
+			@userid,GETDATE(),'U',
+						'TBL_INV_ClientInvestmentObjective',' ''LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+			          ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+				FROM TBL_INV_ClientInvestmentObjective WHERE ManagerCode = @ManagerCode
+					AND ObjectiveCode NOT IN (
+						SELECT ObjectiveCode
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+						)
+				INSERT INTO TBL_INV_AUDIT_ClientInvestmentObjective(
+				AuditUserID,AuditDatetime,AuditFlag,
+				AuditTable,AuditDetail, ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy)
+				SELECT 
+			AuditUserID,AuditDatetime,AuditFlag,
+				AuditTable,AuditDetail,
+			            ManagerCode,ObjectiveCode,ObjectivePolicyAssigned,OrderBy
+				FROM #TEMP_ClientInvestmentObjective WHERE ManagerCode = @ManagerCode
+					AND ObjectiveCode NOT IN (
+						SELECT ObjectiveCode
+						FROM TBL_INV_InvestmentObjectivePolicy
+						WHERE ManagerCode = @ManagerCode
+						)
+			------------------------------------End Update Audit Log TBL_INV_AUDIT_ClientInvestmentObjective ------------------------  
+			UPDATE TBL_INV_ClientInvestmentObjective
+			SET ObjectivePolicyAssigned = 0
+			WHERE ManagerCode = @ManagerCode
+				AND ObjectiveCode NOT IN (
+					SELECT ObjectiveCode
+					FROM TBL_INV_InvestmentObjectivePolicy
+					WHERE ManagerCode = @ManagerCode
+					)
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC USP_EX_SYSErrorHandler @CodeName = @ProcName
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_SaveEnfClientPolicyRuleSetDetails: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfClientPolicyRuleSetDetails'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveEnfClientPolicyRuleSetDetails';
+END

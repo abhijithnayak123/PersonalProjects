@@ -1,0 +1,168 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingBeneficiaryPayment]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsStagingBeneficiaryPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsStagingBeneficiaryPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingBeneficiaryPayment]    Script Date: 05/07/2013 10:33:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsStagingBeneficiaryPayment                      
+** Short Desc: To insert data into the STG_BENPAYMENT table    
+*              Getting data from BaseTable       
+**                      
+** Full Description: To insert into the STG_BENPAYMENT table for the payment that to be made    
+*					 Getting data from BaseTable           
+**                              
+** Input Arguments:   @CreatedBy  
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsStagingBeneficiaryPayment  1      
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 7-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05/06/2014  Salih               Modified the SP for the column Change from ExpenseCode to TaxCode
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsStagingBeneficiaryPayment] @CreatedBy INT
+AS
+SET NOCOUNT ON
+SET LOCK_TIMEOUT 30000
+
+BEGIN
+	TRUNCATE TABLE TBL_PP_STG_BeneficiaryPayment
+	
+	INSERT INTO dbo.TBL_PP_STG_BeneficiaryPayment (
+		PaymentID
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		,DocumentNumber
+		,TransactionNumber
+		,AccountType
+		,ManagerCode
+		,PaymentDate
+		,TaxYear
+		,PayeeName
+		,PayeeAddress
+		,PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,FractionalRoutingCode
+		,PayorName
+		,PayorAddress
+		,SourceAccount
+		,DestBankName
+		,DestBankAddress
+		,DestBankABA
+		,DestAccount
+		,Memo
+		,VoidDate
+		,ReissueOf
+		,ReissueAs
+		,DestAccountType
+		--05/06/2014  Salih: Modified the SP for the column Change from ExpenseCode to TaxCode
+		,TaxCode
+		,ClearDate
+		,ClearMethod
+		,ChargeType
+		,MailingAddress
+		,SeparateCheck
+		,SeparateCheckAddress
+		,AllianceNumber
+		,GiftAccountName
+		,GSOInfo
+		,PrintAdvice
+		,PaymentMethod
+		,PaymentFreq
+		,PaidforContactID
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT DISTINCT BENPMNT.PaymentID
+		,BENPMNT.CustomerAccountNumber
+		,BENPMNT.ContactID
+		,BENPMNT.ContactRoleCode
+		,InstructionID
+		,DocumentNumber
+		,TransactionNumber
+		,BENPMNT.AccountType
+		,BENPMNT.ManagerCode
+		,BENPMNT.PaymentDate
+		,TaxYear
+		,PayeeName
+		,PayeeAddress
+		,PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,FractionalRoutingCode
+		,PayorName
+		,PayorAddress
+		,SourceAccount
+		,DestBankName
+		,DestBankAddress
+		,DestBankABA
+		,DestAccount
+		,Memo
+		,VoidDate
+		,ReissueOf
+		,ReissueAs
+		,DestAccountType
+		--05/06/2014  Salih: Modified the SP for the column Change from ExpenseCode to TaxCode
+		,TaxCode
+		,ClearDate
+		,ClearMethod
+		,ChargeType
+		,MailingAddress
+		,SeparateCheck
+		,SeparateCheckAddress
+		,BENPMNT.AllianceNumber
+		,GiftAccountName
+		,GSOInfo
+		,PrintAdvice
+		,BENPMNT.PaymentMethod
+		,PaymentFreq
+		,PaidforContactID
+		,0 AS IsDeleted
+		,@CreatedBy AS MODIFIEDBY
+		,GetDate() AS MODIFIEDDATE
+		,@CreatedBy AS CREATEDBY
+		,GetDate() AS CREATEDDATE
+	FROM dbo.TBL_PP_BeneficiaryPayment BENPMNT
+	INNER JOIN dbo.TBL_PP_PendingPayment PNDGPMNT ON BENPMNT.PaymentID = PNDGPMNT.PaymentID
+END

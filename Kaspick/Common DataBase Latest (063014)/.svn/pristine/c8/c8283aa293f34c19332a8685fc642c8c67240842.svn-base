@@ -1,0 +1,73 @@
+SET NOCOUNT ON
+
+BEGIN
+	UPDATE TBL_PP_ReportList
+	SET	IsActive = 0
+	WHERE ReportTitle in (	'Schwab Pre-Note List'
+				,'Tax Uncleared Payment'
+				,'Trade Date vs. Settle Date Cash Review'
+				,'Generate PDF Reports'
+				,'Payment Disbursement Schedule Report'
+				,'Payment Frequency'
+				,'Schwab ACH Transmission Summary')
+END	  
+
+
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM TBL_PP_Reportlist
+		WHERE ReportName = 'Gifts In Range'
+		)
+BEGIN
+	INSERT INTO dbo.TBL_PP_Reportlist (
+		IsActive
+		,ReportName
+		,SourceType
+		,ReportTitle
+		,ReportDescription
+		,ReportFields
+		,ReportOrder
+		,ReportParameters
+		)
+	VALUES (
+		1
+		,'Gifts In Range'
+		,'Paragon'
+		,'Gifts In Range'
+		,'Displays Gifts information for the selected Manager code(s) filtered on a given date range'
+		,'Client Name, Trust ID, Full Name,Trust Type, Client Code, Gift Date, IsInitialGift,IsTestamentary,InitialAdd, Asset Type, Description, Market Value, Cost Basis, Comments, DeliverMethod, DeliverDate'
+		,'Trust ID,Gift Date, Gift ID'
+		,'Client Name, Gift Start Date, Gift End Date, Gift Asset Status, ShowComments'
+		)
+END
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM TBL_PP_Reportlist
+		WHERE ReportName = 'Payment By GO'
+		)
+BEGIN
+	INSERT INTO dbo.TBL_PP_Reportlist (
+		IsActive
+		,ReportName
+		,SourceType
+		,ReportTitle
+		,ReportDescription
+		,ReportFields
+		,ReportOrder
+		,ReportParameters
+		)
+	VALUES (
+		1
+		,'Payment By GO'
+		,'Paragon'
+		,'Payment By GO'
+		,'Displays Payment by GO information for the selected Manager code(s) filtered on a given date range and Tax Year'
+		,'Client Name,Advent Id,Group Col,Beneficiary Name,Payment Date,Payment Amount,Projected Payment Date,Projected Payment Amount'
+		,'Clent ID, Adventid'
+		,'Trust, Client Brief Name, ClientName'
+		)
+END
+
+

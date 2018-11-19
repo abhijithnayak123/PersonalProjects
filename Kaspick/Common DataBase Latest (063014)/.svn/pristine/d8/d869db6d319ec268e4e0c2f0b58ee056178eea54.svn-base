@@ -1,0 +1,94 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbOutputParam')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbOutputParam;
+        PRINT 'DROPPED USP_EX_GetRptFasbOutputParam';
+    END
+GO   
+      
+/******************************************************************************                
+** New Name  :   USP_EX_GetRptFasbOutputParam
+** Old Name   :   USP_EIS_RPT_FASB_Output_Param_SelProc                
+** Short Desc : Selects FASB output params    
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_EIS_RPT_FASB_Output_Param_SelProc 0            
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Sep/18/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Sep/18/2012   Ganapati           Created       
+**  Apr/12/2014   Mallikarjun  EXCREQ5.4   Modified 
+** 23/05/2014		Mallikarjun		SP Name Renamed and Formatted
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/           
+      
+CREATE PROCEDURE [dbo].[USP_EX_GetRptFasbOutputParam] --0  
+@FASB_InstanceID int       
+AS    
+If(@FASB_InstanceID = 0)   
+Begin    
+   
+ select distinct  
+ NULL as Output_ParamID,  
+ NULL as FASB_InstanceID,  
+ LstItm.LISTITEMID as ReportOutputID,  
+ LstItm.LISTITEMNAME as ReportOutputName,  
+ NULL as ReportOutputType,  
+ NULL as DisplaySequence,  
+ NULL as IsOutputRequired,  
+ NULL as Sort1,  
+ NULL as Sort2  
+ from TBL_ListItem LstItm inner join TBL_ListType LstTyp 
+ on LstItm.ListTypeID = LstTyp.ListTypeID and LstTyp.ListTypeName = 'Report Output Type'  
+ left outer join TBL_BR_FASBOutputParam OpPrm  
+ on OpPrm.ReportOutputType = LstItm.LISTITEMID  
+ order by LstItm.LISTITEMID  
+   
+   
+End  
+Else  
+Begin  
+ select  
+ OpPrm.Output_ParamID,  
+ OpPrm.FASB_InstanceID,  
+ LstItm.LISTITEMID as ReportOutputID,  
+ LstItm.LISTITEMNAME as ReportOutputName,  
+ OpPrm.ReportOutputType,  
+ OpPrm.DisplaySequence,  
+ OpPrm.IsOutputRequired,  
+ OpPrm.Sort1,  
+ OpPrm.Sort2  
+ from TBL_ListItem LstItm inner join TBL_ListType LstTyp  
+ on LstItm.ListTypeID = LstTyp.ListTypeID and LstTyp.ListTypeName = 'Report Output Type'  
+ left outer join TBL_BR_FASBOutputParam OpPrm  
+ on OpPrm.ReportOutputType = LstItm.LISTITEMID  
+ where OpPrm.FASB_InstanceID = @FASB_InstanceID  
+ order by LstItm.LISTITEMID  
+End  
+  GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbOutputParam') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbOutputParam';
+	END  
+  

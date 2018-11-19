@@ -1,0 +1,181 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewTrustInfo'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftNewTrustInfo;
+
+	PRINT 'DROPPED USP_EX_GetWftNewTrustInfo';
+END
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************  
+** Name  :  USP_EX_GetWftNewTrustInfo
+** Old Name: [sp_wft_get_new_trust_info]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate trust asset valuation details  
+**  
+** Sample Call  
+ [USP_EX_GetWftNewTrustInfo] 'A56BAF7A-F6BB-4E9D-8BEA-210626A5E483' 
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Ciber  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-April-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 05/02/2013   Abhijith			Modified for Stanford Requirement, to fetch trustee code2. 
+** 02-June-2014  Sanath             NewTrust request type in Webform request module  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftNewTrustInfo]
+(  
+ @Guid varchar(255)  
+)    
+AS   
+SELECT [new_trust_info_id]
+      ,[guid]
+      ,[form_id]
+      ,[is_initial_revised]
+      ,[is_revision]
+      ,[is_initial]
+      ,[notification_date]
+      ,[submitted_by]
+      ,[LoginManagerCodeID]
+      ,[ManagerCodeName]
+      ,[is_co_trustee]
+      ,[account_name]
+      ,[trustee_code]
+      ,[trust_type]
+      ,[if_other]
+      ,[trust_payout_fixed_amount]
+      ,[trust_payout_percent]
+      ,[date_trust_signed]
+      ,[approx_trust_value]
+      ,[expected_asset_tranfer_date]
+      ,[comments]
+      ,[donor1_salutation]
+      ,[donor1_male_female]
+      ,[donor1_name]
+      ,[donor1_address1]
+      ,[donor1_address2]
+      ,[donor1_csz]
+      ,[donor1_ssn]
+      ,[donor1_dob]
+      ,[donor2_salutation]
+      ,[donor2_male_female]
+      ,[donor2_name]
+      ,[donor2_address1]
+      ,[donor2_address2]
+      ,[donor2_csz]
+      ,[donor2_dob]
+      ,[donor2_ssn]
+      ,[relationship_to_donor]
+      ,[beneficiary1_salutation]
+      ,[beneficiary1_male_female]
+      ,[beneficiary1_name]
+      ,[beneficiary1_address1]
+      ,[beneficiary1_address2]
+      ,[beneficiary1_csz]
+      ,[beneficiary1_ssn]
+      ,[beneficiary1_dob]
+      ,[beneficiary2_salutation]
+      ,[beneficiary2_male_female]
+      ,[beneficiary2_name]
+      ,[beneficiary2_address2]
+      ,[beneficiary2_address1]
+      ,[beneficiary2_csz]
+      ,[beneficiary2_ssn]
+      ,[beneficiary2_dob]
+      ,[auth_for_direct_deposit1]
+      ,[pay_to_the_order_of1]
+      ,[bank1_name]
+      ,[bank1_account_no]
+      ,[bank1_phone_number]
+      ,[bank1_address1]
+      ,[bank1_address2]
+      ,[bank1_csz]
+      ,[auth_for_direct_deposit2]
+      ,[pay_to_the_order_of2]
+      ,[bank2_name]
+      ,[bank2_account_number]
+      ,[bank2_phone_number]
+      ,[bank2_address1]
+      ,[bank2_address2]
+      ,[bank2_csz]
+      ,[tax_preparation]
+      ,[jointly_under_one_ssn]
+      ,[gift_purpose]
+      ,[remainderman_designation]
+      ,[fund_name]
+      ,[gift_restriction]
+      ,[is_multiple_remaindermen]
+      ,[irs_discount_rate]
+      ,[radio_asset_management]
+      ,[asset_na]
+      ,[asset_principal_percent]
+      ,[asset_principal_dollars]
+      ,[asset_dollars]
+      ,[asset_percent]
+      ,[trust_administration_fee]
+      ,[trust_na]
+      ,[trust_principal_dollars]
+      ,[trust_principal_percent]
+      ,[trust_percent]
+      ,[trust_dollars]
+      ,[radio_trustee]
+      ,[trustee_na]
+      ,[charge_to_trustee]
+      ,[trustee_principal_dollars]
+      ,[trustee_principal_percent]
+      ,[trustee_dollars]
+      ,[trustee_percent]
+      ,[investment_strategy]
+      ,[modified]
+      ,[modified_by]
+      ,[org_userid]
+      ,[org_useremail]
+      ,[org_username]
+      ,[pxy_userid]
+      ,[pxy_username]
+      ,[pxy_useremail]
+      ,[im_authorization_level]
+      ,[ta_authorization_level]
+      ,[client_manager]
+      ,[trust_administrator]
+      ,[team_folder_name]
+      ,[revision_date]
+      ,[ManagerCodeAccountCode2]
+      ,[general_comments]
+  FROM [TBL_WFT_NewTrustInfo]
+  WHERE GUID = @Guid
+ 
+ GO 
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewTrustInfo'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftNewTrustInfo';
+END

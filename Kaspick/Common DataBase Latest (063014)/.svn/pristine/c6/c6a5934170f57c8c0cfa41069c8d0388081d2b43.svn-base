@@ -1,0 +1,718 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePGCalc]    Script Date: 07/09/2013 11:42:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SavePGCalc]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SavePGCalc]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePGCalc]    Script Date: 07/09/2013 11:42:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SavePGCalc                      
+** Short Desc: Saves merged and unmerged PGCalc import data 
+**                      
+** Full Description: Populates unmerged data into PGCalcPaymentData table.   
+  Merged records are inserted into ne table TBL_PP_PGCalcPaymentDataMerged table.  
+  Key table TBLPP_PGCalcPaymentDataRelation is populated with the refrence keys between merged and un-merged data  
+
+**                              
+** Input Arguments:  
+			@XMLDATA XML
+**         
+** Sample Call     
+
+       
+DECLARE @Ret Char(1)      
+DECLARE @XMLPGCalcInfo   XML    
+DECLARE @XMLPGCalcBatch XML    
+  
+SET @XMLPGCalcInfo = '<PGCalcPaymentDataCollection><InsertList><PGCalcPaymentData Account1="Account1"  Account2="Account2"  CustomerAccountNumber="ACPIF2"  ContactID="1163"  GiftDate="1/1/1970 12:00:00 AM"  PayeeName="Craig Wilson Dusenberry"  PaymentAmount="30.31"  PaymentBatch="45454"  PaymentDate="12/31/2013 12:00:00 AM"  PaymentID="0"  PeriodEndDate=" "  PersonCode=""  PGCalcPaymentID="0"  PIFIncome="122.71"  PIFUnits="50"  PIFValue="6317.76"  SeparateCheck="0"  TaxWithholding="123.31"  MergedPGCalcPaymentID="0"  MergedPaymentAmount="0"  UserId="100169"  MatchType="A"  InstructionID="9686"  BeneficiaryDistributionID="272394"  ManagerCode="ACL"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></PGCalcPaymentDataCollection>'    
+SET @XMLPGCalcBatch = '<PGCalcPaymentBatchCollection><InsertList><PGCalcPaymentBatch Description="test"  LoadDate="1/22/2014 11:54:32 AM"  PaymentBatch="0"  SourceFile="C:\KaspickApplications\GiftwrapImportFiles\PIF_ACPIF2_Test1.sdf"  UserID="100169"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></PGCalcPaymentBatchCollection>'    
+
+EXEC USP_PP_SavePGCalc      
+@XMLPGCalcInfo ,        
+'1/23/2014',      
+@XMLPGCalcBatch ,      
+'1/20/2014',      
+2014,          
+@Ret output 
+
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 20-Nov-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SavePGCalc] @XMLPGCalcInfo XML
+	,@PaymentDate DATETIME
+	,@XMLPGCalcBatch XML
+	,@PeriodEndDate DATETIME
+	,@TaxYear VARCHAR(5)
+	,@ReturnStatus CHAR(1)
+OUTPUT AS
+
+--  Initial Set statements  --    
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds   
+
+----Decalre variables     
+DECLARE @ContactRoleCode INT
+
+--  Variable Data Assignment  --        
+SET @ReturnStatus = '0';
+
+-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+SET @ContactRoleCode = 21 --'Beneficiary'
+
+-- Body of procedure  --        
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	CREATE TABLE #PGCalcInfoMerged (
+		ID INT IDENTITY(1, 1)
+		,PGCalcPaymentID INT
+		)
+
+	CREATE TABLE #PGCalcInfo (
+		ManagerCode VARCHAR(4)
+		,Account1 VARCHAR(20)
+		,Account2 VARCHAR(20)
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,InstructionID INT
+		,BeneficiaryDistributionID INT
+		,GiftDate DATETIME
+		,PayeeName VARCHAR(50)
+		,PaymentAmount MONEY
+		,PaymentBatch INT
+		,PaymentDate DATETIME
+		,PaymentID INT
+		,PeriodEndDate DATETIME
+		,PersonCode VARCHAR(20)
+		,PGCalcPaymentID INT IDENTITY(1, 1)
+		,PIFIncome MONEY
+		,PIFUnits FLOAT
+		,PIFValue MONEY
+		,SeparateCheck TINYINT
+		,TaxWithholding MONEY
+		,UserID INT
+		,MergedPGCalcPaymentID INT
+		,MergedPaymentAmount MONEY
+		,MatchType CHAR(1)
+		,PKPGcalcPaymentID INT NULL
+		)
+
+	CREATE TABLE #PGCalcBatchInfo (
+		PaymentBatchID INT IDENTITY(1, 1)
+		,SourceFile VARCHAR(100)
+		,LoadDate DATETIME
+		,Description VARCHAR(100)
+		,UserID INT
+		)
+
+	DECLARE @PaymentBatchId INT
+	DECLARE @NextPGCalcPaymentID INT
+	DECLARE @NextMergedID INT
+
+	CREATE TABLE #TmpBeneficiaryLeadTime (
+		CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,ContactRoleCode INT
+		,LeadTime INT
+		)
+
+	-----------------Updatelist xml ---------------------------------------------------------------------------  
+	IF (
+			EXISTS (
+				SELECT paymentid
+				FROM TBL_PP_PGCalcPaymentDataMerged
+				WHERE MergedPGCalcPaymentID IN (
+						SELECT XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'int') AS MergedPGCalcPaymentID
+						FROM @XMLPGCalcInfo.nodes('//PGCalcPaymentDataCollection/UpdateList/PGCalcPaymentData') AS XMLDATA(item)
+						)
+					AND paymentid IS NOT NULL
+					AND paymentid <> 0
+				)
+			)
+	BEGIN
+		SET @ReturnStatus = 'p';
+	END
+	ELSE
+	BEGIN
+		INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+			AuditUserId
+			,AuditDatetime
+			,AuditType
+			,AuditDetails
+			,MergedPGCalcPaymentID
+			,PaymentBatch
+			,ManagerCode
+			,CustomerAccountNumber
+			,PersonCode
+			,PayeeName
+			,PaymentAmount
+			,PaymentDate
+			,SeparateCheck
+			,Account1
+			,Account2
+			,GiftDate
+			,PIFUnits
+			,PIFValue
+			,PIFIncome
+			,TaxWithholding
+			,PaymentID
+			,EPD
+			,Taxyear
+			,STATUS
+			,ContactID
+			,ContactRoleCode
+			,InstructionID
+			,beneficiaryDistributionID
+			,PeriodEndDate
+			,Memo
+			,Comment
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			,MatchType
+			,GiftWrapPaymentReviewDate
+			,GiftWrapPaymentReviewedBy
+			,DeletedUserId
+			)
+		SELECT tmpPGCalc.UserID
+			,GETDATE()
+			,'U'
+			,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+			,PgCalc.MergedPGCalcPaymentID
+			,PgCalc.PaymentBatch
+			,PgCalc.ManagerCode
+			,PgCalc.CustomerAccountNumber
+			,PgCalc.PersonCode
+			,PgCalc.PayeeName
+			,PgCalc.PaymentAmount
+			,PgCalc.PaymentDate
+			,PgCalc.SeparateCheck
+			,PgCalc.Account1
+			,PgCalc.Account2
+			,PgCalc.GiftDate
+			,PgCalc.PIFUnits
+			,PgCalc.PIFValue
+			,PgCalc.PIFIncome
+			,PgCalc.TaxWithholding
+			,PgCalc.PaymentID
+			,PgCalc.EPD
+			,PgCalc.Taxyear
+			,PgCalc.STATUS
+			,PgCalc.ContactID
+			,Pgcalc.ContactRoleCode
+			,PgCalc.InstructionID
+			,PgCalc.BeneficiaryDistributionID
+			,PgCalc.PeriodEndDate
+			,PgCalc.Memo
+			,PgCalc.Comment
+			,PgCalc.ModifiedDate
+			,PgCalc.ModifiedBy
+			,PgCalc.CreatedDate
+			,PgCalc.CreatedBy
+			,PgCalc.MatchType
+			,GiftWrapPaymentReviewDate
+			,GiftWrapPaymentReviewedBy
+			,UserID
+		FROM TBL_PP_PGCalcPaymentDataMerged PgCalc
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'int') AS MergedPGCalcPaymentID
+				,XMLDATA.item.value('@UserId[1]', 'int') AS UserID
+			FROM @XMLPGCalcInfo.nodes('//PGCalcPaymentDataCollection/UpdateList/PGCalcPaymentData') AS XMLDATA(item)
+			) tmpPGCalc
+			ON PgCalc.MergedPGCalcPaymentID = tmpPGCalc.MergedPGCalcPaymentID
+
+		UPDATE TBL_PP_PGCalcPaymentDataMerged
+		SET CustomerAccountNumber = TmpPgCalc.CustomerAccountNumber
+			,ContactID = TmpPgCalc.ContactID
+			,PaymentDate = (
+				CASE 
+					WHEN @PaymentDate IS NULL
+						THEN TmpPgCalc.PaymentDate
+					ELSE @PaymentDate
+					END
+				)
+			,PeriodEndDate = (
+				CASE 
+					WHEN @PeriodEndDate IS NULL
+						THEN TmpPgCalc.PeriodEndDate
+					ELSE @PeriodEndDate
+					END
+				)
+			,ModifiedDate = getdate()
+			,ModifiedBy = TmpPgCalc.UserID
+			,TaxYear = @TaxYear
+		FROM TBL_PP_PGCalcPaymentDataMerged PgCalc
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'int') AS MergedPGCalcPaymentID
+				,XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS CustomerAccountNumber
+				,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+				,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+				,XMLDATA.item.value('@PeriodEndDate[1]', 'datetime') AS PeriodEndDate
+				,XMLDATA.item.value('@UserId[1]', 'int') AS UserID
+			FROM @XMLPGCalcInfo.nodes('//PGCalcPaymentDataCollection/UpdateList/PGCalcPaymentData') AS XMLDATA(item)
+			) TmpPgCalc
+			ON PgCalc.MergedPGCalcPaymentID = TmpPgCalc.MergedPGCalcPaymentID
+	END
+
+	-----------------Insertlist xml ---------------------------------------------------------------------------   
+	SELECT @NextPGCalcPaymentID = ISNULL(MAX(PGCalcPaymentID), 0)
+	FROM dbo.TBL_PP_PGCalcPaymentData
+
+	SELECT @NextMergedID = isnull(max(MergedPGCalcPaymentID), 0)
+	FROM dbo.TBL_PP_PGCalcPaymentDataMerged
+
+	INSERT INTO #PGCalcBatchInfo (
+		SourceFile
+		,LoadDate
+		,Description
+		,UserID
+		)
+	SELECT XMLDATA.item.value('@SourceFile[1]', 'VARCHAR(100)') AS SourceFile
+		,XMLDATA.item.value('@LoadDate[1]', 'DATETIME') AS LoadDate
+		,XMLDATA.item.value('@Description[1]', 'VARCHAR(100)') AS Description
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+	FROM @XMLPGCalcBatch.nodes('//PGCalcPaymentBatchCollection/InsertList/PGCalcPaymentBatch') AS XMLDATA(item)
+
+	IF EXISTS (
+			SELECT TOP 1 PaymentBatchId
+			FROM #PGCalcBatchInfo
+			)
+	BEGIN
+		INSERT INTO TBL_PP_PGCalcPaymentBatch (
+			SourceFile
+			,LoadDate
+			,Description
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			)
+		SELECT SourceFile
+			,LoadDate
+			,Description
+			,getdate()
+			,UserID
+			,getdate()
+			,UserID
+		FROM #PGCalcBatchInfo
+	END
+
+	SELECT @PaymentBatchId = max(PaymentBatch)
+	FROM dbo.TBL_PP_PGCalcPaymentBatch
+
+	INSERT INTO #PGCalcInfo (
+		ManagerCode
+		,Account1
+		,Account2
+		,CustomerAccountNumber
+		,ContactID
+		,InstructionID
+		,BeneficiaryDistributionID
+		,GiftDate
+		,PayeeName
+		,PaymentAmount
+		,PaymentBatch
+		,PaymentDate
+		,PaymentID
+		,PeriodEndDate
+		,PersonCode
+		,PIFIncome
+		,PIFUnits
+		,PIFValue
+		,SeparateCheck
+		,TaxWithholding
+		,UserID
+		,MergedPGCalcPaymentID
+		,MergedPaymentAmount
+		,MatchType
+		)
+	SELECT XMLDATA.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+		,(
+			CASE 
+				WHEN XMLDATA.item.value('@Account1[1]', 'VARCHAR(20)') = ''
+					THEN NULL
+				ELSE XMLDATA.item.value('@Account1[1]', 'VARCHAR(20)')
+				END
+			) AS Account1
+		,(
+			CASE 
+				WHEN XMLDATA.item.value('@Account2[1]', 'VARCHAR(20)') = ''
+					THEN NULL
+				ELSE XMLDATA.item.value('@Account2[1]', 'VARCHAR(20)')
+				END
+			) AS Account2
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@ContactID[1]', 'int') AS ContactID
+		,XMLDATA.item.value('@InstructionID[1]', 'int') AS InstructionID
+		,XMLDATA.item.value('@BeneficiaryDistributionID[1]', 'int') AS BeneficiaryDistributionID
+		,(
+			CASE 
+				WHEN XMLDATA.item.value('@GiftDate[1]', 'datetime') = ''
+					THEN NULL
+				ELSE XMLDATA.item.value('@GiftDate[1]', 'datetime')
+				END
+			) AS GiftDate
+		,XMLDATA.item.value('@PayeeName[1]', 'varchar(50)') AS PayeeName
+		,XMLDATA.item.value('@PaymentAmount[1]', 'money') AS PaymentAmount
+		,XMLDATA.item.value('@PaymentBatch[1]', 'int') AS PaymentBatch
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PaymentDate
+		,XMLDATA.item.value('@PaymentID[1]', 'int') AS PaymentID
+		,XMLDATA.item.value('@PaymentDate[1]', 'datetime') AS PeriodEndDate
+		,XMLDATA.item.value('@PersonCode[1]', 'varchar(20)') AS PersonCode
+		,XMLDATA.item.value('@PIFIncome[1]', 'money') AS PIFIncome
+		,XMLDATA.item.value('@PIFUnits[1]', 'float') AS PIFUnits
+		,XMLDATA.item.value('@PIFValue[1]', 'money') AS PIFValue
+		,XMLDATA.item.value('@SeparateCheck[1]', 'smallint') AS SeparateCheck
+		,XMLDATA.item.value('@TaxWithholding[1]', 'money') AS TaxWithholding
+		,XMLDATA.item.value('@UserId[1]', 'int') AS UserID
+		,(XMLDATA.item.value('@MergedPGCalcPaymentID[1]', 'int') + @NextMergedID) AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@MergedPaymentAmount[1]', 'money') AS MergedPaymentAmount
+		,XMLDATA.item.value('@MatchType[1]', 'char(1)') AS MatchType --Date:04-09-2013 Added Match Type Column  
+	FROM @XMLPGCalcInfo.nodes('//PGCalcPaymentDataCollection/InsertList/PGCalcPaymentData') AS XMLDATA(item)
+
+	--Set PKPGcalcPaymentID dbo.tempdb.#PGCalcInfo on      
+	UPDATE #PGCalcInfo
+	SET PKPGcalcPaymentID = PGCalcPAymentID + @NextPGCalcPaymentID
+
+	IF EXISTS (
+			SELECT TOP 1 PGCalcPaymentID
+			FROM #PGCalcInfo
+			)
+	BEGIN
+		INSERT INTO #TmpBeneficiaryLeadTime
+		EXEC USP_PP_GetPGCalcBeneficiaryPaymentLeadTime @XMLPGCalcInfo
+
+		INSERT INTO dbo.TBL_PP_PGCalcPaymentData (
+			Account1
+			,Account2
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,InstructionID
+			,BeneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,PaymentAmount
+			,PaymentBatch
+			,PaymentDate
+			,PaymentID
+			,PeriodEndDate
+			,PersonCode
+			,PGCalcPaymentID
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+			)
+		SELECT Account1
+			,Account2
+			,CustomerAccountNumber
+			,ContactID
+			,@ContactRoleCode
+			,InstructionID
+			,BeneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,PaymentAmount
+			,@PaymentBatchId
+			,--PaymentBatch,      
+			PaymentDate
+			,NULL
+			,PeriodEndDate
+			,PersonCode
+			,PKPGcalcPaymentID
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+		FROM #PGCalcInfo
+
+		INSERT INTO #PGCalcInfoMerged
+		SELECT MIN(PKPGcalcPaymentID)
+		FROM #PGCalcInfo
+		GROUP BY MergedPGCalcPaymentID
+
+		INSERT INTO TBL_PP_PGCalcPaymentDataMerged (
+			MergedPGCalcPaymentID
+			,Account1
+			,Account2
+			,ManagerCode
+			,CustomerAccountNumber
+			,ContactID
+			,ContactRoleCode
+			,InstructionID
+			,BeneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,PaymentAmount
+			,PaymentBatch
+			,PaymentDate
+			,PaymentID
+			,PeriodEndDate
+			,PersonCode
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+			,EPD
+			,TaxYear
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			,MatchType
+			,GiftWrapPaymentReviewDate
+			,GiftWrapPaymentReviewedBy
+			)
+		SELECT MergedPGCalcPaymentID
+			,Account1
+			,Account2
+			,ManagerCode
+			,PgCalc.CustomerAccountNumber
+			,PgCalc.ContactID
+			,@ContactRoleCode
+			,InstructionID
+			,BeneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,MergedPaymentAmount AS PaymentAmount
+			,@PaymentBatchId
+			,--PaymentBatch,      
+			(
+				CASE 
+					WHEN @PaymentDate IS NULL
+						THEN PgCalc.PaymentDate
+					ELSE @PaymentDate
+					END
+				) AS PaymentDate
+			,NULL
+			,(
+				CASE 
+					WHEN @PeriodEndDate IS NULL
+						THEN PgCalc.PeriodEndDate
+					ELSE @PeriodEndDate
+					END
+				) AS PeriodEndDate
+			,PersonCode
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+			,(
+				CASE 
+					WHEN @PaymentDate IS NULL
+						THEN dateadd(day, (ISNULL(LeadTime, 0) * - 1) - dbo.Fn_GetHoliday(PgCalc.PaymentDate - ISNULL(LeadTime, 0), PgCalc.PaymentDate), PgCalc.PaymentDate)
+					ELSE dateadd(day, (ISNULL(LeadTime, 0) * - 1) - dbo.Fn_GetHoliday(@PaymentDate - ISNULL(LeadTime, 0), @PaymentDate), @PaymentDate)
+					END
+				)
+			,@TaxYear
+			,getdate()
+			,UserID
+			,getdate()
+			,UserID
+			,MatchType --Date:04-09-2013 Added Match Type Column  
+			,(
+				CASE 
+					WHEN MatchType = 'A'
+						THEN GETDATE()
+					ELSE NULL
+					END
+				) AS GiftWrapPaymentReviewDate
+			,(
+				CASE 
+					WHEN MatchType = 'A'
+						THEN 1
+					ELSE NULL
+					END
+				) AS GiftWrapPaymentReviewedBy
+		FROM #PGCalcInfo PgCalc
+		LEFT OUTER JOIN #TmpBeneficiaryLeadTime TmpLeadTime
+			ON PgCalc.ContactID = TmpLeadTime.ContactID
+				AND PgCalc.CustomerAccountNumber = TmpLeadTime.CustomerAccountNumber
+		WHERE PKPGcalcPaymentID IN (
+				SELECT PGCalcPaymentID
+				FROM #PGCalcInfoMerged
+				)
+
+		INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+			AuditUserId
+			,AuditDatetime
+			,AuditType
+			,AuditDetails
+			,MergedPGCalcPaymentID
+			,Account1
+			,Account2
+			,CustomerAccountNumber
+			,ContactID
+			,InstructionID
+			,beneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,PaymentAmount
+			,PaymentBatch
+			,ManagerCode
+			,PaymentDate
+			,PaymentID
+			,PeriodEndDate
+			,PersonCode
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+			,EPD
+			,TaxYear
+			,ModifiedDate
+			,ModifiedBy
+			,CreatedDate
+			,CreatedBy
+			,DeletedUserId
+			)
+		SELECT UserID
+			,GETDATE()
+			,'I'
+			,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+			,MergedPGCalcPaymentID
+			,Account1
+			,Account2
+			,PgCalc.CustomerAccountNumber
+			,PgCalc.ContactID
+			,InstructionID
+			,beneficiaryDistributionID
+			,GiftDate
+			,PayeeName
+			,MergedPaymentAmount AS PaymentAmount
+			,@PaymentBatchId
+			,ManagerCode
+			,(
+				CASE 
+					WHEN @PaymentDate IS NULL
+						THEN PgCalc.PaymentDate
+					ELSE @PaymentDate
+					END
+				) AS PaymentDate
+			,NULL
+			,(
+				CASE 
+					WHEN @PeriodEndDate IS NULL
+						THEN PgCalc.PeriodEndDate
+					ELSE @PeriodEndDate
+					END
+				) AS PeriodEndDate
+			,PersonCode
+			,PIFIncome
+			,PIFUnits
+			,PIFValue
+			,SeparateCheck
+			,TaxWithholding
+			,(
+				CASE 
+					WHEN @PaymentDate IS NULL
+						THEN dateadd(day, (ISNULL(LeadTime, 0) * - 1) - dbo.Fn_GetHoliday(PgCalc.PaymentDate - ISNULL(LeadTime, 0), PgCalc.PaymentDate), PgCalc.PaymentDate)
+					ELSE dateadd(day, (ISNULL(LeadTime, 0) * - 1) - dbo.Fn_GetHoliday(@PaymentDate - ISNULL(LeadTime, 0), @PaymentDate), @PaymentDate)
+					END
+				)
+			,@TaxYear
+			,getdate()
+			,UserID
+			,getdate()
+			,UserID
+			,NULL
+		FROM #PGCalcInfo PgCAlc
+		LEFT OUTER JOIN #TmpBeneficiaryLeadTime TmpLeadTime
+			ON PgCalc.ContactID = TmpLeadTime.ContactID
+		WHERE PKPGcalcPaymentID IN (
+				SELECT PGCalcPaymentID
+				FROM #PGCalcInfoMerged
+				)
+
+		INSERT INTO TBL_PP_PGCalcPaymentDataRelation (
+			PGCalcPaymentID
+			,MergedPGCalcPaymentID
+			)
+		SELECT PKPGcalcPaymentID
+			,MergedPGCalcPaymentID
+		FROM #PGCalcInfo
+
+		------- Payment Advice change. Combined check issue.   
+		--------For multiple payments; aggregate the withholding amount on the merged payment.    
+		UPDATE PgCalc1
+		SET TaxWithholding = TmpData.MergedTaxWithholding
+		FROM TBL_PP_PGCalcPaymentDataMerged PgCalc1
+		INNER JOIN (
+			SELECT Pgcalc2.MergedPGCalcPaymentID AS PGCalcPaymentID
+				,SUM(ISNULL(PgCalcData.TaxWithholding, 0)) AS MergedTaxWithholding
+			FROM TBL_PP_PGCalcPaymentDataMerged Pgcalc2
+			INNER JOIN #PGCalcInfo TmpPgCalc
+				ON TmpPgCalc.MergedPGCalcPaymentID = Pgcalc2.MergedPGCalcPaymentID
+			INNER JOIN dbo.TBL_PP_PGCalcPaymentData PgCalcData
+				ON PgCalcData.PGCalcPaymentID = TmpPgCalc.PKPGcalcPaymentID
+			GROUP BY Pgcalc2.MergedPGCalcPaymentID
+			) AS TmpData
+			ON TmpData.PGCalcPaymentID = PgCalc1.MergedPGCalcPaymentID
+
+		SET @ReturnStatus = '0';
+	END
+
+	COMMIT TRANSACTION;
+END TRY
+
+BEGIN CATCH
+	
+	IF(@@TRANCOUNT > 0)
+		ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

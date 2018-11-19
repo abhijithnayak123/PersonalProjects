@@ -1,0 +1,92 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetHistoryDetail]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewGetHistoryDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewGetHistoryDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetHistoryDetail]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewGetHistoryDetail    
+** Short Desc:  Retrieves the history details for the given accounts.   
+**    
+** Full Description : Retrieves the history details for the given accounts. 
+**            
+**    
+** Sample Call    
+   EXEC USP_IE_ReviewGetHistoryDetail 
+  '<ImportStagingCollection>  
+   <InsertList>  
+    <ImportStaging CustomerAccountNumber="DCWRI" />  
+   </InsertList>  
+   <UpdateList></UpdateList>  
+   <DeleteList></DeleteList>  
+  </ImportStagingCollection>'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewGetHistoryDetail] -- paremeters here        
+	@XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --  
+	IF OBJECT_ID('tempdb..#TBLAccountsToBeImported') IS NOT NULL
+		DROP TABLE #TBLAccountsToBeImported
+
+	CREATE TABLE #TBLAccountsToBeImported (CustomerAccountNumber VARCHAR(14))
+
+	-- Body of procedure  --  
+	INSERT INTO #TBLAccountsToBeImported
+	SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS AdventID
+	FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+	SELECT UserName
+		,CreatedDate
+		,ChangedField
+		,PreviousValue
+		,CurrentValue
+		,ISNULL(Comments, '') AS Comments
+	FROM TBL_IE_History
+	WHERE CustomerAccountNumber IN (
+			SELECT CustomerAccountNumber
+			FROM #TBLAccountsToBeImported
+			)
+	ORDER BY CreatedDate DESC
+
+	SET NOCOUNT OFF;
+END

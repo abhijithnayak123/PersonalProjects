@@ -1,0 +1,451 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdWftAutoPouplateBeneAddressChange'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdWftAutoPouplateBeneAddressChange;
+
+	PRINT 'DROPPED USP_EX_UpdWftAutoPouplateBeneAddressChange';
+END
+GO
+
+/*************************************************************************************************************  
+* Procedure Name  : USP_EX_UpdWftAutoPouplateBeneAddressChange
+* Old Procedure Name  : sp_wft_autopouplate_BeneAddressChg  
+* Description     : This stored procedure is  to update address  
+     
+** Sample Call  
+        [sp_wft_autopouplate_BeneAddressChg] 4584,1,-1  
+**  
+* Modification Log                                               
+*                              
+* Date         Modified By  Description                                              
+*-------------------------------------------------------------------------------------------------------------  
+* 28-April-10  Tanuj      
+* 21-Mar-14    Yugandhar   EXCREQ9.1 Modified
+* 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+**************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_UpdWftAutoPouplateBeneAddressChange] @request_id INT
+	,@USER_ID INT
+	,@Iscountry_Address4Exists INT OUTPUT
+AS
+BEGIN
+	BEGIN TRY --Start the Try Block..    
+		--BEGIN TRANSACTION -- Start the transaction..    
+
+		DECLARE @NextAddressID INT
+		DECLARE @ExistCheck INT
+		DECLARE @guid VARCHAR
+		DECLARE @ParticipantID INT
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+		DECLARE @Country_type_ID INT;
+		DECLARE @legal_attn VARCHAR(15)
+			,@legal_attn_name VARCHAR(50)
+			,@legal_Address VARCHAR(50)
+			,@legal_Address1 VARCHAR(50)
+			,@legalAddress2 VARCHAR(50)
+			,@legal_Address2 VARCHAR(50)
+			,@legal_Address3 VARCHAR(50)
+			,@Legal_unit_number VARCHAR(10)
+			,@Legal_unit_Type VARCHAR(15)
+			,@legal_City VARCHAR(30)
+			,@legal_State VARCHAR(2)
+			,@legal_ZipCode VARCHAR(10)
+			,@legal_Country VARCHAR(25)
+			,@legal_DomicileCode VARCHAR(20)
+			,@legal_FromMonth INT
+			,@legal_ToMonth INT
+			,@legal_From_day INT
+			,@legal_To_day INT
+		DECLARE @ISAddress1Available BIT
+			,@ISAddress2Available BIT
+			,@ISAddress3Available BIT
+			,@ISAddress4Available BIT;
+		DECLARE @alt_attn VARCHAR(15)
+			,@alt_attn_name VARCHAR(50)
+			,@alt_Address VARCHAR(50)
+			,@alt_Address1 VARCHAR(50)
+			,@alt_Address2 VARCHAR(50)
+			,@altAddress2 VARCHAR(50)
+			,@alt_Address3 VARCHAR(50)
+			,@alt_unit_number VARCHAR(10)
+			,@alt_unit_Type VARCHAR(15)
+			,@alt_City VARCHAR(30)
+			,@alt_State VARCHAR(2)
+			,@alt_ZipCode VARCHAR(10)
+			,@alt_Country VARCHAR(25)
+			,@alt_IsSeasonal VARCHAR(20)
+			,@alt_FromMonth VARCHAR(20)
+			,@alt_ToMonth VARCHAR(20)
+		DECLARE @IS_AltAddress1Available BIT
+			,@IS_AltAddress2Available BIT
+			,@IS_AltAddress3Available BIT
+			,@IS_AltAddress4Available BIT;
+		DECLARE @alt_checkNextLine BIT
+			,@alt_Address_Available BIT
+		DECLARE @legal_checkNextLine BIT
+			,@legal_Address_Available BIT
+
+		SET @alt_checkNextLine = 1
+		SET @alt_Address_Available = 0
+		SET @legal_checkNextLine = 1
+		SET @legal_Address_Available = 0
+		SET @legal_FromMonth = 1
+		SET @legal_ToMonth = 12
+		SET @legal_From_day = 1
+		SET @legal_To_day = 31
+		SET @Iscountry_Address4Exists = 0
+
+		SELECT @ParticipantID = [ContactID]
+			,@legal_Address1 = [legal_address1]
+			,@legal_Address2 = [legal_address2]
+			,@legal_attn = [legal_attn]
+			,@legal_attn_name = [legal_attn_name]
+			,@legal_City = [legal_city]
+			,@legal_Country = [legal_country]
+			,@legal_DomicileCode = [legal_domicile]
+			,@legal_State = [legal_state]
+			,@Legal_unit_number = [legal_unit_number]
+			,@Legal_unit_Type = [legal_unit_type]
+			,@legal_ZipCode = [legal_zip]
+			,@alt_Address1 = [alt_address1]
+			,@alt_Address2 = [alt_address2]
+			,@alt_attn = [alt_attn]
+			,@alt_attn_name = [alt_attn_name]
+			,@alt_City = [alt_city]
+			,@alt_Country = [alt_country]
+			,@alt_State = [alt_state]
+			,@alt_unit_number = [alt_unit_number]
+			,@alt_unit_Type = [alt_unit_type]
+			,@alt_ZipCode = [alt_zip]
+			,@alt_IsSeasonal = is_seasonal
+			,@alt_FromMonth = seasonal_from_month
+			,@alt_ToMonth = seasonal_to_month
+		FROM TBL_WFT_AddressChange
+		WHERE guid = (
+				SELECT guid
+				FROM TBL_WFT_Request
+				WHERE request_id = @request_id
+					AND FormID = 92
+				)
+
+		----Verify DomicileCode is exits in the domicile table  as it has foreign key contraint with other table    
+		IF NOT EXISTS (
+				SELECT *
+				FROM domicile
+				WHERE DomicileCode = @legal_DomicileCode
+				)
+			SET @legal_DomicileCode = NULL;
+
+		IF (
+				@legal_Country = 'usa'
+				OR @legal_Country = 'u.s.a'
+				OR @legal_Country = 'u.s.a.'
+				OR @legal_Country = 'us'
+				OR @legal_Country = 'u.s'
+				OR @legal_Country = 'u.s.'
+				OR @legal_Country = 'united states'
+				)
+		BEGIN
+			SET @legal_DomicileCode = @legal_State
+			SET @legal_Country = 'USA'
+		END
+
+		IF (
+				@alt_Country = 'usa'
+				OR @alt_Country = 'u.s.a'
+				OR @alt_Country = 'u.s.a.'
+				OR @legal_Country = 'us'
+				OR @alt_Country = 'u.s'
+				OR @alt_Country = 'u.s.'
+				OR @alt_Country = 'united states'
+				)
+		BEGIN
+			SET @alt_Country = 'USA'
+		END
+
+		----------------- Legal Address---------------------------------------------------------------------------------    
+		SET @ISAddress1Available = CASE 
+				WHEN isnull(@legal_attn, '') <> ''
+					OR isnull(@legal_attn_name, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+		SET @ISAddress2Available = CASE 
+				WHEN isnull(@legal_Address1, '') <> ''
+					OR isnull(@Legal_unit_number, '') <> ''
+					OR isnull(@Legal_unit_Type, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+		SET @ISAddress3Available = CASE 
+				WHEN isnull(@legal_Address2, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+
+		IF (@ISAddress1Available = 1)
+		BEGIN
+			SET @legal_Address = rtrim(ltrim(@legal_attn + ' ' + @legal_attn_name))
+		END
+		ELSE IF (@ISAddress2Available = 1)
+		BEGIN
+			SET @legal_Address = rtrim(ltrim(CASE 
+							WHEN isnull(@legal_Address1, '') <> ''
+								THEN @legal_Address1 + ', ' + @Legal_unit_Type + ' ' + @Legal_unit_number
+							ELSE @Legal_unit_Type + ' ' + @Legal_unit_number
+							END))
+			SET @legal_address = CASE 
+					WHEN right(@legal_address, 1) = ','
+						THEN left(@legal_address, len(@legal_address) - 1)
+					ELSE @legal_address
+					END
+			SET @ISAddress2Available = 0
+			SET @ISAddress1Available = 1
+			SET @legal_Address1 = ''
+		END
+		ELSE IF (@ISAddress3Available = 1)
+		BEGIN
+			SET @legal_Address = @legal_Address2
+			SET @ISAddress1Available = 1
+			SET @ISAddress3Available = 0
+		END
+
+		IF (@ISAddress2Available = 1)
+		BEGIN
+			SET @legal_Address1 = rtrim(ltrim(CASE 
+							WHEN isnull(@legal_Address1, '') <> ''
+								THEN @legal_Address1 + ', ' + @Legal_unit_Type + ' ' + @Legal_unit_number
+							ELSE @Legal_unit_Type + ' ' + @Legal_unit_number
+							END))
+			SET @legal_Address1 = CASE 
+					WHEN right(@legal_Address1, 1) = ','
+						THEN left(@legal_Address1, len(@legal_Address1) - 1)
+					ELSE @legal_Address1
+					END
+		END
+		ELSE IF (@ISAddress3Available = 1)
+		BEGIN
+			SET @legal_Address1 = @legal_Address2
+			SET @ISAddress3Available = 0
+			SET @ISAddress2Available = 1;
+		END
+
+		IF (@ISAddress3Available = 1)
+		BEGIN
+			SET @legalAddress2 = @legal_Address2
+		END
+
+		IF (
+				(
+					@ISAddress1Available = 1
+					OR @ISAddress2Available = 1
+					OR @ISAddress3Available = 1
+					)
+				AND isnull(@legal_City, '') <> ''
+				AND isnull(@legal_Country, '') <> ''
+				)
+		BEGIN
+			SET @legal_Address_Available = 1
+		END
+
+		SET @Country_type_ID = (
+				SELECT ListTypeID
+				FROM TBL_ListType
+				WHERE ListTypeName = 'country'
+				)
+
+		IF (@legal_Address_Available = 1)
+		BEGIN
+			IF (
+					NOT EXISTS (
+						SELECT *
+						FROM TBL_ListItem
+						WHERE ListItemName = @legal_Country
+							AND ListTypeID = @Country_type_ID
+						)
+					)
+			BEGIN
+				SET @Iscountry_Address4Exists = 1 -- if country not exists then return 1    
+			END
+		END
+
+		----------- Alt Address-----------------------------------------------------------------    
+		SET @IS_AltAddress1Available = CASE 
+				WHEN isnull(@alt_attn, '') <> ''
+					OR isnull(@alt_attn_name, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+		SET @IS_AltAddress2Available = CASE 
+				WHEN isnull(@alt_Address1, '') <> ''
+					OR isnull(@alt_unit_number, '') <> ''
+					OR isnull(@alt_unit_Type, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+		SET @IS_AltAddress3Available = CASE 
+				WHEN isnull(@alt_Address2, '') <> ''
+					THEN 1
+				ELSE 0
+				END
+
+		IF (@IS_AltAddress1Available = 1)
+		BEGIN
+			SET @alt_Address = rtrim(ltrim(@alt_attn + ' ' + @alt_attn_name))
+		END
+		ELSE IF (@IS_AltAddress2Available = 1)
+		BEGIN
+			SET @alt_Address = rtrim(ltrim(CASE 
+							WHEN isnull(@alt_Address1, '') <> ''
+								THEN @alt_Address1 + ', ' + @alt_unit_Type + ' ' + @alt_unit_number
+							ELSE @alt_unit_Type + ' ' + @alt_unit_number
+							END))
+			SET @alt_Address = CASE 
+					WHEN right(@alt_Address, 1) = ','
+						THEN left(@alt_Address, len(@alt_Address) - 1)
+					ELSE @alt_Address
+					END
+			SET @IS_AltAddress2Available = 0
+			SET @IS_AltAddress1Available = 1;
+			SET @alt_Address1 = ''
+		END
+		ELSE IF (@IS_AltAddress3Available = 1)
+		BEGIN
+			SET @alt_Address = @alt_Address2
+			SET @IS_AltAddress3Available = 0
+			SET @IS_AltAddress1Available = 1;
+		END
+
+		IF (@IS_AltAddress2Available = 1)
+		BEGIN
+			SET @alt_Address1 = rtrim(ltrim(CASE 
+							WHEN isnull(@alt_Address1, '') <> ''
+								THEN @alt_Address1 + ', ' + @alt_unit_Type + ' ' + @alt_unit_number
+							ELSE @alt_unit_Type + ' ' + @alt_unit_number
+							END))
+			SET @alt_Address1 = CASE 
+					WHEN right(@alt_Address1, 1) = ','
+						THEN left(@alt_Address1, len(@alt_Address1) - 1)
+					ELSE @alt_Address1
+					END
+		END
+		ELSE IF (@IS_AltAddress3Available = 1)
+		BEGIN
+			SET @alt_Address1 = @alt_Address2
+			SET @IS_AltAddress2Available = 1;
+			SET @IS_AltAddress3Available = 0
+		END
+
+		IF (@IS_AltAddress3Available = 1)
+		BEGIN
+			SET @altAddress2 = @alt_Address2
+		END
+
+		IF (
+				(
+					@IS_AltAddress1Available = 1
+					OR @IS_AltAddress2Available = 1
+					OR @IS_AltAddress3Available = 1
+					)
+				AND isnull(@alt_City, '') <> ''
+				AND isnull(@alt_Country, '') <> ''
+				)
+		BEGIN
+			SET @alt_Address_Available = 1
+		END
+
+		SET @ExistCheck = 0
+
+		IF (@alt_Address_Available = 1)
+		BEGIN
+			IF (
+					NOT EXISTS (
+						SELECT *
+						FROM TBL_ListItem
+						WHERE Listitemname = @alt_Country
+							AND listtypeid = @Country_type_ID
+						)
+					)
+			BEGIN
+				SET @Iscountry_Address4Exists = 1 -- if country not exists then return 1    
+			END
+		END
+
+		IF (
+				@ParticipantID <> 0
+				AND @Iscountry_Address4Exists = 0
+				)
+		BEGIN
+			IF @legal_Address_Available = 1
+			BEGIN
+				SELECT @ExistCheck = ID
+				FROM SYN_IT_ContactAddresses
+				WHERE AddressType = 'Business' -- ADDRESSLINKAGE.LinkID = @ParticipantID AND ADDRESSLINKAGE.LinkType = 6      
+			END
+
+			IF @alt_Address_Available = 1
+			BEGIN
+				-- selecting starting day and ending of the current date     
+				DECLARE @to_day INT
+					,@From_day INT
+				DECLARE @from_month SMALLINT
+					,@to_month SMALLINT
+				DECLARE @endmonth DATETIME
+
+				SET @from_month = CASE 
+						WHEN isnull(@alt_FromMonth, '') = ''
+							THEN 1
+						ELSE [dbo].MonthToNumber(@alt_FromMonth)
+						END
+				SET @to_month = CASE 
+						WHEN isnull(@alt_ToMonth, '') = ''
+							THEN 12
+						ELSE [dbo].MonthToNumber(@alt_ToMonth)
+						END
+				SET @From_day = 1
+				SET @endmonth = cast(cast(year(getdate()) AS VARCHAR(10)) + '-' + cast(@to_month AS VARCHAR(2)) + '-01' AS DATETIME)
+				SET @To_Day = CASE 
+						WHEN isnull(@endmonth, '') = ''
+							THEN 31
+						ELSE day(dateadd(mm, datediff(mm, 30, @endmonth), 30))
+						END
+			END
+		END
+
+		--COMMIT TRANSACTION -- Transaction Success!     
+	END TRY
+
+	BEGIN CATCH
+		IF @@TRANCOUNT > 0
+			--ROLLBACK TRANSACTION --RollBack in case of Error    
+
+		SELECT @ErrorMessage = Error_Message()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		-- you can Raise ERROR with RAISEERROR() Statement including the details of the exception    
+		--select Error_Message()    
+		RAISERROR (
+				@ErrorMessage
+				,@ErrorSeverity
+				,@ErrorState
+				);
+	END CATCH
+END
+	--END    
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdWftAutoPouplateBeneAddressChange'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_UpdWftAutoPouplateBeneAddressChange';
+END

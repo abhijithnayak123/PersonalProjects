@@ -1,0 +1,40 @@
+SET NOCOUNT ON
+DECLARE @ApplicationID INT
+
+SELECT @ApplicationID = ApplicationID
+FROM TBL_KS_Application
+WHERE ApplicationName = 'Period End Valuation Automation'
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM TBL_KS_ApplicationInnoTrustKey
+		WHERE [ApplicationID] = @ApplicationID
+			AND [Key] = 'BenePayDisTransactionCode'
+		)
+	INSERT INTO TBL_KS_ApplicationInnoTrustKey (
+		[ApplicationID]
+		,[Key]
+		,[Value]
+		)
+	VALUES (
+		@ApplicationID
+		,'BenePayDisTransactionCode'
+		,'ACHDSB,CHECKDSB,WIREDSB,JNLDSB,CASHDSB'
+		)
+
+IF NOT EXISTS (
+		SELECT 1
+		FROM TBL_KS_ApplicationInnoTrustKey
+		WHERE [ApplicationID] = @ApplicationID
+			AND [Key] = 'BenePayDisTaxCode'
+		)
+	INSERT INTO TBL_KS_ApplicationInnoTrustKey (
+		[ApplicationID]
+		,[Key]
+		,[Value]
+		)
+	VALUES (
+		@ApplicationID
+		,'BenePayDisTaxCode'
+		,'009,052,570,737,691,697,595,596,601,602'
+		)

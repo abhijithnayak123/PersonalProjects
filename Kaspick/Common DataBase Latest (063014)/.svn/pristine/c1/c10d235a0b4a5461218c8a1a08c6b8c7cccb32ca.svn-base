@@ -1,0 +1,276 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetGiftSeverenceFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetGiftSeverenceFromGiftwrapPIF]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetGiftSeverenceFromGiftwrapPIF]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetGiftSeverenceFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetGiftSeverenceFromGiftwrapPIF                      
+** Short Desc: A data extract from GiftWrap, which gives gifts severred/finished in Giftwrap application       
+**  for given date range.            
+** Full Description: A data extract from GiftWrap, which gives gifts severred/finished in Giftwrap application       
+**  for given date range. 
+**                              
+** Input Arguments:   		@XMLCustomerAccountNumber XML
+**	,@GiftDateFrom DATETIME
+**	,@GiftDateTo DATETIME
+** Sample Call     
+       
+ EXEC USP_PV_GetGiftSeverenceFromGiftwrapPIF  @XMLCustomerAccountNumber = '<CustomerAccountCollection>      
+      <InsertList>      
+      <CustomerAccount CustomerAccountNumber="ACPIF1" />      
+      </InsertList>      
+      </CustomerAccountCollection>',      
+  @GiftDateFrom = '1/1/2013',  
+  @GiftDateTo = '12/31/2013'      
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 03/24/2014 Salih                 Fixed the implementation for the selection of PersonID
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetGiftSeverenceFromGiftwrapPIF] (
+	@XMLCustomerAccountNumber XML
+	,@GiftDateFrom DATETIME
+	,@GiftDateTo DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#TmpGift]') IS NOT NULL
+		DROP TABLE [#TmpGift]
+
+	IF OBJECT_ID('tempdb..[#TmpPerson]') IS NOT NULL
+		DROP TABLE [#TmpPerson]
+
+	DECLARE @ClientID AS INT
+	DECLARE @GiftTypeID INT
+	DECLARE @GiftFinishedStatusID INT
+	DECLARE @GiftSeveredStatusID INT
+
+	CREATE TABLE #TmpGift (
+		OrgID INT
+		,OrgAccount1 VARCHAR(18)
+		,GiftDate DATETIME
+		,GiftType VARCHAR(4)
+		,GiftAmount DECIMAL(20, 4)
+		,MarketValue DECIMAL(20, 4)
+		,MarketValueDate DATETIME
+		,GiftStatus VARCHAR(9)
+		,GiftKey INT
+		,AccountClosedDate DATETIME
+		,Distributions DECIMAL(20, 4)
+		,PersonIDFK INT
+		,GiftID INT
+		)
+
+	CREATE TABLE #TmpPerson (
+		-- 03/24/2014 Salih - Fixed the implementation for the selection of PersonID 
+		SeveredRownum INT
+		,FinishedRownum INT
+		,PersonID INT
+		,GiftID INT
+		)
+
+	SELECT @ClientID = ClientID
+	FROM SYN_GW_TBLClient
+	WHERE ClientName = 'Kaspick'
+
+	SET @GiftTypeID = (
+			SELECT GiftTypeID
+			FROM SYN_GW_TBLGiftType
+			WHERE short = 'PIF'
+			)
+
+	SELECT @GiftFinishedStatusID = LookUpID
+	FROM SYN_GW_TBLLookup lkp
+	INNER JOIN SYN_GW_TBLLookupGroup lkpg
+		ON lkpg.LookUpGroupID = lkp.LookUpGroupID
+	WHERE lkpg.GroupName = 'GiftStatus'
+		AND lkp.short = 'Finished'
+
+	SELECT @GiftSeveredStatusID = LookUpID
+	FROM SYN_GW_TBLLookup lkp
+	INNER JOIN SYN_GW_TBLLookupGroup lkpg
+		ON lkpg.LookUpGroupID = lkp.LookUpGroupID
+	WHERE lkpg.GroupName = 'GiftStatus'
+		AND lkp.short = 'Severed'
+
+	INSERT INTO #TmpPerson
+	SELECT -- 03/24/2014 Salih - Fixed the implementation for the selection of PersonID 
+		row_number() OVER (
+			PARTITION BY Gift.giftid ORDER BY Prsn.PersonID DESC
+			) SeveredRownum
+		,row_number() OVER (
+			PARTITION BY Gift.giftid ORDER BY Prsn.DeathDate DESC
+			) FinishedRownum
+		,Prsn.PersonID
+		,Gift.giftid
+	FROM SYN_GW_TBLPersonGiftMap PGMap
+	INNER JOIN SYN_GW_TBLPerson Prsn
+		ON Prsn.personid = PGMap.personid
+	INNER JOIN SYN_GW_TBLGift Gift
+		ON PGMap.giftid = Gift.giftid
+
+	INSERT INTO #TmpGift
+	SELECT PIF.PifID AS OrgID
+		,LTRIM(RTRIM(PIF.PifNickname)) AS OrgAccount1
+		,GiftDet.GiftDate
+		,GftTyp.GiftType AS GiftType
+		,GiftDet.GiftAmount AS GiftAmount
+		,Gift.MarketValue AS MarketValue
+		,isnull(Gift.MarketValueDate, '01/01/1900') AS MarketValueDate
+		,GftStat.GiftStatus AS GiftStatus
+		,Gift.GiftKey AS GiftKey
+		,isnull(Gift.ACCOUNTCLOSEDDATE, '01/01/1900') AS AccountClosedDate
+		,Gift.DistributionAmount AS Distributions
+		,TPrsn.PersonID AS PersonIDFK
+		,Gift.GiftID
+	FROM SYN_GW_TBLGift Gift
+	INNER JOIN SYN_GW_TBLGiftDetail GiftDet
+		ON GiftDet.GiftID = Gift.GiftID
+	INNER JOIN SYN_GW_TBLPIF PIF
+		ON PIF.PifID = Gift.PifID
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS PifNickName
+		FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.PifNickName = PIF.PifNickname
+	LEFT OUTER JOIN (
+		SELECT GiftTypeID
+			,short AS GiftType
+		FROM SYN_GW_TBLGiftType
+		) GftTyp
+		ON GftTyp.GiftTypeID = Gift.GiftTypeID
+	LEFT OUTER JOIN (
+		SELECT Lkp.LookupID AS LookUpID
+			,Lkp.short AS GiftStatus
+		FROM SYN_GW_TBLLookup Lkp
+		INNER JOIN SYN_GW_TBLLookupGroup LkpGrp
+			ON LkpGrp.LookUpGroupID = Lkp.LookUpGroupID
+		WHERE LkpGrp.GroupName = 'GiftStatus'
+		) GftStat
+		ON GftStat.LookUpID = Gift.GiftStatusIDLookup
+	LEFT OUTER JOIN #TmpPerson TPrsn
+		ON TPrsn.GiftID = Gift.giftid
+	WHERE (
+			(
+				-- 03/24/2014 Salih - Fixed the implementation for the selection of PersonID 
+				Gift.GiftStatusIDLookup = @GiftSeveredStatusID
+				AND TPrsn.SeveredRownum = 1
+				)
+			OR (
+				Gift.GiftStatusIDLookup = @GiftFinishedStatusID
+				AND TPrsn.FinishedRownum = 1
+				)
+			)
+		AND DistributionAmount <> 0
+		AND Gift.GiftTypeID = @GiftTypeID
+		AND Gift.ACCOUNTCLOSEDDATE >= @GiftDateFrom
+		AND Gift.ACCOUNTCLOSEDDATE <= @GiftDateTo
+		AND GiftDet.initialgift = 1
+
+	SELECT PersonID AS PersonID
+		,LTRIM(RTRIM(FirstName) + SPACE(1) + RTRIM(LastName)) AS PersonName
+		,LTRIM(RTRIM(LastName)) AS LastName
+		,LTRIM(RTRIM(FirstName)) AS FirstName
+		,CAST(DECRYPTBYPASSPHRASE(cast(ClientID AS VARCHAR(20)), ssn) AS VARCHAR(10)) AS SSN
+		,ISNULL(CAST(DECRYPTBYPASSPHRASE(cast(ClientID AS VARCHAR(20)), BirthDate) AS VARCHAR(10)), '01/01/1900') AS BirthDate
+		,PrsnStat.PersonStatus AS PersonStatus
+		,isnull(DeathDate, '01/01/1900') AS DeathDate
+		,'' AS MatchComment
+		,'' AS MatchKey
+		,'' AS MatchStatus
+		,0 AS TransactionID
+		,0 AS ValuationID
+		,TGift.Distributions AS SeveredAmount
+		,TGift.AccountClosedDate
+	FROM SYN_GW_TBLPerson Prsn
+	LEFT OUTER JOIN (
+		SELECT Lkp.LookupID AS LookUpID
+			,Lkp.short AS PersonStatus
+		FROM SYN_GW_TBLLookupGroup LkpGrp
+		INNER JOIN SYN_GW_TBLLookup Lkp
+			ON LkpGrp.LookupGroupID = Lkp.LookupGroupID
+				AND LkpGrp.GroupName = 'PersonStatus'
+		) PrsnStat
+		ON PrsnStat.lookupid = PersonStatusIDLookup
+	INNER JOIN (
+		SELECT PersonIDFK AS PersonIDFK
+			,SUM(Distributions) Distributions
+			,max(AccountClosedDate) AccountClosedDate
+		FROM #TmpGift
+		GROUP BY PersonIDFK
+		) TGift
+		ON Prsn.PersonID = TGift.PersonIDFK
+	WHERE Prsn.ClientID = @ClientID
+
+	SELECT Gift.OrgID
+		,Gift.OrgAccount1
+		,Gift.GiftDate
+		,Gift.GiftType
+		,Gift.GiftAmount
+		,Gift.MarketValue
+		,Gift.MarketValueDate
+		,Gift.GiftStatus
+		,Gift.GiftKey
+		,Gift.AccountClosedDate
+		,Gift.Distributions
+		,Gift.PersonIDFK As PersonID
+		,Gift.GiftID
+		,Assoc.short AS Association
+		,PGMap.PersonGiftMapID AS PersonGiftMapID
+	FROM #TmpGift Gift
+	INNER JOIN SYN_GW_TBLPerson Prsn
+		ON Prsn.PersonID = Gift.PersonIDFK
+	INNER JOIN SYN_GW_TBLPersonGiftMap PGMap
+		ON Gift.GiftID = PGMap.giftid
+			AND Prsn.PersonID = PGMap.personid
+	LEFT OUTER JOIN SYN_GW_TBLAssociation Assoc
+		ON Assoc.AssociationID = PGMap.AssociationID
+	WHERE Prsn.ClientID = @ClientID
+	ORDER BY Gift.PersonIDFK
+
+	-- Temporary table dropping  
+	IF OBJECT_ID('tempdb..[#TmpGift]') IS NOT NULL
+		DROP TABLE [#TmpGift]
+
+	IF OBJECT_ID('tempdb..[#TmpPerson]') IS NOT NULL
+		DROP TABLE [#TmpPerson]
+
+	SET NOCOUNT OFF
+END

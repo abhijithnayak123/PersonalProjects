@@ -1,0 +1,178 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingYTDPaymentData]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsStagingYTDPaymentData]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsStagingYTDPaymentData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingYTDPaymentData]    Script Date: 05/14/2013 12:40:04 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			: USP_PP_InsStagingYTDPaymentData                      
+** Short Desc	: Calculates withholding payment amount     
+*                         
+**                      
+** Full Description: Calculates withholding payment amount for current payment and YTD payment 
+* 					 and YTD withholding amount          
+**                              
+** Input Arguments:   @CreatedBy  
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsStagingYTDPaymentData  1      
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 14-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsStagingYTDPaymentData] @CreatedBy INT
+AS
+BEGIN
+	SET NOCOUNT ON
+	SET LOCK_TIMEOUT 30000
+
+	TRUNCATE TABLE TBL_PP_STG_YTDPaymentData
+
+	--create a payment universe
+	INSERT INTO dbo.TBL_PP_STG_YTDPaymentData (
+		PaymentID
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,AccountType
+		,Withholding
+		,PaymentAmount
+		,PaymentDate
+		,TaxYear
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT DISTINCT PNDGPMNT.PaymentID
+		,PNDGPMNT.CustomerAccountNumber
+		,PNDGPMNT.ContactID
+		,PNDGPMNT.ContactRoleCode
+		,PNDGPMNT.AccountType
+		,(
+			CASE 
+				WHEN ISNULL(BENPMNT.Withholding, 0) = 0
+					THEN NULL
+				ELSE BENPMNT.Withholding
+				END
+			) AS Withholding
+		,STGBENPMNT.PaymentAmount
+		,STGBENPMNT.PaymentDate
+		,BENPMNT.TaxYear
+		,0 AS DeleteFlag
+		,@CreatedBy AS ModifiedBy
+		,GetDate() AS ModifiedDate
+		,@CreatedBy AS CreatedBy
+		,GetDate() AS CreatedDate
+	FROM TBL_PP_PendingPayment PNDGPMNT
+	INNER JOIN dbo.TBL_PP_STG_BeneficiaryPayment STGBENPMNT
+		ON PNDGPMNT.PaymentID = STGBENPMNT.PaymentID
+	INNER JOIN TBL_PP_BeneficiaryPayment BENPMNT
+		ON BENPMNT.PaymentID = PNDGPMNT.PaymentID
+	WHERE PNDGPMNT.AccountType != 'ALLACCOUNTTYPES'
+
+	UPDATE YTDPMNT
+	SET YTDAmount = (
+			SELECT SUM(PaymentAmount)
+			FROM TBL_PP_BeneficiaryPayment
+			WHERE VoidDate IS NULL
+				AND PaymentDate <= YTDPMNT.paymentdate
+				AND TaxYear = YTDPMNT.TaxYear
+				AND CustomerAccountNumber = YTDPMNT.CustomerAccountNumber
+				AND ContactID = YTDPMNT.ContactID
+				AND ContactRoleCode = YTDPMNT.ContactRoleCode
+			)
+	FROM TBL_PP_STG_YTDPaymentData YTDPMNT
+
+	UPDATE YTDPMNT
+	SET YTDWithholding = (
+			SELECT SUM(ISNULL(Withholding, 0))
+			FROM TBL_PP_BeneficiaryPayment
+			WHERE VoidDate IS NULL
+				AND paymentdate <= YTDPMNT.PaymentDate
+				AND TaxYear = YTDPMNT.TaxYear
+				AND CustomerAccountNumber = YTDPMNT.CustomerAccountNumber
+				AND ContactID = YTDPMNT.ContactID
+				AND ContactRoleCode = YTDPMNT.ContactRoleCode
+			)
+	FROM TBL_PP_STG_YTDPaymentData YTDPMNT
+	WHERE --05-feb-2014-Salih: Account Type mapping changes
+		YTDPMNT.AccountType IN (
+			'PIF'
+			,'GAP'
+			,'GAPR'
+			,'GAPP'
+			)
+
+	UPDATE YTDPMNT
+	SET YTDWithholding = (
+			SELECT SUM(PaymentAmount)
+			FROM TBL_PP_BeneficiaryPayment
+			WHERE VoidDate IS NULL
+				AND paymentdate <= YTDPMNT.paymentdate
+				AND TaxYear = YTDPMNT.TaxYear
+				AND CustomerAccountNumber = YTDPMNT.CustomerAccountNumber
+				AND ContactID = YTDPMNT.ContactID
+				AND PaidforContactID = YTDPMNT.ContactID
+			)
+	FROM TBL_PP_STG_YTDPaymentData YTDPMNT
+	WHERE --05-feb-2014-Salih: Account Type mapping changes
+		YTDPMNT.AccountType NOT IN (
+			'PIF'
+			,'GAP'
+			,'GAPR'
+			,'GAPP'
+			)
+
+	--Calculate gross payment
+	UPDATE TBL_PP_STG_YTDPaymentData
+	SET GrossAmount = CASE 
+			WHEN (ISNULL(PaymentAmount, 0) + ISNULL(Withholding, 0)) = 0
+				THEN NULL
+			ELSE (ISNULL(PaymentAmount, 0) + ISNULL(Withholding, 0))
+			END
+		,YTDGross = CASE 
+			WHEN (ISNULL(YTDWithholding, 0) + ISNULL(YTDAmount, 0)) = 0
+				THEN NULL
+			ELSE (ISNULL(YTDWithholding, 0) + ISNULL(YTDAmount, 0))
+			END
+		,YTDWithholding = CASE 
+			WHEN ISNULL(YTDWithholding, 0) = 0
+				THEN NULL
+			ELSE ISNULL(YTDWithholding, 0)
+			END
+END

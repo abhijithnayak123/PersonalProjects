@@ -1,0 +1,93 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuationInnoTrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetLastValuationInnoTrustTransaction]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetLastValuationInnoTrustTransaction]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetLastValuationInnoTrustTransaction]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetLastValuationInnoTrustTransaction                      
+** Short Desc: Reading last innotrust valuation data.
+** Full Description: Reading last innotrust valuation data.
+** Input Arguments:   	@TransactionCode, @XMLManagerCodeParam XML
+** Sample Call     
+        
+DECLARE @XMLManagerCodeParam XML   
+DECLARE @TransactionCode  XML
+DECLARE @TaxCode XML
+SET @TransactionCode = '<TransactionCodeCollection><TransactionCodeItem TransactionCode="ACHDEP"/></TransactionCodeCollection>'
+SET @TaxCode = '<TaxCodeCollection><TaxCodeItem TaxCode="631"/></TaxCodeCollection>'
+SET  @XMLManagerCodeParam = '<ValuationCollection><InsertList><Valuation ValuationID="2" /></InsertList></ValuationCollection>'
+EXEC USP_PV_GetLastValuationInnoTrustTransaction @TransactionCode, @TaxCode, @XMLManagerCodeParam
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Apr-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE USP_PV_GetLastValuationInnoTrustTransaction @TransactionCode XML
+	,@TaxCode XML
+	,@ValuationXML XML
+AS
+SET NOCOUNT ON
+
+SELECT TransactionID
+	,ValuationID
+	,MatchKey
+	,MatchStatus
+	,MatchComment
+	,GroupID
+	,TransactionCode
+	,[Security]
+	,TradeDate
+	,Quantity
+	,TradeAmount
+	,Comment
+	,TaxCode
+	,TransactionNumber
+	,GiftID
+	,ContactID
+FROM TBL_PV_ValuationInnotrustTransaction
+WHERE TransactionCode IN (
+		SELECT XMLInput.Item.value('@TransactionCode[1]', 'varchar(14)') AS InnoTrustTransactionCode
+		FROM @TransactionCode.nodes('//TransactionCodeCollection/TransactionCodeItem') AS XMLInput(Item)
+		)
+	AND TaxCode IN (
+		SELECT XMLInput.Item.value('@TaxCode[1]', 'varchar(14)') AS InnoTrustTaxCode
+		FROM @TaxCode.nodes('//TaxCodeCollection/TaxCodeItem') AS XMLInput(Item)
+		)
+	AND ValuationID IN (
+		SELECT XMLDATA.item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @ValuationXML.nodes('//ValuationCollection/InsertList/Valuation') AS XMLDATA(item)
+		)
+ORDER BY TradeDate
+

@@ -1,0 +1,298 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetInvestmentCommentHistory]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetInvestmentCommentHistory]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name   :   USP_TR_GetInvestmentCommentHistory    
+** Short Desc : Gets a list of Investment Comments for a given Customer Account Number     
+**          
+** Full Description : Gets a list of Investment Comments for a given Customer Account Number      
+**                  
+**          
+** Sample Call          
+        EXEC USP_TR_GetInvestmentCommentHistory 
+        '<CustomerAccountNumbers>
+        <EventId>17367</EventId>
+        <EventStatusID>2</EventStatusID>
+        <CustomerAccountNumber>CBGAP</CustomerAccountNumber>
+        <EventAccountId>19183</EventAccountId>
+        </CustomerAccountNumbers>' 
+        EXEC USP_TR_GetInvestmentCommentHistory
+		'<CustomerAccountNumbers>
+		<EventId>59994</EventId>
+		<EventStatusID>3</EventStatusID>
+		<CustomerAccountNumber>ACADW</CustomerAccountNumber>
+		<EventAccountId>65696</EventAccountId>
+		<CustomerAccountNumber>ACBAD</CustomerAccountNumber>
+		<EventAccountId>65697</EventAccountId>
+		</CustomerAccountNumbers>'
+		EXEC USP_TR_GetInvestmentCommentHistory  
+		'<CustomerAccountNumbers>
+		<EventId>2</EventId>
+		<EventStatusID>5</EventStatusID>
+		<CustomerAccountNumber>BWPIFA</CustomerAccountNumber>
+		<EventAccountId>2</EventAccountId>
+		</CustomerAccountNumbers>'
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Mar/19/2014           
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**     
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetInvestmentCommentHistory] (@CustomerAccountNumbers XML)
+AS
+BEGIN
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @StatusId INT
+	DECLARE @EventId INT
+	DECLARE @CustomerAccountNumberTable TABLE (CustomerAccountNumber VARCHAR(14))
+	DECLARE @EventIdTable TABLE (EventId INT)
+	DECLARE @EventStatusIDTable TABLE (EventStatusID INT)
+	DECLARE @ProposedStatusId AS INT
+	DECLARE @ReconciledStatusId AS INT
+	DECLARE @Review1StatusId AS INT
+	DECLARE @Review2StatusId AS INT
+
+	SELECT @ProposedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Proposed'
+
+	SELECT @ReconciledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Reconciled'
+
+	SELECT @Review1StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review1'
+
+	SELECT @Review2StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review2'
+
+	INSERT INTO @CustomerAccountNumberTable (CustomerAccountNumber)
+	SELECT XMLDATA.ID.value('(.)', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/CustomerAccountNumber') AS XMLDATA(ID)
+
+	INSERT INTO @EventIdTable (EventId)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventId
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventId') AS XMLDATA(ID)
+
+	INSERT INTO @EventStatusIDTable (EventStatusID)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventId
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventStatusID') AS XMLDATA(ID)
+
+	SELECT @StatusId = EventStatusID
+	FROM @EventStatusIDTable
+
+	SELECT @EventId = EventId
+	FROM @EventIdTable
+
+	IF (@EventId = 0)
+	BEGIN
+		SELECT 0 AS 'EventId'
+			,0 AS 'EventAccountID'
+			,0 AS 'EventStatusID'
+			,InvstmntComnt.[InvestmentCommentID]
+			,InvstmntComnt.[CustomerAccountNumber]
+			,InvstmntComnt.[InvestmentComment]
+			,InvstmntComnt.[CreatedBy]
+			,InvstmntComnt.[ModifiedBy]
+			,InvstmntComnt.[CreatedDate]
+			,InvstmntComnt.[ModifiedDate]
+			,USERS.LOGINNAME AS 'CreatedUserName'
+			,USERS2.LOGINNAME AS 'ModifiedUserName'
+		FROM TBL_INV_InvestmentComment InvstmntComnt
+		INNER JOIN TBL_KS_User USERS ON InvstmntComnt.[CreatedBy] = USERS.[USERID]
+		LEFT OUTER JOIN TBL_KS_User USERS2 ON InvstmntComnt.[ModifiedBy] = USERS2.[USERID]
+		WHERE CustomerAccountNumber IN (
+				SELECT CustomerAccountNumber
+				FROM @CustomerAccountNumberTable
+				)
+		ORDER BY InvstmntComnt.CustomerAccountNumber
+			,InvstmntComnt.[CreatedDate] DESC
+	END
+	ELSE
+	BEGIN
+		IF (
+				@StatusId >= @ProposedStatusId
+				AND @StatusId < @ReconciledStatusId
+				)
+		BEGIN
+			SELECT InvstmntComnt.EventId
+				,InvstmntComnt.EventAccountID
+				,InvstmntComnt.EventStatusID
+				,InvstmntComnt.InvestmentCommentID
+				,InvstmntComnt.CustomerAccountNumber
+				,InvstmntComnt.InvestmentComment
+				,InvstmntComnt.CreatedUserID AS 'CreatedBy'
+				,InvstmntComnt.LastModifiedUserID AS 'ModifiedBy'
+				,InvstmntComnt.CreatedDate AS 'CreatedDate'
+				,InvstmntComnt.LastModifiedDate AS 'ModifiedDate'
+				,InvstmntComnt.CreatedUserName
+				,InvstmntComnt.ModifiedUserIDName AS 'ModifiedUserName'
+			FROM (
+				SELECT DISTINCT Evnt.EventId
+					,EvntAcnt.EventAccountID
+					,Evnt.EventStatusID
+					,InvstmntComntHistry.[InvestmentCommentID] AS InvestmentCommentID
+					,InvstmntComntHistry.[CustomerAccountNumber] AS CustomerAccountNumber
+					,InvstmntComntHistry.[InvestmentComments] AS InvestmentComment
+					,InvstmntComntHistry.[CreatedUserID] AS CreatedUserID
+					,InvstmntComntHistry.[ModifiedUserID] AS LastModifiedUserID
+					,InvstmntComntHistry.[CreatedDate] AS CreatedDate
+					,InvstmntComntHistry.[ModifiedDate] AS LastModifiedDate
+					,USERS.LOGINNAME AS CreatedUserName
+					,USERS2.LOGINNAME AS ModifiedUserIDName
+				FROM TBL_TR_Event Evnt
+				INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+				LEFT OUTER JOIN TBL_INV_InvestmentComment InvstmntComnt ON InvstmntComnt.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+				INNER JOIN TBL_KS_User USERS ON InvstmntComnt.[CreatedBy] = USERS.[USERID]
+				LEFT OUTER JOIN TBL_KS_User USERS2 ON InvstmntComnt.[ModifiedBy] = USERS2.[USERID]
+				LEFT OUTER JOIN TBL_TR_InvestmentCommentHistorySnapshot InvstmntComntHistry ON InvstmntComntHistry.EventId = Evnt.EventId
+					AND InvstmntComntHistry.EventAccountID = EvntAcnt.EventAccountID
+					AND (InvstmntComntHistry.EventStatusID = @ProposedStatusId)
+				WHERE InvstmntComnt.[CustomerAccountNumber] IN (
+						SELECT CustomerAccountNumber
+						FROM @CustomerAccountNumberTable
+						)
+					AND Evnt.EventId IN (
+						SELECT EventId
+						FROM @EventIdTable
+						)
+				) AS InvstmntComnt
+			ORDER BY InvstmntComnt.[CustomerAccountNumber]
+				,InvstmntComnt.[CreatedDate] DESC
+		END
+		ELSE
+			IF (@StatusId > @ReconciledStatusId)
+			BEGIN
+				SELECT InvstmntComnt.EventId
+					,InvstmntComnt.EventAccountID
+					,InvstmntComnt.EventStatusID
+					,InvstmntComnt.InvestmentCommentID
+					,InvstmntComnt.CustomerAccountNumber
+					,InvstmntComnt.InvestmentComment
+					,InvstmntComnt.CreatedUserID AS 'CreatedBy'
+					,InvstmntComnt.LastModifiedUserID AS 'ModifiedBy'
+					,InvstmntComnt.CreatedDate AS 'CreatedDate'
+					,InvstmntComnt.LastModifiedDate AS 'ModifiedDate'
+					,InvstmntComnt.CreatedUserName
+					,InvstmntComnt.ModifiedUserIDName AS 'ModifiedUserName'
+				FROM (
+					SELECT DISTINCT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,InvstmntComntHistry.[InvestmentCommentID] AS InvestmentCommentID
+						,InvstmntComntHistry.[CustomerAccountNumber] AS CustomerAccountNumber
+						,InvstmntComntHistry.[InvestmentComments] AS InvestmentComment
+						,InvstmntComntHistry.[CreatedUserID] AS CreatedUserID
+						,InvstmntComntHistry.[ModifiedUserID] AS LastModifiedUserID
+						,InvstmntComntHistry.[CreatedDate] AS CreatedDate
+						,InvstmntComntHistry.[ModifiedDate] AS LastModifiedDate
+						,USERS.LOGINNAME AS CreatedUserName
+						,USERS2.LOGINNAME AS ModifiedUserIDName
+					FROM TBL_TR_Event Evnt
+					INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					LEFT OUTER JOIN TBL_INV_InvestmentComment InvstmntComment ON InvstmntComment.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN TBL_KS_User USERS ON InvstmntComment.[CreatedBy] = USERS.[USERID]
+					LEFT OUTER JOIN TBL_KS_User USERS2 ON InvstmntComment.[ModifiedBy] = USERS2.[USERID]
+					LEFT OUTER JOIN TBL_TR_InvestmentCommentHistorySnapshot InvstmntComntHistry ON InvstmntComntHistry.EventId = Evnt.EventId
+						AND InvstmntComntHistry.EventAccountID = EvntAcnt.EventAccountID
+						AND (
+							InvstmntComntHistry.EventStatusID = @ReconciledStatusId
+							OR InvstmntComntHistry.EventStatusID = @Review1StatusId
+							OR InvstmntComntHistry.EventStatusID = @Review2StatusId
+							)
+					WHERE InvstmntComment.[CustomerAccountNumber] IN (
+							SELECT CustomerAccountNumber
+							FROM @CustomerAccountNumberTable
+							)
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS InvstmntComnt
+				ORDER BY InvstmntComnt.[CustomerAccountNumber]
+					,InvstmntComnt.[CreatedDate] DESC
+			END
+			ELSE
+			BEGIN
+				SELECT InvstmntComnt.EventId
+					,InvstmntComnt.EventAccountID
+					,InvstmntComnt.EventStatusID
+					,InvstmntComnt.InvestmentCommentID
+					,InvstmntComnt.CustomerAccountNumber
+					,InvstmntComnt.InvestmentComment
+					,InvstmntComnt.CreatedBy
+					,InvstmntComnt.ModifiedBy
+					,InvstmntComnt.CreatedDate
+					,InvstmntComnt.ModifiedDate
+					,InvstmntComnt.CreatedUserName
+					,InvstmntComnt.ModifiedUserIDName AS 'ModifiedUserName'
+				FROM (
+					SELECT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,InvstmntComment.[InvestmentCommentID] AS InvestmentCommentID
+						,InvstmntComment.[CustomerAccountNumber] AS CustomerAccountNumber
+						,InvstmntComment.[InvestmentComment] AS InvestmentComment
+						,InvstmntComment.[CreatedBy]
+						,InvstmntComment.[ModifiedBy]
+						,InvstmntComment.[CreatedDate]
+						,InvstmntComment.[ModifiedDate]
+						,USERS.LOGINNAME AS CreatedUserName
+						,USERS2.LOGINNAME AS ModifiedUserIDName
+					FROM TBL_TR_Event Evnt
+					INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					LEFT OUTER JOIN TBL_INV_InvestmentComment InvstmntComment ON InvstmntComment.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN TBL_KS_User USERS ON InvstmntComment.[CreatedBy] = USERS.[USERID]
+					LEFT OUTER JOIN TBL_KS_User USERS2 ON InvstmntComment.[ModifiedBy] = USERS2.[USERID]
+					WHERE InvstmntComment.[CustomerAccountNumber] IN (
+							SELECT CustomerAccountNumber
+							FROM @CustomerAccountNumberTable
+							)
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS InvstmntComnt
+				ORDER BY InvstmntComnt.[CustomerAccountNumber]
+					,InvstmntComnt.[CreatedDate] DESC
+			END
+	END
+END
+GO
+
+

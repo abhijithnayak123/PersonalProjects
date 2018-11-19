@@ -1,0 +1,204 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetBeneficiaryPaymentFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetBeneficiaryPaymentFromGiftwrap]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetBeneficiaryPaymentFromGiftwrap]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetBeneficiaryPaymentFromGiftwrap]    Script Date: 08/18/2014 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetBeneficiaryPaymentFromGiftwrap
+** Short Desc: Procedure for importing/updating beneficiary payments for the specified period and account type GAP
+** Full Description: Procedure for importing/updating beneficiary payments for the specified period and account type GAP
+** Input Arguments:   	@endDate DATETIME, @valuationId INT, @customerAccountNumber VARCHAR(20), @accountType VARCHAR(20)
+** Sample Call     
+        
+Declare @endDate DATETIME
+Declare @valuationId INT
+Declare @customerAccountNumber VARCHAR(20)
+Declare @accountType VARCHAR(20)   
+
+Set @endDate = '1992-02-22'
+Set @valuationId = 1280
+Set @customerAccountNumber = 'ACGAP'
+Set @accountType = 'Gap'
+
+Exec USP_SIT_ImportNewGiftFromGiftwrap @endDate, @valuationId, @customerAccountNumber, @accountType
+
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Ashvin Mandowara 
+** Company   : Kaspick & Company                      
+** Project   : PEVA - Sub Accounting Module
+** Created DT: 18-Aug-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+-- Description: 
+-- =============================================      
+CREATE PROCEDURE [dbo].[USP_SIT_GetBeneficiaryPaymentFromGiftwrap] (
+	@endDate DATETIME
+	,@valuationId INT
+	,@customerAccountNumber VARCHAR(20)
+	,@accountType VARCHAR(20)
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @startdate DATETIME
+	--Added by Rajeshp to decrypt SSN from Giftwrap4.0  
+	DECLARE @ClientID VARCHAR(10)
+
+	SELECT @ClientID = CAST(clientid AS VARCHAR(10))
+	FROM SYN_GW_TBLCLIENT
+	WHERE clientname = 'Kaspick'
+
+	SET @startdate = CAST((STR(YEAR(@endDate)) + '/' + STR(MONTH(@endDate)) + '/1') AS DATETIME)
+
+	BEGIN
+		WITH giftdata (
+			VALUATION_ID
+			,PRIOR_REFERENCE_NUMBER
+			,TAX_ID
+			,PAY_TO_THE_ORDER_OF
+			,addrtype
+			,PAYMENT_DATE
+			,GROSS_AMOUNT
+			,STATE_WITHHELD
+			,FEDERAL_WITHHELD
+			,INCOME_UNITS
+			,ORGNAME
+			)
+		AS (
+			SELECT DISTINCT @valuationId
+				,'KCO' + convert(VARCHAR(100), gf.GiftKey)
+				,CAST(DecryptByPassphrase(@ClientID, pr.ssn) AS VARCHAR(MAX))
+				,ltrim(rtrim(li.payto))
+				,ltrim(rtrim(at.Short))
+				,pm.PaymentDate
+				,pm.PaymentAmount
+				,pm.StateWithheld
+				,pm.FederalWithheld
+				,pm.incomeunits
+				,org.orgname
+			FROM SYN_GW_TBLGIFT gf
+			INNER JOIN SYN_GW_TBLPERSONGIFTMAP li ON li.GiftID = gf.GiftID
+			INNER JOIN SYN_GW_TBLPAYMENT pm ON pm.GiftID = gf.GiftID
+				AND pm.PaymentStatusID IN (
+					1
+					,2
+					) -- Payment Status - NotIssued=1 , Issued = 2  
+				--Added below code for payment void date condition handling    
+				--AND VoidOrStopDate is  null     
+			INNER JOIN SYN_GW_TBLPERSON pr ON pr.PersonID = li.PersonID
+				AND pr.PersonID = pm.PersonID
+			INNER JOIN SYN_GW_TBLADDRESS ad ON li.AddressID = ad.AddressID
+			INNER JOIN SYN_GW_TBLADDRESSTYPE at ON at.AddressTypeID = ad.AddressTypeID
+			--inner join GWRAP_tblPersonTypeAddressTypeMap pa on pa.AddressTypeID = ad.AddressTypeID and pa.PersonTypeID = pr.PersonTypeID    
+			INNER JOIN SYN_GW_TBLORGANIZATION org ON gf.OrgID = org.OrgID
+			INNER JOIN TBL_PV_VALUATION pv ON org.OrgAccount1 = pv.CustomerAccountNumber
+			WHERE pv.valuationid = @valuationId
+				AND CustomerAccountNumber = @customerAccountNumber
+				AND pv.AccountType = CASE 
+					WHEN @accountType = 'GAP'
+						THEN @accountType
+					ELSE 'xyz'
+					END
+				-- the account type logic is for CGA to pull CGA records only      
+				AND pm.PaymentDate BETWEEN @startdate
+					AND @endDate
+			)
+		UPDATE TBL_SIT_BeneficiaryPayment
+		SET PayToTheOrderOf = giftdata.PAY_TO_THE_ORDER_OF
+			,AddressType = giftdata.addrtype
+			,PaymentDate = giftdata.PAYMENT_DATE
+			,GrossAmount = giftdata.GROSS_AMOUNT
+			,StateWithheld = giftdata.STATE_WITHHELD
+			,FederalWithheld = giftdata.FEDERAL_WITHHELD
+			,IncomeUnit = giftdata.INCOME_UNITS
+			,PRIORREFERENCENUMBER = giftdata.PRIOR_REFERENCE_NUMBER
+			,TAXID = giftdata.TAX_ID
+			,ORGNAME = giftdata.ORGNAME
+		FROM giftdata
+		WHERE giftdata.PRIOR_REFERENCE_NUMBER = TBL_SIT_BeneficiaryPayment.PRIORREFERENCENUMBER
+			AND giftdata.VALUATION_ID = TBL_SIT_BeneficiaryPayment.valuationid
+	END
+
+	INSERT INTO TBL_SIT_BeneficiaryPayment (
+		ValuationID
+		,PayToTheOrderOf
+		,AddressType
+		,PaymentDate
+		,GrossAmount
+		,StateWithheld
+		,FederalWithheld
+		,IncomeUnit
+		,PRIORREFERENCENUMBER
+		,TAXID
+		,ORGNAME
+		)
+	SELECT @valuationId
+		,ltrim(rtrim(li.payto))
+		,ltrim(rtrim(at.Short))
+		,pm.PaymentDate
+		,pm.PaymentAmount
+		,pm.StateWithheld
+		,pm.FederalWithheld
+		,pm.incomeunits
+		,'KCO' + convert(VARCHAR(100), gf.GiftKey)
+		,CAST(DecryptByPassphrase(@ClientID, pr.ssn) AS VARCHAR(MAX))
+		,org.orgname
+	FROM SYN_GW_TBLGIFT gf
+	INNER JOIN SYN_GW_TBLPERSONGIFTMAP li ON li.GiftID = gf.GiftID
+	INNER JOIN SYN_GW_TBLPAYMENT pm ON pm.GiftID = gf.GiftID
+		AND pm.PaymentStatusID IN (
+			1
+			,2
+			) -- Payment Status :- NotIssued=1 , Issued = 2  
+		--Added below code for payment void date condition handling    
+		--AND VoidOrStopDate is  null     
+	INNER JOIN SYN_GW_TBLPERSON pr ON pr.PersonID = li.PersonID
+		AND pr.PersonID = pm.PersonID
+	INNER JOIN SYN_GW_TBLADDRESS ad ON li.AddressID = ad.AddressID
+	INNER JOIN SYN_GW_TBLADDRESSTYPE at ON at.AddressTypeID = ad.AddressTypeID
+	LEFT OUTER JOIN SYN_GW_TBLORGANIZATION org ON gf.OrgID = org.OrgID
+	INNER JOIN TBL_PV_VALUATION pv ON org.OrgAccount1 = pv.CustomerAccountNumber
+	WHERE pv.valuationid = @valuationId
+		AND CustomerAccountNumber = @customerAccountNumber
+		AND pv.AccountType = CASE 
+			WHEN @accountType = 'CGA'
+				THEN @accountType
+			ELSE 'xyz'
+			END
+		-- the account type logic is for CGA to pull CGA records only      
+		AND pm.PaymentDate BETWEEN @startdate
+			AND @endDate
+		AND ('KCO' + convert(VARCHAR(100), gf.GiftKey)) NOT IN (
+			SELECT PRIORREFERENCENUMBER
+			FROM TBL_SIT_BeneficiaryPayment
+			WHERE ValuationID = @valuationId
+			);
+END

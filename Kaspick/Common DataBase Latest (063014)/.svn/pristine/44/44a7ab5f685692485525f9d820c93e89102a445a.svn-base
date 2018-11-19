@@ -1,0 +1,233 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON 
+GO
+/******************************************************************************
+** Name : USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail
+
+** Short Desc:	
+** Full Description
+**        This stored proc is used to populate Address Change details
+**
+** Sample Call
+[USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail] '<root><Item ID="\7777654\"></Item></root>',36274
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Sanath
+**	Company	  :	Opteamix
+**	Project	  :	Excelsior TAG
+**	Created DT:	12-June-2014
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+**
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+** '<root><Item ID="\CCGAP\"></Item></root>',12398
+** 
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail]
+	(@AffectedAccountsXML NVARCHAR(4000)
+	,@ParticipantID INT
+	)
+AS
+BEGIN
+	DECLARE @IDOC INT
+	DECLARE @AffectedAccounts TABLE (
+		ID INT identity(1, 1)
+		,AccountID VARCHAR(14)
+		)
+	DECLARE @TEMP_ADDRESS TABLE (
+		ENTITY_ID INT
+		,LINKTYPE INT
+		,ADDRESSID INT
+		,ADDRESSTYPE VARCHAR(100)
+		,ADDRESS1 VARCHAR(100) NULL
+		,ADDRESS2 VARCHAR(100) NULL
+		,ADDRESS3 VARCHAR(100) NULL
+		,MAILSTOP VARCHAR(50) NULL
+		,CITY VARCHAR(50) NULL
+		,STATE VARCHAR(50) NULL
+		,COUNTRY VARCHAR(25) NULL
+		,ZIPCODE VARCHAR(10) NULL
+		,FROMMONTH SMALLINT
+		,TOMONTH SMALLINT
+		,FROM_DAY INT
+		,TO_DAY INT
+		,PARTY_ID INT
+		)
+
+	---load and parse the xml document---          
+	EXEC sp_xml_preparedocument @IDOC OUTPUT
+		,@AffectedAccountsXML
+
+--PRINT @IDOC
+--PRINT @AffectedAccountsXML
+
+	INSERT INTO @AffectedAccounts(ACCOUNTID)
+	SELECT ID
+	FROM OPENXML(@idoc, '/root/Item', 1) 
+	WITH (ID VARCHAR(14))
+
+--SELECT * FROM @AffectedAccounts
+
+	-- Checking if entity type is Trust Participant to get the address record for Donor/Beneficiary        
+	DECLARE @BENE_TYPEID INT
+		,@TRUSTPARTICIPANT_TYPEID INT
+		,@DOMICILECODE VARCHAR(50)
+		,@SPOUSENAME VARCHAR(100)
+		,@PAYMENTRULE INT
+		,@EXCEPTIONRULE VARCHAR(50)
+		,@EXCLUSIONRULE VARCHAR(50)
+
+	EXEC USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail @AffectedAccountsXML
+		,@ParticipantID
+		,@DOMICILECODE OUTPUT
+		,@SPOUSENAME OUTPUT
+		,@PAYMENTRULE OUTPUT
+		,@EXCEPTIONRULE OUTPUT
+		,@EXCLUSIONRULE OUTPUT
+
+	--SELECT @BENE_TYPEID = LINKTYPE FROM ADDRESSPHONELINKTYPE WHERE DESCRIPTION = 'Beneficiary'        
+	--SELECT  @TRUSTPARTICIPANT_TYPEID = LINKTYPE FROM ADDRESSPHONELINKTYPE WHERE DESCRIPTION = 'TrustParticipant'   
+	INSERT INTO @TEMP_ADDRESS (
+		ENTITY_ID
+		--,LINKTYPE
+		,ADDRESSID
+		,ADDRESSTYPE
+		,ADDRESS1
+		,ADDRESS2
+		,ADDRESS3
+		,MAILSTOP
+		,CITY
+		,STATE
+		,COUNTRY
+		,ZIPCODE
+		,FROMMONTH
+		,TOMONTH
+		,FROM_DAY
+		,TO_DAY
+		)
+	SELECT ConMstr.ContactID AS ENTITY_ID
+		,
+		--ISNULL(AL.LINKTYPE,'') AS LINKTYPE,    "ADDRESSLINKAGE" Table is Removed
+		ISNULL(ContAddr.ContactID, '') AS ADDRESSID
+		,ADDRESSTYPE = 'ALTERNATE PAYMENT'
+		,ISNULL(ContAddr.ADDRESS1, '') AS ADDRESS1
+		,ISNULL(ContAddr.ADDRESS2, '') AS ADDRESS2
+		,ISNULL(ContAddr.ADDRESS3, '') AS ADDRESS3
+		,ISNULL(ContAddr.EMail, '') AS MAILSTOP
+		,ISNULL(ContAddr.CITY, '') AS CITY
+		,ISNULL(ContAddr.STATE, '') AS STATE
+		,ISNULL(ContAddr.COUNTRYCODE, '') AS COUNTRY
+		,ISNULL(ContAddr.ZIPCODE, '') AS ZIPCODE
+		,MONTH(ContAddr.FromDate) AS FROMMONTH
+		,MONTH(ContAddr.Todate) AS TOMONTH
+		,Day(ContAddr.FromDate) AS FROM_DAY
+		,Day(ContAddr.Todate) AS TO_DAY
+		
+	--EAS.FROM_DAY,  
+	--EAS.TO_DAY  
+	FROM
+		--ADDRESSLINKAGE AL        
+		SYN_IT_ContactMaster ConMstr
+	INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = ConMstr.ContactId
+	INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+	 AND ConRolCds.ID IN ( 10,21,37)     
+	INNER JOIN SYN_IT_ContactAddresses ContAddr ON ContAddr.ContactID = ConMstr.ContactID 
+		--ADDRESS   Become ---  SYN_IT_ContactAddresses
+		--INNER JOIN TBL_EIS_EX_ADDRESS_SUPPLEMENT EAS ON A.ADDRESSID = EAS.ADDRESSID   
+		--INNER JOIN BENEFICIARY B ON B.BeneficiaryID =  AL.LINKID and  B.ParticipantID= @ParticipantID       
+	WHERE ContAddr.ContactID = @ParticipantID
+		AND ContAddr.ADDRESSTYPE  IN ('BUSINESS') --= 'PAYMENT'
+		AND ConAccRol.CustomerAccountNumber IN (
+			SELECT AccountID
+			FROM @AffectedAccounts
+			)
+		
+	
+	UNION
+	
+	SELECT @ParticipantID AS ENTITY_ID
+		,
+		--ISNULL(AL.LINKTYPE,'') AS LINKTYPE,            
+		ISNULL(ContAddr.ContactID, '') AS ADDRESSID
+		,ISNULL(ContAddr.ADDRESSTYPE, '') AS ADDRESSTYPE
+		,ISNULL(ContAddr.ADDRESS1, '') AS ADDRESS1
+		,ISNULL(ContAddr.ADDRESS2, '') AS ADDRESS2
+		,ISNULL(ContAddr.ADDRESS3, '') AS ADDRESS3
+		,ISNULL(ContAddr.EMAIL, '') AS MAILSTOP
+		,ISNULL(ContAddr.CITY, '') AS CITY
+		,ISNULL(ContAddr.STATE, '') AS STATE
+		,ISNULL(ContAddr.COUNTRYCODE, '') AS COUNTRY
+		,ISNULL(ContAddr.ZIPCODE, '') AS ZIPCODE
+		,MONTH(ContAddr.FromDate) AS FROMMONTH
+		,MONTH(ContAddr.Todate) AS TOMONTH
+		,Day(ContAddr.FromDate) AS FROM_DAY
+		,Day(ContAddr.Todate) AS TO_DAY
+		
+	--EAS.FROM_DAY,  
+	--EAS.TO_DAY      
+	FROM
+		--ADDRESSLINKAGE AL        
+		SYN_IT_ContactAddresses ContAddr
+	--INNER JOIN TBL_EIS_EX_ADDRESS_SUPPLEMENT EAS ON A.ADDRESSID = EAS.ADDRESSID        
+	INNER JOIN SYN_IT_ContactAccountRoles ConAccRole ON ConAccRole.ContactID = ContAddr.ContactID
+	WHERE ContAddr.ContactID = @ParticipantID 
+	AND ContAddr.ADDRESSTYPE  IN ('home')and
+		--AL.LINKID = @ParticipantID         
+		--AND AL.LINKTYPE = @TRUSTPARTICIPANT_TYPEID    
+		ConAccRole.CustomerAccountNumber IN (
+			SELECT AccountID
+			FROM @AffectedAccounts
+			)
+
+	UPDATE @TEMP_ADDRESS
+	SET ZIPCODE = REPLACE(ZIPCODE, '-', '')
+	WHERE COUNTRY = 'USA'
+
+	UPDATE @TEMP_ADDRESS
+	SET ZIPCODE = REPLACE(ZIPCODE, ' ', '')
+	WHERE COUNTRY = 'USA'
+
+	SELECT 
+		@SPOUSENAME AS SPOUSENAME
+		,@PAYMENTRULE AS PAYMENTRULE
+		,@EXCEPTIONRULE AS EXCEPTIONRULE
+		,@EXCLUSIONRULE AS EXCLUSIONRULE --ENDS HERE      
+	FROM @TEMP_ADDRESS
+	ORDER BY ADDRESSID
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftNewAddressChangeExcelsiorLiveDetail';
+END

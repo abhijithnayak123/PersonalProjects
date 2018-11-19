@@ -1,0 +1,13 @@
+CREATE FUNCTION Fn_TBL_SIT_GetLatestStatus (@ValuationID INT)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @status INT
+
+	SELECT TOP 1 @status = NewStatusID
+	FROM TBL_SIT_STATUSCHANGELOG
+	WHERE ValuationID = @ValuationID
+	ORDER BY StatusChangeLogID DESC
+
+	RETURN @status
+END

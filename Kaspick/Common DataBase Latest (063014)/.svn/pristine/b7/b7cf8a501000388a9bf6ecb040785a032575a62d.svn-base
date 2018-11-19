@@ -1,0 +1,91 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportCheckRunDateExist]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ImportCheckRunDateExist]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ImportCheckRunDateExist]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ImportCheckRunDateExist]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ImportCheckRunDateExist    
+** Short Desc:  Check Rundate Exist in Staging Table If exist Return 1 else 0   
+**    
+** Full Description : Check Rundate Exist in Staging Table If exist Return 1 else 0
+**            
+**    
+** Sample Call    
+  Declare @XMLCustomerAccountNumber XML
+  DECLARE @ReturnStatus INT
+  SET  @XMLCustomerAccountNumber = '<AccountCollection>
+										<Account CustomerAccountNumber="301y271"/>
+										<Account CustomerAccountNumber="355b190"/>
+										<Account CustomerAccountNumber="355b842"/>
+										<Account CustomerAccountNumber="7770010"/>
+									</AccountCollection>'
+  EXEC USP_IE_ImportCheckRunDateExist  '2008-08-27 17:10:06.000',@XMLCustomerAccountNumber,@ReturnStatus OUT  
+  select @ReturnStatus
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/07/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ImportCheckRunDateExist] -- paremeters here    
+	@RunDate DATETIME
+	,@XMLCustomerAccountNumber XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF EXISTS (
+			SELECT RunDate
+			FROM TBL_IE_STG_Estimate
+			WHERE ParentStagingID IS NOT NULL
+				AND RunDate IS NOT NULL
+				AND YEAR(RunDate) = YEAR(@RunDate)
+				AND MONTH(RunDate) = MONTH(@RunDate)
+				AND DAY(RunDate) = DAY(@RunDate)
+				AND CustomerAccountNumber IN (
+					SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+					FROM @XMLCustomerAccountNumber.nodes('//AccountCollection/Account') AS XmlInput(Item)
+					)
+			)
+		SET @ReturnStatus = 1;
+	ELSE
+		SET @ReturnStatus = 0;
+
+	SET NOCOUNT OFF;
+END
+
+

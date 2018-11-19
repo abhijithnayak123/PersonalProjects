@@ -1,0 +1,91 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftCheckRequestDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftCheckRequestDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftCheckRequestDetail';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftCheckRequestDetail
+** Old Name:  [sp_wft_get_check_request_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate check request details
+**
+** Sample Call
+	[sp_wft_get_check_request_detail]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Tanuj Gupta
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	04-March-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 22-Mar-2014  Abhijith  EXCREQ9.1 Modified 
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftCheckRequestDetail] (@GUID VARCHAR(255))
+AS
+BEGIN
+	SELECT [notification_date]
+		,[submitted_by]
+		,[im_authorization_level]
+		,[ta_authorization_level]
+		,[pxy_username]
+		,ManagerCodeName AS [client_name]
+		,account_name
+		,AccMstr.CustomerAccountNumber AS AdventID
+		,[account_number]
+		,ChkRqst.[comments]
+		,[check_due]
+		,[check_payable_to]
+		,[vendor_tax_id]
+		,[payment_amount]
+		,[charge_percent_to_principal]
+		,[charge_percent_to_income]
+		,[payment_description]
+		,[mail_check_to]
+		,[mailing_address1]
+		,[mailing_address2]
+		,[client_manager]
+		,[trust_administrator]
+		,[has_ta2_limit]
+		,[ta2_limit_amount]
+	FROM [dbo].[TBL_WFT_CheckRequest] ChkRqst
+	INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.CustomerAccountNumber = ChkRqst.CustomerAccountNumber
+	WHERE GUID = @GUID
+END
+GO
+
+SET NOCOUNT OFF;
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftCheckRequestDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftCheckRequestDetail';
+END

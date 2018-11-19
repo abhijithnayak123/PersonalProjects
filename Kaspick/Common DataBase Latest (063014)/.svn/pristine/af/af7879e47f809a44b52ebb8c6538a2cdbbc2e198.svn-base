@@ -1,0 +1,82 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationStatusLog]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetValuationStatusLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetValuationStatusLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetValuationStatusLog]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetValuationStatusLog                      
+** Short Desc: Get valuation status log data for given valuation id list . 
+**                      
+** Full Description: Get valuation status log data for given valuation id list .
+**      
+**                              
+** Input Arguments:          
+**   
+**         
+** Sample Call     
+DECLARE @XMLValuationID XML     
+SET @XMLValuationID ='<ValuationCollection><InsertList><Valuation ValuationID="11"/></InsertList> </ValuationCollection>'
+EXEC USP_PV_GetValuationStatusLog  @XMLValuationID
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 05-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetValuationStatusLog] (@XMLValuationID XML)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Get all valuation status 
+	SELECT ValuationTrackerID
+		,ValTrkr.ValuationID
+		,ValTrkr.ModifiedDate
+		,ValTrkr.ModifiedBy
+		,PreviousStatusID
+		,PreviousStatus
+		,CurrentStatusID
+		,CurrentStatus
+		,Usr.LoginName AS ModifiedUser
+	FROM TBL_PV_ValuationTracker ValTrkr
+	INNER JOIN TBL_KS_User Usr
+		ON Usr.UserID = ValTrkr.ModifiedBy
+	INNER JOIN (
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS ValuationID
+		FROM @XMLValuationID.nodes('//ValuationCollection/InsertList/Valuation') AS XmlInput(Item)
+		) XmlInput
+		ON ValTrkr.ValuationID = XmlInput.ValuationID
+END

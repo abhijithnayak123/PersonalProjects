@@ -1,0 +1,65 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllEventStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllEventStatus]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_TR_GetAllEventStatus      
+** Short Desc : Get all Event Status     
+**        
+** Full Description : Get all Event Status  
+**                
+**        
+** Sample Call        
+        EXEC USP_TR_GetAllEventStatus    
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :Chaithra Madappa
+** Company  :  Kaspick & Company        
+** Project  :  Back Office Integration - T-Rex        
+** Created DT :Feb/15/2014       
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllEventStatus]
+AS
+BEGIN
+	SET NOCOUNT ON
+
+	SELECT DISTINCT EventStatus
+		,EventStatusID
+		,StatusTargetID
+	FROM TBL_TR_EventStatus
+	WHERE EventStatus <> 'Review2'
+	ORDER BY EventStatusID ASC
+
+	SET NOCOUNT OFF
+END
+GO
+
+

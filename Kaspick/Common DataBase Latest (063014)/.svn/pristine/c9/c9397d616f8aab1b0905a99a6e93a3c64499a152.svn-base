@@ -1,0 +1,60 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_GetAllEventType]  Script Date: 03/17/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllEventType]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllEventType]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************        
+** Name   :   USP_TR_GetAllEventType      
+** Short Desc : Gets all Event Types   
+**        
+** Full Description : Gets all Event Types      
+**                
+**        
+** Sample Call        
+        EXEC USP_TR_GetAllEventType    
+   -- parameters        
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :  Chaithra Madappa  
+** Company  :  Kaspick & Company        
+** Project  :  T-Rex        
+** Created DT :  Feb/18/2014       
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllEventType]
+	-- paremeters here        
+AS
+BEGIN
+	SELECT DISTINCT EventType
+		,EventTypeID
+		,RiskLevel
+	FROM TBL_TR_EventTypeMaster
+	ORDER BY EventType ASC
+END

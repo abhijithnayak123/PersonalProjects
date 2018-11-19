@@ -1,0 +1,179 @@
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_US1041K1]    Script Date: 07/09/2014 14:14:28 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_REP_US1041K1]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_REP_US1041K1]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_REP_US1041K1]    Script Date: 07/09/2014 14:14:28 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/*********************************************************************************************************************                                         
+* Procedure Name  :  USP_EIS_IRS_REP_US1041K1 
+* Purpose         :  To get  US 1041 K1 REPORT
+* Input           :  @ADVENT_ID,@TAX_YEAR
+*        Exec USP_EIS_IRS_REP_US1041K1 2012,'','cocar'                    
+* Modification Log                                             
+*                            
+* Date            Modified By		Description                                            
+*--------------------------------------------------------------------------------------------------------------------                                         
+* 22-Aug-13       Mallikarjun/Abhijith			Created  
+* 08-Jul-14       Salih      Modifed data sources with the synonyms
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_REP_US1041K1] --2012,'','cocar'
+	(
+	@TAX_YEAR INT
+	,@CLIENT_BRIEF_NAME NVARCHAR(20)
+	,@ADVENT_ID VARCHAR(8)
+	)
+AS
+BEGIN
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS O
+			WHERE O.XTYPE IN ('U')
+				AND O.id = object_id(N'tempdb..#TBL_EIS_IRS_TAXUNIVERSE')
+			)
+	BEGIN
+		DROP TABLE #TBL_EIS_IRS_TAXUNIVERSE;
+	END
+
+	CREATE TABLE [dbo].#TBL_EIS_IRS_TAXUNIVERSE (
+		TAX_YEAR INT
+		,CLIENTID INT
+		,ADVENTID CHAR(8)
+		,CLIENT_BRIEF_NAME VARCHAR(20)
+		,CLIENT_NAME VARCHAR(100)
+		)
+
+	IF (
+			@CLIENT_BRIEF_NAME <> ''
+			AND @ADVENT_ID <> ''
+			)
+	BEGIN
+		INSERT INTO #TBL_EIS_IRS_TAXUNIVERSE
+		SELECT DISTINCT TAX_YEAR
+			,CLIENTID
+			,ADVENTID
+			,CLIENT_BRIEF_NAME
+			,CLIENT_NAME
+		FROM TBL_EIS_IRS_TAXUNIVERSE
+		WHERE TAX_YEAR = @TAX_YEAR
+			AND CLIENT_BRIEF_NAME = @CLIENT_BRIEF_NAME
+			AND ADVENTID = @ADVENT_ID
+		ORDER BY TAX_YEAR
+			,CLIENTID
+			,ADVENTID
+	END
+	ELSE
+		IF (
+				@CLIENT_BRIEF_NAME <> ''
+				AND @ADVENT_ID = ''
+				)
+		BEGIN
+			INSERT INTO #TBL_EIS_IRS_TAXUNIVERSE
+			SELECT DISTINCT TAX_YEAR
+				,CLIENTID
+				,ADVENTID
+				,CLIENT_BRIEF_NAME
+				,CLIENT_NAME
+			FROM TBL_EIS_IRS_TAXUNIVERSE
+			WHERE TAX_YEAR = @TAX_YEAR
+				AND CLIENT_BRIEF_NAME = @CLIENT_BRIEF_NAME --AND ADVENTID=@ADVENT_ID
+			ORDER BY TAX_YEAR
+				,CLIENTID
+				,ADVENTID
+		END
+		ELSE
+			IF (
+					@CLIENT_BRIEF_NAME = ''
+					AND @ADVENT_ID <> ''
+					)
+			BEGIN
+				INSERT INTO #TBL_EIS_IRS_TAXUNIVERSE
+				SELECT DISTINCT TAX_YEAR
+					,CLIENTID
+					,ADVENTID
+					,CLIENT_BRIEF_NAME
+					,CLIENT_NAME
+				FROM TBL_EIS_IRS_TAXUNIVERSE
+				WHERE TAX_YEAR = @TAX_YEAR
+					AND ADVENTID = @ADVENT_ID
+				ORDER BY TAX_YEAR
+					,CLIENTID
+					,ADVENTID
+			END
+
+	IF (
+			@CLIENT_BRIEF_NAME = ''
+			AND @ADVENT_ID = ''
+			)
+	BEGIN
+		INSERT INTO #TBL_EIS_IRS_TAXUNIVERSE
+		SELECT DISTINCT TAX_YEAR
+			,CLIENTID
+			,ADVENTID
+			,CLIENT_BRIEF_NAME
+			,CLIENT_NAME
+		FROM TBL_EIS_IRS_TAXUNIVERSE
+		WHERE TAX_YEAR = @TAX_YEAR
+		ORDER BY TAX_YEAR
+			,CLIENTID
+			,ADVENTID
+	END
+
+	SELECT gift.BRIEFNAME AS 'Client Account Code'
+		,k1oT.ADVENT_ID AS 'Account Number'
+		,k1oT.BENEFICIARY_ID_NUMBER AS SSN
+		,k1oT.BENEFICIARY_NAME AS 'Beneficiary Name'
+		,k1oT.ESTATES_EMPLOYER_ID_NUMBER AS EIN
+		,ben.LEGAL_ADDRESS1 AS Address1
+		,ben.LEGAL_CITY AS City
+		,ben.LEGAL_STATE AS STATE
+		,ben.LEGAL_ZIP_CODE AS 'Zip Code'
+		,ben.DOMICILE_CODE AS 'Resident State'
+		,ben.PAYMENT_RATIO AS 'Allocation%'
+		,k1oT.BENEFICIARY_INTEREST_INCOME_2 AS '1. Interest'
+		,k1oT.BENEFICIARY_ORDINARY_DIVIDENDS_2 AS '2a. Ordinary Dividends'
+		,k1oT.BENEFICIARY_QUALIFIED_DIVIDENDS_2 AS '2b. Qualified Dividends'
+		,k1oT.BENEFICIARY_NET_SHORTTERMCAPITALGAIN_2 AS '3. Net Short-Term Capital Gain'
+		,k1oT.BENEFICIARY_NET_LONGTERMCAPITALGAIN_2 AS '4a. Net Long-Term Capitalital Gain'
+		,k1oT.Twnety_Eight_Rate_Gain AS '4b. 28% Rate Gain'
+		,k1oT.UNRECAPTURED_1250_GAIN AS '4c. UnreCapitaltured section 1250 gain'
+		,k1oT.BENEFICIARY_NON_BUSINESS_INCOME_2 AS '5. Other Portfolio and Nonbusiness Income'
+		,k1oT.BENEFICIARY_ORD_INRYBUSINESSINCOME_2 AS '6. Ordinary Business Income'
+		,k1oT.BENEFICIARY_NET_RENTALREALESTATE_INCOME_2 AS '7. Net Rental Real Estate Income'
+		,k1oT.BENEFICIARY_OTHERRENTAL_INCOME_2 AS '8. Other Rental Income'
+		--,ledger.INTEREST_EXEMPTION_BTH AS '14a. Exempt Interest'
+		,k1oT.BENEFICIARY_CREDIT_CAPTURE_3_2 AS '14a. Exempt Interest'
+		,ledger.FOREIGN_TAX_1 + ledger.FOREIGN_TAX_2 AS '14b. Foreign Tax'
+		,k1oT.CURRENTNII_2 AS '14e. Net Investment Income'
+		,k1oT.NII AS '14h. Adjustment for NII'
+	FROM TBL_EIS_IRS_US1041K1 k1oT
+	INNER JOIN TBL_EIS_IRS_LEDGER ledger
+		ON k1oT.ADVENT_ID = ledger.ADVENT_ID
+			AND k1oT.TAX_YEAR = ledger.TAX_YEAR
+	INNER JOIN TBL_EIS_IRS_BENEFICIARY ben
+		ON k1oT.BENEFICIARY_ID = ben.BENEFICIARY_ID
+			AND ben.TAX_YEAR = k1oT.TAX_YEAR
+	LEFT JOIN SYN_EP_DEFERREDGIFTACCOUNT gift
+		ON gift.ADVENTID = ledger.ADVENT_ID
+	WHERE k1oT.ADVENT_ID IN (
+			SELECT DISTINCT ADVENTID
+			FROM #TBL_EIS_IRS_TAXUNIVERSE
+			) --=@ADVENT_ID  
+		AND k1oT.TAX_YEAR = @TAX_YEAR
+END
+GO
+
+

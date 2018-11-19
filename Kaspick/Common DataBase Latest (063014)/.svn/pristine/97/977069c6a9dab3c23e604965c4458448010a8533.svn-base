@@ -1,0 +1,366 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_SavePODTDeliverableItems')
+BEGIN
+    DROP PROCEDURE USP_RP_SavePODTDeliverableItems;
+    PRINT 'DROPPED USP_RP_SavePODTDeliverableItems';
+END
+GO
+/******************************************************************************                    
+** Old Name:     USP_EIS_PO_DT_DeliverableItems_InsUpdProc    
+**                                   
+** Name:     USP_RP_SavePODTDeliverableItems      
+**                             
+** Short Desc: To insert Deliverable Items to 'TBL_DLV_DeliverableItem' table    
+**                    
+** Full Description: To insert Deliverable Items         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+     
+DECLARE @DeliverableQueueID  INT  
+DECLARE @UserID     INT  
+DECLARE @ReturnStatus   INT    
+DECLARE @ErrorDesc    VARCHAR(8000)   
+set @DeliverableQueueID = 207  
+SET @UserID = 1  
+EXEC USP_RP_SavePODTDeliverableItems  
+@DeliverableQueueID,  
+@UserID,  
+@ReturnStatus,   
+@ErrorDesc = @ErrorDesc  
+**           
+** Return values: Return Status  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By:   
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 19-July-10               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+ 19-Aug-2010	Venu			Updated to exclude clients having only Account types  
+         "Endow, Corp, Priv-Tax, Priv-Exmt, DCA, Other, 990"  
+** 12-Mar-2012	Anand Kumar		Changes for Adding Comments as per Stored Procedure standard template.   
+** 14-Mar-2012	Anand Kumar		ERD changes implemetation.   
+** 20-May-2014	Geervani		Made changes in the table names to refer new KASPICK DB        
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_RP_SavePODTDeliverableItems]  
+(  
+ @DeliverableQueueID  INT,  
+ @UserID     INT,  
+ @ReturnStatus   INT = -1 OUTPUT, -- assume SP fails and   
+ @ErrorDesc    VARCHAR(8000) OUTPUT  
+)  
+AS  
+BEGIN  
+	--  Initial Set statements  --              
+	SET NOCOUNT ON;              
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds              
+	SET ARITHABORT ON             
+	       
+	--  Variable Declarations  --              
+	DECLARE @procname   VARCHAR(60);              
+	DECLARE @ErrorState    INT            
+	DECLARE @ErrorNumber     INT;  
+
+	DECLARE @FirstDayDate DateTime;      
+
+	DECLARE @DeliverableItemStatusID BIGINT;  
+	DECLARE @DeliveryMethodID BIGINT;  
+	DECLARE @CancelledDeliverableItemStatusID BIGINT;  
+	DECLARE @CancelledDeliveryMethodID BIGINT;  
+	DECLARE @Count  BIGINT;  
+	DECLARE @I    BIGINT;  
+	DECLARE @DICount BIGINT;  
+	DECLARE @DeliverableTypeAttributeIDNotes BIGINT;  
+	DECLARE @DeliverableID      BIGINT  
+	DECLARE @DeliverableFrequency   VARCHAR(2)  
+	DECLARE @DeliverableEndDate     DateTime  
+	DECLARE @FiscalFormat VARCHAR(5);  
+	DECLARE @DeliverableProcessID BIGINT;   
+   
+	DECLARE @Old_Deliverable_Items TABLE  
+	(  
+		DeliverableItemID BIGINT  
+	)  
+  
+	DECLARE @TEMP_ITEMS TABLE  
+	(  
+		ITEMID    BIGINT IDENTITY(1,1),        
+		DeliverableQueueID  BIGINT,        
+		ClientID   VARCHAR(4) ,
+		ContactID INT    ,
+		ContactRoleCode INT  ,
+		CustomerAccountNumber VARCHAR(20)
+	)  
+  
+	DECLARE @TEMP_DELIVERABLE_ITEMS TABLE  
+	(  
+		ITEMID    BIGINT IDENTITY(1,1),        
+		DeliverableQueueID  BIGINT,        
+		ClientID    VARCHAR(4),
+		ContactID INT ,
+		ContactRoleCode INT   ,
+		CustomerAccountNumber VARCHAR(20)  
+	)  
+  
+	DECLARE @Clients TABLE  
+	(  
+		ClientID VARCHAR(20)
+	)   
+  
+	SELECT @DeliverableID = DQ.DeliverableID,  
+	@DeliverableFrequency = DT.DeliverableFrequency,  
+	@DeliverableEndDate = DQ.DeliverableEndDate	--TBL_DLV_DeliverableItem   
+	--change @DeliverableTypeID to @DeliverableID   
+	FROM TBL_DLV_DeliverableQueue DQ  
+	INNER JOIN VW_RP_DtDeliverable DT ON DQ.DeliverableID = DT.DeliverableID  
+	WHERE DeliverableQueueID = @DeliverableQueueID  
+    
+	SELECT @DeliverableProcessID = DeliverableProcessID FROM TBL_DLV_Deliverable WHERE DeliverableID=@DeliverableID  
+
+	SELECT @DeliverableItemStatusID = DeliverableItemStatusID,   
+	@DeliveryMethodID = DeliveryMethodID   
+	--TBL_DLV_DeliverableProcessStatus DeliverableTypeID to DeliverableProcessID  
+	FROM dbo.TBL_DLV_DeliverableProcessStatus   
+	WHERE StatusName = 'Scheduled' AND DeliverableProcessID = @DeliverableProcessID  
+
+	SELECT @CancelledDeliverableItemStatusID = DeliverableItemStatusID,   
+	@CancelledDeliveryMethodID = DeliveryMethodID   
+	--TBL_DLV_DeliverableProcessStatus    
+	FROM dbo.TBL_DLV_DeliverableProcessStatus   
+	WHERE StatusName = 'Cancelled' AND DeliverableProcessID = @DeliverableProcessID  
+
+	SELECT @DeliverableTypeAttributeIDNotes = DeliverableTypeAttributeID   
+	FROM dbo.TBL_DLV_DeliverableTypeAttribute   
+	--TBL_DLV_DeliverableTypeAttribute DeliverableTypeID to DeliverableID  
+	WHERE DeliverableID = @DeliverableID AND AttibuteLongName = 'Notes'  
+
+	SELECT @FirstDayDate = DATEADD(YEAR,-1, @DeliverableEndDate)  
+
+	SET @FiscalFormat = CAST(DATEPART(MONTH,@DeliverableEndDate) AS VARCHAR)+'/'+CAST(DATEPART(DAY,@DeliverableEndDate) AS VARCHAR)    
+
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_RP_SavePODTDeliverableItems';              
+	SET @ReturnStatus = 0;              
+	       
+	-- Body of procedure  --         
+	BEGIN TRY  
+		--BEGIN TRAN  
+			
+			
+			INSERT INTO @Clients(ClientID)  
+			(SELECT DISTINCT CLIENTID FROM VW_EX_Account  
+			WHERE Account_Type not in ('Endow', 'Corp', 'Priv-Tax', 'Priv-Exmt', 'DCA', 'Other', '990'))  
+
+			INSERT INTO @TEMP_ITEMS    
+			SELECT   
+			@DeliverableQueueID,  
+			AccMgrCodes.ManagerCode, 
+			AccMgrCodes.ContactID,
+			ContactRoleCode,
+			ConAccRol.CustomerAccountNumber
+			FROM   
+			SYN_IT_AccountManagerCodes AccMgrCodes  
+			INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = AccMgrCodes.ContactId
+			INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+			--JOIN TBL_EIS_EX_CLIENT_SUPPLEMENT CS ON CS.CLIENTID = C.CLIENTID  
+			JOIN TBL_PolicyItem PIM ON AccMgrCodes.ManagerCode = PIM.OwnerID AND PIM.PolicyLevel = 100  
+			JOIN TBL_PolicyDimension PD ON  PIM.PolicyDimensionID = pd.PolicyDimensionID AND PD.FullName = 'Institution Type'  
+			JOIN TBL_PolicyDropdown PDD ON PIM.PolicyDropdownID = PDD.PolicyDropdownID  
+			JOIN TBL_PolicyItem PIMPS ON AccMgrCodes.ManagerCode = PIMPS.ownerid AND PIMPS.PolicyLevel = 100    
+			JOIN TBL_PolicyDimension PDPS ON PIMPS.PolicyDimensionID = PDPS.PolicyDimensionID AND PDPS.FullName = 'PO Start Date'  
+			JOIN TBL_Policyitem PIMPE ON AccMgrCodes.ManagerCode = PIMPE.ownerid AND PIMPE.PolicyLevel = 100    
+			JOIN TBL_PolicyDimension PDPE ON PIMPE.PolicyDimensionID = PDPE.PolicyDimensionID AND PDPE.FullName = 'PO End Date'   
+			WHERE   
+			PDD.DropDownText <> 'DMO' -- No Demo Client  
+			AND  
+			PIMPS.DateValue is not null  
+			AND  
+			DATEDIFF(DAY,PIMPS.DateValue,@FirstDayDate)>=0  
+			AND  
+			(  
+			PIMPE.DateValue is null  
+			OR  
+			DATEDIFF(DAY,@DeliverableEndDate,PIMPE.DateValue)>0  
+			)  
+			AND  
+			AccMgrCodes.ManagerCode IN (SELECT CLIENTID FROM @Clients)  
+
+
+			SELECT @Count = COUNT(*) FROM @TEMP_ITEMS  
+
+			SELECT @I = ISNULL(MAX(DeliverableItemID),0) FROM TBL_DLV_DeliverableItem  
+
+			IF(@Count > 0)  
+				BEGIN  
+					INSERT INTO @TEMP_DELIVERABLE_ITEMS  
+					SELECT TDI.DeliverableQueueID, TDI.ClientID ,ContactID,  ContactRoleCode,CustomerAccountNumber
+					FROM @TEMP_ITEMS TDI   
+					WHERE NOT EXISTS(SELECT DI.DeliverableItemID FROM TBL_DLV_DeliverableItem DI  
+					WHERE DI.DeliverableQueueID = ISNULL(TDI.DeliverableQueueID,0)  
+					AND   
+					DI.ManagerCode = ISNULL(TDI.ClientID,0)  
+					)  
+					SELECT @DICount = COUNT(*) FROM @TEMP_DELIVERABLE_ITEMS  
+						IF(@DICount > 0)  
+							BEGIN   
+								SET IDENTITY_INSERT TBL_DLV_DeliverableItem ON  
+								INSERT INTO [TBL_DLV_DeliverableItem]  
+								([DeliverableItemID]  
+								,[DeliverableQueueID]  
+								--,[Clientid]  
+								,[Modifieddate]  
+								,[ModifieduserID]  
+								,[CreatedDate]  
+								,[CreatedUserID] ,
+								ContactID, 
+								ContactRoleCode,
+								CustomerAccountNumber,
+								ManagerCode
+								)  
+								SELECT [ITEMID] + @I  
+								,[DeliverableQueueID]  
+								--,[Clientid]  
+								,GETDATE()  
+								,@UserID  
+								,GETDATE()  
+								,@UserID,
+								ContactID  ,
+								ContactRoleCode,CustomerAccountNumber,ClientID
+								FROM @TEMP_DELIVERABLE_ITEMS                 
+								SET IDENTITY_INSERT TBL_DLV_DeliverableItem OFF  
+
+								-- Add DeliveryMethodID and DeliverableItemStatusID  
+								-- corresponding to the DeliverableItem  
+								INSERT INTO [TBL_DLV_ItemMethodStatus]  
+								([DeliverableItemID]  
+								,[DeliveryMethodID]  
+								,[DeliverableItemStatusID]  
+								,[Comments]  
+								,[CreatedDate]  
+								,[CreatedUserID]  
+								,[ModifiedDate]  
+								,[ModifiedUserID])  
+								SELECT [ITEMID]+@I  
+								,(CASE WHEN PIMFY.TextValue = @FiscalFormat  
+								THEN @DeliveryMethodID  
+								ELSE @CancelledDeliveryMethodID END)   
+								,(CASE WHEN PIMFY.TextValue = @FiscalFormat  
+								THEN @DeliverableItemStatusID  
+								ELSE @CancelledDeliverableItemStatusID END)  
+								,''  
+								,GETDATE()  
+								,@UserID  
+								,GETDATE()  
+								,@UserID  
+								FROM @TEMP_DELIVERABLE_ITEMS TDI  
+								JOIN TBL_PolicyItem PIMFY ON TDI.ClientID = PIMFY.ownerid AND PIMFY.PolicyLevel = 100    
+								JOIN TBL_PolicyDimension PDFY ON PIMFY.PolicyDimensionID = PDFY.PolicyDimensionID AND PDFY.FullName = 'Fiscal Year End'   
+								
+								
+							
+								
+								-- Add DocumentTypeID corresponding to the DeliverableItem     
+								INSERT INTO [TBL_DLV_DeliverableItemDocument]    
+								([DeliverableItemID]    
+								,[DocumentTypeID]    
+								,[FilePath]    
+								,[CreatedDate]    
+								,[CreatedUserID])    
+								SELECT  [ITEMID]+@I   --TBL_DLV_DocumentType ->DeliverableID  
+								,(SELECT DocumentTypeID FROM TBL_DLV_DocumentType WHERE DocumentFileType = 'Annual' AND DeliverableID = @DeliverableID)  
+								AS DocumentTypeID   
+								,''    
+								,GETDATE()    
+								,1    
+								FROM @TEMP_DELIVERABLE_ITEMS  
+								-- Add record for DeliverableTypeAttributeID - Notes     
+								INSERT INTO [TBL_DLV_DeliverableItemDeliverableTypeAttribute]  
+								([DeliverableItemID]  
+								,[DeliverableTypeAttributeID]  
+								,[AttributeValue]  
+								,[CreatedDate]  
+								,[CreatedUserID]  
+								,[ModifiedUserID]  
+								,[ModifiedDate])  
+								SELECT [ITEMID]+@I  
+								,@DeliverableTypeAttributeIDNotes  
+								,NULL  
+								,GETDATE()  
+								,@UserID  
+								,@UserID  
+								,GETDATE()  
+								FROM @TEMP_DELIVERABLE_ITEMS  
+
+							END -- End of IF(@DICount > 0)  
+							--   Below code is to refresh Universe. The table @Old_Deliverable_Items will have records only  
+							--   if this sp is called while changing Queue status to open from UI and Old Deliverable items will  
+							--   not hold the universe criteria.   
+					INSERT INTO @Old_Deliverable_Items  
+					SELECT DI.DeliverableItemID  
+					FROM  TBL_DLV_DeliverableItem DI  
+					LEFT JOIN @TEMP_ITEMS TDI ON DI.DeliverableQueueID = ISNULL(TDI.DeliverableQueueID,-1)  
+					AND DI.ManagerCode = ISNULL(TDI.ClientID,-1)  
+					WHERE TDI.DeliverableQueueID IS NULL AND TDI.ClientID IS NULL AND DI.DeliverableQueueID = @DeliverableQueueID   
+
+					DELETE FROM TBL_DLV_DeliverableItemDeliverableTypeAttribute WHERE DeliverableItemID IN (SELECT DeliverableItemID FROM @Old_Deliverable_Items)  
+					DELETE FROM TBL_DLV_MethodStatusChangeLog WHERE ItemMethodStatusID IN (SELECT ItemMethodStatusID FROM TBL_DLV_ItemMethodStatus WHERE DeliverableItemID IN (SELECT DeliverableItemID FROM @Old_Deliverable_Items))   
+					DELETE FROM TBL_DLV_ItemMethodStatus WHERE DeliverableItemID IN (SELECT DeliverableItemID FROM @Old_Deliverable_Items)   
+					DELETE FROM TBL_DLV_DeliverableItemDocument WHERE DeliverableItemID IN (SELECT DeliverableItemID FROM @Old_Deliverable_Items)   
+					DELETE FROM TBL_DLV_DeliverableItem where DeliverableItemID IN (SELECT DeliverableItemID FROM @Old_Deliverable_Items)     
+				END -- End of IF(@Count > 0)  
+			ELSE  
+			--  Below code is to refresh Universe. Deletes old Deliverable items if they don't hold the universe criteria while changing Queue status to open from UI   
+				BEGIN  
+					DELETE FROM TBL_DLV_DeliverableItemDeliverableTypeAttribute WHERE DeliverableItemID IN (select DeliverableItemID from TBL_DLV_DeliverableItem where DeliverableQueueID = @DeliverableQueueID)  
+					DELETE FROM TBL_DLV_MethodStatusChangeLog WHERE ItemMethodStatusID IN (SELECT ItemMethodStatusID FROM TBL_DLV_ItemMethodStatus WHERE DeliverableItemID IN (select DeliverableItemID from TBL_DLV_DeliverableItem where DeliverableQueueID = @DeliverableQueueID))   
+					DELETE FROM TBL_DLV_ItemMethodStatus WHERE DeliverableItemID IN (select DeliverableItemID from TBL_DLV_DeliverableItem where DeliverableQueueID = @DeliverableQueueID)  
+					DELETE FROM TBL_DLV_DeliverableItemDocument WHERE DeliverableItemID IN (select DeliverableItemID from TBL_DLV_DeliverableItem where DeliverableQueueID  = @DeliverableQueueID)  
+					DELETE FROM TBL_DLV_DeliverableItem where DeliverableQueueID = @DeliverableQueueID  
+				END  
+			SET @ReturnStatus = 0; 
+			
+		--COMMIT TRAN   
+	END TRY  
+		BEGIN CATCH  
+			--IF @@TRANCOUNT > 0  
+			--	BEGIN  
+					--ROLLBACK TRAN  
+			--	END  
+				SET @ErrorDesc = ERROR_MESSAGE(); 
+				SET @ErrorNumber = ERROR_NUMBER();  
+				SET @ErrorState = ERROR_STATE(); 
+				print  @ErrorDesc
+				SET @ReturnStatus = -1;   
+				RAISERROR (
+				@ErrorDesc
+				,-- Message text.
+				@ErrorNumber
+				,-- Severity.
+				@ErrorState -- State.
+				);
+		END CATCH   
+	END  
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_SavePODTDeliverableItems')
+    BEGIN
+        PRINT 'CREATED USP_RP_SavePODTDeliverableItems';
+    END

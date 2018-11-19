@@ -1,0 +1,232 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStrategicallocationCascade'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveEnfStrategicallocationCascade;
+
+	PRINT 'DROPPED USP_EX_SaveEnfStrategicallocationCascade';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** New Name :    USP_EX_SaveEnfStrategicallocationCascade
+** Old Name:     USP_EIS_ENF_STRATEGICALLOCATION_CASCADE_InsUpdProc             
+** Short Desc: Put in Short Description                
+**                
+** Full Description                
+**        More detailed description if necessary                
+**                
+** Sample Call                
+EXEC <USP_EX_SaveEnfStrategicallocationCascade>  -- parameters                
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET NOCOUNT             ON                
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                
+**                 
+** Created By: Tanuj Gupta               
+** Company   : Kaspick & Company                
+** Project   : Excelsior                
+** Created DT: 08/Feb/2010                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+    03/21/2014    Sanath            Requirement INVREQ3.1
+    23-May-2014   Sanath             Sp name renamed as per Kaspick naming convention standard    
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveEnfStrategicallocationCascade] (
+	@StrategicAllocationID INT = 0
+	,@MABenchmarkID INT
+	,@TradBenchmarkID INT
+	,@PortfoliioCodeID INT
+	,@MasterObjectiveNameID INT
+	,@PREV_MABenchmarkID INT
+	,@PREV_@TradBenchmarkID INT
+	,@PREV_MasterObjectiveNameID INT
+	,@UserID INT
+	)
+AS
+BEGIN
+	--  Temp tables, Cursors, Table Variables  --       
+	DECLARE @PREV_@PortfoliioCodeID INT
+	DECLARE @PREV_MasterObjectiveName VARCHAR(30)
+	DECLARE @New_MasterObjectiveName VARCHAR(30)
+	DECLARE @TBL_INV_InvestmentObjective TABLE (ObjectiveCode VARCHAR(30))
+	DECLARE @ACCOUNT TABLE (ACCOUNTID INT)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF (@PREV_MABenchmarkID <> @MABenchmarkID)
+		BEGIN
+			INSERT INTO @TBL_INV_InvestmentObjective (ObjectiveCode)
+			SELECT InvstObjct.ObjectiveCode
+			FROM TBL_INV_InvestmentObjective InvstObjct
+			INNER JOIN TBL_INV_BenchMark BnchMrk ON BnchMrk.BenchMarkID = @PREV_MABenchmarkID
+				AND HistoricBenchMarkID = InvstObjct.MABenchmarkID
+			WHERE InvstObjct.StrategicAllocationID = @StrategicAllocationID
+
+			UPDATE TBL_INV_InvestmentObjective
+			SET MABenchmarkID = (
+					SELECT BnchMrk.HistoricBenchMarkID
+					FROM TBL_INV_BenchMark BnchMrk
+					WHERE BnchMrk.BenchmarkID = @MABenchmarkID
+						AND BnchMrk.BenchMarkTypeID = 1
+					)
+			WHERE ObjectiveCode IN (
+					SELECT ObjectiveCode
+					FROM @TBL_INV_InvestmentObjective
+					)
+		END
+
+		IF (@PREV_@TradBenchmarkID <> @TradBenchmarkID)
+		BEGIN
+			DELETE
+			FROM @TBL_INV_InvestmentObjective
+
+			INSERT INTO @TBL_INV_InvestmentObjective (ObjectiveCode)
+			SELECT InvstObjct.ObjectiveCode
+			FROM TBL_INV_InvestmentObjective InvstObjct
+			INNER JOIN TBL_INV_BenchMark BnchMrk ON BnchMrk.BenchMarkID = @PREV_@TradBenchmarkID
+				AND HistoricBenchMarkID = InvstObjct.TradBenchmarkID
+			WHERE InvstObjct.StrategicAllocationID = @StrategicAllocationID
+
+			UPDATE TBL_INV_InvestmentObjective
+			SET TradBenchmarkID = (
+					SELECT BnchMrk.HistoricBenchMarkID
+					FROM TBL_INV_BenchMark BnchMrk
+					WHERE BnchMrk.BenchmarkID = @TradBenchmarkID
+						AND BnchMrk.BenchMarkTypeID = 2
+					)
+			WHERE ObjectiveCode IN (
+					SELECT ObjectiveCode
+					FROM @TBL_INV_InvestmentObjective
+					)
+		END
+
+		IF (@PREV_MasterObjectiveNameID <> @MasterObjectiveNameID)
+		BEGIN
+			SET @PREV_MasterObjectiveName = (
+					SELECT MasterObjectiveCode
+					FROM TBL_INV_MasterObjective
+					WHERE MasterObjectiveID = @PREV_MasterObjectiveNameID
+					)
+			SET @New_MasterObjectiveName = (
+					SELECT MasterObjectiveCode
+					FROM TBL_INV_MasterObjective
+					WHERE MasterObjectiveID = @MasterObjectiveNameID
+					)
+
+			DELETE
+			FROM @TBL_INV_InvestmentObjective
+
+			INSERT INTO @TBL_INV_InvestmentObjective (ObjectiveCode)
+			SELECT ObjectiveCode
+			FROM TBL_INV_InvestmentObjective
+			WHERE StrategicAllocationID = @StrategicAllocationID
+				AND MasterObjectiveName = @PREV_MasterObjectiveName
+
+			UPDATE TBL_INV_InvestmentObjective
+			SET MasterObjectiveName = @New_MasterObjectiveName
+			WHERE ObjectiveCode IN (
+					SELECT ObjectiveCode
+					FROM @TBL_INV_InvestmentObjective
+					)
+		END
+
+		SET @PREV_@PortfoliioCodeID = (
+				SELECT BRCommentID
+				FROM TBL_INV_StrategicAllocation
+				WHERE StrategicAllocationID = @StrategicAllocationID
+				)
+
+		IF (@PREV_@PortfoliioCodeID <> @PortfoliioCodeID)
+		BEGIN
+			DELETE
+			FROM @TBL_INV_InvestmentObjective
+
+			INSERT INTO @TBL_INV_InvestmentObjective (ObjectiveCode)
+			SELECT ObjectiveCode
+			FROM TBL_INV_InvestmentObjective
+			WHERE StrategicAllocationID = @StrategicAllocationID
+				AND BRCommentID = @PREV_@PortfoliioCodeID
+
+			UPDATE TBL_INV_InvestmentObjective
+			SET BRCommentID = @PortfoliioCodeID
+			WHERE ObjectiveCode IN (
+					SELECT ObjectiveCode
+					FROM @TBL_INV_InvestmentObjective
+					)
+
+			INSERT INTO @ACCOUNT (Accountid)
+			SELECT CustomerAccountNumber
+			FROM TBL_INV_AccountProfile
+			WHERE ObjectiveCode IN (
+					SELECT ObjectiveCode
+					FROM TBL_INV_InvestmentObjective
+					WHERE StrategicAllocationID = @StrategicAllocationID
+					)
+
+			UPDATE TBL_BR_CommentLinkage
+			SET CommentID = @PortfoliioCodeID
+			WHERE CustomerAccountNumber IN (
+					SELECT Accountid
+					FROM @ACCOUNT
+					)
+				AND CommentID = @PREV_@PortfoliioCodeID
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_SaveEnfStrategicallocationCascade';
+
+		DECLARE @ErrorNumber INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE()
+			,@ErrorNumber = ERROR_NUMBER();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveEnfStrategicallocationCascade'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_SaveEnfStrategicallocationCascade';
+END

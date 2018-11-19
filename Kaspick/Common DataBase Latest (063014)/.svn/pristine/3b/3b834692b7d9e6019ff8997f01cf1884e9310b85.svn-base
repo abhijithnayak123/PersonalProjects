@@ -1,0 +1,98 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetGroupManagerByStatus]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewGetGroupManagerByStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewGetGroupManagerByStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetGroupManagerByStatus]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewGetGroupManagerByStatus    
+** Short Desc:   Retrieves all distinct manager codes within a given group based on status id    
+**    
+** Full Description : Retrieves all distinct manager codes within a given group based on status id  
+**            
+**    
+** Sample Call    
+
+  EXEC USP_IE_ReviewGetGroupManagerByStatus   123
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewGetGroupManagerByStatus] -- paremeters here        
+	@GroupID INT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --  
+	DECLARE @PDGRMStatusID INT
+	DECLARE @PDGCMStatusID INT
+	DECLARE @ReadyPmtStatusID INT
+	DECLARE @SchdldStatusID INT
+
+	SELECT @PDGRMStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'PDG RM'
+
+	SELECT @PDGCMStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'PDG CM'
+
+	SELECT @ReadyPmtStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'Ready For Pmt'
+
+	SELECT @SchdldStatusID = StatusID
+	FROM TBL_IE_Status
+	WHERE STATUS = 'Scheduled'
+
+	--  Variable Data Assignment  --  
+	-- Body of procedure  --  
+	SELECT DISTINCT STGEst.ManagerCode AS BriefName
+	FROM TBL_IE_STG_Estimate STGEst
+	WHERE STGEst.GroupID = @GroupID
+		AND StatusID IN (
+			@PDGRMStatusID
+			,@PDGCMStatusID
+			,@ReadyPmtStatusID
+			,@SchdldStatusID
+			)
+		AND STGEst.IsDeleted = 0
+	ORDER BY ManagerCode;
+
+	SET NOCOUNT OFF;
+END

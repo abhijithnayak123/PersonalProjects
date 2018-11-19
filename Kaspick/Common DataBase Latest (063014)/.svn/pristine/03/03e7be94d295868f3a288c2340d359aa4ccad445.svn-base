@@ -1,0 +1,125 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAddressChangeDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftAddressChangeDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftAddressChangeDetail';
+END
+GO
+
+/******************************************************************************
+** New Name : USP_EX_GetWftAddressChangeDetail
+** Old Name:  [sp_wft_get_Address_Change_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate Address Change details
+**
+** Sample Call
+	[sp_wft_get_Address_Change_detail] 'D0108C4D-D793-45AF-B63E-956D9E4B7809'
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Tanuj Gupta
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	08-March-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+** 24-Mar-2014  Yugandhar EXCREQ9.1 Modified
+** 23-MAY-2014 Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftAddressChangeDetail] --'A03299F5-D970-445C-A4C7-6999AD2BBC8E' 
+	(@Guid VARCHAR(255))
+AS
+DECLARE @accounts_array VARCHAR(max)
+DECLARE @participant_id INT
+
+SELECT @accounts_array = accounts_affected
+	,@participant_id = ContactID
+FROM TBL_WFT_AddressChange
+WHERE GUID = @GUID
+
+SELECT [notification_date] AS NotificationDate
+	,[submitted_by]
+	,[im_authorization_level]
+	,[ta_authorization_level]
+	,[pxy_username]
+	,ManagerCodeFullName AS client_full_name
+	,[donor_bene_name]
+	,[donor_bene_ssn_ein]
+	,[accounts_affected]
+	,[accts_array]
+	,[comments]
+	,[legal_effective_date]
+	,[legal_address1]
+	,[legal_address2]
+	,[legal_attn]
+	,[legal_attn_name]
+	,[legal_city]
+	,[legal_country]
+	,[legal_domicile]
+	,[legal_state]
+	,[legal_unit_number]
+	,[legal_unit_type]
+	,[legal_zip]
+	,[is_seasonal]
+	,[seasonal_from_month]
+	,[seasonal_to_month]
+	,[alt_address1]
+	,[alt_address2]
+	,[alt_attn]
+	,[alt_attn_name]
+	,[alt_city]
+	,[alt_country]
+	,[alt_effective_date]
+	,[alt_state]
+	,[alt_unit_number]
+	,[alt_unit_type]
+	,[alt_zip]
+	,[trust_admin]
+	,[client_manager]
+	,ContactID AS participant_id
+FROM TBL_WFT_AddressChange
+WHERE GUID = @GUID
+
+SELECT AccMstr.CustomerAccountNumber
+	,'[' + AccMstr.CustomerAccountNumber + '] ' + AccMstr.CustomerDescriptionLine1 AS AccountsDetail
+FROM FN_SplitString(@accounts_array, '^') A
+INNER JOIN SYN_IT_AccountMaster AccMstr ON CHARINDEX(ltrim(rtrim(AccMstr.CustomerAccountNumber)), A.items )> 0
+
+SELECT VwTrstPrtcpnt.CustomerAccountNumber
+	,'[' + VwTrstPrtcpnt.CustomerAccountNumber + '] ' + VwTrstPrtcpnt.ACCOUNT_FULLNAME AS AccountsDetail
+FROM VW_EX_TRUSTPARTICIPANTTYPE VwTrstPrtcpnt
+LEFT JOIN dbo.FN_SplitString(@accounts_array, '^') A ON CHARINDEX(ltrim(rtrim(VwTrstPrtcpnt.CustomerAccountNumber)), A.items )> 0
+WHERE VwTrstPrtcpnt.ParticipantID = @participant_id
+	AND A.items IS NULL
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftAddressChangeDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftAddressChangeDetail';
+END
+

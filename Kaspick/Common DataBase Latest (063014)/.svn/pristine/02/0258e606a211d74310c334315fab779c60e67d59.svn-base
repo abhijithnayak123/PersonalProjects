@@ -1,0 +1,112 @@
+ IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALDuplicateBene'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsVALDuplicateBene;
+
+	PRINT 'DROPPED USP_BR_FASB_InsVALDuplicateBene';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO 
+/******************************************************************************                
+** Name       :   USP_BR_FASB_InsVALDuplicateBene
+** OLD Name   :   USP_EIS_RPT_FASB_VAL_DuplicateBene_InsProc                
+** Short Desc : Duplicate Beneficiary within an Account. Account contains the same Trust Participant with multiple BeneficiaryIDs    
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_BR_FASB_InsVALDuplicateBene 5              
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Aug/25/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Aug/10/2012   Ganapati           Created        
+**  Nov/19/12 Saravanan  Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules
+** 07/08/2014	Gaurav Nahar	   Sp & Table Name Change as per new Kaspick Naming Convention    
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsVALDuplicateBene] 
+@RuleId INT  
+AS  
+	DECLARE @ValidationMessage VARCHAR(max)  
+	DECLARE @ValidationType VARCHAR(25)  
+  
+--select @ValidationMessage = DisplayMessage, @ValidationType = ResultType from TBL_EIS_PP_Validation_Rules where RuleID = @RuleId        
+		SELECT 
+				 @ValidationMessage = DisplayMessage  
+				,@ValidationType = ResultType  
+		FROM 
+				TBL_DLV_ValidationRule  
+		WHERE 
+				ValidationRuleID = @RuleId  
+		  
+		--Rule 5. Duplicate Beneficiary within an Account. Account contains the same Trust Participant with multiple BeneficiaryID's.    
+		INSERT INTO TBL_BR_FASBValidationResult (  
+			ClientID
+			,ClientName
+			,RecordIdentifier  
+			,ValidationMessage  
+			,ValidationType  
+		 )  
+		SELECT DISTINCT Gift.OrgId  
+		 ,AccmgrCodes.ManagerName  
+		 ,'AdventID = ' + DGA.AdventID  
+		 ,@ValidationMessage  
+		 ,@ValidationType  
+		FROM 
+				dbo.SYN_IT_AccountManagerCodes AccmgrCodes --Select top 10 ManagerName From SYN_IT_AccountManagerCodes
+		INNER JOIN 
+				TBL_BR_STG_FASBGift Gift 
+			ON 
+				AccmgrCodes.ManagerCode = Gift.EX_ManagerCode_OrgID  
+		INNER JOIN 
+				VW_EX_Account DGA 
+			ON 
+				DGA.ACCOUNTID = Gift.CustomerAccountNumber
+		INNER JOIN 
+				VW_Beneficiary BENE 
+			ON 
+				BENE.CustomerAccountNumber = DGA.ACCOUNTID 
+		WHERE 
+				Bene.CustomerAccountNumber IN (  
+		  SELECT DISTINCT CustomerAccountNumber  
+		  FROM VW_Beneficiary   
+		  GROUP BY CustomerAccountNumber  
+		   ,ContactID  
+		  HAVING count(*) > 1  
+		  )  
+		 AND (  
+		  DGA.UDFAMColumn030 IS NULL  
+		  OR UDFAMColumn030 >= Gift.MarketValueDate  
+		  )  
+    GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALDuplicateBene'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_InsVALDuplicateBene';
+END 

@@ -1,0 +1,100 @@
+  IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail;
+        PRINT 'DROPPED USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail';
+    END
+    GO
+/******************************************************************************  
+** Name : USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail
+** Old Name:     [sp_wft_get_DonorBene_Name_Change_ExcelsiorLive_detail]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate Address Change details  
+**  
+** Sample Call  
+ [USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail]'',25535  
+ [USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail]'<root><Item AccountID="100233"></Item><Item AccountID="100814"></Item><Item AccountID="100815"></Item></root>',100831  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 29-May-2014	Geervani	Made changes in the table names to refer new KASPICK DB  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail]  
+(  
+ @AffectedAccountsXML nvarchar(4000),  
+ @ParticipantID INT  
+)    
+AS   
+BEGIN  
+		DECLARE @IDOC INT,  
+		@DOMICILECODE VARCHAR(50),  
+		@SPOUSENAME VARCHAR(100),  
+		@PAYMENTRULE INT,   
+		@EXCEPTIONRULE VARCHAR(5),   
+		@EXCLUSIONRULE VARCHAR(5)  
+		
+		DECLARE @AffectedAccounts TABLE(ID INT IDENTITY(1,1),AccountID VARCHAR(14))  
+
+		---load and parse the xml document---          
+		EXEC sp_xml_preparedocument @IDOC OUTPUT, @AffectedAccountsXML          
+ 
+		INSERT INTO @AffectedAccounts  
+		SELECT * FROM OPENXML (@idoc, '/root/Item',1)          
+		WITH (AccountID VARCHAR(14))   
+ 
+		EXEC USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail  
+		@AffectedAccountsXML,  
+		@ParticipantID,  
+		@DOMICILECODE OUTPUT,  
+		@SPOUSENAME OUTPUT,  
+		@PAYMENTRULE OUTPUT,   
+		@EXCEPTIONRULE OUTPUT,   
+		@EXCLUSIONRULE OUTPUT  
+ 
+		SELECT LTRIM(RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(VwTrstPrtcpnt.FirstName)), '') = '') THEN '' ELSE (VwTrstPrtcpnt.FirstName + ' ') END)               
+		+ (CASE WHEN (ISNULL(LTRIM(RTRIM(VwTrstPrtcpnt.MiddleInitials)), '') = '') THEN '' ELSE (VwTrstPrtcpnt.MiddleInitials + ' ') END) + ISNULL(VwTrstPrtcpnt.LastName, ''))) AS LegalName,  
+		VwTrstPrtcpnt.TaxName,  
+		VwTrstPrtcpnt.CustomerAccountNumber + ' : ' + CASE WHEN(ISNULL(BenDis.paidtocontactname,'')<>'') then BenDis.paidtocontactname ELSE  VwTrstPrtcpnt.PaymentName END AS PaymentName,  
+		@PAYMENTRULE as PAYMENTRULE  
+		FROM dbo.VW_EX_TrustParticipantType VwTrstPrtcpnt  
+		INNER JOIN dbo.SYN_IT_ContactMaster ConstMstr ON ConstMstr.ContactID = VwTrstPrtcpnt.BeneficiaryID  
+		INNER JOIN dbo.SYN_IT_ContactAccountRoles AS ConAccRol ON ConAccRol.ContactId = ConstMstr.ContactId
+		INNER JOIN dbo.SYN_IT_ContactRoleCodes AS ConRolCds ON ConRolCds.Id = ConAccRol.ContactRoleCode
+		AND ConRolCds.ID IN (10,21,37)
+		INNER JOIN dbo.SYN_IT_BeneficiaryDistributions BenDis ON ConstMstr.ContactID = BenDis.ContactID
+		WHERE VwTrstPrtcpnt.ParticipantID = @ParticipantID  
+		AND VwTrstPrtcpnt.CustomerAccountNumber IN (SELECT AccountID FROM @AffectedAccounts)  
+		 
+END
+GO
+  IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail')
+    BEGIN
+        
+        PRINT 'CREATED USP_EX_GetWftDonorBeneNameChangeExcelsiorLiveDetail';
+    END

@@ -1,0 +1,178 @@
+ IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPOSpecificReportDetails'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetPOSpecificReportDetails;
+
+	PRINT 'DROPPED USP_RP_GetPOSpecificReportDetails';
+END
+GO 
+/******************************************************************************                        
+** NEW Name:     USP_RP_GetPOSpecificReportDetails      
+** Old name:     USP_EIS_RPT_PO_SpecificReportDetails_SelProc                    
+** Name:     DROP PROCEDURE USP_RP_GetPOSpecificReportDetails    (USP_EX_RPTPOSpecificReportDetailsSelProc)      
+**           
+** Short Desc: To fetch the accounts required for Report Generation          
+**                        
+** Full Description: To fetch the accounts required for Report Generation             
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+ DECLARE @DeliverableQueueID bigint   
+ SET @DeliverableQueueID = 34  
+ EXEC USP_RP_GetPOSpecificReportDetails @DeliverableQueueID      
+**               
+** Return values: Null      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Venugopal B     
+** Company   : Kaspick & Company                        
+** Project   : Program Overview                         
+** Created DT: 01-Sep-10                   
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------                  
+**	12-Mar-12   Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.  
+**	14-Mar-12   Anand Kumar    ERD changes implemetation.    
+**	06-10-2014	Gaurav Nahar	Sp name & table name changes as per Kaspick naming convention
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/      
+      
+CREATE PROCEDURE USP_RP_GetPOSpecificReportDetails      
+(      
+@XMLDeliverableItems xml    
+)      
+AS      
+BEGIN
+	SET ARITHABORT ON  
+	DECLARE @ErrorNumber INT;
+	DECLARE @ErrorState INT;
+	DECLARE   @ReturnStatus INT = - 1;
+	DECLARE	@ErrorDesc VARCHAR(8000);
+ BEGIN TRY
+	BEGIN
+		BEGIN TRANSACTION
+
+	DECLARE @DeliverableItemData Table  
+	(      
+	DeliverableItemID int  
+	);     
+
+	INSERT INTO @DeliverableItemData      
+	SELECT        
+		XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') 
+	AS 
+		DeliverableItemID   
+	FROM 
+		@XMLDeliverableItems.nodes('//clsReportDetailsCollection/InsertList/clsReportDetails') 
+	AS 
+		XMLdoc(DeliverableItemData)     
+
+
+	SELECT   
+	DQ.DeliverableQueueID,  
+	DQ.DeliverableID,  
+	DQ.DeliverableQueueBriefName,  
+	DQ.DeliverableQueueYear,            
+	DID.DELIVERABLEDOCUMENTSID,  
+	DID.DELIVERABLEITEMID,  
+	DI.ManagerCode,  
+	Accmngcds.ManagerCode as ClientBriefName,  
+	DI.CustomerAccountNumber,  
+	NULL AS ADVENTID,  
+	DI.ContactID,  
+	NULL AS LASTNAME,  
+	CM.ContactName AS FIRSTNAME,            
+	CM.ContactID,  
+	--DI.DONORID,  
+	DT.DOCUMENTTYPEID,  
+	DT.DOCUMENTTYPENAME,  
+	DOCUMENTFILETYPE,            
+	DID.FILEPATH   
+	FROM 
+		TBL_DLV_DeliverableQueue DQ   
+	INNER JOIN 
+		TBL_DLV_DocumentType DT 
+	ON 
+		DQ.DeliverableID=DT.DeliverableID   
+	INNER JOIN 
+		TBL_DLV_DeliverableItemDocument DID 
+	ON 
+		DT.DOCUMENTTYPEID=DID.DOCUMENTTYPEID   
+	INNER JOIN 
+		TBL_DLV_DeliverableItem DI 
+	ON 
+		DID.DELIVERABLEITEMID=DI.DELIVERABLEITEMID 
+	AND DQ.DELIVERABLEQUEUEID=DI.DELIVERABLEQUEUEID  
+	INNER JOIN 
+		SYN_IT_AccountManagerCodes Accmngcds 
+	ON 
+		DI.ManagerCode = Accmngcds.ManagerCode  
+	INNER JOIN 
+		SYN_IT_ContactMaster CM 
+	ON 
+		DI.ManagerCode = CM.ManagerCode  
+	INNER JOIN 
+		TBL_DLV_ItemMethodStatus IMS 
+	ON 
+		IMS.DELIVERABLEITEMID=DI.DELIVERABLEITEMID     
+	INNER JOIN 
+		TBL_DLV_DeliverableProcessStatus DIS 
+	ON 
+		DIS.DeliverableItemStatusID=IMS.DeliverableItemStatusID         
+	INNER JOIN 
+		TBL_DLV_DeliverableMethod DM 
+	ON 
+		IMS.DeliveryMethodID = DM.DeliveryMethodID         
+	AND DQ.DeliverableID = DM.DeliverableID  
+	AND DM.IsPrimary = 1      
+	WHERE 
+		DI.DELIVERABLEITEMID 
+	IN 
+		( SELECT DeliverableItemID FROM @DeliverableItemData )   
+	ORDER BY DQ.DELIVERABLEQUEUEID,Accmngcds.ManagerCode,DID.DELIVERABLEITEMID 
+		COMMIT TRANSACTION
+	END
+ END TRY
+	
+BEGIN CATCH
+  ROLLBACK TRANSACTION
+  SET @ReturnStatus = - 1;
+  SELECT @ErrorDesc = ERROR_MESSAGE()
+   ,@ErrorNumber = ERROR_NUMBER()
+   ,@ErrorState = ERROR_STATE();
+
+  RAISERROR (
+    @ErrorDesc
+    ,-- Message text.
+    @ErrorNumber
+    ,-- Severity.
+    @ErrorState -- State.
+    );
+  
+ END CATCH
+END  
+  GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPOSpecificReportDetails'
+		)
+BEGIN
+	PRINT 'CREATED USP_RP_GetPOSpecificReportDetails';
+END
+GO

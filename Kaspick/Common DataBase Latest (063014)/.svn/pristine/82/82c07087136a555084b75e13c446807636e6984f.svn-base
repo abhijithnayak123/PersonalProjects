@@ -1,0 +1,1387 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ActivityConsoleGetResult]    Script Date: Script Date: 06/03/2013 14:30:13 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ActivityConsoleGetResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ActivityConsoleGetResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ActivityConsoleGetResult]    Script Date: 06/03/2013 14:30:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                        
+** Name:     USP_PP_ActivityConsoleGetResult                        
+** Short Desc: To get posted/unposted payments  
+**                        
+** Full Description: To get posted/unposted payments for activity console display  
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+ --SELECT @PaymentMethod = 'All'  
+ --,@DateType = 'Payment Date'  
+ --,@DateFrom = '01/01/2012'  
+ --,@Dateto = '06/30/2012'  
+ --,@BackBuilt = 'All'  
+ --,@TaxYear = 2012  
+ --,@PostStatus = 'All'  
+ --,@UserID = 68  
+   
+      
+ --EXEC USP_PP_ActivityConsoleGetResult 'All','All','All','All','Payment Date','01/01/2012','06/30/2012','All',2012,'All',6  
+   
+      
+   EXEC USP_PP_ActivityConsoleGetResult   
+    'All Manager Codes',
+    '<ManagerCollection><ManagerXML ManagerCode = "AZ" />   
+   </ManagerCollection>',  
+    'AZMIL',  
+    'All',  
+    'Payment Date',  
+    '01/01/2013',  
+    '06/30/2014',  
+    'All',  
+    2013,  
+    'All',  
+    68  
+      
+      
+	EXEC USP_PP_ActivityConsoleGetResult 
+		 'My Manager Codes',
+		  '<ManagerCollection><ManagerXML ManagerCode = "All" /></ManagerCollection>',
+		  'All',
+		  'All',
+		  'Payment Date',
+		  '01/01/2013',
+		  '12/30/2013',
+		  'All',
+		  2012,
+		  'All',
+		  68
+      
+ --EXEC USP_PP_ActivityConsoleGetResult   
+ --  'All Manager Codes',
+ --   '<ManagerCollection><ManagerXML ManagerCode = "All" />  
+ --  </ManagerCollection>',  
+ --   'All',  
+ --   'All',  
+ --   'Payment Date',  
+ --   '01/01/2012',  
+ --   '06/30/2012',  
+ --   'All',  
+ --   2012,  
+ --   'All',  
+ --   68  
+      
+**               
+**                        
+**                        
+** Standard declarations                        
+**         
+**                         
+** Created By: Niveditha Narasimha  
+** Company   : Kaspick & Company                        
+** Project   : BackOffice Integration                        
+** Created DT: 05-Aug-13                   
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:      Author:  Bug #     Description:                             
+** --------  --------  ------    --------------------------------------   
+** 03-feb-2014 Saravanan 		Added TransactionNumber Column and formated PaymentDate   
+** 05-feb-2014 Salih			Account Type mapping changes
+** 05-May-2014 Saravanan		Fixed ET 16177 - Added manager Code Group filter, ET16175 - Implemented ReviewedBy
+** 03-Jun-2014 Saravanan		Added GiftWrapPaymentReviewDate to UI
+** 11-Jun-2014 Saravanan		Re mapped the Un-posted PaymentAmount amount from BenePayoutSchedule instead of AccountPayoutSchedule
+** 23-Jun-2014 Saravanan		Fixed ET 16236	- Added ManagerCode & Customer Account Number filter to get Un-Posted payment records from TBL_PP_PGCalcPaymentDataMerged table 
+** 26-jun-2014 Salih            Modified Rolecode implementation from Rolecode description to ID.
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ActivityConsoleGetResult] (
+	@ManagerCodeGroup VARCHAR(25)
+	,@ManagerCodeXML XML
+	,@CustomerAccountNumber VARCHAR(14)
+	,@PaymentMethod VARCHAR(20)
+	,@DateType VARCHAR(30)
+	,@DateFrom DATETIME
+	,@DateTo DATETIME
+	,@BackBuilt VARCHAR(10)
+	,@TaxYear INT
+	,@PostStatus VARCHAR(20)
+	,@UserID INT
+	)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	--AS  
+	--  Initial Set statements  --                  
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds   
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB..sysobjects
+			WHERE id = object_id(N'TEMPDB..[#TmpResult]')
+			)
+		DROP TABLE #TmpResult
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB..sysobjects
+			WHERE id = object_id(N'TEMPDB..[#TmpPostedPayment]')
+			)
+		DROP TABLE #TmpPostedPayment
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB..sysobjects
+			WHERE id = object_id(N'TEMPDB..[#TmpValidationErrors]')
+			)
+		DROP TABLE #TmpValidationErrors
+
+	--  Variable Declarations  --        
+	CREATE TABLE #TmpUser (
+		UserID INT
+		,UserName VARCHAR(100)
+		,FirstName VARCHAR(20)
+		,MiddleName VARCHAR(20)
+		,LastName VARCHAR(20)
+		)
+
+	CREATE TABLE #TmpResult (
+		ManagerCode VARCHAR(14)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountStatus VARCHAR(100)
+		,ContactID INT
+		,BeneficiaryDistributionID INT
+		,PaymentName VARCHAR(100)
+		,BeneficiaryName VARCHAR(100)
+		,PaymentDate VARCHAR(10)
+		,EPD VARCHAR(10)
+		,APD VARCHAR(10)
+		,PaymentAmount MONEY
+		,
+		--PaymentType VARCHAR(20),      -- got to check on this  
+		PaymentMethod VARCHAR(20)
+		,VoidDate VARCHAR(10)
+		,ProcessStatus VARCHAR(50)
+		,ACHProcessStatus VARCHAR(100)
+		--ACHFileUploadDateTime DATETIME,       -- got to verify on this  
+		,ClearDate VARCHAR(10)
+		,Error VARCHAR(5)
+		,Warning VARCHAR(5)
+		,HoldStatus VARCHAR(20)
+		,TaxYear INT
+		,PayerName VARCHAR(100)
+		,Backbuilt VARCHAR(5)
+		,Memo VARCHAR(100)
+		,Comment VARCHAR(1000)
+		,PostedBy VARCHAR(100)
+		,ScheduleID INT
+		,PaymentID INT
+		,AccountType VARCHAR(100)
+		,PGCalcPaymentID INT
+		,Recurrent INT
+		,
+		--BatchID VARCHAR(20),        
+		--AccountID INT,        
+		RecordVersion VARBINARY(8)
+		,AllScheduleID INT
+		,ValidationPaymentType VARCHAR(50)
+		,-- got to verify on this  
+		FlipDate VARCHAR(10)
+		,FlipType VARCHAR(20)
+		,Withholding MONEY
+		,WireSubmitted VARCHAR(10)
+		,WireSubmittedBy VARCHAR(100)
+		,PDFFileName VARCHAR(100)
+		,WireAuthorized VARCHAR(10)
+		--,WirePaymentClientApproval VARCHAR(20)  
+		,WireVendorPaymentReview VARCHAR(20)
+		--,ClientApprovalBy VARCHAR(200)  
+		,AuthorizedBy VARCHAR(100)
+		,Maker VARCHAR(100)
+		,CreatedUserID INT
+		,ReviewedBy VARCHAR(100)
+		,WirePurpose VARCHAR(100)
+		,KcoHasAuth VARCHAR(100)
+		--,VendorFileName VARCHAR(200)  
+		,CheckNumber VARCHAR(20)
+		,ObjectiveCode VARCHAR(30)
+		,SubAccountingID VARCHAR(10)
+		,IsPosted BIT
+		,TransactionNumber VARCHAR(11)
+		)
+
+	CREATE TABLE #TmpPostedPayment (
+		SNo INT IDENTITY(1, 1)
+		,ManagerCode VARCHAR(14)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountStatus VARCHAR(100)
+		,ContactID INT
+		,BeneficiaryDistributionID INT
+		,PaymentName VARCHAR(100)
+		,BeneficiaryName VARCHAR(100)
+		,PaymentDate VARCHAR(10)
+		,EPD VARCHAR(10)
+		,APD VARCHAR(10)
+		,PaymentAmount MONEY
+		,
+		--PaymentType VARCHAR(20),      -- got to check on this  
+		PaymentMethod VARCHAR(20)
+		,VoidDate VARCHAR(10)
+		,ProcessStatus VARCHAR(50)
+		,ACHProcessStatus VARCHAR(100)
+		--ACHFileUploadDateTime DATETIME,       -- got to verify on this  
+		,ClearDate VARCHAR(10)
+		,Error VARCHAR(5)
+		,Warning VARCHAR(5)
+		,HoldStatus VARCHAR(20)
+		,TaxYear INT
+		,PayerName VARCHAR(100)
+		,Backbuilt VARCHAR(5)
+		,Memo VARCHAR(100)
+		,Comment VARCHAR(1000)
+		,PostedBy VARCHAR(100)
+		,ScheduleID INT
+		,PaymentID INT
+		,AccountType VARCHAR(100)
+		,PGCalcPaymentID INT
+		,Recurrent INT
+		,
+		--BatchID VARCHAR(20),        
+		--AccountID INT,        
+		RecordVersion VARBINARY(8)
+		,AllScheduleID INT
+		,ValidationPaymentType VARCHAR(50)
+		,-- got to verify on this  
+		FlipDate VARCHAR(10)
+		,FlipType VARCHAR(20)
+		,Withholding MONEY
+		,WireSubmitted VARCHAR(10)
+		,WireSubmittedBy VARCHAR(100)
+		,PDFFileName VARCHAR(100)
+		,WireAuthorized VARCHAR(10)
+		--,WirePaymentClientApproval VARCHAR(20)  
+		,WireVendorPaymentReview VARCHAR(20)
+		--,ClientApprovalBy VARCHAR(200)  
+		,AuthorizedBy VARCHAR(100)
+		,Maker VARCHAR(200)
+		,CreatedUserID INT
+		,ReviewedBy VARCHAR(100)
+		,WirePurpose VARCHAR(100)
+		,KcoHasAuth VARCHAR(100)
+		--,VendorFileName VARCHAR(200)  
+		,CheckNumber VARCHAR(20)
+		,ObjectiveCode VARCHAR(30)
+		,SubAccountingID VARCHAR(10)
+		,TransactionNumber VARCHAR(11)
+		)
+
+	CREATE TABLE #TmpValidationErrors (
+		PaymentType VARCHAR(20)
+		,PaymentScheduleID INT
+		,Error INT
+		)
+
+	CREATE TABLE #TmpValidationWarnings (
+		PaymentType VARCHAR(20)
+		,PaymentScheduleID INT
+		,Warning INT
+		)
+
+	INSERT INTO #TmpUser
+	SELECT UserID AS UserID
+		,LTRIM(RTRIM((
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(FirstName)), '') = '')
+							THEN ''
+						ELSE (FirstName + ' ')
+						END
+					) + ISNULL(LastName, '')))
+		,FirstName
+		,MiddleName
+		,LastName
+	FROM TBL_KS_User
+
+	DECLARE @TmpAssociatedManagerCode TABLE (
+		ManagerCode VARCHAR(4)
+		,[Level] VARCHAR(15)
+		,ActiveFlag INT
+		)
+
+	--1.0 Get Manager Code collection for My Manager Code and My Backup Manager Code
+	INSERT INTO @TmpAssociatedManagerCode (
+		ManagerCode
+		,[Level]
+		,ActiveFlag
+		)
+	SELECT AccManager.ManagerCode
+		,(
+			CASE -- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+				WHEN ContactRole.ID = 2 -- 'Administrator'
+					OR ContactRole.ID = 14 -- Investment Officer <-- 'Relationship Manager'
+					THEN 'Primary'
+				WHEN ContactRole.ID = 3 -- 'Backup Administrator'
+					OR ContactRole.ID = 512 -- 'Backup Relationship Manager'
+					THEN 'Secondary'
+				WHEN ContactRole.ID = 26 -- 'Plan Administrator'
+					OR ContactRole.ID = 510 -- 'Trust Administrator'
+					OR ContactRole.ID = 515 -- 'Portfolio Analyst'
+					OR ContactRole.ID = 518 -- 'Custody Ops Administrator'
+					OR ContactRole.ID = 519 -- 'Reporting Analyst'
+					THEN 'All'
+				END
+			) AS [Level]
+		,AccManager.ActiveFlag
+	FROM TBL_KS_User Usr
+	INNER JOIN SYN_IT_SubContactRoles subContact
+		ON subContact.SubContactID = Usr.InnotrustContactID
+	INNER JOIN SYN_IT_ContactRoleCodes ContactRole
+		ON ContactRole.ID = subContact.ContactRoleCode
+	INNER JOIN SYN_IT_AccountManagerCodes AccManager
+		ON AccManager.ContactID = subContact.ContactID
+	WHERE ContactRole.ID IN ( -- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+			2 --'Administrator'
+			,3 --'Backup Administrator'
+			,14 -- 'Relationship Manager'
+			,512 -- 'Backup Relationship Manager'
+			,26 -- 'Plan Administrator'
+			,510 -- 'Trust Administrator'
+			,515 -- 'Portfolio Analyst'
+			,518 -- 'Custody Ops Administrator'
+			,519 -- 'Reporting Analyst'
+			)
+		AND UserID = @UserID
+
+	IF @PostStatus = 'Posted'
+		OR @PostStatus = 'All'
+	BEGIN
+		-- Posted payments from Beneficiary payment table  
+		INSERT INTO #TmpPostedPayment (
+			ManagerCode
+			,CustomerAccountNumber
+			,AccountStatus
+			,ContactID
+			,BeneficiaryDistributionID
+			,PaymentName
+			,BeneficiaryName
+			,PaymentDate
+			,EPD
+			,APD
+			,PaymentAmount
+			,PaymentMethod
+			,VoidDate
+			,ProcessStatus
+			,ACHProcessStatus
+			,ClearDate
+			,Error
+			,Warning
+			,HoldStatus
+			,TaxYear
+			,PayerName
+			,Backbuilt
+			,Memo
+			,Comment
+			,PostedBy
+			,ScheduleID
+			,PaymentID
+			,AccountType
+			,PGCalcPaymentID
+			,Recurrent
+			,RecordVersion
+			,AllScheduleID
+			,ValidationPaymentType
+			,FlipDate
+			,FlipType
+			,Withholding
+			,WireSubmitted
+			,WireSubmittedBy
+			,PDFFileName
+			,WireAuthorized
+			--,WirePaymentClientApproval  
+			,WireVendorPaymentReview
+			--,ClientApprovalBy  
+			,AuthorizedBy
+			,Maker
+			,CreatedUserID
+			,ReviewedBy
+			,WirePurpose
+			,KcoHasAuth
+			,CheckNumber
+			,ObjectiveCode
+			,SubAccountingID
+			,TransactionNumber
+			)
+		SELECT BenPymt.ManagerCode
+			,BenPymt.CustomerAccountNumber
+			,'WebService' AS AcccountStatus
+			,BenPymt.ContactID
+			,BenPymt.BeneficiaryDistributionID
+			,BenPymt.PayeeName AS PaymentName
+			,'WebService' AS BeneficiaryName
+			,convert(VARCHAR(10), BenPymt.PaymentDate, 101) AS PaymentDate
+			,NULL AS EPD
+			,convert(VARCHAR(10), BenPymt.PostDate, 101) AS APD
+			,BenPymt.PaymentAmount
+			--,'B' AS PaymentType 'need to verify this  
+			,BenPymt.PaymentMethod
+			,convert(VARCHAR(10), BenPymt.VoidDate, 101) AS VoidDate
+			,CASE 
+				WHEN ProcessedDateMiddleware IS NULL
+					THEN ''
+				ELSE (RTRIM(Cast(CONVERT(VARCHAR(10), ISNULL(PymtExp.ProcessedDateMiddleware, ''), 101) AS VARCHAR(12)) + ' ' + SUBSTRING(CONVERT(VARCHAR(15), ISNULL(PymtExp.ProcessedDateMiddleware, ''), 114), 0, 9)))
+				END ProcessStatus -- Q on process status
+			,isnull(ACHFileName, '''') AS ACHProcessStatus
+			,convert(VARCHAR(10), BenPymt.ClearDate, 101) AS clearDate
+			,0 AS Error
+			,0 AS Warning
+			,'' AS HoldStatus
+			,BenPymt.TaxYear AS TaxYear
+			,BenPymt.AllianceNumber AS PayerName
+			,(
+				CASE 
+					WHEN BenPymt.AccountType = 'PIF'
+						--05-feb-2014-Salih: Account Type mapping changes
+						OR (
+							BenPymt.AccountType = 'GAP'
+							OR BenPymt.AccountType = 'GAPR'
+							OR BenPymt.AccountType = 'GAPP'
+							)
+						THEN ''
+					ELSE (
+							CASE 
+								WHEN BenPymt.IsBackBuilt = 1
+									THEN 'Y'
+								ELSE 'N'
+								END
+							)
+					END
+				) AS Backbuilt
+			,BenPymt.Memo
+			,BenPymt.Comment AS Comment
+			,(
+				CASE 
+					WHEN PymtCreatedUser.UserName = 'System Administrator'
+						THEN 'Auto'
+					ELSE PymtCreatedUser.UserName
+					END
+				) AS PostedBy
+			,0 AS ScheduleID
+			,BenPymt.PaymentID AS PaymentID
+			,BenPymt.AccountType AS AccountType
+			,0 AS PGCalcPaymentID
+			,0 AS Recurrent
+			,BenPymt.RecordVersion
+			,0 AS AllScheduleID
+			,NULL AS ValidationPaymentType
+			,'WebService' AS flipdate -- WebService Input  
+			,'WebService' AS fliptype -- WebService Input  
+			,BenPymt.Withholding
+			,convert(VARCHAR(10), BenPymt.WireSubmitted, 101) AS WireSubmitted
+			,(WireSubmitUser.FirstName + ' ' + WireSubmitUser.MiddleName + ' ' + WireSubmitUser.LastName) AS WireSubmittedBy
+			,NULL AS PDFFileName
+			,NULL AS WireAuthorized
+			,NULL AS WireVendorPaymentReview
+			,NULL AS AuthorizedBy
+			,NULL AS Maker
+			,NULL AS CreatedUserID
+			,NULL AS ReviewedBy
+			,NULL AS WirePurpose
+			,NULL AS KcoHasAuth
+			,BenPymt.DocumentNumber AS CheckNumber
+			,AccProf.ObjectiveCode
+			,'WebService' AS SubAccountingID
+			,BenPymt.TransactionNumber
+		FROM TBL_PP_BeneficiaryPayment BenPymt
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+			FROM @ManagerCodeXML.nodes('//ManagerCollection/ManagerXML') AS XMLDoc(item)
+			) SelectedMgrRule
+			ON (
+					(
+						SelectedMgrRule.ManagerCode <> 'All'
+						AND SelectedMgrRule.ManagerCode = BenPymt.ManagerCode
+						)
+					OR (SelectedMgrRule.ManagerCode = 'All')
+					)
+				AND (
+					(
+						@CustomerAccountNumber <> 'All'
+						AND BenPymt.CustomerAccountNumber = @CustomerAccountNumber
+						)
+					OR @CustomerAccountNumber = 'All'
+					)
+		LEFT OUTER JOIN TBL_PP_ARCH_PaymentExport PymtExp
+			ON BenPymt.PaymentID = PymtExp.PaymentID
+		LEFT OUTER JOIN #TmpUser PymtCreatedUser
+			ON PymtCreatedUser.UserID = BenPymt.CreatedBy
+		LEFT OUTER JOIN #TmpUser WireSubmitUser
+			ON WireSubmitUser.UserID = BenPymt.WireSubmittedBy
+		LEFT OUTER JOIN TBL_INV_AccountProfile AccProf
+			ON AccProf.CustomerAccountNumber = BenPymt.CustomerAccountNumber
+		WHERE TaxYear = @TaxYear
+			AND (
+				(
+					@DateType = 'Payment Date'
+					AND BenPymt.PaymentDate BETWEEN @DateFrom
+						AND @DateTo
+					)
+				OR (@DateType <> 'Payment Date')
+				)
+			AND (
+				(
+					@PaymentMethod <> 'All'
+					AND BenPymt.PaymentMethod = @PaymentMethod
+					)
+				OR (@PaymentMethod = 'All')
+				)
+			AND (
+				(
+					@BackBuilt = 'Yes'
+					AND BenPymt.IsBackBuilt = 1
+					)
+				OR (
+					@BackBuilt = 'No'
+					AND BenPymt.IsBackBuilt = 0
+					)
+				OR (@BackBuilt = 'All')
+				)
+			--Fixed ET 16177
+			AND (
+				(
+					@ManagerCodeGroup = 'My Manager Codes'
+					AND BenPymt.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Secondary'
+						)
+					)
+				OR (
+					@ManagerCodeGroup = 'My Backup Manager Codes'
+					AND BenPymt.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Primary'
+						)
+					)
+				OR @ManagerCodeGroup = 'All Manager Codes'
+				)
+
+		-- Posted payments updated for Beneficiary payout schedule   
+		UPDATE #TmpPostedPayment
+		SET AllScheduleID = BPSched.BPScheduleID
+			,EPD = CONVERT(VARCHAR(10), BPSched.EPD, 101)
+			,ValidationPaymentType = 'BeneficiaryPayment'
+			,PDFFileName = BenPmnt.WirePDFFileName
+			,WireAuthorized = CONVERT(VARCHAR(10), Benpmnt.WireAuthorizedDate, 101)
+			--,WirePaymentClientApproval = BPSched.WirePaymentClientApproval  
+			--,ClientApprovalBy = (WirePymtClntAppr.FirstName + ' ' + WirePymtClntAppr.MiddleName + ' ' + WirePymtClntAppr.LastName)  
+			,AuthorizedBy = (WireAuth.FirstName + ' ' + WireAuth.MiddleName + ' ' + WireAuth.LastName)
+			,Maker = (CreatedUsr.FirstName + ' ' + CreatedUsr.MiddleName + ' ' + CreatedUsr.LastName)
+			,CreatedUserID = BPSched.CreatedBy
+			,WirePurpose = 'Non AccountClosure'
+			,KcoHasAuth = 'WebService'
+		FROM #TmpPostedPayment PostedPymt
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BPSched
+			ON PostedPymt.PaymentID = BPSched.PaymentId
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+			ON PostedPymt.PaymentID = BenPmnt.PaymentId
+		--LEFT OUTER JOIN #TmpUser WirePymtClntAppr ON WirePymtClntAppr.UserID = BPSched.WirePaymentClientApprovalBy  
+		LEFT OUTER JOIN #TmpUser WireAuth
+			ON WireAuth.UserID = BenPmnt.WireAuthorizedBy
+		LEFT OUTER JOIN #TmpUser CreatedUsr
+			ON CreatedUsr.UserID = BPSched.CreatedBy
+
+		---- Posted payments updated for PGCalc table  
+		UPDATE #TmpPostedPayment
+		SET AllScheduleID = PGCalc.MergedPGCalcPaymentID
+			,EPD = CONVERT(VARCHAR(10), PGCalc.EPD, 101)
+			,ValidationPaymentType = 'PGCalcImport'
+			,Backbuilt = ''
+			,PDFFileName = BenPmnt.WirePDFFileName
+			,WireAuthorized = CONVERT(VARCHAR(10), BenPmnt.WireAuthorizedDate, 101)
+			--,WirePaymentClientApproval = PGCalc.WirePaymentClientApproval  
+			--,ClientApprovalBy = (WirePymtClntAppr.FirstName + ' ' + WirePymtClntAppr.MiddleName + ' ' + WirePymtClntAppr.LastName)  
+			,AuthorizedBy = (WireAuth.FirstName + ' ' + WireAuth.MiddleName + ' ' + WireAuth.LastName)
+			,Maker = (CreatedUsr.FirstName + ' ' + CreatedUsr.MiddleName + ' ' + CreatedUsr.LastName)
+			,CreatedUserID = PGCalc.CreatedBy
+			,WirePurpose = 'Non AccountClosure'
+			,KcoHasAuth = 'WebService'
+			,WireVendorPaymentReview = CONVERT(VARCHAR(20), Pgcalc.GiftWrapPaymentReviewDate)
+			,ReviewedBy = RTRIM(ReviewedUsr.FirstName + ' ' + ReviewedUsr.MiddleName + ' ' + ReviewedUsr.LastName) -- Fiexed ET 16175
+		FROM #TmpPostedPayment PostedPymt
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged PGCalc
+			ON PostedPymt.PaymentID = PGCalc.PaymentId
+		INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+			ON PostedPymt.PaymentID = BenPmnt.PaymentId
+		--LEFT OUTER JOIN #TmpUser WirePymtClntAppr ON WirePymtClntAppr.UserID = PGCalc.WirePaymentClientApprovalBy  
+		LEFT OUTER JOIN #TmpUser WireAuth
+			ON WireAuth.UserID = BenPmnt.WireAuthorizedBy
+		LEFT OUTER JOIN #TmpUser CreatedUsr
+			ON CreatedUsr.UserID = PGCalc.CreatedBy
+		LEFT OUTER JOIN #TmpUser ReviewedUsr
+			ON ReviewedUsr.UserID = PGCalc.GiftWrapPaymentReviewedBy -- Fiexed ET 16175
+
+		--LEFT OUTER JOIN TBL_EIS_EX_WireInstructions WI ON pg.BeneficiaryID = WI.EntityID and WI.Entitytype = 'DonorBeneficiary'    
+		--LEFT OUTER JOIN TBL_EIS_LIST_ITEM LIS ON  LIS.LIST_ITEM_ID= WI.KcoHasStanding   
+		INSERT INTO #TmpResult (
+			ManagerCode
+			,CustomerAccountNumber
+			,AccountStatus
+			,ContactID
+			,BeneficiaryDistributionID
+			,PaymentName
+			,BeneficiaryName
+			,PaymentDate
+			,EPD
+			,APD
+			,PaymentAmount
+			,PaymentMethod
+			,VoidDate
+			,ProcessStatus
+			,ACHProcessStatus
+			,ClearDate
+			,Error
+			,Warning
+			,HoldStatus
+			,TaxYear
+			,PayerName
+			,Backbuilt
+			,Memo
+			,Comment
+			,PostedBy
+			,ScheduleID
+			,PaymentID
+			,AccountType
+			,PGCalcPaymentID
+			,Recurrent
+			,RecordVersion
+			,AllScheduleID
+			,ValidationPaymentType
+			,FlipDate
+			,FlipType
+			,Withholding
+			,WireSubmitted
+			,WireSubmittedBy
+			,PDFFileName
+			,WireAuthorized
+			--,WirePaymentClientApproval  
+			,WireVendorPaymentReview
+			--,ClientApprovalBy  
+			,AuthorizedBy
+			,Maker
+			,CreatedUserID
+			,ReviewedBy
+			,WirePurpose
+			,KcoHasAuth
+			,CheckNumber
+			,ObjectiveCode
+			,SubAccountingID
+			,IsPosted
+			,TransactionNumber
+			)
+		SELECT ManagerCode
+			,CustomerAccountNumber
+			,AccountStatus
+			,ContactID
+			,BeneficiaryDistributionID
+			,PaymentName
+			,BeneficiaryName
+			,PaymentDate
+			,EPD
+			,APD
+			,PaymentAmount
+			,PaymentMethod
+			,VoidDate
+			,ProcessStatus
+			,ACHProcessStatus
+			,ClearDate
+			,Error
+			,Warning
+			,HoldStatus
+			,TaxYear
+			,PayerName
+			,Backbuilt
+			,Memo
+			,Comment
+			,PostedBy
+			,ScheduleID
+			,PaymentID
+			,AccountType
+			,PGCalcPaymentID
+			,Recurrent
+			,RecordVersion
+			,AllScheduleID
+			,ValidationPaymentType
+			,FlipDate
+			,FlipType
+			,Withholding
+			,WireSubmitted
+			,WireSubmittedBy
+			,PDFFileName
+			,WireAuthorized
+			--,WirePaymentClientApproval  
+			,WireVendorPaymentReview
+			--,ClientApprovalBy  
+			,AuthorizedBy
+			,Maker
+			,CreatedUserID
+			,ReviewedBy
+			,WirePurpose
+			,KcoHasAuth
+			,CheckNumber
+			,ObjectiveCode
+			,SubAccountingID
+			,1
+			,TransactionNumber
+		FROM #TmpPostedPayment
+		WHERE (
+				(
+					@DateType = 'Expected Posting Date'
+					AND ISNULL(EPD, '01/01/1900') BETWEEN @DateFrom
+						AND @DateTo
+					)
+				OR (@DateType <> 'Expected Posting Date')
+				)
+		ORDER BY ManagerCode
+			,CustomerAccountNumber
+			,PaymentName
+	END
+
+	-- Unposted payments  
+	IF @PostStatus = 'Unposted'
+		OR @PostStatus = 'All'
+	BEGIN
+		INSERT INTO #TmpResult (
+			ManagerCode
+			,CustomerAccountNumber
+			,AccountStatus
+			,ContactID
+			,BeneficiaryDistributionID
+			,PaymentName
+			,BeneficiaryName
+			,PaymentDate
+			,EPD
+			,APD
+			,PaymentAmount
+			,PaymentMethod
+			,VoidDate
+			,ProcessStatus
+			,ClearDate
+			,Error
+			,Warning
+			,HoldStatus
+			,TaxYear
+			,PayerName
+			,Backbuilt
+			,Memo
+			,Comment
+			,PostedBy
+			,ScheduleID
+			,PaymentID
+			,AccountType
+			,PGCalcPaymentID
+			,Recurrent
+			,RecordVersion
+			,AllScheduleID
+			,ValidationPaymentType
+			,FlipDate
+			,FlipType
+			,Withholding
+			,WireSubmitted
+			,WireSubmittedBy
+			,PDFFileName
+			,WireAuthorized
+			--,WirePaymentClientApproval  
+			,WireVendorPaymentReview
+			--,ClientApprovalBy  
+			,AuthorizedBy
+			,Maker
+			,CreatedUserID
+			,ReviewedBy
+			,WirePurpose
+			,KcoHasAuth
+			,SubAccountingID
+			,IsPosted
+			,ObjectiveCode
+			)
+		SELECT APSched.ManagerCode
+			,APSched.CustomerAccountNumber
+			,'WebService' AccountStatus
+			,BPSched.ContactID
+			,BPSched.BeneficiaryDistributionID
+			--,(  
+			-- CASE   
+			--  WHEN (  
+			--    b.UseAlternatePaymentName = 1  
+			--    AND isnull(b.AlternatePaymentName, '''') <> ''''  
+			--    )  
+			--   THEN b.AlternatePaymentName  
+			--  ELSE tp.PaymentName  
+			--  END  
+			-- ) AS PaymentName  
+			-- WebService -- Need UseAlternatePaymentName, AlternatePaymentName  
+			,'WebService' PaymentName
+			,'WebService' BeneficiaryName
+			,convert(VARCHAR(10), BPSched.PaymentDate, 101) AS PaymentDate
+			,convert(VARCHAR(10), EPD, 101) AS EPD
+			,NULL AS APD
+			,BPSched.ScheduledAmount AS PaymentAmount
+			,'WebService' PaymentMethod
+			,NULL AS VoidDate
+			,NULL AS ProcessStatus
+			,NULL AS ClearDate
+			,0 AS Error
+			,0 AS Warning
+			,(
+				CASE 
+					WHEN BPSched.STATUS != 'OnHold'
+						THEN ''
+					ELSE 'On Hold'
+					END
+				) AS HoldStatus
+			,BPSched.TaxYear AS TaxYear
+			,'WebService need alliance number' AS PayerName
+			,(
+				CASE 
+					WHEN BPSched.IsBackBuilt = 1
+						THEN 'Y'
+					ELSE 'N'
+					END
+				) AS Backbuilt
+			,BPSched.Memo
+			,Comments AS Comment
+			,'NA' AS PostedBy
+			,BPScheduleID AS ScheduleID
+			,0 AS PaymentID
+			,'WebService' AccountType
+			,0 AS PGCalcPaymentID
+			,0 AS Recurrent
+			,BPSched.RecordVersion
+			,0 AS AllScheduleID
+			,'BeneficiaryPayment' AS ValidationPaymentType
+			,NULL AS FlipDate ------convert(VARCHAR(10), 'WebService need flipdate', 101) AS FlipDate  
+			,'WebService' FlipType
+			--,dbo.FnEIS_PP_GetWithHoldingAmountForTrusts(b.BeneficiaryID, bps.PaymentDate, ' + CAST(@TaxYear AS VARCHAR) + ') AS Withholding  
+			,NULL AS WithHolding -- web service  
+			,NULL AS WireSubmitted
+			,'' AS SubmittedBy
+			,-- WebService input.. not sure on this section  
+			NULL WirePDFFileName
+			,NULL ----CONVERT(VARCHAR(20), WireAuthorizedDate)  
+			--,CONVERT(VARCHAR(20), WirePaymentClientApproval)  
+			,'' WireVendorPaymentReview
+			--,ClientApprovalBy = (WirePymtClntAppr.FirstName + ' ' + WirePymtClntAppr.MiddleName + ' ' + WirePymtClntAppr.LastName)  
+			--,AuthorizedBy = (WireAuth.FirstName + ' ' + WireAuth.MiddleName + ' ' + WireAuth.LastName)
+			,NULL AS AuthorizedBy
+			,Maker = (CreatedUsr.FirstName + ' ' + CreatedUsr.MiddleName + ' ' + CreatedUsr.LastName)
+			,BPSched.CreatedBy
+			,'' ReviewedBy
+			,'WebService' AS WirePurpose
+			,'WebService' AS KcoHasAuth
+			,'WebService' AS SubAccountingID
+			,0
+			,AccProf.ObjectiveCode
+		FROM TBL_PP_BeneficiaryPayoutSchedule BPSched
+		INNER JOIN TBL_PP_AccountPayoutSchedule APSched
+			ON APSched.APScheduleID = BPSched.APScheduleID
+		--LEFT OUTER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		--	ON BenPmnt.PaymentID = BPSched.PaymentID
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+			FROM @ManagerCodeXML.nodes('//ManagerCollection/ManagerXML') AS XMLDoc(item)
+			) SelectedMgrRule
+			ON (
+					(
+						SelectedMgrRule.ManagerCode <> 'All'
+						AND SelectedMgrRule.ManagerCode = APSched.ManagerCode
+						)
+					OR (SelectedMgrRule.ManagerCode = 'All')
+					)
+				AND (
+					(
+						@CustomerAccountNumber <> 'All'
+						AND APSched.CustomerAccountNumber = @CustomerAccountNumber
+						)
+					OR (@CustomerAccountNumber = 'All')
+					)
+		--LEFT OUTER JOIN #TmpUser WirePymtClntAppr ON WirePymtClntAppr.UserID = BPSched.WirePaymentClientApprovalBy  
+		--LEFT OUTER JOIN #TmpUser WireAuth
+		--	ON WireAuth.UserID = Benpmnt.WireAuthorizedBy
+		LEFT OUTER JOIN TBL_INV_AccountProfile AccProf
+			ON AccProf.CustomerAccountNumber = APSched.CustomerAccountNumber
+		LEFT OUTER JOIN #TmpUser CreatedUsr
+			ON CreatedUsr.UserID = BPSched.CreatedBy
+		WHERE BPSched.TaxYear = @TaxYear
+			AND (
+				(
+					@DateType = 'Expected Posting Date'
+					AND EPD BETWEEN @DateFrom
+						AND @DateTo
+					)
+				OR (
+					@DateType <> 'Expected Posting Date'
+					AND BPSched.PaymentDate BETWEEN @DateFrom
+						AND @DateTo
+					)
+				)
+			--AND (  
+			-- (  
+			--  @PaymentMethod <> 'All'  
+			--  AND PaymentMethod = @PaymentMethod -- WebService for PaymentMethod  
+			--  )  
+			-- OR (@PaymentMethod = 'All')  
+			-- )  
+			AND (
+				(
+					@BackBuilt = 'Yes'
+					AND BPSched.IsBackBuilt = 1
+					)
+				OR (
+					@BackBuilt = 'No'
+					AND BPSched.IsBackBuilt = 0
+					)
+				OR (@BackBuilt = 'All')
+				)
+			AND (
+				BPSched.PaymentID IS NULL
+				OR BPSched.PaymentID = 0
+				)
+			--Fixed ET 16177
+			AND (
+				(
+					@ManagerCodeGroup = 'My Manager Codes'
+					AND APSched.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Secondary'
+						)
+					)
+				OR (
+					@ManagerCodeGroup = 'My Backup Manager Codes'
+					AND APSched.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Primary'
+						)
+					)
+				OR @ManagerCodeGroup = 'All Manager Codes'
+				)
+		ORDER BY ManagerCode
+			,APSched.CustomerAccountNumber
+			,PaymentName
+
+		INSERT INTO #TmpResult (
+			ManagerCode
+			,CustomerAccountNumber
+			,AccountStatus
+			,ContactID
+			,BeneficiaryDistributionID
+			,PaymentName
+			,BeneficiaryName
+			,PaymentDate
+			,EPD
+			,APD
+			,PaymentAmount
+			,PaymentMethod
+			,VoidDate
+			,ProcessStatus
+			,ClearDate
+			,Error
+			,Warning
+			,HoldStatus
+			,TaxYear
+			,PayerName
+			,Backbuilt
+			,Memo
+			,Comment
+			,PostedBy
+			,ScheduleID
+			,PaymentID
+			,AccountType
+			,PGCalcPaymentID
+			,Recurrent
+			,RecordVersion
+			,AllScheduleID
+			,ValidationPaymentType
+			,FlipDate
+			,FlipType
+			,Withholding
+			,WireSubmitted
+			,WireSubmittedBy
+			,PDFFileName
+			,WireAuthorized
+			--,WirePaymentClientApproval  
+			,WireVendorPaymentReview
+			--,ClientApprovalBy  
+			,AuthorizedBy
+			,Maker
+			,CreatedUserID
+			,ReviewedBy
+			,WirePurpose
+			,KcoHasAuth
+			,SubAccountingID
+			,IsPosted
+			)
+		SELECT PGCalc.ManagerCode
+			,PGCalc.CustomerAccountNumber
+			,'WebService' AccountStatus
+			,Pgcalc.ContactID
+			,PGCalc.BeneficiaryDistributionID
+			--,(  
+			-- CASE   
+			--  WHEN (  
+			--    b.UseAlternatePaymentName = 1  
+			--    AND isnull(b.AlternatePaymentName, '''') <> ''''  
+			--    )  
+			--   THEN b.AlternatePaymentName  
+			--  ELSE tp.PaymentName  
+			--  END  
+			-- ) AS PaymentName  
+			,'Web Service' PaymentName
+			,
+			-- WebService -- Need UseAlternatePaymentName, AlternatePaymentName  
+			'WebService' BeneficiaryName
+			,convert(VARCHAR(10), PaymentDate, 101) AS PaymentDate
+			,convert(VARCHAR(10), EPD, 101) AS EPD
+			,NULL AS APD
+			,PGCalc.PaymentAmount AS PaymentAmount
+			,'WebService' PaymentMethod
+			,NULL AS VoidDate
+			,NULL AS ProcessStatus
+			,NULL AS ClearDate
+			,0 AS Errors
+			,0 AS Warnings
+			,(
+				CASE 
+					WHEN ISNULL(STATUS, '') != 'OnHold'
+						THEN ''
+					ELSE 'On Hold'
+					END
+				) AS HoldStatus
+			,TaxYear AS TaxYear
+			,'WebServiceAllianceNo' AS PayerName
+			,NULL AS Backbuilt
+			,Memo AS Memo
+			,Comment AS Comment
+			,'NA' AS PostedBy
+			,0 AS ScheduleID
+			,0 AS PaymentID
+			,'WebService' AccountType
+			,MergedPGCalcPaymentID AS PGCalcPaymentID
+			,0 AS Recurrent
+			,RecordVersion
+			,0 AS AllScheduleID
+			,'PGCalcImport' AS ValidationPaymentType
+			--,convert(VARCHAR(10), 'WebService FlipDate', 101) AS FlipDate  
+			,NULL AS FlipDate
+			,'WebService' FlipType
+			,TaxWithholding AS Withholding
+			,NULL AS WireSubmitted
+			,'' WireSubmittedBy
+			,NULL ---PDFFileName  
+			,NULL -----CONVERT(VARCHAR(20), WireAuthorizedDate)  
+			--,CONVERT(VARCHAR(20), WirePaymentClientApproval)  
+			,CONVERT(VARCHAR(20), Pgcalc.GiftWrapPaymentReviewDate) AS WireVendorPaymentReview
+			--,ClientApprovalBy = (WirePymtClntAppr.FirstName + ' ' + WirePymtClntAppr.MiddleName + ' ' + WirePymtClntAppr.LastName)  
+			,NULL ---AuthorizedBy = (WireAuth.FirstName + ' ' + WireAuth.MiddleName + ' ' + WireAuth.LastName)  
+			,Maker = (CreatedUsr.FirstName + ' ' + CreatedUsr.MiddleName + ' ' + CreatedUsr.LastName)
+			,CreatedBy
+			,ReviewedBy = (ReviewedUsr.FirstName + ' ' + ReviewedUsr.MiddleName + ' ' + ReviewedUsr.LastName) -- Fiexed ET 16175
+			,'WebService' AS WirePurpose
+			,'WebService' AS KcoHasAuth
+			,'WebService' AS SubAccountingID
+			,0
+		FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+		INNER JOIN (
+			SELECT XMLDoc.item.value('@ManagerCode[1]', 'VARCHAR(4)') AS ManagerCode
+			FROM @ManagerCodeXML.nodes('//ManagerCollection/ManagerXML') AS XMLDoc(item)
+			) SelectedMgrRule
+			ON (
+					(
+						SelectedMgrRule.ManagerCode <> 'All'
+						AND SelectedMgrRule.ManagerCode = PGCalc.ManagerCode
+						)
+					OR (SelectedMgrRule.ManagerCode = 'All') --Fixed ET 16236
+					)
+				AND (
+					(
+						@CustomerAccountNumber <> 'All'
+						AND PGCalc.CustomerAccountNumber = @CustomerAccountNumber
+						)
+					OR (@CustomerAccountNumber = 'All') --Fixed ET 16236
+					)
+		--LEFT OUTER JOIN #TmpUser WirePymtClntAppr ON WirePymtClntAppr.UserID = PGCalc.WirePaymentClientApprovalBy  
+		LEFT OUTER JOIN #TmpUser ReviewedUsr
+			ON ReviewedUsr.UserID = PGCalc.GiftWrapPaymentReviewedBy -- Fiexed ET 16175
+		LEFT OUTER JOIN #TmpUser CreatedUsr
+			ON CreatedUsr.UserID = PGCalc.CreatedBy
+		-- LEFT OUTER JOIN TBL_EIS_EX_WireInstructions WI ON Pgcalc.BeneficiaryID = WI.EntityID and WI.Entitytype = ''DonorBeneficiary''    
+		--LEFT OUTER JOIN TBL_EIS_LIST_ITEM LIS ON  LIS.LIST_ITEM_ID= WI.KcoHasStanding   
+		WHERE TaxYear = CASE 
+				WHEN @TaxYear IS NOT NULL
+					AND @TaxYear <> 0
+					THEN @TaxYear
+				ELSE PGCalc.TaxYear
+				END
+			AND (
+				(
+					@DateType = 'Expected Posting Date'
+					AND EPD BETWEEN @DateFrom
+						AND @DateTo
+					)
+				OR (
+					@DateType <> 'Expected Posting Date'
+					AND PaymentDate BETWEEN @DateFrom
+						AND @DateTo
+					)
+				)
+			--AND (  
+			-- (  
+			--  @PaymentMethod <> 'All'  
+			--  AND PaymentMethod = @PaymentMethod -- WebService for PaymentMethod  
+			--  )  
+			-- OR (@PaymentMethod = 'All')  
+			-- )  
+			AND (
+				@BackBuilt = 'No'
+				OR @BackBuilt = 'All'
+				)
+			AND (
+				PaymentID IS NULL
+				OR PaymentID = 0
+				)
+			--Fixed ET 16177
+			AND (
+				(
+					@ManagerCodeGroup = 'My Manager Codes'
+					AND PGCalc.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Secondary'
+						)
+					)
+				OR (
+					@ManagerCodeGroup = 'My Backup Manager Codes'
+					AND PGCalc.ManagerCode IN (
+						SELECT ManagerCode
+						FROM @TmpAssociatedManagerCode
+						WHERE [Level] <> 'Primary'
+						)
+					)
+				OR @ManagerCodeGroup = 'All Manager Codes'
+				)
+	END
+
+	INSERT INTO #TmpValidationErrors
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.AllScheduleID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Error'
+		AND STATUS = 'Posted'
+		AND TmpRes.PaymentID <> 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	INSERT INTO #TmpValidationWarnings
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.AllScheduleID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Warning'
+		AND STATUS = 'Posted'
+		AND TmpRes.PaymentID <> 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	--bene payments          
+	INSERT INTO #TmpValidationErrors
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.ScheduleID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Error'
+		AND STATUS = 'A'
+		AND TmpRes.PaymentID = 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	INSERT INTO #TmpValidationWarnings
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.ScheduleID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Warning'
+		AND STATUS = 'A'
+		AND TmpRes.PaymentID = 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	--pgcalc          
+	INSERT INTO #TmpValidationErrors
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.PGcalcPaymentID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Error'
+		AND STATUS = 'A'
+		AND TmpRes.PaymentID = 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	INSERT INTO #TmpValidationWarnings
+	SELECT ValRes.PaymentType
+		,PaymentScheduleID
+		,COUNT(DISTINCT ValRule.RuleId)
+	FROM TBL_PP_ValidationResult ValRes
+	INNER JOIN TBL_PP_ValidationRule ValRule
+		ON ValRes.RuleID = ValRule.RuleID
+	INNER JOIN #TmpResult TmpRes
+		ON ValRes.PaymentScheduleID = TmpRes.PGcalcPaymentID
+			AND TmpRes.ValidationPaymentType = ValRes.PaymentType
+	WHERE ResultType = 'Warning'
+		AND STATUS = 'A'
+		AND TmpRes.PaymentID = 0
+	GROUP BY ValRes.PaymentType
+		,PaymentScheduleID
+
+	--posted          
+	UPDATE #TmpResult
+	SET Error = TmpValErr.Error
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationErrors TmpValErr
+		ON TmpRes.AllScheduleid = TmpValErr.PaymentScheduleid
+			AND TmpValErr.PaymentType = TmpRes.ValidationPaymentType
+
+	UPDATE #TmpResult
+	SET Warning = TmpValWarn.Warning
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationWarnings TmpValWarn
+		ON TmpRes.AllScheduleid = TmpValWarn.PaymentScheduleid
+			AND TmpValWarn.PaymentType = TmpRes.ValidationPaymentType
+
+	--bene  schedules unposted          
+	UPDATE #TmpResult
+	SET Error = TmpValErr.Error
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationErrors TmpValErr
+		ON TmpRes.Scheduleid = TmpValErr.PaymentScheduleid
+			AND TmpValErr.PaymentType = TmpRes.ValidationPaymentType
+
+	UPDATE #TmpResult
+	SET Warning = TmpValWarn.Warning
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationWarnings TmpValWarn
+		ON TmpRes.Scheduleid = TmpValWarn.PaymentScheduleid
+			AND TmpValWarn.PaymentType = TmpRes.ValidationPaymentType
+
+	--pgcalc unposted          
+	UPDATE #TmpResult
+	SET Error = TmpValErr.Error
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationErrors TmpValErr
+		ON TmpRes.PGcalcPaymentID = TmpValErr.PaymentScheduleid
+			AND TmpValErr.PaymentType = TmpRes.ValidationPaymentType
+
+	UPDATE #TmpResult
+	SET Warning = TmpValWarn.Warning
+	FROM #TmpResult TmpRes
+	INNER JOIN #TmpValidationWarnings TmpValWarn
+		ON TmpRes.PGcalcPaymentID = TmpValWarn.PaymentScheduleid
+			AND TmpValWarn.PaymentType = TmpRes.ValidationPaymentType
+
+	SELECT ManagerCode
+		,CustomerAccountNumber
+		,AccountStatus
+		,ContactID
+		,BeneficiaryDistributionID
+		,PaymentName
+		,BeneficiaryName
+		,PaymentDate
+		,EPD
+		,APD
+		,PaymentAmount
+		,PaymentMethod
+		,VoidDate
+		,ProcessStatus
+		,ACHProcessStatus
+		,ClearDate
+		,Error
+		,Warning
+		,HoldStatus
+		,TaxYear
+		,PayerName
+		,Backbuilt
+		,Memo
+		,Comment
+		,PostedBy
+		,ScheduleID
+		,PaymentID
+		,AccountType
+		,PGCalcPaymentID
+		,Recurrent
+		,RecordVersion
+		,AllScheduleID
+		,ValidationPaymentType
+		,FlipDate
+		,FlipType
+		,Withholding
+		,WireSubmitted
+		,WireSubmittedBy
+		,PDFFileName
+		,WireAuthorized
+		,WireVendorPaymentReview
+		,AuthorizedBy
+		,Maker
+		,CreatedUserID
+		,ReviewedBy
+		,WirePurpose
+		,KcoHasAuth
+		,CheckNumber
+		,ObjectiveCode
+		,SubAccountingID
+		,IsPosted
+		,TransactionNumber
+	FROM #TmpResult
+		-- End of procedure  --     
+END

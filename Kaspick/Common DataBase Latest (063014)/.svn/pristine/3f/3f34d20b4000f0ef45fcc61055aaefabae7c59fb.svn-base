@@ -1,0 +1,106 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeAlerts'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradeAlerts;
+
+	PRINT 'DROPPED USP_EX_GetTradeAlerts';
+END
+GO
+
+/******************************************************************************                          
+** Name: USP_EX_GetTradeAlerts
+** Old Name:     USP_EIS_EX_TRADE_ALERTS_SELPROC                          
+** Short Desc: To retrieve the Trade Alerts                 
+**                          
+** Full Description: To retrieve the Trade Alerts                 
+**                                  
+** Input Arguments: NONE        
+**             
+** Sample Call                          
+**  EXEC USP_EX_GetTradeAlerts 300022       
+           
+**                 
+** Return values: NONE        
+**                          
+**                          
+** Standard declarations                          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                          
+**                           
+** Created By: Soorya                   
+** Company   : Kaspick & Company                          
+** Project   : Excelsior  - Enfuego3B                          
+** Created DT: 11/30/2010                          
+**                                      
+*******************************************************************************                    
+**       Change History                          
+*******************************************************************************                    
+** Date:        Author:  Bug #     Description:                           Rvwd                    
+** --------  -------- ------    -------------------------------------- --------                    
+** 7-Apr-2014   Abhijith  EXCREQ 7.4   
+** 22-MAY-2014 Mallikarjun     SP Name Renamed and Formatted   
+*******************************************************************************                          
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradeAlerts] (@AccountID CHAR(14))
+AS
+BEGIN
+	--  Variable Declarations  --              
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	-- Variables used for error handling - uncomment if needed              
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+
+	--  Variable Data Assignment  --              
+	SET @procname = 'USP_EX_GetTradeAlerts';
+
+	-- Body of procedure  --              
+	BEGIN TRY
+		SELECT AlrtEvnt.AlertID
+			,AlrtEvnt.alertdate AS DUEDATE
+			,AlrtEvnt.alertstatus AS STATUS
+			,AlrtEvnt.alertcause AS CAUSE
+			,AlrtEvnt.alertcomment AS COMMENT
+		FROM TBL_BR_AlertEvent AlrtEvnt
+		INNER JOIN SYN_IT_AccountMaster AccMstr ON AlrtEvnt.CustomerAccountNumber = AccMstr.CustomerAccountNumber
+		INNER JOIN TBL_KS_User KsUsr ON AlrtEvnt.assignedto = KsUsr.userid
+		WHERE AccMstr.CustomerAccountNumber = @AccountID
+			--AND DATEDIFF(DAY, GETDATE(), AlrtEvnt.alertdate) >= 0   
+			AND AlertStatus = 'Pending'
+		ORDER BY AlrtEvnt.alertdate
+			,AlrtEvnt.alertcause
+			,AlrtEvnt.alertcomment ASC
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname
+			,@ErrorMessage = @ErrorMessage
+			,@ErrorNumber = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EX_GetTradeAlerts: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeAlerts'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetTradeAlerts';
+END

@@ -1,0 +1,182 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_CreateOfficialGroup]    Script Date: 06/30/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_CreateOfficialGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_CreateOfficialGroup]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_CreateOfficialGroup]    Script Date: 06/30/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_CreateOfficialGroup  
+** Short Desc: Universe Query  
+**  
+** Full Description  
+** Stored procedures creates a record in TBL_IE_Group table. It also queries the   
+  excelsior deferredgiftacount table for getting account that for a universe.   
+  The account which satisfy the eligibility criteria for being a part of universe  
+  are inserted in TBL_EIS_IE_Estimate_Staging table.  
+  
+  This sp creates Official type of group.  
+**  
+** Sample Call  
+	declare @new_grpid int  
+	EXEC USP_IE_CreateOfficialGroup   
+		@groupName ='Official Group 2007',  
+		@taxYear =2007,  
+		@description = 'Test Oficial Group',  
+		@appflipdate ='01/01/2007',  
+		@userID  = 1,  
+		@groupID =@new_grpid OUT  
+	select @new_grpid  
+  
+ -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 06/30/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_CreateOfficialGroup]
+	-- paremeters here  
+	@groupName VARCHAR(50)
+	,@taxYear SMALLINT
+	,@description VARCHAR(175) = NULL
+	,@appflipdate DATETIME
+	,@userID INT = NULL
+	,@groupID INT OUT
+AS
+--  Initial Set statements  --  
+--SET NOCOUNT ON;  
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+DECLARE @errmsg VARCHAR(1000);
+DECLARE @errnbr INT;
+DECLARE @StatusID INT;
+-- Variables used for error handling - uncomment if needed  
+--Declare @val1      varchar(30);  
+--Declare @val2      varchar(30);  
+--  Temp tables, Cursors, Table Variables  --  
+DECLARE @Unv_Accounts TABLE (
+	CustomerAccountNumber VARCHAR(14)
+	,AccountTypeCode VARCHAR(20)
+	,CreationDate DATETIME
+	,MatureDate DATETIME
+	,AccountTaxName VARCHAR(100)
+	,UnitrustPercentage FLOAT
+	,ManagerCode CHAR(4)
+	,ObjectiveCode VARCHAR(30)
+	,MasterObjectiveName VARCHAR(40)
+	);
+
+--  Variable Data Assignment  --  
+SET @procname = 'USP_IE_CreateOfficialGroup';
+SET @groupID = 0;
+
+SELECT @StatusID = StatusID
+FROM TBL_IE_STATUS
+WHERE STATUS = 'New';
+
+-- Body of procedure  --  
+--Execute Get Unverse sp to retrieve the accounts in the Universe for the given tAX Year  
+INSERT INTO @Unv_Accounts
+EXEC USP_IE_GetUniverseOfAccounts @taxYear
+
+--IF Account exists then create a group record   
+IF EXISTS (
+		SELECT CustomerAccountNumber
+		FROM @Unv_Accounts
+		)
+BEGIN
+	--create a group record  
+	INSERT INTO [dbo].[TBL_IE_Group] (
+		[CreatedDate]
+		,[Description]
+		,[GroupName]
+		,[IsDeleted]
+		,[IsOfficial]
+		,[ModifiedDate]
+		,[TaxYear]
+		,[UserID]
+		)
+	VALUES (
+		getDate()
+		,@description
+		,@groupName
+		,0
+		,1
+		,getDate()
+		,@taxYear
+		,@userID
+		)
+
+	SET @groupID = IDENT_CURRENT('TBL_IE_Group')
+
+	--Insert the accounts for which income is to be estimated into TBL_IE_STG_Estimate  
+	INSERT INTO TBL_IE_STG_Estimate (
+		GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,ManagerCode
+		,AccountName
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,EP_MasterObjectiveName
+		,IsDeleted
+		,UserID
+		,CreatedDate
+		,ModifiedDate
+		)
+	SELECT @groupID
+		,@taxYear
+		,CustomerAccountNumber
+		,ManagerCode
+		,AccountTaxName
+		,AccountTypeCode
+		,CreationDate
+		,MatureDate
+		,@StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,MasterObjectiveName
+		,0
+		,@userID
+		,getdate()
+		,getdate()
+	FROM @Unv_Accounts
+	ORDER BY CustomerAccountNumber
+END
+		-- End of procedure  --  

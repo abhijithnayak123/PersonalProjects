@@ -1,0 +1,157 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryStatus                      
+** Short Desc:  To get Beneficiary Status
+**                      
+** Full Description:   To get Beneficiary Status. This sp uses Innotrust response data from table 
+					   TBL_PP_STG_InnoTrustValidationEngineInput for validation.            
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryStatus  1,0     
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 04-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**  01/29/2014 Salih				Changed table variables with temp tables
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryStatus]
+	-- paremeters here                                
+	@UserID INT
+	,@Type BIT = 1 --auto
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+		DROP TABLE [#TmpData]
+
+	---Declare Variable
+	DECLARE @RuleID INT
+	DECLARE @Role1 VARCHAR(20)
+	DECLARE @Role2 VARCHAR(20)
+
+	CREATE TABLE #TmpData (
+		ID INT identity(1, 1)
+		,ScheduleID INT
+		,PaidToAccountRole XML
+		)
+
+	SET @Role1 = 'Beneficiary'
+	SET @Role2 = 'Proxy Recipient'
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Beneficiary inactive'
+		AND RuleCategory = 'Beneficiary payment'
+	
+	
+	-- PaidToAccountRole has multiple roles. Performing string search reduces performance
+	-- Hence forming XML list so that the where condition search becomes faster.
+	INSERT INTO #TmpData (
+		ScheduleID
+		,PaidToAccountRole
+		)
+	SELECT ScheduleID
+		,'<PaidToAccountRole>' + REPLACE(PaidToAccountRole, ',', '</PaidToAccountRole><PaidToAccountRole>') + '</PaidToAccountRole>'
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput
+	WHERE PaymentType IN (
+			'Beneficiarypayment'
+			,'PGCalcImport'
+			)
+		AND UserID = @UserID
+		
+
+	---Return data      
+	SELECT PaymentType
+		,Data.ScheduleID
+		,@RuleID AS RuleID
+		,'BeneStatus' AS Attribute
+		,CASE 
+			WHEN @Role1 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				AND @Role2 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				THEN @Role1 + ',' + @Role2
+			WHEN @Role1 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				THEN @Role1
+			WHEN @Role2 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				THEN @Role2
+			END AS ActualValue
+	FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+	INNER JOIN #TmpData Data
+		ON StgData.ScheduleID = Data.ScheduleID
+			AND (
+				@Role1 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				OR @Role2 IN (
+					SELECT x.i.value('.', 'varchar(20)') AS PaidToAccountRole
+					FROM Data.PaidToAccountRole.nodes('//PaidToAccountRole') x(i)
+					)
+				)
+
+	-- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TmpData]') IS NOT NULL
+		DROP TABLE [#TmpData]
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+SET NOCOUNT OFF;

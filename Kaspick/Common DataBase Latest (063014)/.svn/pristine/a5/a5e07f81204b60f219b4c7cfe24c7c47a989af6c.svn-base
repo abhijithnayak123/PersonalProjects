@@ -1,0 +1,288 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_EstimateGetStgAccount]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_EstimateGetSTGAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_EstimateGetSTGAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_EstimateGetStgAccount]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_EstimateGetSTGAccount    
+** Short Desc: Gets all accounts created under given group for Data Review      
+**    
+** Full Description : Gets all accounts created under given group for Data Review  
+**            
+**    
+** Sample Call  
+DECLARE @XMLStatus  XML
+
+ EXEC USP_IE_EstimateGetSTGAccount       
+@GroupID = 146,  
+@ClientBriefName ='All',  
+@AccountType ='All',  
+@XMLStatus = '<StatusCollection>
+						 <Status StatusID="1"/>
+						 <Status StatusID="2"/>
+						 <Status StatusID="3"/>
+						 <Status StatusID="15"/>
+					  </StatusCollection>' ,  
+@WarningID=-2,  
+@IsMidYear = 0,  
+@UserID = 1  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/26/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_EstimateGetSTGAccount] @GroupID INT
+	,@ClientBriefName VARCHAR(50)
+	,@AccountType VARCHAR(20)
+	,@XMLStatus XML
+	,@WarningID INT
+	,@IsMidYear BIT
+	,@UserID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Variable Declarations  --   
+	DECLARE @StatusCount INT
+	DECLARE @DiagnosticID INT
+
+	--  Temp tables, Cursors, Table Variables  --  
+	SELECT @StatusCount = @XMLStatus.value('count(/StatusCollection/Status)', 'INT')
+
+	SELECT @DiagnosticID = DiagnosticID
+	FROM TBL_IE_Diagnostic
+	WHERE DiagnosticLevel = 'Data Import'
+		AND DiagnosticField = 'Pays Cap Gains as Income'
+
+	SELECT STGEst.StagingID
+		,STGEst.GroupID
+		,STGEst.TaxYear
+		,STGEst.CustomerAccountNumber
+		,STGEst.StatusID
+		,IEStat.STATUS
+		,STGEst.DiagnosticError
+		,STGEst.ImportDate
+		,STGEst.RunDate
+		,STGEst.AccountName
+		,STGEst.AccountType
+		,STGEst.UnitrustPercentage
+		,EP_MasterObjectiveName
+		,EP_InvestmentType
+		,IT_NewGiftsAndAdditions
+		,Ax_FMVOnStartDate
+		,Ax_FMVOnRunDate
+		,PP_Valuation
+		,PP_UnitrustAmount
+		,PP_CumulativeDeficiency
+		,Ex_ValuationImportDate
+		,Ax_GrossIncomeEstimate
+		,Ax_GrossIncomeYieldOnStartDate
+		,Ax_GrossIncomeYieldOnRunDate
+		,Ax_ReClassIncome
+		,IT_AnnIMFee_Income
+		,IT_AnnTAFee_Income
+		,IT_AnnTrusteeFee_Income
+		,IT_YTDIMFee_Income
+		,IT_YTDTAFee_Income
+		,IT_YTDTrusteeFee_Income
+		,IT_ProjectedIMFee_Income
+		,IT_ProjectedTAFee_Income
+		,IT_ProjectedTrusteeFee_Income
+		,Ax_TMCAnnualChg_Income
+		,Ax_YTDOtherEx
+		,EstimatedOtherExpenses
+		,PP_OverPayment
+		,Ax_PriorYearAccruedIncome
+		,CurrentYearAccruedIncome
+		,AssetAmortAccret
+		,Ax_ActualSGD
+		,Ax_EstimatedSGD
+		,ActualSTGLTG
+		,Ca_NewNetIncomeEstimate
+		,Ax_NetIncomeYieldOnStartDate
+		,Ca_NetIncomeEstimateUsedForPmt
+		,Ca_PmtYield
+		,PP_ScheduledPaymentAmount
+		,IE_CurrentYearIncomeTarget
+		,EP_ClientIEComment
+		,PP_InvestmentAllocationYield
+		,Ca_InvAllocNetYieldVar
+		,Ca_NetPriorYearQ1_Q4Var
+		,Ca_NetPriorYearTotalVar
+		,Ca_NetMidYearVar
+		,IT_FlipProvision
+		,IT_ExpectedFlipDate
+		,Ex_FlipTriggerDate
+		,Ca_TrustLifeExpectancy
+		,IT_TerminationRule
+		,PP_ValuationPriorYear1
+		,PP_ValuationPriorYear2
+		,PP_ValuationPriorYear3
+		,PP_TotalPaymentsPriorYear1
+		,PP_TotalPaymentsPriorYear2
+		,PP_TotalPaymentsPriorYear3
+		,PP_Q1_Q4PaymentsPriorYear1
+		,PP_Q1_Q4PaymentsPriorYear2
+		,PP_Q1_Q4PaymentsPriorYear3
+		,PP_Q5PaymentsPriorYear1
+		,PP_Q5PaymentsPriorYear2
+		,PP_Q5PaymentsPriorYear3
+		,PP_TrustYieldPriorYear1
+		,PP_TrustYieldPriorYear2
+		,PP_TrustYieldPriorYear3
+		,IT_ClientLegalName
+		,STGEst.UserID
+		,STGEst.UserName
+		,IT_PayActualNI
+		,IT_PaysSTGDAsIncome
+		,IncomeOverrideStatus
+		,(
+			CASE 
+				WHEN isnull(DiagRslt.DiagnosticResult, '') = ' Pays Cap Gains AS Income '
+					THEN 1
+				ELSE 0
+				END
+			) AS IT_PayCapGainsAsIncome
+	FROM TBL_IE_STG_Estimate STGEst
+	INNER JOIN TBL_IE_Status IEStat ON STGEst.StatusID = IEStat.StatusID
+	LEFT OUTER JOIN TBL_IE_DiagnosticResult DiagRslt ON STGEst.StagingID = DiagRslt.StagingID
+		AND DiagRslt.DiagnosticID = @DiagnosticID
+	WHERE STGEst.IsDeleted = 0
+		AND STGEst.GroupID = @GroupID
+		AND (
+			(
+				ManagerCode = @ClientBriefName
+				AND (
+					@ClientBriefName <> 'ALL'
+					AND @ClientBriefName <> 'My Clients'
+					AND @ClientBriefName <> 'My Backups'
+					)
+				)
+			OR (
+				@ClientBriefName = 'My Clients'
+				AND ManagerCode IN (
+					SELECT ManagerCode
+					FROM VW_KS_SysAdminKCoStaffPaging
+					WHERE USerID = @UserID
+						AND RoleCode IN (
+							-- IsPrimary = 1
+							2 -- 'Administrator'
+							,14 -- Investment Officer <-- 'Relationship Manager'
+							,26 -- 'Plan Administrator'
+							,510 -- 'Trust Administrator'
+							,515 -- 'Portfolio Analyst'
+							,518 -- 'Custody Ops Administrator'
+							,519 -- 'Reporting Analyst'
+							)
+					)
+				)
+			OR (
+				@ClientBriefName = 'My Backups'
+				AND ManagerCode IN (
+					SELECT ManagerCode
+					FROM VW_KS_SysAdminKCoStaffPaging
+					WHERE USerID = @UserID
+						AND RoleCode IN (
+							-- IsPrimary = 0
+							3 -- 'Backup Administrator'
+							,512 -- 'Backup Relationship Manager'
+							,26 -- 'Plan Administrator'
+							,510 -- 'Trust Administrator'
+							,515 -- 'Portfolio Analyst'
+							,518 -- 'Custody Ops Administrator'
+							,519 -- 'Reporting Analyst'
+							)
+					)
+				)
+			OR (@ClientBriefName = 'ALL')
+			)
+		AND (
+			(
+				@AccountType <> 'All'
+				AND AccountType = @AccountType
+				)
+			OR (@AccountType = 'All')
+			)
+		AND (
+			(
+				@StatusCount <> 0
+				AND STGEst.StatusID IN (
+					SELECT XmlInput.Item.value('@StatusID[1]', 'INT') AS StatusID
+					FROM @XMLStatus.nodes('//StatusCollection/Status') AS XmlInput(Item)
+					)
+				)
+			OR (@StatusCount = 0)
+			)
+		AND (
+			@WarningID = -2
+			OR (
+				@WarningID > 0
+				AND STGEst.CustomerAccountNumber IN (
+					SELECT CustomerAccountNumber
+					FROM TBL_IE_DiagnosticResult
+					WHERE GroupID = @GroupID
+						AND DiagnosticID = @WarningID
+					)
+				)
+			OR (
+				@WarningID = - 1 
+				AND STGEst.CustomerAccountNumber IN (
+					SELECT CustomerAccountNumber
+					FROM TBL_IE_DiagnosticResult
+					WHERE GroupID = @GroupID
+						AND DiagnosticID IN (
+							SELECT DiagnosticID
+							FROM TBL_IE_Diagnostic
+							WHERE DiagnosticType = 'Flag'
+							)
+					)
+				)
+			)
+		AND (
+			(
+				@IsMidYear = 0
+				AND STGEst.ParentStagingID IS NULL
+				)
+			OR (
+				@IsMidYear = 1
+				AND STGEst.ParentStagingID IS NOT NULL
+				)
+			)
+	ORDER BY CustomerAccountNumber
+
+	SET NOCOUNT OFF;
+END

@@ -1,0 +1,87 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[FN_SplitString]')
+			AND type IN (
+				N'FN'
+				,N'IF'
+				,N'TF'
+				,N'FS'
+				,N'FT'
+				)
+		)
+BEGIN
+	DROP FUNCTION FN_SplitString;
+
+	PRINT 'DROPPED FUNCTION FN_SplitString';
+END
+GO
+
+/******************************************************************************    
+** Name:    FN_SplitString  
+** Short Desc: To SplitString    
+**    
+** Full Description:   
+**          
+**    
+** Sample Call    
+  FN_SplitString  
+**    
+** Return values: @Results  
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Abhijith   
+** Company   : Opteamix    
+** Project   : ExcelsiorPrime   
+** Created DT: 22-Mar-2014     
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**     
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE FUNCTION FN_SplitString (
+	@String NVARCHAR(4000)
+	,@Delimiter CHAR(1)
+	)
+RETURNS @Results TABLE (Items NVARCHAR(4000))
+AS
+BEGIN
+	DECLARE @Index INT
+	DECLARE @Slice NVARCHAR(4000)
+
+	SELECT @Index = 1
+
+	IF @String IS NULL
+		RETURN
+
+	WHILE @Index != 0
+	BEGIN
+		SELECT @Index = CharIndex(@Delimiter, @String)
+
+		IF @Index != 0
+			SELECT @Slice = left(@String, @Index - 1)
+		ELSE
+			SELECT @Slice = @String
+
+		INSERT INTO @Results (Items)
+		VALUES (@Slice)
+
+		SELECT @String = right(@String, Len(@String) - @Index)
+
+		IF Len(@String) = 0
+			BREAK
+	END
+
+	RETURN
+END
+GO

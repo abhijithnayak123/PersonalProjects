@@ -1,0 +1,103 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingGiftAddition]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetPendingGiftAddition]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetPendingGiftAddition]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetPendingGiftAddition]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetPendingGiftAddition                      
+** Short Desc: Get pending gift additions for given valuation ids. This excludes    
+** the reconcilled and discarded transaction                         
+** Full Description: Get pending gift additions for given valuation ids. This excludes    
+** the reconcilled and discarded transaction
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+         
+ EXEC dbo.USP_PV_GetPendingGiftAddition @XMLValuation = '<ValuationCollection>  
+      <InsertList>  
+      <Valuation ValuationID="156" />   
+      </InsertList>  
+      </ValuationCollection>'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 17-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetPendingGiftAddition] (@XMLValuation XML)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	SELECT TransactionID
+		,VGTrans.ValuationID
+		,MatchKey
+		,MatchStatus
+		,MatchComment
+		,OrgID
+		,OrgAccount1
+		,GiftDate
+		,GiftType
+		,GiftAmount
+		,MarketValue
+		,MarketValueDate
+		,GiftStatus
+		,GiftKey
+		,AccountClosedDate
+		,Distributions
+		,PersonGiftMapID
+		,Association
+		,PersonID
+		,PersonName
+		,LastName
+		,FirstName
+		,SSN
+		,BirthDate
+		,PersonStatus
+		,DeathDate
+	FROM TBL_PV_ValuationGiftwrapTransaction VGTrans
+	INNER JOIN (
+		SELECT XMLInput.Item.value('@ValuationID[1]', 'int') AS ValuationID
+		FROM @XMLValuation.nodes('//ValuationCollection/InsertList/Valuation') AS XMLInput(Item)
+		) XmlInput
+		ON XmlInput.ValuationID = VGTrans.ValuationID
+	WHERE GiftStatus = 'Current'
+		AND LTRIM(RTRIM(MatchStatus)) = ''
+
+	SET NOCOUNT OFF;
+END

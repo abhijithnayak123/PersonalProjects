@@ -1,0 +1,99 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPPDDLSendTo'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetPPDDLSendTo;
+
+	PRINT 'DROPPED USP_RP_GetPPDDLSendTo';
+END
+GO
+
+/******************************************************************************                      
+** New Name:     USP_RP_GetPPDDLSendTo                       
+** Old Name:     USP_EIS_PP_DDLSendToSelProc                       
+** Short Desc: To retrieve the dropdownID based on DeliverableID     
+**                      
+** Full Description: To retrieve the dropdownID based on DeliverableID  
+**                            
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha               
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT: 05/10/2011                      
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** 03/12/2012 Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.  
+** 03/14/2012   Anand Kumar    ERD changes implemetation.  
+** 06/10/2012   Abhijith  Sp name renamed as per Kaspick naming convention standard.   
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/                      
+CREATE PROCEDURE USP_RP_GetPPDDLSendTo     
+(      
+ @DelID   INT     
+)                
+AS                
+BEGIN                
+--  Initial Set statements  --          
+--SET NOCOUNT ON;          
+--SET LOCK_TIMEOUT                30000;   -- 30 seconds          
+--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;          
+          
+--  Variable Declarations  --            
+declare @DelFreq varchar(2)  
+declare @PolicyDimensionName varchar(100)  
+declare @PolicyDimensionId int  
+          
+-- Body of procedure  --     
+  
+--Retrieve Deliverable Frequency  
+select @DelFreq = DeliverableFrequency  FROM VW_RP_DTDeliverable where DeliverableID = @DelID  
+  
+  
+-- Set PolicyDimensionName based on Frequency  
+if @DelFreq ='M'  
+set @PolicyDimensionName='Mon Send To'  
+else if @DelFreq ='Q'  
+set @PolicyDimensionName='Qtrly Send To'  
+else if @DelFreq ='S'  
+set @PolicyDimensionName='SAnn Send To'  
+else if @DelFreq ='A'  
+set @PolicyDimensionName='Ann Send To'  
+  
+  
+-- Set PolicyDimensionID based on PolicyDimensionName  
+select @PolicyDimensionId= PolicyDimensionId FROM TBL_PolicyDimension where fullname = @PolicyDimensionName  
+  
+  
+-- To retrieve PolicyDropDownID  
+SELECT PolicyDropDownId as DDVALUE, DropDownText as DDTEXT 
+FROM TBL_PolicyDropDown 
+where PolicyDimensionId = @PolicyDimensionId   
+  
+-- End of procedure  --          
+                
+END     
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetPPDDLSendTo'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetPPDDLSendTo';
+END
+  

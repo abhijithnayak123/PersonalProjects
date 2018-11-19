@@ -1,0 +1,98 @@
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail';
+END
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************
+**Name :     USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail
+**Old Name:  [sp_wft_get_ThirdParty_Info_ExcelsiorLive_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate ThirdParty_Info details
+**
+** Sample Call
+	[sp_wft_get_ThirdParty_Info_ExcelsiorLive_detail] 100099
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Tanuj Gupta
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	15-March-2010
+**            
+*************************************************************************************
+**       Change History
+*************************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- -----------
+** 26-April-2010 Tanuj	
+** 13-May-2010	Soorya	#11826	   Validate whether the zipcode contains a '-' in DB
+**3-June-2014   Sanath             Webform request type ThirdPartyadvChg
+*************************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*************************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail] 
+(
+	@ParticipantID int
+)	 
+AS 
+BEGIN
+    SELECT 
+	ADDRESS = VwTrstPrtcpnt.CustomerAccountNumber + ' ' + LTRIM(RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryFirstName)), '') = '') THEN '' ELSE (ConMstr.PrimaryFirstName + ' ') END) + ISNULL(ConMstr.PrimaryMiddleInitial, ''))
+												+ ' ' + (CASE WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryLastName)), '') = '') THEN '' ELSE ConMstr.PrimaryLastName END))
+		  + ' ' +   REPLACE(REPLACE(ISNULL(ADDRESSTYPE+': '+ ConAddr.ADDRESS1      
+          + CASE WHEN (LTRIM(RTRIM(ConAddr.ADDRESS2))<> '') THEN '; ' + ConAddr.ADDRESS2 ELSE '' END      
+          + CASE WHEN (LTRIM(RTRIM(ConAddr.ADDRESS3))<> '') THEN '; ' + ConAddr.ADDRESS3 ELSE '' END      
+          + ''       
+          + CASE WHEN (LTRIM(RTRIM(ConAddr.CITY))<> '') THEN ', ' + ConAddr.CITY ELSE '' END      
+          + CASE WHEN (LTRIM(RTRIM(ConAddr.STATE))<> '') THEN ', ' + ConAddr.STATE ELSE '' END  
+          + CASE WHEN (LTRIM(RTRIM(ISNULL(ConAddr.ZIPCODE,'')))='')  THEN ''  
+				 WHEN (LTRIM(RTRIM(ConAddr.COUNTRYCode))<> ''and LTRIM(RTRIM(ConAddr.COUNTRYCode)) <>'USA') then  (CASE WHEN (LTRIM(RTRIM(ZIPCODE))<> '')  THEN (' ' + ZIPCODE) ELSE '' END)
+				 WHEN LEN(ConAddr.ZIPCODE) <= 5 THEN (' ' + ConAddr.ZIPCODE) ELSE (CASE WHEN(CHARINDEX('-', ConAddr.ZIPCODE) > 0)
+																			THEN ' ' + LEFT(ConAddr.ZIPCODE, 5) + '-' + RIGHT(ConAddr.ZIPCODE, LEN(ConAddr.ZIPCODE) - CHARINDEX('-', ConAddr.ZIPCODE))
+																			ELSE ' ' + LEFT(ConAddr.ZIPCODE, 5) + '-' + RIGHT(ConAddr.ZIPCODE, LEN(ConAddr.ZIPCODE) - 5)
+																		END)END     
+		  + CASE WHEN (LTRIM(RTRIM(ConAddr.COUNTRYCode))<> '') THEN ', ' + ConAddr.COUNTRYCode ELSE '' END   
+         ,''),', ,',','),', ,',',')   
+    FROM SYN_IT_ContactMaster ConMstr
+		INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactId = ConMstr.ContactID
+		INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON subConRol.ContactRoleCode = ConRolCds.ID
+	INNER JOIN VW_EX_TrustParticipantType VwTrstPrtcpnt ON ConMstr.ContactID=VwTrstPrtcpnt.ParticipantID
+    Left outer JOIN SYN_IT_ContactAddresses ConAddr ON VwTrstPrtcpnt.ParticipantID = ConAddr.ContactID       
+    WHERE 
+    ConMstr.ContactID  = @ParticipantID and ConRolCds.ID IN (8)
+
+
+	SELECT LTRIM(RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(VwTrstPrtcpnt.LastName)), '') = '') THEN '' ELSE (VwTrstPrtcpnt.LastName + ' ') END)             
+				  + (CASE WHEN (ISNULL(LTRIM(RTRIM(VwTrstPrtcpnt.FirstName)), '') = '') THEN '' ELSE (VwTrstPrtcpnt.FirstName + ' ') END) + ISNULL(VwTrstPrtcpnt.MiddleInitials, ''))) AS SPOUSE
+	FROM VW_EX_TrustParticipantType VwTrstPrtcpnt WHERE VwTrstPrtcpnt.PARTICIPANTID=@ParticipantID                            
+END
+    GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftThirdPartyInfoExcelsiorLiveDetail';
+END

@@ -1,0 +1,195 @@
+IF EXISTS (SELECT *
+   FROM   sysobjects 
+   WHERE  type = 'TR'
+		  AND name = 'TRG_EX_AudEnfClientInvestment')
+BEGIN
+	DROP TRIGGER TRG_EX_AudEnfClientInvestment;
+	PRINT 'DROPPED TRIGGER TRG_EX_AudEnfClientInvestment';
+END
+GO  
+
+/****** Object:  Trigger [dbo].[TRG_EX_AudEnfClientInvestment]    Script Date: 06/23/2014 14:32:58 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Trigger Name : TRG_EX_AudEnfClientInvestment
+** Table Name  :	TBL_INV_ClientStrategicAllocation
+** Action	   :	Insert, Update, Delete
+** 
+** Description : 	Writes data changes to the audit table
+**
+**				
+**	Created By :	by TriggerGenerator Program (Rajesh)
+**	Company	   :	Kaspick & Company
+**	Project	   :	Excelsior Prime Project
+**	Created DT :	6/1/2009
+**
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date/Version		Author:		Bug #	 Description:
+** --------			--------	-------------------------------------------
+**7/2/2014          Sanath               Client Investment module
+*******************************************************************************
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+
+CREATE TRIGGER [dbo].[TRG_EX_AudEnfClientInvestment]
+   ON [dbo].[TBL_INV_ClientStrategicAllocation]
+   AFTER INSERT,UPDATE,DELETE
+AS 
+
+--  Variable Declarations  --
+Declare @trgname					varchar(60);
+Declare @errmsg						varchar(1000);
+Declare @errnbr						int;
+
+
+
+-- Variables used for error handling - uncomment if needed
+Declare @val1						varchar(30);
+--Declare @val2						varchar(30);
+
+--  Temp tables, Cursors, Table Variables  --
+
+--  Variable Data Assignment  --
+
+Set @trgname = 'TRG_EX_AudEnfClientInvestment';
+
+--	Body of trigger  --
+
+-- if the row is an insert, count from Deleted will be 0, so put the inserted data into
+-- the audit table.  If the rowcount from Deleted > 0, then get the data from the
+-- Deleted table for recording the old values in the audit table.
+
+BEGIN TRY
+
+	DECLARE @UNKNOWN_ID INT
+	SELECT @UNKNOWN_ID = USERID FROM TBL_KS_USER WHERE upper(LOGINNAME) = 'UNKNOWN'
+
+	If (Select count(*) from Deleted) > 0 and (select count(*) from Inserted) > 0 
+	BEGIN
+
+		INSERT INTO TBL_INV_AUDIT_ClientStrategicAllocation
+				(AUDITUSERID ,
+				 AUDITDATETIME,
+				 AUDITFLAG,
+				 AUDITTABLE,
+				 AUDITDETAIL,
+				 ClientStrategicAllocationID,
+				 ManagerCode,
+				StrategicAllocationSetID,
+				ModifiedBy,
+				MODIFIEDDATE
+				)
+
+		SELECT
+				I.ModifiedBy, --While saving for UserId, It is storing in column ModifedBy
+				GETDATE(), 
+				'U',
+				'TBL_INV_ClientStrategicAllocation',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				D.ClientStrategicAllocationID,
+				D.ManagerCode,
+				D.StrategicAllocationSetID,
+				D.ModifiedBy,
+				D.MODIFIEDDATE			
+			
+
+		From Deleted D inner join inserted I on D.ClientStrategicAllocationID = I.ClientStrategicAllocationID
+	END
+	ELSE
+	IF (select count(*) from Inserted) > 0 
+	BEGIN
+
+		insert into TBL_INV_AUDIT_ClientStrategicAllocation
+				(AUDITUSERID ,
+				 AUDITDATETIME,
+				 AUDITFLAG,
+				 AUDITTABLE,
+				 AUDITDETAIL,
+				 ClientStrategicAllocationID,
+				 ManagerCode,
+				StrategicAllocationSetID,
+				ModifiedBy,
+				MODIFIEDDATE
+				)
+
+		SELECT
+				I.ModifiedBy, 
+				GETDATE(), 
+				'I',
+				'TBL_INV_ClientStrategicAllocation',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+				I.ClientStrategicAllocationID,
+				I.ManagerCode,
+				I.StrategicAllocationSetID,
+				I.ModifiedBy,
+				I.MODIFIEDDATE	
+		From Inserted I 
+		
+	END
+	ELSE
+	If (Select count(*) from Deleted) > 0 
+	BEGIN
+		INSERT INTO TBL_INV_AUDIT_ClientStrategicAllocation
+				(AUDITUSERID ,
+				 AUDITDATETIME,
+				 AUDITFLAG,
+				 AUDITTABLE,
+				 AUDITDETAIL,
+				 ClientStrategicAllocationID,
+				 ManagerCode,
+				StrategicAllocationSetID,
+				ModifiedBy,
+				MODIFIEDDATE
+				)
+
+		SELECT
+				ISNULL(ModifiedBy,@UNKNOWN_ID), 
+				GETDATE(), 
+				'D',
+				'TBL_BR_ReportIndiceManagementVersion',				
+				'LOGIN_NAME->'+ SYSTEM_USER+',SYSTEM_ID->'+HOST_ID()+',HOST_NAME->'+HOST_NAME()+',USER->'+USER,
+			      D.ClientStrategicAllocationID,
+				D.ManagerCode,
+				D.StrategicAllocationSetID,
+				D.ModifiedBy,
+				D.MODIFIEDDATE	
+		From Deleted D 
+	END
+  END TRY
+  BEGIN CATCH
+	DECLARE @ProcName VARCHAR(60);
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SET @ProcName = 'TRG_EX_AudEnfClientInvestment';
+
+	DECLARE @ErrorNumber INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE(),
+		@ErrorSeverity = ERROR_SEVERITY(),
+		@ErrorState = ERROR_STATE(),
+		@ErrorNumber = ERROR_NUMBER();
+
+	RAISERROR (
+			@ErrorMessage,
+			-- Message text.
+			@ErrorSeverity,
+			-- Severity.
+			@ErrorState -- State.
+			);
+  END CATCH
+GO
+
+IF EXISTS (	SELECT * FROM sysobjects
+		    WHERE type = 'TR' AND name = 'TRG_EX_AudEnfClientInvestment')
+BEGIN
+	PRINT 'CREATED TRIGGER TRG_EX_AudEnfClientInvestment';
+END 

@@ -1,0 +1,259 @@
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGO]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_PaymentByGO]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_PaymentByGO]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KCo_PaymentByGO]    Script Date: 09/01/2014 13:59:04 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+/******************************************************************************    
+** Name:  USP_KCo_PaymentByGO  
+** Short Desc: Generate report for the payment information for the given managercode
+**    
+** Full Description    
+**      Generate report for the payment information for the given managercode
+**    
+** Sample Call    
+EXEC USP_KCo_PaymentByGO 'ACL'	,'Trust', 0,0,2,'01/01/2014','12/31/2014',2014
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company   
+** Project   : BOI: Reports & Queries   
+** Created DT: 08/19/2014 
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 8/23/2014	Saravanan		   Added additional inner join with Payments and Scheduled table to filter TaxYear and Payment Date  
+** 8/26/2014	Dipti				Added additional Parameter to filter the records as per the requirement
+** 8/28/2014	Dipti				Renamed field name from ScheduledAmount to PaymentAmount
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_PaymentByGO] @ManagerCode AS CHAR(4) = NULL
+	,@CmbGroupBy AS VARCHAR(10)
+	,@ExcludePIF AS BIT
+	,@ExcludeGAP AS BIT
+	,@OptSHOW AS INT
+	,@BeginDate AS DATE
+	,@EndDate AS DATE
+	,@TaxYear AS INT
+	,@ShowSchedule AS BIT
+	,@CustomAccountNumber AS VARCHAR(14) = NULL
+	,@AccountType AS VARCHAR(4) = NULL
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	IF OBJECT_ID('tempdb..#TmpPaymentByGOPayment') IS NOT NULL
+		DROP TABLE #TmpPaymentByGOPayment
+
+	IF OBJECT_ID('tempdb..#TmpPaymentByGOEstimate') IS NOT NULL
+		DROP TABLE #TmpPaymentByGOEstimate
+
+	CREATE TABLE #TmpPaymentByGOPayment (
+		ManagerCode VARCHAR(14)
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,PaymentDate DATE
+		,PaymentAmount MONEY
+		)
+
+	CREATE TABLE #TmpPaymentByGOEstimate (
+		ManagerCode VARCHAR(14)
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,PaymentDate DATE
+		,ScheduledAmount MONEY
+		)
+
+	INSERT INTO #TmpPaymentByGOPayment
+	EXEC USP_KCo_PaymentByGOPayment @ManagerCode
+		,@ExcludePIF
+		,@ExcludeGAP
+		,@BeginDate
+		,@EndDate
+		,@TaxYear
+		,@CustomAccountNumber
+		,@AccountType
+
+	IF @ShowSchedule = 1
+	BEGIN
+		INSERT INTO #TmpPaymentByGOEstimate
+		EXEC USP_KCo_PaymentByGOEstimate @ManagerCode
+			,@BeginDate
+			,@EndDate
+			,@TaxYear
+			,@ExcludePIF
+			,@ExcludeGAP
+			,@CustomAccountNumber
+			,@AccountType
+	END
+
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,ContMas.ContactId
+		,ISNULL(ContMas.PrimaryLastName + ', ', '') + ISNULL(ContMas.PrimaryFirstName + ' ', '') + ISNULL(ContMas.PrimaryMiddleInitial, '') AS BeneName
+		,AccMas.AccountTypeCode AS AccountType
+		,ActMngCodeContact.ContactName AS ClientName
+		,ISNULL(CMClntEmp.PrimaryLastName + ', ', '') + ISNULL(CMClntEmp.PrimaryFirstName + ' ', '') + ISNULL(CMClntEmp.PrimaryMiddleInitial, '') AS GoName
+		,CASE 
+			WHEN @CmbGroupBy = "Trust"
+				THEN AccMas.CustomerAccountNumber
+			ELSE ISNULL(CMClntEmp.PrimaryLastName + ', ', '') + ISNULL(CMClntEmp.PrimaryFirstName + ' ', '') + ISNULL(CMClntEmp.PrimaryMiddleInitial, '')
+			END AS GroupData
+		,@CmbGroupBy AS GroupCol
+		,CASE 
+			WHEN @OptSHOW = 1
+				THEN AccMas.AccountTypeCode
+			WHEN @OptSHOW = 2
+				THEN AccMas.CustomerShortName
+			ELSE ''
+			END AS AccountDetail
+		,CASE 
+			WHEN @ExcludePIF = 1
+				AND AccMas.AccountTypeCode = 'PIF'
+				THEN 0
+			ELSE - 1
+			END AS 'noPIF'
+		,CASE 
+			WHEN @ExcludeGAP = 1
+				AND (
+					AccMas.AccountTypeCode = 'GAP'
+					OR AccMas.AccountTypeCode = 'GAPR'
+					OR AccMas.AccountTypeCode = 'GAPP'
+					)
+				THEN 0
+			ELSE - 1
+			END AS 'noGAP'
+	FROM SYN_IT_ContactMaster AS ContMas
+	INNER JOIN SYN_IT_ContactAccountRoles ContAcntRol
+		ON ContAcntRol.Contactid = ContMas.ContactId
+			AND ContAcntRol.ContactRoleCode IN (
+				10 -- proxy bene
+				,21 --  bene
+				,37 -- contact bene
+				) --  beneficiary
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = ContAcntRol.CustomerAccountNumber
+	INNER JOIN SYN_IT_AccountManagerCodes ActMngCode
+		ON AccMas.ManagerCode = ActMngCode.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster ActMngCodeContact
+		ON ActMngCodeContact.ContactID = ActMngCode.ContactID
+	INNER JOIN (
+		SELECT DISTINCT CustomerAccountNumber
+			,ContactID
+		FROM #TmpPaymentByGOPayment
+		
+		UNION
+		
+		SELECT DISTINCT CustomerAccountNumber
+			,ContactID
+		FROM #TmpPaymentByGOEstimate
+		) BenePay
+		ON AccMas.CustomerAccountNumber = BenePay.CustomerAccountNumber
+			AND BenePay.ContactID = ContMas.ContactID
+	LEFT OUTER JOIN SYN_IT_SubContactRoles SubConRole
+		ON ActMngCodeContact.ContactID = SubConRole.ContactID
+	--ON SubConRole.SubContactID = ContMas.ContactID
+	LEFT OUTER JOIN SYN_IT_ContactRoleCodes ContRolCd
+		ON SubConRole.ContactRoleCode = ContRolCd.ID
+			AND ContRolCd.ID = 550 -- 'Client Employee'
+	LEFT OUTER JOIN SYN_IT_ContactMaster CMClntEmp
+		ON SubConRole.SubContactID = CMClntEmp.ContactID
+	WHERE (
+			@ManagerCode IS NULL
+			OR (
+				@ManagerCode IS NOT NULL
+				AND AccMas.ManagerCode = @ManagerCode
+				)
+			)
+		AND (
+			@CustomAccountNumber IS NULL
+			OR (
+				@CustomAccountNumber IS NOT NULL
+				AND AccMas.CustomerAccountNumber = @CustomAccountNumber
+				)
+			)
+		AND (
+			@AccountType IS NULL
+			OR (
+				@AccountType IS NOT NULL
+				AND @AccountType <> 'All' AND AccMas.AccountTypeCode = @AccountType
+				
+				)
+				OR
+				(
+					@AccountType IS NOT NULL AND  @AccountType = 'All'
+				)
+			)
+		AND (
+			@ExcludePIF = 0
+			OR (
+				@ExcludePIF = 1
+				AND AccMas.AccountTypeCode <> 'PIF'
+				)
+			)
+		AND (
+			@ExcludeGAP = 0
+			OR (
+				@ExcludePIF = 1
+				AND AccMas.AccountTypeCode NOT IN (
+					'GAP'
+					,'GAPR'
+					,'GAPP'
+					)
+				)
+			)
+	ORDER BY AccMas.CustomerAccountNumber
+		,ContMas.ContactId
+
+	SELECT ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+		,PaymentAmount
+	FROM #TmpPaymentByGOPayment
+
+	SELECT ManagerCode
+		,CustomerAccountNumber
+		,ContactID
+		,PaymentDate
+		,ScheduledAmount
+	FROM #TmpPaymentByGOEstimate
+
+	IF OBJECT_ID('tempdb..#TmpPaymentByGOPayment') IS NOT NULL
+		DROP TABLE #TmpPaymentByGOPayment
+
+	IF OBJECT_ID('tempdb..#TmpPaymentByGOEstimate') IS NOT NULL
+		DROP TABLE #TmpPaymentByGOEstimate
+
+	SET NOCOUNT OFF;
+END
+
+GO
+

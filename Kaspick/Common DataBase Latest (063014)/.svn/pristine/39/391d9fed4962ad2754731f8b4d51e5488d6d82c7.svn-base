@@ -1,0 +1,40 @@
+/****** Object:  View [dbo].[VW_KS_SysadminKCoStaffPaging]    Script Date: 03/26/2014 18:05:58 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.VIEWS
+		WHERE object_id = OBJECT_ID(N'[dbo].[VW_KS_SysadminKCoStaffPaging]')
+		)
+	DROP VIEW [dbo].[VW_KS_SysAdminKCoStaffPaging]
+GO
+
+/****** Object:  View [dbo].[VW_KS_SysadminKCoStaffPaging]    Script Date: 03/26/2014 18:06:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE VIEW [VW_KS_SysAdminKCoStaffPaging]
+AS
+SELECT Usr.UserID AS UserID
+	,AccMgrCod.ManagerCode AS ManagerCode
+	,ISNULL(Usr.FIRSTNAME, '') + (
+		CASE 
+			WHEN Usr.LASTNAME IS NULL
+				THEN ''
+			ELSE ' ' + Usr.LASTNAME
+			END
+		) + ' ' AS StaffName
+	,ContactRoleCodeDesc AS RoleCodeDesc
+	,CntRolCod.ID AS RoleCode
+FROM TBL_KS_User Usr
+INNER JOIN SYN_IT_SubContactRoles SubCntRol
+	ON SubCntRol.SubContactID = Usr.InnotrustContactID
+INNER JOIN SYN_IT_ContactRoleCodes CntRolCod
+	ON CntRolCod.ID = SubCntRol.ContactRoleCode
+INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+	ON AccMgrCod.ContactID = SubCntRol.ContactID
+	
+	
+	
+	

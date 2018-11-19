@@ -1,0 +1,845 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTActivityConsole')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTActivityConsole;
+    PRINT 'DROPPED USP_RP_GetBRDTActivityConsole';
+END
+GO
+    
+/******************************************************************************                            
+** Old Name:     USP_EIS_BR_DT_ActivityConsole_SELPROC                     
+** New Name:     USP_RP_GetBRDTActivityConsole                           
+** Short Desc: To fetch data for Activity Console            
+**                            
+** Full Description: To fetch data for Activity Console                 
+**                                    
+** Input Arguments:           
+**               
+** Sample Call           
+              
+ Declare @DeliverableQueueID int,@ClientID VARCHAR(4),@AccountType Varchar(20),@AdventID Varchar(20),@ReportAnalyst int,@ClientManager int,@GiftKey int,@StatusID int            
+ EXEC USP_RP_GetBRDTActivityConsole             
+   @DeliverableQueueID = '238',            
+   @ClientID = '0',            
+   @AccountType = '',            
+   @AdventID = '',            
+   @ReportAnalyst = 0,            
+   @ClientManager = 0,            
+   @GiftKey = 0,            
+   @StatusID = '0',          
+   @SendToID = 0,      
+   @DeliveryMethodID=0         
+**                   
+** Return values: Null          
+**                            
+**                            
+** Standard declarations                            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                            
+**                             
+** Created By: Rajesh Pandyan          
+** Company   : Kaspick & Company                            
+** Project   : Excelsior  - BeneReport                            
+** Created DT: 26-AUG-09                       
+**                                        
+*******************************************************************************                      
+**       Change History                            
+*******************************************************************************                      
+** Date:        Author:  Bug #     Description:                           Rvwd                      
+** --------  -------- ------    -------------------------------------- --------                      
+** 12/02/2009  Venugopal ET #10447 Inner join added withe the tables V_EIS_EX_ACCOUNT,          
+          VW_EX_TrustParticipant,          
+          TBL_EIS_EX_DEFERREDGIFTACCOUNT_SUPPLEMENT          
+                                     andchanged inner join with VW_EX_TrustParticipantType to left join            
+ 12/18/2009 Venugopal  ET# 11164 - Updated to consider BeneReport Quantity for PIF Reports irrestpective          
+          of excelsiort participant type.            
+ 01/12/2009  Tanuj  Inner join with TBL_EIS_DT_Delivery_Type_Methods          
+ 02/04/2010  Venu ET #11331  Updated select query to return Participant ID.           
+ 02/15/2010  Venu ET #11340  Removed the Inner join with TBL_EIS_DT_Delivery_Type_Methods          
+        for query of Printout Mailed Date         
+ 05/10/2011  Soorya Added SendTo parameter          
+ Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.      
+ Mar-14-2012 Ashvin   ERD changes implemetation.    
+ Nov-23-2012 Ashvin Merge with production copy {07/23/2012  Ashvin Populated data for AccountMailingInsert (for account as well as client)} 
+ Jun-10-2014 Geervani Sp name renamed as per Kaspick naming convention standard   
+ Jun-12-2014 Geervani Changed datatype of @ClientID to CHAR 
+*******************************************************************************                            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                            
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_GetBRDTActivityConsole 
+(
+	@DeliverableQueueID VARCHAR(100) = '0'
+	,@ClientID CHAR(4) = ''
+	,@AccountType VARCHAR(20) = ''
+	,@AdventID VARCHAR(8) = ''
+	,@ReportAnalyst INT = 0
+	,@ClientManager INT = 0
+	,@GiftKey INT = 0
+	,@StatusID VARCHAR(100) = '0'
+	,@SendToID INT = 0
+	,@DeliveryMethodID INT = 0
+	)
+AS
+BEGIN
+	DECLARE @Query VARCHAR(MAX)
+	DECLARE @Clause VARCHAR(MAX)
+	DECLARE @OrderBy VARCHAR(MAX)
+
+	SET @Query = ''
+	SET @Clause = ''
+	SET @OrderBy = ''
+
+	IF OBJECT_ID('#TempActivityConsole1') IS NOT NULL
+		DROP TABLE #TempActivityConsole1
+
+	CREATE TABLE #TempActivityConsole1 (
+		DropDownIdID INT
+		,DropDownText VARCHAR(100)
+		)
+
+	IF OBJECT_ID('#TempActivityConsoleSendTo') IS NOT NULL
+		DROP TABLE #TempActivityConsoleSendTo
+
+	CREATE TABLE #TempActivityConsoleSendTo 
+	(DropDownIdID INT, DropDownText VARCHAR(100), OWNERID VARCHAR(15), POLICYLEVEL INT)
+
+	DECLARE @DelID INT
+
+	SELECT TOP 1 @DelID = DeliverableID
+	FROM TBL_DLV_DeliverableQueue
+	WHERE (CHARINDEX(',' + CONVERT(VARCHAR(10), DeliverableQueueID) + ',', ',' + @DeliverableQueueID + ',') > 0)
+
+	IF (@SendToID <> 0)
+	BEGIN
+		INSERT INTO #TempActivityConsoleSendTo
+		SELECT DISTINCT PII.POLICYDROPDOWNID,PID.DropDownText,PII.OWNERID,pii.policylevel
+		FROM TBL_PolicyItem PII
+		INNER JOIN TBL_PolicyDropDown PID ON PII.POLICYDROPDOWNID = PID.POLICYDROPDOWNID
+		WHERE PII.POLICYDROPDOWNID IN (@SendToID)
+	END
+	ELSE
+	BEGIN
+		--DECLARE @DelID INT    
+		--DECLARE @DelType VARCHAR(100)      
+		--The list of deliverable queues present in @DeliverableQueueID       
+		--will belongs to one deliverable, because Activitity Console       
+		--UI doesn't have the option All for Deliverable dropdown. Below Top 1 is valid.           
+		--SELECT TOP 1 @DelID = DeliverableID    
+		--FROM TBL_DLV_DeliverableQueue    
+		--WHERE (CHARINDEX(',' + CONVERT(VARCHAR(10), DeliverableQueueID) + ',', ',' + @DeliverableQueueID + ',') > 0)    
+		
+		INSERT INTO #TempActivityConsole1
+		EXEC USP_RP_GetPPDDLSendTo @DelID
+
+		--SELECT @DelType = (COALESCE(@DelType +',','')  + convert(varchar(10),DropDownIdID))  FROM  #TempActivityConsole1         
+		INSERT INTO #TempActivityConsoleSendTo
+		SELECT DISTINCT PII.POLICYDROPDOWNID
+			,PID.DropDownText
+			,PII.OWNERID
+			,pii.policylevel
+		FROM TBL_PolicyItem PII
+		INNER JOIN TBL_PolicyDropDown PID ON PII.POLICYDROPDOWNID = PID.POLICYDROPDOWNID
+		WHERE PII.POLICYDROPDOWNID IN (
+				SELECT DropDownIdID
+				FROM #TempActivityConsole1
+				)
+	END
+
+	-- begin of code for mailing insert and special instructions        
+	DECLARE @MailingInsertID INT
+	DECLARE @SplInstrnsID INT
+
+	SELECT @MailingInsertID = ListItemID
+	FROM TBL_ListItem
+	WHERE ListItemName = 'Mailing Insert'
+		AND ListTypeID = 195
+
+	SELECT @SplInstrnsID = ListItemID
+	FROM TBL_ListItem
+	WHERE ListItemName = 'Special Instructions'
+		AND ListTypeID = 195
+
+	IF OBJECT_ID('#TempActivityConsoleClientRepCond') IS NOT NULL
+		DROP TABLE #TempActivityConsoleClientRepCond
+
+	CREATE TABLE #TempActivityConsoleClientRepCond (
+		ClientID VARCHAR(20)
+		,AccountID VARCHAR(20)
+		,FREQUENCYID INT
+		,FREQUENCYTYPE VARCHAR(1)
+		,ClientMailingInsert VARCHAR(MAX)
+		,AccountMailingInsert VARCHAR(MAX)
+		,ClientHandlingInstructions VARCHAR(MAX)
+		,AccountHandlingInstructions VARCHAR(MAX)
+		)
+
+	INSERT INTO #TempActivityConsoleClientRepCond (
+		ClientID
+		,AccountID
+		,FREQUENCYID
+		,FREQUENCYTYPE
+		)
+	SELECT DISTINCT ManagerCode
+		,NULL
+		,frequencyid
+		,CASE 
+			WHEN VLI.ListItemName = 'Annual'
+				THEN 'A'
+			WHEN VLI.ListItemName = 'Monthly'
+				THEN 'M'
+			WHEN VLI.ListItemName = 'Quarterly'
+				THEN 'Q'
+			WHEN VLI.ListItemName = 'Semiannual'
+				THEN 'S'
+			END
+	FROM TBL_BR_ReportCondition TRC
+	LEFT JOIN VW_EX_ListItem VLI ON TRC.FREQUENCYID = VLI.ListItemID
+		AND VLI.ListTypeName = 'Frequency'
+	WHERE ManagerCode IS NOT NULL
+		AND frequencyid IS NOT NULL
+
+	INSERT INTO #TempActivityConsoleClientRepCond (
+		ClientID
+		,AccountID
+		,FREQUENCYID
+		,FREQUENCYTYPE
+		)
+	SELECT DISTINCT NULL
+		,CustomerAccountNumber
+		,frequencyid comments
+		,CASE 
+			WHEN VLI.ListItemName = 'Annual'
+				THEN 'A'
+			WHEN VLI.ListItemName = 'Monthly'
+				THEN 'M'
+			WHEN VLI.ListItemName = 'Quarterly'
+				THEN 'Q'
+			WHEN VLI.ListItemName = 'Semiannual'
+				THEN 'S'
+			END
+	FROM TBL_BR_ReportCondition TRC
+	LEFT JOIN VW_EX_ListItem VLI ON TRC.FREQUENCYID = VLI.ListItemID
+		AND VLI.ListTypeName = 'Frequency'
+	WHERE CustomerAccountNumber IS NOT NULL
+		AND frequencyid IS NOT NULL
+
+	UPDATE #TempActivityConsoleClientRepCond
+	SET ClientMailingInsert = r.Comments
+	FROM #TempActivityConsoleClientRepCond t
+		,TBL_BR_ReportCondition r
+	WHERE t.clientid = r.ManagerCode
+		AND t.frequencyid = r.frequencyid
+		AND r.report_type_id = @MailingInsertID
+		AND R.Comments IS NOT NULL
+		AND r.frequencyid IS NOT NULL
+
+	UPDATE #TempActivityConsoleClientRepCond
+	SET ClientHandlingInstructions = r.Comments
+	FROM #TempActivityConsoleClientRepCond t
+		,TBL_BR_ReportCondition r
+	WHERE t.clientid = r.ManagerCode
+		AND t.frequencyid = r.frequencyid
+		AND r.report_type_id = @SplInstrnsID
+		AND R.Comments IS NOT NULL
+		AND r.frequencyid IS NOT NULL
+
+	UPDATE #TempActivityConsoleClientRepCond
+	SET AccountMailingInsert = r.Comments
+	FROM #TempActivityConsoleClientRepCond t
+		,TBL_BR_ReportCondition r
+	WHERE t.accountid = r.CustomerAccountNumber
+		AND t.frequencyid = r.frequencyid
+		AND r.report_type_id = @MailingInsertID
+		AND R.Comments IS NOT NULL
+		AND r.frequencyid IS NOT NULL
+
+	UPDATE #TempActivityConsoleClientRepCond
+	SET AccountHandlingInstructions = r.Comments
+	FROM #TempActivityConsoleClientRepCond t
+		,TBL_BR_ReportCondition r
+	WHERE t.accountid = r.CustomerAccountNumber
+		AND t.frequencyid = r.frequencyid
+		AND r.report_type_id = @SplInstrnsID
+		AND R.Comments IS NOT NULL
+		AND r.frequencyid IS NOT NULL
+
+	-----  commented by RajesP to correct the Mailing Insert in Accountlevel for Special Handling Instruction sheetUSP_EIS_BR_DT_ActivityConsole_SELPROC   
+	------Update for Ticket# 9944 Start       
+	----Update #TempActivityConsoleClientRepCond       
+	----Set AccountMailingInsert = (CASE ISNULL(LTRIM(RTRIM(tc.ClientMailingInsert)), '') When '' THEN '' ELSE 'Client:' + tc.ClientMailingInsert + ' ' END + CASE ISNULL(LTRIM(RTRIM(t.AccountMailingInsert)), '') When '' THEN '' ELSE 'Account:' + t.AccountMailing Insert END)      
+	----From #TempActivityConsoleClientRepCond t       
+	---- Inner Join (Select accountid, clientid From V_EIS_EX_ACCOUNT) VAC On t.AccountID = VAC.AccountID      
+	---- Left Outer Join (Select clientid, ClientMailingInsert From #TempActivityConsoleClientRepCond Where ClientID IS NOT NULL AND   ClientMailingInsert IS NOT null) tc On tc.ClientID = vac.ClientID       
+	----Where t.accountid IS NOT NULL AND (t.AccountMailingInsert IS NOT NULL OR tc.ClientMailingInsert IS NOT NULL)      
+	------Update for Ticket# 9944 End      
+	--end of code for mailing insert and special instructions       
+	SELECT DISTINCT DQ.DeliverableQueueID
+		,DQ.DeliverableQueueName AS DeliverableQueueBriefName
+		,DI.DeliverableItemID
+		,DI.GiftKey
+		,VAC.ACCOUNTID
+		,VAC.ClientID
+		,VAC.CLIENT_BRIEFNAME
+		,VAC.AdventID
+		,VAC.AccountType
+		,LTRIM(RTRIM((
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(VP.LastName)), '') = '')
+							THEN ''
+						ELSE (VP.LastName)
+						END
+					) + (
+					CASE 
+						WHEN (ISNULL(LTRIM(RTRIM(VP.FirstName)), '') = '')
+							THEN ''
+						ELSE (', ' + VP.FirstName)
+						END
+					) + ' ' + ISNULL(LTRIM(RTRIM(VP.MiddleInitials)), ''))) AS Participant
+		,(
+			CASE 
+				WHEN (ISNULL(LTRIM(RTRIM(VP.LastName)), '') = '')
+					THEN ''
+				ELSE (VP.LastName)
+				END
+			) + (
+			CASE 
+				WHEN (ISNULL(LTRIM(RTRIM(VP.FirstName)), '') = '')
+					THEN ''
+				ELSE (', ' + VP.FirstName)
+				END
+			) AS ParticipantLastAndFirstName
+		,VP.LastName AS ParticipantLastName
+		,[DorB] = DI.ReportType
+		,ReportAnalystUsers = (
+			SELECT LTRIM(RTRIM((
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+									THEN ''
+								ELSE LTRIM(RTRIM(LASTNAME))
+								END
+							) + (
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+									THEN ''
+								ELSE (', ' + LTRIM(RTRIM(FIRSTNAME)))
+								END
+							) + ' ' + ISNULL(LTRIM(RTRIM(MIDDLENAME)), '')))
+			FROM TBL_KS_User
+			WHERE USERID = SRReportAnalyst.userid
+			)
+		,DGAS.UDFAMColumn039 AS SpigotAccount
+		,ClientManagerUsers = (
+			SELECT LTRIM(RTRIM((
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(LASTNAME)), '') = '')
+									THEN ''
+								ELSE LTRIM(RTRIM(LASTNAME))
+								END
+							) + (
+							CASE 
+								WHEN (ISNULL(LTRIM(RTRIM(FIRSTNAME)), '') = '')
+									THEN ''
+								ELSE (', ' + LTRIM(RTRIM(FIRSTNAME)))
+								END
+							) + ' ' + ISNULL(LTRIM(RTRIM(MIDDLENAME)), '')))
+			FROM TBL_KS_User
+			WHERE USERID = SRClientManager.USERID
+			)
+		,DT.DeliverableFrequency
+		,Quantity = (
+			SELECT CASE 
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'A'
+						THEN CASE 
+								WHEN (VAC.ACCOUNTTYPE = 'PIF')
+									OR (
+										VA.PARTICIPANT_TYPE IN (
+											'Beneficiary Active'
+											,'Donor Active/Beneficiary Active'
+											)
+										)
+									THEN (
+											SELECT NumericValue
+											FROM TBL_PolicyItem PI
+											WHERE PI.OwnerID = VAC.ACCOUNTID
+												AND PI.Policylevel = 300
+												AND PI.Policydimensionid IN (108)
+											)
+								ELSE (
+										SELECT NumericValue
+										FROM TBL_PolicyItem PI
+										WHERE PI.OwnerID = VAC.ACCOUNTID
+											AND PI.Policylevel = 300
+											AND PI.Policydimensionid IN (253)
+										)
+								END
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'S'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (251)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'Q'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (205)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'M'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (252)
+								)
+					ELSE 0
+					END
+			)
+		,DIAN.AttributeValue AS Notes
+		,IMS.Comments
+		,DIS.StatusName AS [Report Status]
+		,[DVD Status] = (
+			SELECT DIS.StatusName
+			FROM TBL_DLV_ItemMethodStatus IMS
+			INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+			WHERE DeliverableItemID = DI.DeliverableItemID
+				AND (
+					DIS.StatusName = 'Created'
+					OR DIS.StatusName = 'DVD Mailed'
+					)
+			)
+		,DVD = (
+			SELECT CASE 
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'A'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ClientID
+									AND PI.Policylevel = 100
+									AND PI.Policydimensionid IN (202)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'S'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ClientID
+									AND PI.Policylevel = 100
+									AND PI.Policydimensionid IN (254)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'Q'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ClientID
+									AND PI.Policylevel = 100
+									AND PI.Policydimensionid IN (255)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'M'
+						THEN (
+								SELECT NumericValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ClientID
+									AND PI.Policylevel = 100
+									AND PI.Policydimensionid IN (256)
+								)
+					ELSE 0
+					END
+			)
+		,WebSite = (
+			SELECT CASE 
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'A'
+						THEN (
+								SELECT LogicalValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (257)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'S'
+						THEN (
+								SELECT LogicalValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (258)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'Q'
+						THEN (
+								SELECT LogicalValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (259)
+								)
+					WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'M'
+						THEN (
+								SELECT LogicalValue
+								FROM TBL_PolicyItem PI
+								WHERE PI.OwnerID = VAC.ACCOUNTID
+									AND PI.Policylevel = 300
+									AND PI.Policydimensionid IN (260)
+								)
+					ELSE 0
+					END
+			)
+		,Error = (
+			SELECT COUNT(*)
+			FROM TBL_DLV_ValidationResult VRS
+			INNER JOIN TBL_DLV_ValidationRule VR ON VRS.ValidationRuleID = VR.ValidationRuleID
+				AND VRS.DeliverableItemID = DI.DeliverableItemID
+			WHERE ResultType = 'Error'
+			)
+		,Warning = (
+			SELECT COUNT(*)
+			FROM TBL_DLV_ValidationResult VRS
+			INNER JOIN TBL_DLV_ValidationRule VR ON VRS.ValidationRuleID = VR.ValidationRuleID
+				AND VRS.DeliverableItemID = DI.DeliverableItemID
+			WHERE ResultType = 'Warning'
+			)
+		,CAST(DIA.AttributeValue AS BIT) AS Hold
+		,[Printout Mailed Date] = (
+			SELECT TOP 1 CASE 
+					WHEN DS1.StatusName = 'Cancelled'
+						THEN ''
+					WHEN DS1.StatusName = 'Printout Mailed'
+						THEN DIS1.StatusChangeDT
+					END
+			FROM TBL_DLV_MethodStatusChangeLog DIS1
+			LEFT JOIN TBL_DLV_DeliverableProcessStatus DS1 ON DS1.DeliverableItemStatusID = DIS1.New_StatusID
+			WHERE DIS1.ItemMethodStatusID = IMS.ItemMethodStatusID
+				AND (
+					DS1.StatusName = 'Printout Mailed'
+					OR DS1.StatusName = 'Cancelled'
+					)
+			ORDER BY DIS1.MethodStatusChangeLogID DESC
+			)
+		,DID.DocumentTypeID
+		,DID.DELIVERABLEDOCUMENTSID AS DeliverableDocumentsID
+		,DDT.DOCUMENTFILETYPE AS DocumentFileType
+		
+		--Issue added in the element tool.
+		,'' AS [Client_SpecialInstruction]
+		--,[Client_SpecialInstruction] = (
+		--	SELECT Comments
+		--	FROM TBL_BR_ReportCondition TRC
+		--	LEFT JOIN VW_EX_ListItem VLI ON TRC.FREQUENCYID = VLI.ListItemID
+		--		AND VLI.ListTypeName = 'Frequency'
+		--	WHERE TRC.ManagerCode = VAC.ClientID
+		--		AND report_type_id = (
+		--			SELECT ListItemID
+		--			FROM VW_EX_ListItem
+		--			WHERE ListItemName = 'Special Instructions'
+		--				AND ListTypeName = 'Report Type'
+		--			)
+		--		AND CASE 
+		--			WHEN VLI.ListItemName = 'Annual'
+		--				THEN 'A'
+		--			WHEN VLI.ListItemName = 'Monthly'
+		--				THEN 'M'
+		--			WHEN VLI.ListItemName = 'Quarterly'
+		--				THEN 'Q'
+		--			WHEN VLI.ListItemName = 'Semiannual'
+		--				THEN 'S'
+		--			END = DT.DeliverableFrequency
+		--	)
+		,[Account_SpecialInstruction] = (
+			SELECT Comments
+			FROM TBL_BR_ReportCondition TRC
+			LEFT JOIN VW_EX_ListItem VLI ON TRC.FREQUENCYID = VLI.ListItemID
+				AND VLI.ListTypeName = 'Frequency'
+			WHERE CustomerAccountNumber = VAC.ACCOUNTID
+				AND report_type_id = (
+					SELECT ListItemID
+					FROM VW_EX_ListItem
+					WHERE ListItemName = 'Special Instructions'
+						AND ListTypeName = 'Report Type'
+					)
+				AND CASE 
+					WHEN VLI.ListItemName = 'Annual'
+						THEN 'A'
+					WHEN VLI.ListItemName = 'Monthly'
+						THEN 'M'
+					WHEN VLI.ListItemName = 'Quarterly'
+						THEN 'Q'
+					WHEN VLI.ListItemName = 'Semiannual'
+						THEN 'S'
+					END = DT.DeliverableFrequency
+			)
+		,IMS.ItemMethodStatusID
+		,DI.ContactID AS TrustparticipantID
+		,ISNULL(b.DropDownText, '') AS SendTo
+		,b.DropDownIdID
+		,VAC.Client_FullName AS ClientFullName
+		
+		--Issue added in the element tool.
+		,'' AS ClientEmployeeRecipientName
+		--,[ClientEmployeeRecipientName] = (
+		--	SELECT CASE 
+		--			WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'M'
+		--				THEN (
+		--						SELECT LTRIM(RTRIM(ISNULL(LTRIM(RTRIM(CE.PrimaryFirstName)), '') + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryMiddleInitial)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryMiddleInitial))
+		--										END + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryLastName)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryLastName))
+		--										END))
+		--						FROM dbo.SYN_IT_ContactMaster CE
+		--						WHERE CE.ManagerCode = DI.ManagerCode
+		--							AND CE.ManagerCode = (
+		--								SELECT NumericValue
+		--								FROM TBL_PolicyItem PI
+		--								WHERE PI.OwnerID = CE.ManagerCode
+		--									AND PI.Policylevel = 100
+		--									AND PI.Policydimensionid IN (281)
+		--									AND PI.numericvalue <> 0
+		--								)
+		--						)
+		--			WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'Q'
+		--				THEN (
+		--						SELECT LTRIM(RTRIM(ISNULL(LTRIM(RTRIM(CE.PrimaryFirstName)), '') + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryMiddleInitial)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryMiddleInitial))
+		--										END + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryLastName)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryLastName))
+		--										END))
+		--						FROM SYN_IT_ContactMaster CE
+		--						WHERE CE.ManagerCode = DI.ManagerCode
+		--							AND CE.ManagerCode = (
+		--								SELECT NumericValue
+		--								FROM TBL_PolicyItem PI
+		--								WHERE PI.OwnerID = CE.ManagerCode
+		--									AND PI.Policylevel = 100
+		--									AND PI.Policydimensionid IN (282)
+		--									AND PI.numericvalue <> 0
+		--								)
+		--						)
+		--			WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'S'
+		--				THEN (
+		--						SELECT LTRIM(RTRIM(ISNULL(LTRIM(RTRIM(CE.PrimaryFirstName)), '') + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryMiddleInitial)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryMiddleInitial))
+		--										END + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryLastName)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryLastName))
+		--										END))
+		--						FROM SYN_IT_ContactMaster CE
+		--						WHERE CE.ManagerCode = DI.ManagerCode
+		--							AND CE.ManagerCode = (
+		--								SELECT NumericValue
+		--								FROM TBL_PolicyItem PI
+		--								WHERE PI.OwnerID = CE.ManagerCode
+		--									AND PI.Policylevel = 100
+		--									AND PI.Policydimensionid IN (283)
+		--									AND PI.numericvalue <> 0
+		--								)
+		--						)
+		--			WHEN RTRIM(LTRIM(DT.DeliverableFrequency)) = 'A'
+		--				THEN (
+		--						SELECT LTRIM(RTRIM(ISNULL(LTRIM(RTRIM(CE.PrimaryFirstName)), '') + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryMiddleInitial)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryMiddleInitial))
+		--										END + CASE 
+		--										WHEN ISNULL(LTRIM(RTRIM(CE.PrimaryLastName)), '') = ''
+		--											THEN ''
+		--										ELSE ' ' + LTRIM(RTRIM(CE.PrimaryLastName))
+		--										END))
+		--						FROM SYN_IT_ContactMaster CE
+		--						WHERE CE.ManagerCode = DI.ManagerCode
+		--							AND CE.ManagerCode = (
+		--								SELECT NumericValue
+		--								FROM TBL_PolicyItem PI
+		--								WHERE PI.OwnerID = CE.ManagerCode
+		--									AND PI.Policylevel = 100
+		--									AND PI.Policydimensionid IN (284)
+		--									AND PI.numericvalue <> 0
+		--								)
+		--						)
+		--			END
+		--	)
+		,TRC2.ClientMailingInsert AS ClientMailingInsert
+		,TRC1.AccountMailingInsert AS AccountMailingInsert
+		,TRC2.ClientHandlingInstructions AS ClientHandlingInstructions
+		,TRC1.AccountHandlingInstructions AS AccountHandlingInstructions
+		,ISNULL(BRCs.PortfolioLabel, '') AS PortfolioAllocationValue
+	FROM TBL_DLV_DeliverableQueue DQ
+	INNER JOIN TBL_DLV_QueueStatus QS ON DQ.QueueStatusID = QS.QueueStatusID
+	INNER JOIN TBL_DLV_DeliverableItem DI ON DQ.DeliverableQueueID = DI.DeliverableQueueID
+	INNER JOIN TBL_DLV_DeliverableItemDocument DID ON DI.DeliverableItemID = DID.DeliverableItemID
+	INNER JOIN TBL_DLV_DocumentType DDT ON DID.DocumentTypeID = DDT.DocumentTypeID
+	INNER JOIN VW_RP_DTDeliverable DT ON DT.DeliverableID = DQ.DeliverableID
+	INNER JOIN TBL_DLV_ItemMethodStatus IMS ON DI.DeliverableItemID = IMS.DeliverableItemID
+	INNER JOIN TBL_DLV_DeliverableProcessStatus DIS ON IMS.DeliverableItemStatusID = DIS.DeliverableItemStatusID
+	INNER JOIN TBL_DLV_DeliverableMethod TM ON IMS.DeliveryMethodID = TM.DeliveryMethodID
+		AND TM.DeliverableID = @DelID
+		AND TM.IsPrimary = 1
+	INNER JOIN VW_EX_Account VAC ON DI.CustomerAccountNumber = VAC.ACCOUNTID
+	LEFT JOIN TBL_BR_CommentLinkage cl ON cl.CustomerAccountNumber = VAC.ACCOUNTID
+	LEFT JOIN TBL_INV_BeneReportComment BRCs ON brcs.brcommentid = cl.commentid
+	INNER JOIN VW_RP_TrustParticipant VP ON DI.ContactID = VP.ParticipantID
+	INNER JOIN SYN_IT_UDF_AccountMaster DGAS ON DI.CustomerAccountNumber = DGAS.CustomerAccountNumber_Key
+	INNER JOIN #TempActivityConsoleSendTo AS b ON DI.CustomerAccountNumber = b.OWNERID
+		AND policylevel = 300
+	LEFT JOIN VW_EX_TrustParticipantType VA ON VA.CustomerAccountNumber = DI.CustomerAccountNumber
+		AND ISNULL(VA.BeneficiaryID, 0) = ISNULL(DI.ContactID, 0)
+		AND ISNULL(VA.DonorID, 0) = ISNULL(DI.ContactID, 0)
+	LEFT JOIN VW_EX_ListItem LI ON VA.PARTICIPANT_TYPE_ID = LI.ListItemID
+	LEFT OUTER JOIN 
+	(
+	SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+	FROM
+	SYN_IT_ContactMaster ConMstr
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+	INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+	INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+	INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=2
+	INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+	INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRClientManager ON SRClientManager.ManagerCode = DI.ManagerCode 
+	LEFT OUTER JOIN 
+	(
+	SELECT distinct AccMgrCds.ManagerCode as ManagerCode, Usr.UserID
+	FROM
+	SYN_IT_ContactMaster ConMstr
+	INNER JOIN SYN_IT_AccountManagerCodes AccMgrCds ON ConMstr.ContactID=AccMgrCds.ContactID
+	INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMgrCds.ManagerCode = AccMstr.ManagerCode
+	INNER JOIN SYN_IT_SubContactRoles subConRol ON subConRol.ContactID=ConMstr.ContactID
+	INNER JOIN SYN_IT_ContactRoleCodes ConRolCds ON ConRolCds.Id=subConRol.ContactRoleCode AND ConRolCds.Id=519
+	INNER JOIN SYN_IT_ContactMaster KCoStafConMstr  ON KCoStafConMstr.contactID=subConRol.subcontactID
+	INNER JOIN TBL_KS_User Usr ON Usr.InnotrustContactID = KCoStafConMstr.contactID ) SRReportAnalyst ON SRReportAnalyst.ManagerCode = DI.ManagerCode
+	LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIA ON DI.DeliverableItemID = DIA.DeliverableItemID
+		AND DIA.DeliverableTypeAttributeID = (
+			SELECT DeliverableTypeAttributeID
+			FROM TBL_DLV_DeliverableTypeAttribute
+			WHERE AttributePromptName = 'Hold'
+				AND DeliverableID = DQ.DeliverableID
+			)
+	LEFT JOIN TBL_DLV_DeliverableItemDeliverableTypeAttribute DIAN ON DI.DeliverableItemID = DIAN.DeliverableItemID
+		AND DIAN.DeliverableTypeAttributeID = (
+			SELECT DeliverableTypeAttributeID
+			FROM TBL_DLV_DeliverableTypeAttribute
+			WHERE AttributePromptName = 'Notes'
+				AND DeliverableID = DQ.DeliverableID
+			)
+	LEFT JOIN #TempActivityConsoleClientRepCond TRC1 ON TRC1.AccountID = DI.CustomerAccountNumber
+		AND TRC1.FREQUENCYTYPE = DT.DeliverableFrequency
+	LEFT JOIN #TempActivityConsoleClientRepCond TRC2 ON TRC2.CLIENTID = DI.ManagerCode
+		AND TRC2.FREQUENCYTYPE = DT.DeliverableFrequency
+	WHERE QS.StatusName != ''
+		--Commented the StatusID check while picking the Special Handling Instruction for Excelsior Bene Rep 3 Enhancements        
+		--Client        
+		--     and         
+		--     Status_ID = (select ListItemID from VW_EX_ListItem           
+		--     where ListItemName=''Yes'' and ListTypeName=''Logical Value'')         
+		--Account        
+		--     and Status_ID = (select ListItemID from VW_EX_ListItem           
+		--     where ListItemName=''Yes'' and ListTypeName=''Logical Value'')          
+		-- (ISNULL(CE.FirstName,'') + ' ' + ISNULL(CE.MiddleInitials,'') + ' ' + ISNULL(CE.LastName,''))  as ClientEmployeeRecipientName,        
+		--  left outer JOIN TBL_PolicyItem PI ON PI.OWNERID = DI.CLIENTID  and policydimensionid in (SELECT policydimensionid FROM POLICYDIMEnSION where fullname like ''%Client Recipient%'') and PI.numericvalue <> 0        
+		--  left outer JOIN clientemployee CE ON PI.numericvalue = CE.EmployeeID AND CE.ManagerCode = PI.OWNERID and PI.POLICYLEVEL = 100        
+		AND (
+			@DeliverableQueueID = '0'
+			OR (CHARINDEX(',' + CONVERT(VARCHAR(10), DQ.DeliverableQueueID) + ',', ',' + @DeliverableQueueID + ',') > 0)
+			)
+		AND (
+			@ClientID = ''
+			OR (
+				VAC.ClientID = @ClientID
+				AND @ClientID <> ''
+				)
+			)
+		AND (
+			@AccountType = ''
+			OR (
+				VAC.AccountType = @AccountType
+				AND @AccountType <> ''
+				)
+			)
+		AND (
+			@AdventID = ''
+			OR (
+				VAC.AdventID = @AdventID
+				AND @AdventID <> ''
+				)
+			)
+		AND (
+			@ReportAnalyst = 0
+			OR (
+				SRReportAnalyst.UserID = @ReportAnalyst
+				AND @ReportAnalyst <> 0
+				)
+			)
+		AND (
+			@ClientManager = 0
+			OR (
+				SRClientManager.UserID = @ClientManager
+				AND @ClientManager <> 0
+				)
+			)
+		AND (
+			@GiftKey = 0
+			OR (
+				DI.GiftKey = @GiftKey
+				AND @GiftKey <> 0
+				)
+			)
+		AND (
+			@StatusID = '0'
+			OR (CHARINDEX(',' + CONVERT(VARCHAR(10), DIS.DeliverableItemStatusID) + ',', ',' + @StatusID + ',') > 0)
+			)
+		AND (
+			@DeliveryMethodID = 0
+			OR (
+				EXISTS (
+					SELECT ItemMethodStatusID
+					FROM TBL_DLV_ItemMethodStatus
+					WHERE DeliverableItemID = DI.DeliverableItemID
+						AND DeliveryMethodID = @DeliveryMethodID
+					)
+				)
+			)
+	ORDER BY DeliverableQueueBriefName
+	
+	
+		--IF (@DeliverableQueueID <> 0)          
+		-- SET @Clause = @Clause + ' and DQ.DeliverableQueueID =' + CONVERT(VARCHAR(10),@DeliverableQueueID)          
+		--If(@ClientID <> 0)          
+		-- SET @Clause = @Clause + ' and VAC.ClientID ='+ CONVERT(VARCHAR(10),@ClientID)          
+		--IF (@AccountType <> '')          
+		-- SET @Clause = @Clause + ' and VAC.AccountType =''' + @AccountType + ''          
+		--IF (@AdventID <> '')          
+		-- SET @Clause = @Clause + ' and VAC.AdventID =''' + @AdventID + ''          
+		--IF (@ReportAnalyst <> 0)          
+		-- SET @Clause = @Clause + ' and SRReportAnalyst.UserID =' + CONVERT(VARCHAR(10),@ReportAnalyst)          
+		--IF (@ClientManager <> 0)          
+		-- SET @Clause = @Clause + ' and SRClientManager.UserID =' + CONVERT(VARCHAR(10),@ClientManager)          
+		--IF (@GiftKey <> 0)          
+		-- SET @Clause = @Clause + ' and DI.GiftKey =' + CONVERT(VARCHAR(10),@GiftKey)          
+		--IF (@StatusID <> '0')          
+		-- SET @Clause = @Clause + ' and DIS.DeliverableItemStatusID in (' + @StatusID + ')'          
+		--INSERT INTO #TempActivityConsole            
+		-- EXECUTE (@Query + @Clause )             
+		--SELECT * FROM #TempActivityConsole ORDER BY CLIENT_BRIEFNAME,AdventID,ParticipantLastName          
+		-- TO REPLACE THE VIEWS - V_EIS_EX_SYSADMIN_KCOSTAFF_PAGING and      VW_EX_TrustParticipantType and change the function    FN_EIS_RetrieveFrequency        
+END
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTActivityConsole')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTActivityConsole';
+    END

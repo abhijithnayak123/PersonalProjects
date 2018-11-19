@@ -1,0 +1,27 @@
+
+REM Set Runtime Parameters
+REM ----------------------
+
+@echo on
+
+set DB_USER=EDW_Users
+
+set DB_PASSWORD=K@spick123
+
+set DB_NAME=KaspickDB_Lookup
+
+set DB_SERVER=10.10.9.71
+
+
+
+Rem ******** MappingDB Scripts *****************
+
+SQLCMD -S %DB_SERVER% -U %DB_USER% -P "%DB_PASSWORD%" -d %DB_NAME% -v KaspickDB = %DB_NAME%  -i Delete_TBL_BeneficiaryLookup_DuplicateRecords.sql  -o Log\Delete_TBL_BeneficiaryLookup_DuplicateRecords.log
+
+
+
+Rem ======================================================
+
+
+Pause
+

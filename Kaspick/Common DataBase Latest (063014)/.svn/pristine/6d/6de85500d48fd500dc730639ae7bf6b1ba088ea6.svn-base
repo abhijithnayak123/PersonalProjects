@@ -1,0 +1,119 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftThirdPartyChangeDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftThirdPartyChangeDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftThirdPartyChangeDetail';
+END
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************
+** Name :    USP_EX_GetWftThirdPartyChangeDetail
+** Old Name: [sp_wft_get_Third_Party_Change_detail]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to populate Third Party Change detail
+**
+** Sample Call
+	[USP_EX_GetWftThirdPartyChangeDetail]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Tanuj Gupta
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	04-March-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 03-June-2014  Mallikarjun        ThirdPartyadvChg request form
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_EX_GetWftThirdPartyChangeDetail]
+(
+	@Guid varchar(255)
+)	 
+AS 
+SELECT 
+	 [notification_date] as NotificationDate
+	,[submitted_by] as RequestSubmittedBy
+	,[im_authorization_level] as SubmittedIMLevel
+    ,[ta_authorization_level] as SubmittedTALevel
+	,[pxy_username] as WebRequestProxiedBy
+	,[ManagerCodeName] as ClientName
+	,[donor_bene_name] as DonorBeneName
+    ,[donor_bene_ssn_ein] as DonorBeneSSNEIN
+	,[comments] as Comment 
+	,[advisor1_change_type] as ChangeType
+	,[advisor1_name] as ExistingThirdParty1
+	,[advisor1_role] as ThirdPartyRole1
+	,[advisor1_attn_careof] as Attn_CareOf1
+	,[advisor1_salutation] as Salutation1
+	,[advisor1_first_name] as FirstName1
+	,[advisor1_middle_initial] as MiddleInitial1
+    ,[advisor1_last_name] as LastName1
+    ,[advisor1_institution_name] as Institution1
+	,[advisor1_address1] as Address1_1
+	,[advisor1_unit_type] as UnitType1
+    ,[advisor1_unit_number] as UnitNumber1
+    ,[advisor1_address2] as Address1_2
+	,[advisor1_city] as City1
+	,[advisor1_state] as State1
+	,[advisor1_zipcode] as ZipCode1
+	,[advisor_country] as Country1
+	,[advisor1_phone] as PhoneNo1
+	,[advisor1_comments] as CommentofThirdParty1
+	,[advisor2_change_type] as ChangeType2
+	,[advisor2_name] as ExistingThirdParty2
+	,[advisor2_role] as ThirdPartyRole2
+	,[advisor2_salutation]  as Salutation2
+	,[advisor2_first_name] as FirstName2
+	,[advisor2_middle_initial] as MiddleInitial2
+	,[advisor2_last_name] as LastName2
+	,[advisor2_attn_careof] as Attn_CareOf2
+	,[advisor2_institution_name] as Institution2
+	,[advisor2_address1] as Address2_1
+	,[advisor2_unit_type] as UnitType2
+	,[advisor2_unit_number] as UnitNumber2
+	,[advisor2_address2] as Address2_2
+	,[advisor2_city] as City2
+	,[advisor2_state] as State2
+	,[advisor2_zipcode] as ZipCode2
+	,[advisor1_country2] as Country2
+	,[advisor2_phone] as PhoneNo2
+	,[advisor2_comments] as CommentofThirdParty2
+	,[client_manager] as ClientAccountManager
+	,[trust_administrator] as TrustAdministrator
+	,[ContactID] as ParticipantId
+
+  FROM [TBL_WFT_ThirdPartyChange]
+    where Guid = @Guid
+    
+    GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftThirdPartyChangeDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftThirdPartyChangeDetail';
+END

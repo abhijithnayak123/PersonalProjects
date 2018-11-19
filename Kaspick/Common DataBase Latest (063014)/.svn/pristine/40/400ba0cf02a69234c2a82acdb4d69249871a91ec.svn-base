@@ -1,0 +1,517 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsPendingPayment]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsPendingPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsPendingPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsPendingPayment]    Script Date: 05/16/2013 12:11:16 ******/
+/******************************************************************************                      
+** Name			:   USP_PP_InsPendingPayment                      
+** Short Desc	:	Insert into Pending Payment      
+*                  
+**                      
+** Full Description: Fetch Payment Rules, Beneficiary Payment and Inclusion/Exclusion list. Compute logics and insert into Pending Payment
+**                              
+** Input Arguments:   Datetime
+**         
+** Sample Call             
+	EXEC USP_PP_InsPendingPayment '03/31/2013'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration - Middleware                    
+** Created DT: 16-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 04-jun-2013 Niveditha	optimization of the code
+** 27-jan-2014 Salih        Splitcheck implementation changes ,AllianceNumber Datatype and performance tuning 
+** 05-feb-2014 Salih        Account Type mapping changes
+** 23-may-2014 Salih        Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+** 27-Jun-2014 Ashvin       Change the sequence of insert script of TBL_PP_PendingPayment (ET#16365)
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsPendingPayment] @PROCESSDATE DATETIME
+AS
+SET NOCOUNT ON
+SET @PROCESSDATE = ISNULL(@PROCESSDATE, GETDATE())
+
+-- Get PaymentRuleID 
+DECLARE @PaymentRuleID INT
+
+-- Temporary table dropping
+IF OBJECT_ID('tempdb..[#TMP_ManagerRule]') IS NOT NULL
+	DROP TABLE [#TMP_ManagerRule]
+
+IF OBJECT_ID('tempdb..[#TMP_AccountRule]') IS NOT NULL
+	DROP TABLE [#TMP_AccountRule]
+
+IF OBJECT_ID('tempdb..[#TMP_ContactRule]') IS NOT NULL
+	DROP TABLE [#TMP_ContactRule]
+
+IF OBJECT_ID('tempdb..[#TMP_AllRule]') IS NOT NULL
+	DROP TABLE [#TMP_AllRule]
+
+IF OBJECT_ID('tempdb..[#TMP_Contact_Exclusion_list]') IS NOT NULL
+	DROP TABLE [#TMP_Contact_Exclusion_list]
+
+-- Temporary table declaration
+-- For Managerrules data		
+CREATE TABLE #TMP_ManagerRule (
+	-- 27-jan-2014-Salih: AllianceNumber Datatype Change
+	AllianceNumber VARCHAR(15)
+	,ManagerCode CHAR(4)
+	,AccountType VARCHAR(20)
+	,CustomerAccountNumber CHAR(14)
+	,ContactID INT
+	,ContactRoleCode INT
+	,PaymentID INT
+	,PaymentMethod VARCHAR(50)
+	,PaymentDate DATETIME
+	,PrintAdvice INT
+	,DaysValue INT
+	,Holiday INT
+	--,AcomStatus VARCHAR(20)
+	,AcomPrintDate DATETIME
+	)
+
+-- For Accountrules data
+CREATE TABLE #TMP_AccountRule (
+	-- 27-jan-2014-Salih: AllianceNumber Datatype Change
+	AllianceNumber VARCHAR(15)
+	,ManagerCode CHAR(4)
+	,AccountType VARCHAR(20)
+	,CustomerAccountNumber CHAR(14)
+	,ContactID INT
+	,ContactRoleCode INT
+	,PaymentID INT
+	,PaymentMethod VARCHAR(50)
+	,PaymentDate DATETIME
+	,PrintAdvice INT
+	,DaysValue INT
+	,Holiday INT
+	--,AcomStatus VARCHAR(20)
+	,AcomPrintDate DATETIME
+	)
+
+-- For Contactrules data
+CREATE TABLE #TMP_ContactRule (
+	-- 27-jan-2014-Salih: AllianceNumber Datatype Change
+	AllianceNumber VARCHAR(15)
+	,ManagerCode CHAR(4)
+	,AccountType VARCHAR(20)
+	,CustomerAccountNumber CHAR(14)
+	,ContactID INT
+	,ContactRoleCode INT
+	,PaymentID INT
+	,PaymentMethod VARCHAR(50)
+	,PaymentDate DATETIME
+	,PrintAdvice INT
+	,DaysValue INT
+	,Holiday INT
+	--,AcomStatus VARCHAR(20)
+	,AcomPrintDate DATETIME
+	)
+
+-- For Contactrules data
+CREATE TABLE #TMP_AllRule (
+	-- 27-jan-2014-Salih: AllianceNumber Datatype Change
+	AllianceNumber VARCHAR(15)
+	,ManagerCode CHAR(4)
+	,AccountType VARCHAR(20)
+	,CustomerAccountNumber CHAR(14)
+	,ContactID INT
+	,ContactRoleCode INT
+	,PaymentID INT
+	,PaymentMethod VARCHAR(50)
+	,PaymentDate DATETIME
+	,PrintAdvice INT
+	,DaysValue INT
+	,Holiday INT
+	,TemplateCode INT
+	--,AcomStatus VARCHAR(20)
+	,AcomPrintDate DATETIME
+	)
+
+-- AdventID Inclusion/Exclusion list
+CREATE TABLE #TMP_Contact_Exclusion_list (
+	CustomerAccountNumber CHAR(14)
+	,ContactID INT
+	)
+
+TRUNCATE TABLE TBL_PP_PendingPayment
+
+-- Insert payment rules(daysvalue>=0) data for Manager
+INSERT INTO #TMP_ManagerRule
+SELECT BenPymt.AllianceNumber
+	,BenPymt.ManagerCode
+	,BenPymt.AccountType
+	,BenPymt.CustomerAccountNumber
+	,BenPymt.ContactID
+	,BenPymt.ContactRoleCode
+	,BenPymt.PaymentID
+	,BenPymt.PaymentMethod
+	,BenPymt.PaymentDate
+	,BenPymt.PrintAdvice
+	,MgrRule.DaysValue
+	,(dbo.FN_GetHoliday(DATEADD(DAY, - ABS(MgrRule.DaysValue), BenPymt.PaymentDate), BenPymt.PaymentDate)) AS HOLIDAYS
+	--,BenPymt.AcomStatus
+	,BenPymt.AcomPrintDate
+FROM TBL_PP_BeneficiaryPayment BenPymt
+INNER JOIN TBL_PP_ManagerRule MgrRule
+	ON BenPymt.ManagerCode = MgrRule.ManagerCode
+		AND MgrRule.DaysValue >= 0
+		AND BenPymt.VoidDate IS NULL
+		AND PaymentDate IS NOT NULL
+		AND TransactionNumber IS NOT NULL
+WHERE DATEDIFF(DAY, @PROCESSDATE, BenPymt.PaymentDate) >= 0
+
+-- Insert payment rules(daysvalue>=0) data for Account
+INSERT INTO #TMP_AccountRule
+SELECT BenPymt.AllianceNumber
+	,BenPymt.ManagerCode
+	,BenPymt.AccountType
+	,BenPymt.CustomerAccountNumber
+	,BenPymt.ContactID
+	,BenPymt.ContactRoleCode
+	,BenPymt.PaymentID
+	,BenPymt.PaymentMethod
+	,BenPymt.PaymentDate
+	,BenPymt.PrintAdvice
+	,AcctRule.DaysValue
+	,(dbo.FN_GetHoliday(DATEADD(DAY, - ABS(AcctRule.DaysValue), BenPymt.PaymentDate), BenPymt.PaymentDate)) AS HOLIDAYS
+	--,BenPymt.AcomStatus
+	,BenPymt.AcomPrintDate
+FROM TBL_PP_BeneficiaryPayment BenPymt
+INNER JOIN TBL_PP_AccountRule AcctRule
+	ON BenPymt.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+		AND AcctRule.DaysValue >= 0
+		AND BenPymt.VoidDate IS NULL
+		AND PaymentDate IS NOT NULL
+		AND TransactionNumber IS NOT NULL
+WHERE DATEDIFF(DAY, @PROCESSDATE, BenPymt.PaymentDate) >= 0
+
+-- Insert payment rules(daysvalue>=0) data for Contact
+INSERT INTO #TMP_ContactRule
+SELECT BenPymt.AllianceNumber
+	,BenPymt.ManagerCode
+	,BenPymt.AccountType
+	,BenPymt.CustomerAccountNumber
+	,BenPymt.ContactID
+	,BenPymt.ContactRoleCode
+	,BenPymt.PaymentID
+	,BenPymt.PaymentMethod
+	,BenPymt.PaymentDate
+	,BenPymt.PrintAdvice
+	,PartRule.DaysValue
+	,(dbo.FN_GetHoliday(DATEADD(DAY, - ABS(PartRule.DaysValue), BenPymt.PaymentDate), BenPymt.PaymentDate)) AS HOLIDAYS
+	--,BenPymt.AcomStatus
+	,BenPymt.AcomPrintDate
+FROM TBL_PP_BeneficiaryPayment BenPymt
+INNER JOIN TBL_PP_ContactRule PartRule
+	ON BenPymt.CustomerAccountNumber = PartRule.CustomerAccountNumber
+		AND BenPymt.ContactID = partrule.ContactID
+		--AND benpymt.ContactRoleCode = partrule.ContactRoleCode
+		AND PartRule.DaysValue >= 0
+		AND BenPymt.VoidDate IS NULL
+		AND PaymentDate IS NOT NULL
+		AND TransactionNumber IS NOT NULL
+WHERE DATEDIFF(DAY, @PROCESSDATE, BenPymt.PaymentDate) >= 0
+
+-- Insert rules from Temp - Manager, Account and Contact to Temp Master - #TMP_AllRule table
+INSERT INTO #TMP_AllRule
+SELECT AllianceNumber
+	,ManagerCode
+	,AccountType
+	,CustomerAccountNumber
+	,ContactID
+	,ContactRoleCode
+	,PaymentID
+	,PaymentMethod
+	,PaymentDate
+	,PrintAdvice
+	,DaysValue
+	,Holiday
+	,0 AS TemplateCode
+	--,AcomStatus
+	,AcomPrintDate
+FROM #TMP_ContactRule
+WHERE DATEDIFF(day, DATEADD(day, - ABS(DaysValue + Holiday), PaymentDate), @PROCESSDATE) >= 0
+
+INSERT INTO #TMP_AllRule
+SELECT AllianceNumber
+	,ManagerCode
+	,AccountType
+	,CustomerAccountNumber
+	,ContactID
+	,ContactRoleCode
+	,PaymentID
+	,PaymentMethod
+	,PaymentDate
+	,PrintAdvice
+	,DaysValue
+	,Holiday
+	,0 AS TemplateCode
+	--,AcomStatus
+	,AcomPrintDate
+FROM #TMP_AccountRule
+WHERE DATEDIFF(day, DATEADD(day, - ABS(DaysValue + Holiday), PaymentDate), @PROCESSDATE) >= 0
+	AND PaymentID NOT IN (
+		SELECT PaymentID
+		FROM #TMP_ContactRule
+		)
+
+INSERT INTO #TMP_AllRule
+SELECT AllianceNumber
+	,ManagerCode
+	,AccountType
+	,CustomerAccountNumber
+	,ContactID
+	,ContactRoleCode
+	,PaymentID
+	,PaymentMethod
+	,PaymentDate
+	,PrintAdvice
+	,DaysValue
+	,Holiday
+	,0 AS TemplateCode
+	--,AcomStatus
+	,AcomPrintDate
+FROM #TMP_ManagerRule
+WHERE DATEDIFF(day, DATEADD(day, - ABS(DaysValue + Holiday), PaymentDate), @PROCESSDATE) >= 0
+	AND PaymentID NOT IN (
+		SELECT PaymentID
+		FROM #TMP_ContactRule
+		
+		UNION
+		
+		SELECT PaymentID
+		FROM #TMP_AccountRule
+		)
+
+-- Update Template code based on Account Type and Payment Method
+UPDATE #TMP_AllRule
+SET TemplateCode = (
+		CASE 
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				AccountType <> 'GAP'
+				AND AccountType <> 'GAPR'
+				AND AccountType <> 'GAPP'
+				AND AccountType <> 'PIF'
+				AND PaymentMethod = 'CHECK'
+				THEN 1
+			WHEN AccountType = 'PIF'
+				AND PaymentMethod = 'CHECK'
+				THEN 2
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				(
+					AccountType = 'GAP'
+					OR AccountType = 'GAPR'
+					OR AccountType = 'GAPP'
+					)
+				AND PaymentMethod = 'CHECK'
+				THEN 3
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				AccountType <> 'GAP'
+				AND AccountType <> 'GAPR'
+				AND AccountType <> 'GAPP'
+				AND AccountType <> 'PIF'
+				-- 27-jan-2014-Salih: SplitCheck implementation
+				-- 23-may-2014 Salih:  Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+				AND PaymentMethod = 'CHECK'
+				AND PrintAdvice = - 4
+				THEN 5
+			WHEN AccountType = 'PIF'
+				-- 27-jan-2014-Salih: SplitCheck implementation
+				-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+				AND PaymentMethod = 'CHECK'
+				AND PrintAdvice = - 4
+				THEN 6
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				(
+					AccountType = 'GAP'
+					OR AccountType = 'GAPR'
+					OR AccountType = 'GAPP'
+					)
+				-- 27-jan-2014-Salih: SplitCheck implementation
+				-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+				AND PaymentMethod = 'CHECK'
+				AND PrintAdvice = - 4
+				THEN 7
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				AccountType <> 'GAP'
+				AND AccountType <> 'GAPR'
+				AND AccountType <> 'GAPP'
+				AND AccountType <> 'PIF'
+				AND (
+					PaymentMethod = 'ACH'
+					OR PaymentMethod = 'WIRE'
+					OR PaymentMethod = 'JOURNAL'
+					)
+				THEN 8
+			WHEN AccountType = 'PIF'
+				AND (
+					PaymentMethod = 'ACH'
+					OR PaymentMethod = 'WIRE'
+					OR PaymentMethod = 'JOURNAL'
+					)
+				THEN 9
+			WHEN --05-feb-2014-Salih: Account Type mapping changes
+				(
+					AccountType = 'GAP'
+					OR AccountType = 'GAPR'
+					OR AccountType = 'GAPP'
+					)
+				AND (
+					PaymentMethod = 'ACH'
+					OR PaymentMethod = 'WIRE'
+					OR PaymentMethod = 'JOURNAL'
+					)
+				THEN 10
+			ELSE 0
+			END
+		)
+
+-- Update all rules with template code 0
+DELETE
+FROM #TMP_AllRule
+WHERE TemplateCode = 0
+
+IF EXISTS (
+		SELECT 1
+		FROM #TMP_AllRule
+		WHERE AccountType = ''
+			OR PaymentMethod = ''
+		)
+BEGIN
+	-- Code block to display error values from UI
+	SELECT *
+	FROM #TMP_AllRule
+	WHERE AccountType = ''
+		OR PaymentMethod = ''
+END
+ELSE
+BEGIN
+	-- For splitcheck payments, there are 2 templates.. To support this functionality a re-insert is performed for splitcheck.. 
+	-- The 2nd insert is performed here
+	INSERT INTO #TMP_AllRule
+	SELECT AllianceNumber
+		,ManagerCode
+		,'ALLACCOUNTTYPES' AccountType
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,PaymentID
+		,PaymentMethod
+		,PaymentDate
+		,PrintAdvice
+		,DaysValue
+		,Holiday
+		,4 AS TemplateCode
+		--,AcomStatus
+		,AcomPrintDate
+	FROM #TMP_AllRule
+	WHERE -- 27-jan-2014-Salih: SplitCheck implementation
+		-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+		PaymentMethod = 'CHECK'
+		AND PrintAdvice = - 4
+END
+
+-- create list of  contact, account and client where Exclusion is set
+INSERT INTO #TMP_Contact_Exclusion_list
+SELECT CustomerAccountNumber
+	,ContactID
+FROM TBL_PP_ContactRule
+WHERE IsExclusion = 1
+
+--AND IsDeleted = 0
+INSERT INTO #TMP_Contact_Exclusion_list
+SELECT CustomerAccountNumber
+	,ContactID
+FROM #TMP_AllRule
+WHERE CustomerAccountNumber IN (
+		SELECT CustomerAccountNumber
+		FROM TBL_PP_AccountRule
+		WHERE IsExclusion = 1
+		)
+
+INSERT INTO #TMP_Contact_Exclusion_list
+SELECT CustomerAccountNumber
+	,ContactID
+FROM #TMP_AllRule
+WHERE ManagerCode IN (
+		SELECT ManagerCode
+		FROM TBL_PP_ManagerRule
+		WHERE IsExclusion = 1
+		)
+
+INSERT INTO TBL_PP_PendingPayment (
+	PaymentID
+	,TemplateCode
+	,ManagerCode
+	,CustomerAccountNumber
+	,ContactRoleCode
+	,ContactID
+	,AllianceNumber
+	,PaymentMethod
+	,AccountType
+	,PaymentDate
+	,DaysValue
+	)
+SELECT TempAllRules.PaymentID
+	,TempAllRules.TemplateCode
+	,TempAllRules.ManagerCode
+	,TempAllRules.CustomerAccountNumber
+	,TempAllRules.ContactRoleCode
+	,TempAllRules.ContactID
+	,TempAllRules.AllianceNumber
+	,TempAllRules.PaymentMethod
+	,TempAllRules.AccountType
+	,TempAllRules.PaymentDate
+	,TempAllRules.DaysValue
+FROM #TMP_AllRule TempAllRules
+LEFT JOIN #TMP_Contact_Exclusion_list TempPartExclList
+	ON TempAllRules.CustomerAccountNumber = TempPartExclList.CustomerAccountNumber
+		AND TempAllRules.ContactID = TempPartExclList.ContactID
+LEFT JOIN TBL_PP_TemplateTypeRule TemplRule
+	ON TemplRule.Templatecode = TempAllRules.Templatecode
+		AND TemplRule.ManagerCode = TempAllRules.ManagerCode
+WHERE TempPartExclList.CustomerAccountNumber IS NULL
+	AND TempPartExclList.ContactID IS NULL
+	AND TemplRule.ManagerCode IS NULL
+	--AND TempAllRules.AcomStatus IS NULL
+	AND TempAllRules.AcomPrintDate IS NULL
+
+--AND  TempAllRules.PAYMENTID NOT IN (SELECT PAYMENTID FROM Excelsior_DeliverableTool_DB..TBL_PP_ARCH_PAYMENTEXPORT )
+-- Temporary table dropping
+IF OBJECT_ID('tempdb..[#TMP_ManagerRule]') IS NOT NULL
+	DROP TABLE [#TMP_ManagerRule]
+
+IF OBJECT_ID('tempdb..[#TMP_AccountRule]') IS NOT NULL
+	DROP TABLE [#TMP_AccountRule]
+
+IF OBJECT_ID('tempdb..[#TMP_ContactRule]') IS NOT NULL
+	DROP TABLE [#TMP_ContactRule]
+
+IF OBJECT_ID('tempdb..[#TMP_AllRule]') IS NOT NULL
+	DROP TABLE [#TMP_AllRule]
+
+IF OBJECT_ID('tempdb..[#TMP_Contact_Exclusion_list]') IS NOT NULL
+	DROP TABLE [#TMP_Contact_Exclusion_list]

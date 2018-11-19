@@ -1,0 +1,281 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAuthorizedSigner]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAuthorizedSigner]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name   :   USP_TR_GetAuthorizedSigner    
+** Short Desc : Gets a list of Trade Event History for a given Customer Account Number     
+**          
+** Full Description : Gets a list of Trade Event History for a given Customer Account Number       
+**                  
+**          
+** Sample Call          
+        EXEC USP_TR_GetAuthorizedSigner     
+			'<CustomerAccountNumbers>
+			<EventId>17368</EventId>
+			<CustomerAccountNumber>MBGAP</CustomerAccountNumber>
+			<EventAccountId>19185</EventAccountId>
+			<EventStatusID>2</EventStatusID>
+			</CustomerAccountNumbers>' 
+		EXEC USP_TR_GetAuthorizedSigner      
+			'<CustomerAccountNumbers>
+			<EventId>59994</EventId>
+			<EventStatusID>3</EventStatusID>
+			<CustomerAccountNumber>ACADW</CustomerAccountNumber>
+			<EventAccountId>65696</EventAccountId>
+			<CustomerAccountNumber>ACBAD</CustomerAccountNumber>
+			<EventAccountId>65697</EventAccountId>
+			</CustomerAccountNumbers>'
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By :  Chaithra Madappa     
+** Company  :  Kaspick & Company          
+** Project  :  Back Office Integration (T-Rex)    
+** Created DT :  Mar/24/2014          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**     
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAuthorizedSigner] (@CustomerAccountNumbers XML)
+AS
+BEGIN
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @CustomerAccountNumberTable TABLE (CustomerAccountNumber VARCHAR(14))
+	DECLARE @EventIdTable TABLE (EventId INT)
+	DECLARE @EventStatusIDTable TABLE (EventStatusID INT)
+	DECLARE @ProposedStatusId AS INT
+	DECLARE @ReconciledStatusId AS INT
+	DECLARE @Review1StatusId AS INT
+	DECLARE @Review2StatusId AS INT
+
+	SELECT @ProposedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Proposed'
+
+	SELECT @ReconciledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Reconciled'
+
+	SELECT @Review1StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review1'
+
+	SELECT @Review2StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review2'
+
+	INSERT INTO @CustomerAccountNumberTable (CustomerAccountNumber)
+	SELECT XMLDATA.ID.value('(.)', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/CustomerAccountNumber') AS XMLDATA(ID)
+
+	INSERT INTO @EventIdTable (EventId)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventId
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventId') AS XMLDATA(ID)
+
+	INSERT INTO @EventStatusIDTable (EventStatusID)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventId
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventStatusID') AS XMLDATA(ID)
+
+	DECLARE @StatusId INT
+	DECLARE @EventId INT
+
+	SELECT @StatusId = EventStatusID
+	FROM @EventStatusIDTable
+
+	SELECT @EventId = EventId
+	FROM @EventIdTable
+
+	IF (@EventId = 0)
+	BEGIN
+		SELECT 0 AS 'EventId'
+			,0 AS 'EventAccountID'
+			,0 AS 'EventStatusID'
+			,SCntctRole.SubContactID AS EmployeeID
+			,CntctRolCods.ContactRoleCodeDesc AS Authorizationtype
+			,(ISNULL(CntctMstr.PrimaryFirstName, '') + SPACE(1) + ISNULL(CntctMstr.PrimaryMiddleInitial, '') + SPACE(1) + ISNULL(CntctMstr.PrimaryLastName, '')) AS UserName
+			,AcntMstr.CustomerAccountNumber AS CustomerAccountNumber
+		FROM SYN_IT_AccountManagerCodes AMngrCode
+		INNER JOIN SYN_IT_SubContactRoles SCntctRole ON AMngrCode.ContactID = SCntctRole.ContactID
+		INNER JOIN SYN_IT_ContactMaster CntctMstr ON CntctMstr.ContactID = SCntctRole.SubContactID
+		INNER JOIN SYN_IT_ContactRoleCodes CntctRolCods ON CntctRolCods.ID = SCntctRole.ContactRoleCode
+			AND CntctRolCods.ID = 552
+			OR CntctRolCods.ID = 553
+		INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.ManagerCode = AMngrCode.ManagerCode
+		WHERE AcntMstr.CustomerAccountNumber IN (
+				SELECT CustomerAccountNumber
+				FROM @CustomerAccountNumberTable
+				)
+		ORDER BY AMngrCode.ManagerCode
+			,CntctRolCods.ContactRoleCodeDesc
+			,CntctMstr.PrimaryFirstName
+	END
+	ELSE
+	BEGIN
+		IF (
+				@StatusId >= @ProposedStatusId
+				AND @StatusId < @ReconciledStatusId
+				)
+		BEGIN
+			SELECT AuthrzdSgnr.EventId
+				,AuthrzdSgnr.EventAccountID
+				,AuthrzdSgnr.EventStatusID
+				,AuthrzdSgnr.EmployeeID
+				,AuthrzdSgnr.AuthorizationType
+				,AuthrzdSgnr.UserName
+				,AuthrzdSgnr.CustomerAccountNumber
+			FROM (
+				SELECT DISTINCT Evnt.EventId
+					,EvntAcnt.EventAccountID
+					,Evnt.EventStatusID
+					,AthrzdSnapsht.EmployeeID AS EmployeeID
+					,AthrzdSnapsht.AuthorizationType AS AuthorizationType
+					,AthrzdSnapsht.UserName AS UserName
+					,AcntMstr.CustomerAccountNumber AS CustomerAccountNumber
+				FROM TBL_TR_EVENT Evnt
+				INNER JOIN TBL_TR_EVENTACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+				INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+				INNER JOIN SYN_IT_AccountManagerCodes AMngrCode ON AMngrCode.ManagerCode = AcntMstr.ManagerCode
+				INNER JOIN SYN_IT_SubContactRoles SCntctRole ON AMngrCode.ContactID = SCntctRole.ContactID
+				INNER JOIN SYN_IT_ContactMaster CntctMstr ON CntctMstr.ContactID = SCntctRole.SubContactID
+				INNER JOIN SYN_IT_ContactRoleCodes CntctRolCods ON CntctRolCods.ID = SCntctRole.ContactRoleCode
+				LEFT OUTER JOIN TBL_TR_AuthorizedSignerSnapshot AthrzdSnapsht ON AthrzdSnapsht.EventId = Evnt.EventId
+					AND AthrzdSnapsht.EventAccountID = EvntAcnt.EventAccountID
+					AND (AthrzdSnapsht.EventStatusID = @ProposedStatusId)
+				WHERE AcntMstr.CustomerAccountNumber IN (
+						SELECT CustomerAccountNumber
+						FROM @CustomerAccountNumberTable
+						)
+					AND (
+						CntctRolCods.ID = 552
+						OR CntctRolCods.ID = 553
+						)
+					AND Evnt.EventId IN (
+						SELECT EventId
+						FROM @EventIdTable
+						)
+				) AS AuthrzdSgnr
+			ORDER BY AuthrzdSgnr.AuthorizationType
+				,AuthrzdSgnr.UserName
+		END
+		ELSE
+			IF (@StatusId > @ReconciledStatusId)
+			BEGIN
+				SELECT AuthrzdSgnr.EventId
+					,AuthrzdSgnr.EventAccountID
+					,AuthrzdSgnr.EventStatusID
+					,AuthrzdSgnr.EmployeeID
+					,AuthrzdSgnr.AuthorizationType
+					,AuthrzdSgnr.UserName
+					,AuthrzdSgnr.CustomerAccountNumber
+				FROM (
+					SELECT DISTINCT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,AthrzdSnapsht.EmployeeID AS EmployeeID
+						,AthrzdSnapsht.AuthorizationType AS AuthorizationType
+						,AthrzdSnapsht.UserName AS UserName
+						,AcntMstr.CustomerAccountNumber AS CustomerAccountNumber
+					FROM TBL_TR_EVENT Evnt
+					INNER JOIN TBL_TR_EVENTACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN SYN_IT_AccountManagerCodes AMngrCode ON AMngrCode.ManagerCode = AcntMstr.ManagerCode
+					INNER JOIN SYN_IT_SubContactRoles SCntctRole ON AMngrCode.ContactID = SCntctRole.ContactID
+					INNER JOIN SYN_IT_ContactMaster CntctMstr ON CntctMstr.ContactID = SCntctRole.SubContactID
+					INNER JOIN SYN_IT_ContactRoleCodes CntctRolCods ON CntctRolCods.ID = SCntctRole.ContactRoleCode
+					LEFT OUTER JOIN TBL_TR_AuthorizedSignerSnapshot AthrzdSnapsht ON AthrzdSnapsht.EventId = Evnt.EventId
+						AND AthrzdSnapsht.EventAccountID = EvntAcnt.EventAccountID
+						AND (
+							AthrzdSnapsht.EventStatusID = @ReconciledStatusId
+							OR AthrzdSnapsht.EventStatusID = @Review1StatusId
+							OR AthrzdSnapsht.EventStatusID = @Review2StatusId
+							)
+					WHERE AcntMstr.CustomerAccountNumber IN (
+							SELECT CustomerAccountNumber
+							FROM @CustomerAccountNumberTable
+							)
+						AND (
+							CntctRolCods.ID = 552
+							OR CntctRolCods.ID = 553
+							)
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS AuthrzdSgnr
+				ORDER BY AuthrzdSgnr.AuthorizationType
+					,AuthrzdSgnr.UserName
+			END
+			ELSE
+			BEGIN
+				SELECT AuthrzdSgnr.EventId
+					,AuthrzdSgnr.EventAccountID
+					,AuthrzdSgnr.EventStatusID
+					,AuthrzdSgnr.EmployeeID
+					,AuthrzdSgnr.AuthorizationType
+					,AuthrzdSgnr.UserName
+					,AuthrzdSgnr.CustomerAccountNumber
+				FROM (
+					SELECT DISTINCT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,SCntctRole.SubContactID AS EmployeeID
+						,CntctRolCods.ContactRoleCodeDesc AS Authorizationtype
+						,(ISNULL(CntctMstr.PrimaryFirstName, '') + SPACE(1) + ISNULL(CntctMstr.PrimaryMiddleInitial, '') + SPACE(1) + ISNULL(CntctMstr.PrimaryLastName, '')) AS UserName
+						,AcntMstr.CustomerAccountNumber AS CustomerAccountNumber
+					FROM TBL_TR_EVENT Evnt
+					INNER JOIN TBL_TR_EVENTACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					INNER JOIN SYN_IT_AccountMaster AcntMstr ON AcntMstr.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN SYN_IT_AccountManagerCodes AMngrCode ON AMngrCode.ManagerCode = AcntMstr.ManagerCode
+					INNER JOIN SYN_IT_SubContactRoles SCntctRole ON AMngrCode.ContactID = SCntctRole.ContactID
+					INNER JOIN SYN_IT_ContactMaster CntctMstr ON CntctMstr.ContactID = SCntctRole.SubContactID
+					INNER JOIN SYN_IT_ContactRoleCodes CntctRolCods ON CntctRolCods.ID = SCntctRole.ContactRoleCode
+					WHERE AcntMstr.CustomerAccountNumber IN (
+							SELECT CustomerAccountNumber
+							FROM @CustomerAccountNumberTable
+							)
+						AND (
+							CntctRolCods.ID = 552
+							OR CntctRolCods.ID = 553
+							)
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS AuthrzdSgnr
+				ORDER BY AuthrzdSgnr.AuthorizationType
+					,AuthrzdSgnr.UserName
+			END
+	END
+END
+GO
+
+

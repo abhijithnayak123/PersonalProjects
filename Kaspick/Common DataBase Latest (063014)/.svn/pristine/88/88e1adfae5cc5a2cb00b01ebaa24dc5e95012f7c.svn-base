@@ -1,0 +1,118 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_InsVALAdventExclusion'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_InsVALAdventExclusion;
+
+	PRINT 'DROPPED USP_BR_FASB_InsVALAdventExclusion';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************              
+** Name   :   USP_BR_FASB_InsVALAdventExclusion              
+** Short Desc : Gets the records for FASB Advent Exclusion Condition  
+**              
+** Full Description :IF given Excelsior FASB profile condition set, then throw warning for account.             
+**              
+     
+**              
+** Return values: NONE              
+**       
+** Sample Call    
+**        
+** EXEC [USP_BR_FASB_InsVALAdventExclusion] 625     
+**               
+** Created By : Niveditha      -----  
+** Company  :  Kaspick & Company              
+** Project  :  FASB              
+** Created DT :  Mar/28/2012              
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:			Bug #		Description:                           Rvwd              
+** --------     --------		------		-------------------------------------- --------              
+** 07/29/2014	Srikanth R					Changes for BOI migration
+** 
+******************************************************************************              
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved              
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION              
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_BR_FASB_InsVALAdventExclusion]
+(
+	@RuleId INT
+)
+AS
+BEGIN
+	DECLARE @ValidationMessage VARCHAR(max)
+	DECLARE @ValidationType VARCHAR(25)
+	DECLARE @MarketValueDate DATETIME
+	DECLARE @AdventExclListItemID INT
+
+	SELECT DISTINCT @MarketValueDate = MarketValueDate
+	FROM TBL_BR_STG_FASBGift
+
+	SELECT @AdventExclListItemID = ListItemID
+	FROM VW_EX_ListItem
+	WHERE ListTypeName = 'FASB AdventID'
+		AND ListItemName = 'Excluded'
+
+	SELECT @ValidationMessage = DisplayMessage
+		,@ValidationType = ResultType
+	FROM TBL_DLV_ValidationRule
+	WHERE ValidationRuleID = @RuleId
+
+	--Rule 9. IF given Excelsior FASB profile condition set, then throw warning for account.  
+	INSERT INTO TBL_BR_FASBValidationResult (
+		 ClientID
+		,ClientName
+		,RecordIdentifier
+		,ValidationMessage
+		,ValidationType
+		)
+	SELECT DISTINCT 
+		PF.ManagerCode--PF.ClientID
+		,Client.OrgName
+		,'AdventID = ' + DGA.AdventID AS identifier--TBD
+		,CASE 
+			WHEN (
+					Cond.ConditionComments IS NULL
+					OR Cond.ConditionComments = ' '
+					)
+				THEN @ValidationMessage
+			ELSE
+				@ValidationMessage + ' - ' + Cond.ConditionComments
+			END AS ValidationMessage
+		,@ValidationType AS ValidationType
+	FROM
+		TBL_BR_FASBProfileInformation PF
+	INNER JOIN
+		TBL_BR_FASBAccountExclusionConditionList Cond
+	ON
+		Cond.FASB_InstanceID = PF.FASB_InstanceID
+	INNER JOIN
+		TBL_BR_STG_FASBOrganization Client
+	ON
+		--Client.Ex_ClientID_OrgID = PF.ClientID
+		Client.EX_ManagerCode_OrgID = PF.ManagerCode
+	INNER JOIN
+		--DeferredGiftAccount DGA
+		VW_IT_AccountProfile DGA
+	ON
+		--DGA.AccountID = Condition.AccountID
+		DGA.AdventID = Cond.CustomerAccountNumber
+	WHERE
+		Cond.ListType = @AdventExclListItemID
+		AND (
+			DGA.MatureDate IS NULL
+			OR MatureDate >= @MarketValueDate
+			)
+END

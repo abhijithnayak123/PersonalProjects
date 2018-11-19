@@ -1,0 +1,135 @@
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftBenePaymentInformationDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftBenePaymentInformationDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftBenePaymentInformationDetail';
+END
+GO
+
+/******************************************************************************  
+** Name : USP_EX_GetWftBenePaymentInformationDetail
+** Old Name:     [sp_wft_get_Bene_Payment_Information_detail]  
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate Bene Payment Information detail.  
+**  
+** Sample Call  
+ [sp_wft_get_Bene_Payment_Information_detail] '037C11B6-BDE7-4702-8DCB-FF3DF348C78E'  
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 04-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 26-May-2014  Mallikarjun TAGREQ1.0 Modified
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+** USP_EX_GetWFTBenePaymentInformationDetail 'BC6A4B29-D89B-4D78-AC0C-FA7B1D18872C'
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetWftBenePaymentInformationDetail] (@GUID VARCHAR(255))
+AS
+DECLARE @GlobalContactName VARCHAR(max)
+DECLARE @FinancialInst VARCHAR(200)
+DECLARE @ABANo VARCHAR(200)
+DECLARE @accounts_array VARCHAR(max)
+DECLARE @participant_id INT
+
+SELECT @FinancialInst = [institution_ach_name],
+	@ABANo = [aba_number]
+FROM [TBL_WFT_BankPaymentChange]
+WHERE GUID = @GUID
+
+SELECT @GlobalContactName = ConMstr.ContactName --ORGANISATION_NAME  
+FROM
+	--TBL_EIS_EX_PARTY P  
+	SYN_IT_ContactMaster ConMstr
+--Inner join TBL_EIS_EX_PARTY_RELATION PR ON PR.PARTY_ID = P.PARTY_ID  
+INNER JOIN SYN_IT_ContactPaymentMethods ContPymtMethd ON ContPymtMethd.ContactID = ConMstr.ContactID
+INNER JOIN SYN_IT_ABAVerification AbaVerf ON AbaVerf.ABANumber = ContPymtMethd.ABANumberCode
+--inner join TBL_EIS_EX_BANK_SUPPLEMENT BS on BS.BankID = B.BANKID   
+WHERE AbaVerf.BankName = @FinancialInst
+	AND AbaVerf.ABANumber = @ABANo
+
+SELECT @accounts_array = accts_affected,
+	@participant_id = WftBnkPymntChg.contactid
+FROM TBL_WFT_BankPaymentChange WftBnkPymntChg
+WHERE GUID = @GUID
+
+--print @accounts_array
+--print @participant_id
+SELECT [notification_date],
+	[effective_date],
+	[submitted_by],
+	[im_authorization_level],
+	[ta_authorization_level],
+	[pxy_username],
+	[ManagerCodeName],
+	[donor_bene_name],
+	[donor_bene_ssn_ein],
+	[accts_array],
+	[accts_affected],
+	[comments],
+	[payment_method],
+	[account_holder_name],
+	[institution_ach_name],
+	[aba_number],
+	[bank_account_number],
+	[account_type],
+	[institution_split_check_name] AS FinancialInstitution,
+	[institution_address],
+	[institution_city],
+	[institution_state],
+	[institution_zip_code],
+	[institution_country],
+	[institution_phone_number],
+	[client_manager],
+	[trust_admininistrator],
+	[ContactID],
+	[institution_attn_name],
+	@GlobalContactName AS FinancialInst
+FROM [TBL_WFT_BankPaymentChange]
+WHERE GUID = @GUID
+
+SELECT AccMstr.CustomerAccountNumber AS AccountID,
+	'[' + AccMstr.CustomerAccountNumber + '] ' + AccMstr.CustomerDescriptionLine1 AS AccountsDetail
+FROM dbo.FN_SplitString(@accounts_array, '^') A
+INNER JOIN SYN_IT_AccountMaster AccMstr ON CHARINDEX(ltrim(rtrim(AccMstr.CustomerAccountNumber)), A.items )> 0
+
+SELECT VwTrustPartnt.CustomerAccountNumber AS AccountID,
+	'[' + VwTrustPartnt.CustomerAccountNumber + '] ' + VwTrustPartnt.ACCOUNT_FULLNAME AS AccountsDetail
+FROM dbo.VW_EX_TrustParticipantType VwTrustPartnt
+LEFT JOIN dbo.FN_SplitString(@accounts_array, '^') A ON CHARINDEX(ltrim(rtrim(VwTrustPartnt.CustomerAccountNumber)), A.items )> 0
+WHERE VwTrustPartnt.ParticipantID = @participant_id
+	AND A.items IS NULL
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftBenePaymentInformationDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetWftBenePaymentInformationDetail';
+END
+

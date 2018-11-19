@@ -1,0 +1,333 @@
+SET NOCOUNT ON
+
+DECLARE @PolicyDimensionID int
+
+-------------------------------------------------------------------------------------------------------------------
+
+----'Logo on Payments'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Payments'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Payments'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+--INSERT INTO TBL_PolicyItem 
+--( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+--Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+--SELECT PItem.PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+--GETDATE(),1,GETDATE(),1,null
+--from $(ExcelsiorDB)..PolicyItem PItem 
+--INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+--ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Payments'
+--inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+--AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+--inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+--ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+--'Check signer'
+
+SELECT @PolicyDimensionID = Policydimensionid from tbl_policydimension where fullname ='Check signer'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT @PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdownupd.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Check signer'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN TBL_PolicyDropDown pdownupd on pdownupd.PolicyDimensionID = @PolicyDimensionID 
+AND pdown.dropdowntext = pdownupd.DropDownText
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT @PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdownupd.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Check signer'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN TBL_PolicyDropDown pdownupd on pdownupd.PolicyDimensionID = @PolicyDimensionID 
+AND pdown.dropdowntext = pdownupd.DropDownText
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT @PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdownupd.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Check signer'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+inner JOIN TBL_PolicyDropDown pdownupd on pdownupd.PolicyDimensionID = @PolicyDimensionID 
+AND pdown.dropdowntext = pdownupd.DropDownText
+inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+--'Logo on Envelopes'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Envelopes'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Envelopes'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+--INSERT INTO TBL_PolicyItem 
+--( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+--Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+--SELECT PItem.PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+--GETDATE(),1,GETDATE(),1,null
+--from $(ExcelsiorDB)..PolicyItem PItem 
+--INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+--ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Logo on Envelopes'
+--inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+--AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+--inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+--ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+--'Envelopes'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Envelopes'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Envelopes'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+--INSERT INTO TBL_PolicyItem 
+--( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+--Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+--SELECT PItem.PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+--GETDATE(),1,GETDATE(),1,null
+--from $(ExcelsiorDB)..PolicyItem PItem 
+--INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+--ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Envelopes'
+--inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+--AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+--inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+--ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+--'Tax Pmt Mail Inst.'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Tax Pmt Mail Inst.'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Tax Pmt Mail Inst.'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+--INSERT INTO TBL_PolicyItem 
+--( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+--Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+--SELECT PItem.PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+--GETDATE(),1,GETDATE(),1,null
+--from $(ExcelsiorDB)..PolicyItem PItem 
+--INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+--ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Tax Pmt Mail Inst.'
+--inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+--AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+--inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+--ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+--'Address on Payments'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, clnt.BriefName,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Address on Payments'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..CLIENT clnt on clnt.ClientID = PItem.OwnerID AND PItem.PolicyLevel = 100
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, substring(pgm.BriefName,1,15),NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Address on Payments'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID
+inner JOIN $(ExcelsiorDB)..Program pgm on pgm.ProgramID = PItem.OwnerID AND PItem.PolicyLevel = 200
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT PItem.PolicyDimensionID, PolicyLevel, acc.ADVENTID,NULL,NULL,0,NULL,pdown.PolicyDropDownID,NULL,
+GETDATE(),1,GETDATE(),1,null
+from $(ExcelsiorDB)..PolicyItem PItem 
+INNER JOIN  $(ExcelsiorDB).. policydimension PDim
+ON PDim.PolicyDimensionID = PItem.PolicyDimensionID and fullname ='Address on Payments'
+inner JOIN $(ExcelsiorDB)..PolicyDropDown pdown ON pdown.PolicyDropDownID = PItem.PolicyDropDownID 
+AND pdown.PolicyDimensionID = PItem.PolicyDimensionID
+inner JOIN $(ExcelsiorDB)..V_EIS_EX_ACCOUNT acc on acc.ACCOUNTID = PItem.OwnerID AND PItem.PolicyLevel = 300
+ORDER BY PItem.OwnerID 
+
+-------------------------------------------------------------------------------------------------------------------
+
+-- Payment Logo/Marketing Message
+
+SELECT @PolicyDimensionID = Policydimensionid from tbl_policydimension where fullname ='Payment Logo/Marketing Message'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT @PolicyDimensionID, 100,Clnt.BriefName,NULL,NULL,0,NULL,PolicyDropDownID,
+NULL,GETDATE(),1,GETDATE(),1,null
+FROM $(ExcelsiorDB)..tbl_eis_ex_client_supplement ClntSupp
+INNER JOIN $(ExcelsiorDB)..CLIENT Clnt ON Clnt.ClientID = ClntSupp.CLIENTID 
+INNER JOIN $(ExcelsiorDB)..TBL_EIS_LIST_ITEM LItem ON LItem.LIST_ITEM_ID = ClntSupp.PmtLogo_MktMsg_ID
+INNER JOIN TBL_PolicyDropDown PDDown on PDDown.PolicyDimensionID = @PolicyDimensionID AND 
+	CASE WHEN LItem.LIST_ITEM_NAME ='Client Level' THEN 'Manager Level'
+	when LItem.LIST_ITEM_NAME ='Program Level' THEN 'Alliance Level' END
+	 = DropDownText 
+
+
+-------------------------------------------------------------------------------------------------------------------
+
+-- Templates with withholding info
+
+
+SELECT @PolicyDimensionID = Policydimensionid from tbl_policydimension where fullname ='Templates with withholding info'
+
+INSERT INTO TBL_PolicyItem 
+( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID,
+Comment, ModifiedDate, ModifiedUserId, CreatedDate, CreatedUserId, DeletedUserId)
+SELECT @PolicyDimensionID, 100,Clnt.BriefName,NULL,NULL,0,NULL,PolicyDropDownID,
+NULL,GETDATE(),1,GETDATE(),1,null
+FROM $(ExcelsiorDB)..tbl_eis_ex_client_supplement ClntSupp
+INNER JOIN $(ExcelsiorDB)..CLIENT Clnt ON Clnt.ClientID = ClntSupp.CLIENTID 
+INNER JOIN $(ExcelsiorDB)..TBL_EIS_LIST_ITEM LItem ON LItem.LIST_ITEM_ID = ClntSupp.TmplWithHold_ID
+INNER JOIN TBL_PolicyDropDown PDDown on PDDown.PolicyDimensionID = @PolicyDimensionID AND 
+	LItem.LIST_ITEM_NAME = DropDownText 
+
+
+-- Delete data from Account which has same data as Alliance(program)
+DELETE
+FROM TBL_PolicyItem
+WHERE PolicyItemID IN (
+		SELECT Child.PolicyItemID
+		FROM (
+			SELECT *
+			FROM TBL_PolicyItem
+			WHERE PolicyLevel = 200
+			) Parent
+		INNER JOIN (
+			SELECT *
+			FROM TBL_PolicyItem
+			WHERE PolicyLevel = 300
+			) Child
+			ON Parent.PolicyDimensionID = Child.PolicyDimensionID
+				AND Child.PolicyDropDownID = Child.PolicyDropDownID
+				AND Child.OwnerID = Parent.OwnerID
+		)
+
+-- Delete data from Alliance(program) which has same data as Client
+DELETE
+FROM TBL_PolicyItem
+WHERE PolicyItemID IN (
+		SELECT Child.PolicyItemID
+		FROM (
+			SELECT *
+			FROM TBL_PolicyItem
+			WHERE PolicyLevel = 100
+			) Parent
+		INNER JOIN (
+			SELECT *
+			FROM TBL_PolicyItem
+			WHERE PolicyLevel = 200
+			) Child
+			ON Parent.PolicyDimensionID = Child.PolicyDimensionID
+				AND Child.PolicyDropDownID = Child.PolicyDropDownID
+				AND Child.OwnerID = Parent.OwnerID
+		)
+
+
+
+-------------------------------------------------------------------------------------------------
+
+
+SET NOCOUNT OFF
+

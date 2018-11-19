@@ -1,0 +1,330 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetTrustHorizon]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetTrustHorizon]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetTrustHorizon]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetTrustHorizon]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_GetTrustHorizon    
+** Short Desc:  Calculate the horizon based Annuity 2000 table for a given account 
+**    
+** Full Description : Calculate the horizon based Annuity 2000 table for a given account 
+**            
+**    
+** Sample Call    
+  declare @horizon float  
+  [USP_IE_GetTrustHorizon] 'OFBLE4','12/31/2008', @horizon output  
+  Select @horizon
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     r
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income STGEstimation    
+** Created DT: 07/16/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE USP_IE_GetTrustHorizon 
+	--,@StagingID INT
+	--,
+	@CustomerAccountNumber VARCHAR(14)
+	,@ReportDate DATETIME
+	,@HORIZON FLOAT
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+
+    -- Temporary table dropping
+	IF OBJECT_ID('tempdb..[#TMP_TBLBeneficiaryDOB]') IS NOT NULL
+		DROP TABLE [#TMP_TBLBeneficiaryDOB]
+
+	IF OBJECT_ID('tempdb..[#TMP_TBLAgeProbability]') IS NOT NULL
+		DROP TABLE [#TMP_TBLAgeProbability]
+
+	CREATE TABLE [#TMP_TBLBeneficiaryDOB] (
+		[CustomerAccountNumber] VARCHAR(14) NOT NULL
+		,[ContactID] INT NOT NULL
+		,[BirthDate] DATETIME NULL
+		,[ExpireDate] DATETIME NULL
+		,[Age] INT NULL
+		)
+
+	CREATE TABLE [#TMP_TBLAgeProbability] (
+		[ContactID] INT NOT NULL
+		,[Age] INT NULL
+		,[ProbabilityAlive] FLOAT NULL
+		,[RowNo] BIGINT NULL
+		)
+
+	DECLARE @AccountTypeCode VARCHAR(20)
+	DECLARE @ExpectedMatureDate DATETIME
+	DECLARE @TermYearsBeyondLife TINYINT
+	DECLARE @TerminationType VARCHAR(1)
+	DECLARE @AllDOBNULL INT
+	DECLARE @MinDOB DATETIME
+	DECLARE @maxDOD DATETIME
+	DECLARE @HorizonDays FLOAT
+	DECLARE @HorizonCaseL FLOAT = 0.0
+	DECLARE @HorizonCaseT FLOAT = 0.0
+	DECLARE @Annuity2000CalculatedHorizon FLOAT = 0.0
+
+	SET @HORIZON = 0.0
+
+	/*Get the account details*/
+	SELECT @AccountTypeCode = AccMas.AccountTypeCode
+		,@ExpectedMatureDate = AccMas.ProjectedAccountCloseDate
+		,@TermYearsBeyondLife = UDFAMColumn018
+		,@TerminationType = UDFAMColumn020
+	FROM SYN_IT_AccountMaster AccMas
+	INNER JOIN SYN_IT_UDF_AccountMaster UDFAccMas
+		ON AccMas.CustomerAccountNumber = UDFAccMas.CustomerAccountNumber_Key
+			AND AccMas.CustomerAccountNumber = @CustomerAccountNumber
+			AND AccMas.AccountTypeCode <> 'PIF'
+
+	/***START- CALCULATE THE @HorizonCaseT FOR THE CASE WHERE TERMINATIONTYPE = T*/
+	SELECT @HorizonCaseT = CAST(DATEDIFF(DAY, @ReportDate, @ExpectedMatureDate) AS FLOAT) / 365
+
+	/***ENDS- CALCULATE THE @HorizonCaseT FOR THE CASE WHERE TERMINATIONTYPE = T*/
+	/***START CALCULATE THE @HorizonCaseL FOR THE CASE WHERE TERMINATIONTYPE = L*/
+	/*  
+   **Condition 1- For Given account get BirthDate for all beneficiaries where ExcludeFromLifeOfTrust = 0   
+   **and (ExpireDate > ReportDate or ExpireDate is Null)  
+    */
+	INSERT INTO #TMP_TBLBeneficiaryDOB (
+		CustomerAccountNumber
+		,ContactID
+		,BirthDate
+		,ExpireDate
+		,Age
+		)
+	SELECT UCntctAcc.CustomerAccountNumber_Key
+		,CntctMas.ContactID
+		,CntctMas.DateOfBirth
+		,CntctMas.DateOfDeath
+		,NULL
+	FROM SYN_IT_ContactMaster CntctMas
+	INNER JOIN SYN_IT_UDF_ContactAccountRole UCntctAcc
+		ON UCntctAcc.ContactID_Key = CntctMas.ContactID
+			AND UCntctAcc.CustomerAccountNumber_Key = @CustomerAccountNumber
+			AND UCntctAcc.ContactRoleCode_Key = 21 -- Beneficiary
+	WHERE ISNULL(UCntctAcc.UDFCAColumn001, 'N') = 'N'
+		AND (
+			CntctMas.DateOfDeath > @ReportDate
+			OR CntctMas.DateOfDeath IS NULL
+			OR CntctMas.DateOfDeath = '01/01/1900'
+			)
+	--AND (
+	--		B.K1BeneficiaryID = 0
+	--		OR B.K1BeneficiaryID IS NULL
+	--		)
+	
+	/***check if any record exists as per condition one and if so then check if   
+        birth dates for all the beneficiar are null or not
+    */
+	IF EXISTS (
+			SELECT 1
+			FROM #TMP_TBLBeneficiaryDOB
+			)
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM #TMP_TBLBeneficiaryDOB
+				WHERE BirthDate IS NOT NULL
+				)
+			SET @AllDOBNULL = 0 --DOB for SOME the beneficiaries is NULL  
+		ELSE
+			SET @AllDOBNULL = 1 --DOB for ALL the beneficiaries is NULL  
+	END
+	ELSE
+	BEGIN
+		SET @AllDOBNULL = 2 --There were NO beneficiaries found as per the Condition 1  
+	END
+
+	/*If BirthDate is Null for one beneficiary but not all in a given account,   
+ **assume age is equal to minimum age for other beneficiaries in this account.  
+ **Mark Bday field with an "(M)" to signify missing date.  
+    */
+	IF @AllDOBNULL = 0
+	BEGIN
+		SELECT @MinDOB = MIN(BirthDate)
+		FROM #TMP_TBLBeneficiaryDOB
+		WHERE BirthDate IS NOT NULL
+
+		UPDATE #TMP_TBLBeneficiaryDOB
+		SET BirthDate = @MinDOB
+		WHERE BirthDate IS NULL
+	END
+
+	/*  
+ **IF beneficiaries were found as per condition1 then convert BirthDate for each beneficiary to age   
+ **in integer format (round down to nearest year) as of REPORTDATE  
+    */
+	IF @AllDOBNULL <> 2
+	BEGIN
+		UPDATE #TMP_TBLBeneficiaryDOB
+		SET AGE = CASE 
+				WHEN MONTH(BirthDate) > MONTH(@ReportDate)
+					THEN (YEAR(@ReportDate) - YEAR(BirthDate) - 1)
+				WHEN MONTH(BirthDate) < MONTH(@ReportDate)
+					THEN (YEAR(@ReportDate) - YEAR(BirthDate))
+				WHEN MONTH(BirthDate) = MONTH(@ReportDate)
+					AND DAY(BirthDate) > DAY(@ReportDate)
+					THEN YEAR(@ReportDate) - YEAR(BirthDate) - 1
+				WHEN MONTH(BirthDate) = MONTH(@ReportDate)
+					AND DAY(BirthDate) < DAY(@ReportDate)
+					THEN YEAR(@ReportDate) - YEAR(BirthDate)
+				WHEN MONTH(BirthDate) = MONTH(@ReportDate)
+					AND DAY(BirthDate) = DAY(@ReportDate)
+					THEN YEAR(@ReportDate) - YEAR(BirthDate)
+				ELSE NULL
+				END
+	END
+
+	-- added the delete to exclude the beneficiaries less than 5 years
+	DELETE
+	FROM #TMP_TBLBeneficiaryDOB
+	WHERE AGE < 5
+
+	/***STARTS - Calculate the horizon for the beneficiaries in the #TMP_TBLBeneficiaryDOB table as per the TBL_IE_Annuity2000 table
+	*/
+	INSERT INTO #TMP_TBLAgeProbability
+	SELECT TmpBene.ContactID
+		,Annty.AGE
+		,1 - (Annty.Alive / Annty2.Alive)
+		,ROW_NUMBER() OVER (
+			PARTITION BY ContactID ORDER BY ContactID
+				,Annty.Age
+			)
+	FROM #TMP_TBLBeneficiaryDOB TmpBene
+	JOIN TBL_IE_Annuity2000 Annty
+		ON Annty.Age > TmpBene.Age
+	LEFT OUTER JOIN TBL_IE_Annuity2000 Annty2
+		ON Annty2.Age = TmpBene.Age
+
+	SELECT @Annuity2000CalculatedHorizon = @Annuity2000CalculatedHorizon + (
+			1 - (
+				ISNULL(CASE 
+						WHEN MAX(CASE 
+									WHEN ProbabilityAlive = 0
+										THEN 1
+									END) = 1
+							THEN 0
+						ELSE CASE 
+								WHEN COUNT(CASE 
+											WHEN ProbabilityAlive < 0
+												THEN 1
+											END) % 2 = 0
+									THEN 1
+								ELSE - 1
+								END * EXP(SUM(LOG(NULLIF(ABS(ProbabilityAlive), 0))))
+						END, 1)
+				)
+			)
+	FROM #TMP_TBLAgeProbability AP
+	GROUP BY RowNo
+
+	/***ENDS - Calculate the horizon for the beneficiaries in the #TMP_TBLBeneficiaryDOB table as per the TBL_IE_Annuity2000 table
+	*/
+	IF @AllDOBNULL = 1 --DOB for ALL the beneficiaries is NULL=== mark horizon as n/a  
+	BEGIN
+		SET @HorizonCaseL = 99999.0
+	END
+	ELSE
+		IF @AllDOBNULL = 2 --There were NO beneficiaries found as per the Condition 1  
+		BEGIN
+			/*  
+            **If no beneficiaries meet condition 1 then add TermYearsBeyondLife
+            **to ExpireDate of most recently deceased beneficiary where 
+            **ExcludeFromLifeOfTrust = 0  
+            */
+			SELECT @maxDOD = max(ISNULL(CntctMas.DateOfDeath, '01/01/1900'))
+			FROM SYN_IT_ContactMaster CntctMas
+			INNER JOIN SYN_IT_UDF_ContactAccountRole UCntctAcc
+				ON UCntctAcc.ContactID_Key = CntctMas.ContactID
+					AND UCntctAcc.CustomerAccountNumber_Key = @CustomerAccountNumber
+					AND UCntctAcc.ContactRoleCode_Key = 21 -- Beneficiary
+			WHERE ISNULL(UCntctAcc.UDFCAColumn001, 'N') = 'N'
+
+			--AND (
+			--	B.K1BeneficiaryID = 0
+			--	OR B.K1BeneficiaryID IS NULL
+			--	)
+		/*Add Term of Years Beyond Life to the Most recent  date of death for 
+		 ** bene to get the termination date.And Then subtract this from the 
+		 **Report date to get the horizon    
+         */
+			SET @HorizonDays = datediff(day, @ReportDate, DATEADD(YEAR, @TermYearsBeyondLife, @maxDOD))
+			SET @HorizonCaseL = round(@HorizonDays / 365, 1)
+		END
+		ELSE
+		BEGIN
+			SET @HorizonCaseL = ROUND(@Annuity2000CalculatedHorizon, 1) + @TermYearsBeyondLife
+		END
+
+	/***ENDS- CALCULATE THE @HorizonCaseL FOR THE CASE WHERE TERMINATIONTYPE = L*/
+	/***Assign the correct horizon to @HORIZON variable based upon the Terminaton Type code (@TerminationType)*/
+	IF @TerminationType = 'L'
+	BEGIN
+		SET @HORIZON = @HorizonCaseL
+	END
+
+	IF @TerminationType = 'T'
+	BEGIN
+		SET @HORIZON = ROUND(@HorizonCaseT, 1)
+	END
+
+	IF @TerminationType = 'F'
+	BEGIN
+		IF (@HorizonCaseT < @HorizonCaseL)
+			SET @HORIZON = ROUND(@HorizonCaseT, 1)
+		ELSE
+			SET @HORIZON = ROUND(@HorizonCaseL, 1)
+	END
+
+	IF @TerminationType = 'S'
+	BEGIN
+		IF (@HorizonCaseT > @HorizonCaseL)
+			SET @HORIZON = ROUND(@HorizonCaseT, 1)
+		ELSE
+			SET @HORIZON = ROUND(@HorizonCaseL, 1)
+	END
+ 
+	SET @HORIZON = CASE 
+			WHEN ISNULL(@HORIZON, 0.0) < 0
+				THEN 0.0
+			ELSE ISNULL(@HORIZON, 0.0)
+			END
+	SELECT @HORIZON as HORIZON
+		--Update TBL_IE_STG_Estimate STGEst
+		--	SET Ca_TrustLifeExpectancy = @HORIZON
+		--WHERE STGEst.StagingID = @StagingID
+		--	AND STGEst.CustomerAccountNumber = @CustomerAccountNumber
+END

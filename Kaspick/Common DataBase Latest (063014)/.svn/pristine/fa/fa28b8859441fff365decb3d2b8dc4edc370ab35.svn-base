@@ -1,0 +1,287 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetTradeRestrictionList]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetTradeRestrictionList]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************          
+** Name   :   USP_TR_GetTradeRestrictionList    
+** Short Desc : Gets a list of Trade Restrictions for a given Customer Account Number    
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC [USP_TR_GetTradeRestrictionList] 
+        '<CustomerAccountNumbers>
+        <EventId>2</EventId>
+        <CustomerAccountNumber>BWPIFA</CustomerAccountNumber>
+        </CustomerAccountNumbers>'    
+        EXEC [USP_TR_GetTradeRestrictionList] 
+        '<CustomerAccountNumbers>
+        <EventId>59994</EventId>
+        <EventStatusID>3</EventStatusID>
+        <CustomerAccountNumber>ACADW</CustomerAccountNumber>
+        <EventAccountId>65696</EventAccountId>
+        <CustomerAccountNumber>ACBAD</CustomerAccountNumber>
+        <EventAccountId>65697</EventAccountId>
+        </CustomerAccountNumbers>'   
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By :  Chaithra Madappa     
+** Company  :  Kaspick & Company          
+** Project  :  Back Office Integration (T-Rex)    
+** Created DT : Mar-28-2014    
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+**     
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetTradeRestrictionList] (@CustomerAccountNumbers XML)
+AS
+BEGIN
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @StatusId INT
+	DECLARE @EventId INT
+	DECLARE @CustomerAccountNumberTable TABLE (CustomerAccountNumber VARCHAR(14))
+	DECLARE @EventIdTable TABLE (EventId INT)
+	DECLARE @EventStatusIDTable TABLE (EventStatusID INT)
+	DECLARE @ProposedStatusId AS INT
+	DECLARE @ReconciledStatusId AS INT
+	DECLARE @Review1StatusId AS INT
+	DECLARE @Review2StatusId AS INT
+
+	SELECT @ProposedStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Proposed'
+
+	SELECT @ReconciledStatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Reconciled'
+
+	SELECT @Review1StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review1'
+
+	SELECT @Review2StatusId = EventStatusID
+	FROM TBL_TR_EventStatus
+	WHERE EVENTSTATUS = 'Review2'
+
+	INSERT INTO @CustomerAccountNumberTable (CustomerAccountNumber)
+	SELECT XMLDATA.ID.value('(.)', 'VARCHAR(14)') AS CustomerAccountNumber
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/CustomerAccountNumber') AS XMLDATA(ID)
+
+	INSERT INTO @EventIdTable (EventId)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventId
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventId') AS XMLDATA(ID)
+
+	INSERT INTO @EventStatusIDTable (EventStatusID)
+	SELECT XMLDATA.ID.value('(.)', 'int') AS EventStatusID
+	FROM @CustomerAccountNumbers.nodes('/CustomerAccountNumbers/EventStatusID') AS XMLDATA(ID)
+
+	SELECT @StatusId = EventStatusID
+	FROM @EventStatusIDTable
+
+	SELECT @EventId = EventId
+	FROM @EventIdTable
+
+	IF (@EventId = 0)
+	BEGIN
+		SELECT 0 AS 'EventId'
+			,0 AS 'EventAccountID'
+			,0 AS 'EventStatusID'
+			,TrdRest.TradeRestrictionID
+			,TrdRestTypMstr.RestrictionType AS TradeRestrictionType
+			,TrdRest.SecuritySymbol
+			,TrdRest.RestrictionStartDate AS StartDate
+			,TrdRest.RestrictionEndDate AS EndDate
+			,USR.LoginName AS CreatedBy
+			,TrdRest.RestrictionComment AS Comments
+			,TrdRest.CustomerAccountNumber
+		FROM TBL_TR_TradeRestriction TrdRest
+		INNER JOIN TBL_TR_TradeRestrictionTypeMaster TrdRestTypMstr ON TrdRestTypMstr.RestrictionTypeID = TrdRest.TradeRestrictionTypeID
+		INNER JOIN TBL_KS_User USR ON USR.UserId = TrdRest.CreatedUserID
+		WHERE TrdRest.CustomerAccountNumber IN (
+				SELECT CONVERT(VARCHAR(14), CustomerAccountNumber)
+				FROM @CustomerAccountNumberTable
+				)
+			AND TrdRest.IsActive = 1
+		ORDER BY TrdRest.CustomerAccountNumber
+			,TrdRestTypMstr.RestrictionType
+	END
+	ELSE
+	BEGIN
+		IF (
+				@StatusId >= @ProposedStatusId
+				AND @StatusId < @ReconciledStatusId
+				)
+		BEGIN
+			SELECT TrdRestriction.EventId
+				,TrdRestriction.EventAccountID
+				,TrdRestriction.EventStatusID
+				,TrdRestriction.TradeRestrictionID
+				,TrdRestriction.TradeRestrictionType
+				,TrdRestriction.SecuritySymbol
+				,TrdRestriction.StartDate
+				,TrdRestriction.EndDate
+				,TrdRestriction.CreatedBy
+				,TrdRestriction.Comments
+				,TrdRestriction.CustomerAccountNumber
+			FROM (
+				SELECT DISTINCT Evnt.EventId
+					,EvntAcnt.EventAccountID
+					,Evnt.EventStatusID
+					,TrdRestSnpSht.[TradeRestrictionID] AS TradeRestrictionID
+					,TrdRestSnpSht.[TradeRestrictionType] AS TradeRestrictionType
+					,TrdRestSnpSht.[SecuritySymbol] AS SecuritySymbol
+					,TrdRestSnpSht.[StartDate] AS StartDate
+					,TrdRestSnpSht.[EndDate] AS EndDate
+					,TrdRestSnpSht.[CreatedBy] AS CreatedBy
+					,TrdRestSnpSht.[Comments] AS Comments
+					,TrdRest.CustomerAccountNumber AS CustomerAccountNumber
+				FROM TBL_TR_Event Evnt
+				INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON Evnt.EVENTID = EvntAcnt.EVENTID
+				INNER JOIN TBL_TR_TradeRestriction TrdRest ON TrdRest.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+				INNER JOIN TBL_TR_TradeRestrictionTypeMaster TrdRestTypMstr ON TrdRestTypMstr.RestrictionTypeID = TrdRest.TradeRestrictionTypeID
+				INNER JOIN TBL_KS_User USR ON USR.UserId = TrdRest.CreatedUserID
+				LEFT OUTER JOIN TBL_TR_TradeRestrictionSnapshot TrdRestSnpSht ON TrdRestSnpSht.EventId = Evnt.EventId
+					AND TrdRestSnpSht.EventAccountID = EvntAcnt.EventAccountID
+					AND (TrdRestSnpSht.EventStatusID = @ProposedStatusId)
+				WHERE TrdRest.CustomerAccountNumber IN (
+						SELECT CONVERT(VARCHAR(14), CustomerAccountNumber)
+						FROM @CustomerAccountNumberTable
+						)
+					AND TrdRest.IsActive = 1
+					AND Evnt.EventId IN (
+						SELECT EventId
+						FROM @EventIdTable
+						)
+				) AS TrdRestriction
+			ORDER BY TrdRestriction.CustomerAccountNumber
+				,TrdRestriction.TradeRestrictionType
+		END
+		ELSE
+			IF (@StatusId > @ReconciledStatusId)
+			BEGIN
+				SELECT TrdRestriction.EventId
+					,TrdRestriction.EventAccountID
+					,TrdRestriction.EventStatusID
+					,TrdRestriction.TradeRestrictionID
+					,TrdRestriction.TradeRestrictionType
+					,TrdRestriction.SecuritySymbol
+					,TrdRestriction.StartDate
+					,TrdRestriction.EndDate
+					,TrdRestriction.CreatedBy
+					,TrdRestriction.Comments
+					,TrdRestriction.CustomerAccountNumber
+				FROM (
+					SELECT DISTINCT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,TrdRestTypSnpSht.[TradeRestrictionID] AS TradeRestrictionID
+						,TrdRestTypSnpSht.[TradeRestrictionType] AS TradeRestrictionType
+						,TrdRestTypSnpSht.[SecuritySymbol] AS SecuritySymbol
+						,TrdRestTypSnpSht.[StartDate] AS StartDate
+						,TrdRestTypSnpSht.[EndDate] AS EndDate
+						,TrdRestTypSnpSht.[CreatedBy] AS CreatedBy
+						,TrdRestTypSnpSht.[Comments] AS Comments
+						,TrdRest.CustomerAccountNumber AS CustomerAccountNumber
+					FROM TBL_TR_Event Evnt
+					INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					INNER JOIN TBL_TR_TradeRestriction TrdRest ON TrdRest.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN TBL_TR_TradeRestrictionTypeMaster TrdRestTypMstr ON TrdRestTypMstr.RestrictionTypeID = TrdRest.TradeRestrictionTypeID
+					INNER JOIN TBL_KS_User USR ON USR.UserId = TrdRest.CreatedUserId
+					LEFT OUTER JOIN TBL_TR_TradeRestrictionSnapshot TrdRestTypSnpSht ON TrdRestTypSnpSht.EventId = Evnt.EventId
+						AND TrdRestTypSnpSht.EventAccountID = EvntAcnt.EventAccountID
+						AND (
+							TrdRestTypSnpSht.EventStatusID = @ReconciledStatusId
+							OR TrdRestTypSnpSht.EventStatusID = @Review1StatusId
+							OR TrdRestTypSnpSht.EventStatusID = @Review2StatusId
+							)
+					WHERE TrdRest.CustomerAccountNumber IN (
+							SELECT CONVERT(VARCHAR(14), CustomerAccountNumber)
+							FROM @CustomerAccountNumberTable
+							)
+						AND TrdRest.IsActive = 1
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS TrdRestriction
+				ORDER BY TrdRestriction.CustomerAccountNumber
+					,TrdRestriction.TradeRestrictionType
+			END
+			ELSE
+			BEGIN
+				SELECT TrdRestriction.EventId
+					,TrdRestriction.EventAccountID
+					,TrdRestriction.EventStatusID
+					,TrdRestriction.TradeRestrictionID
+					,TrdRestriction.TradeRestrictionType
+					,TrdRestriction.SecuritySymbol
+					,TrdRestriction.StartDate
+					,TrdRestriction.EndDate
+					,TrdRestriction.CreatedBy
+					,TrdRestriction.Comments
+					,TrdRestriction.CustomerAccountNumber
+				FROM (
+					SELECT DISTINCT Evnt.EventId
+						,EvntAcnt.EventAccountID
+						,Evnt.EventStatusID
+						,TrdRest.[TradeRestrictionID] AS TradeRestrictionID
+						,TrdRestTypMstr.RestrictionType AS TradeRestrictionType
+						,TrdRest.SecuritySymbol AS SecuritySymbol
+						,TrdRest.RestrictionStartDate AS StartDate
+						,TrdRest.RestrictionEndDate AS EndDate
+						,USR.LoginName AS CreatedBy
+						,TrdRest.RestrictionComment AS Comments
+						,TrdRest.CustomerAccountNumber AS CustomerAccountNumber
+					FROM TBL_TR_Event Evnt
+					INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON EvntAcnt.EVENTID = Evnt.EVENTID
+					INNER JOIN TBL_TR_TradeRestriction TrdRest ON TrdRest.CustomerAccountNumber = EvntAcnt.CustomerAccountNumber
+					INNER JOIN TBL_TR_TradeRestrictionTypeMaster TrdRestTypMstr ON TrdRestTypMstr.RestrictionTypeID = TrdRest.TradeRestrictionTypeID
+					INNER JOIN TBL_KS_User USR ON USR.UserId = TrdRest.CreatedUserId
+					WHERE TrdRest.CustomerAccountNumber IN (
+							SELECT CONVERT(VARCHAR(14), CustomerAccountNumber)
+							FROM @CustomerAccountNumberTable
+							)
+						AND TrdRest.IsActive = 1
+						AND Evnt.EventId IN (
+							SELECT EventId
+							FROM @EventIdTable
+							)
+					) AS TrdRestriction
+				ORDER BY TrdRestriction.CustomerAccountNumber
+					,TrdRestriction.TradeRestrictionType
+			END
+	END
+END
+GO
+
+

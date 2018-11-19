@@ -1,0 +1,112 @@
+GO
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetPOReportDetails')
+    BEGIN
+        DROP PROCEDURE USP_RP_GetPOReportDetails;
+        PRINT 'DROPPED USP_RP_GetPOReportDetails';
+    END
+GO
+
+/******************************************************************************     
+** New SP Name : USP_RP_GetPOReportDetails
+                   
+** Name:     USP_EIS_RPT_PO_ReportDetails_SelProc                        
+** Short Desc: To fetch the accounts required for Report Generation          
+**                        
+** Full Description: To fetch the accounts required for Report Generation             
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+ DECLARE @DeliverableQueueID bigint   
+ SET @DeliverableQueueID = 238  
+ EXEC USP_RP_GetPOReportDetails @DeliverableQueueID      
+**               
+** Return values: Null      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Venugopal B     
+** Company   : Kaspick & Company                        
+** Project   : Program Overview                         
+** Created DT: 15-JUN-09                   
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------                  
+** 12-Mar-12   Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template.  
+** 14-Mar-12   Anand Kumar    ERD changes implemetation.  
+**   
+** 20-May-14	RAJ				SP Name Renamed and Formatted 
+** Jul 25 2014	Geervani		Changed ContactID to DonorBeneContactID in TBL_DLV_DeliverableItem table
+***************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/      
+      
+CREATE PROCEDURE USP_RP_GetPOReportDetails      
+(      
+ @DeliverableQueueID bigint    
+)      
+AS      
+BEGIN           
+     SELECT   
+    DQ.DeliverableQueueID,  
+    DQ.DeliverableID,  
+    DQ.DeliverableQueueBriefName,  
+    DQ.DeliverableQueueYear,            
+    DID.DELIVERABLEDOCUMENTSID,  
+    DID.DELIVERABLEITEMID,  
+    DI.ManagerCode AS CLIENTID,  
+    ContMst.ManagerCode as ClientBriefName,  
+    DI.CustomerAccountNumber AS ACCOUNTID,  
+    NULL AS ADVENTID,  
+    DI.DonorBeneContactID AS TRUSTPARTICIPANTID,  
+    NULL AS LASTNAME,  
+    ContMst.ContactName AS FIRSTNAME,            
+    CASE BeneficiaryContactRoleCode WHEN 0 THEN 0 ELSE DI.DonorBeneContactID END AS BENEFICIARYID,  
+    CASE DonorContactRoleCode WHEN 0 THEN 0 ELSE DI.DonorBeneContactID END AS DONORID,  
+    DT.DOCUMENTTYPEID,  
+    DT.DOCUMENTTYPENAME,  
+    DOCUMENTFILETYPE,            
+    DID.FILEPATH   
+  FROM TBL_DLV_DeliverableQueue DQ   
+  INNER JOIN TBL_DLV_DocumentType DT on DQ.DeliverableID=DT.DeliverableID   
+  INNER JOIN TBL_DLV_DeliverableItemDocument DID ON DT.DOCUMENTTYPEID=DID.DOCUMENTTYPEID   
+  INNER JOIN TBL_DLV_DeliverableItem DI ON DID.DELIVERABLEITEMID=DI.DELIVERABLEITEMID AND DQ.DELIVERABLEQUEUEID=DI.DELIVERABLEQUEUEID  
+  INNER JOIN  SYN_IT_AccountManagerCodes AccMgrCodes ON AccMgrCodes.ManagerCode = DI.ManagerCode 
+  INNER JOIN SYN_IT_ContactMaster ContMst ON ContMst.ManagerCode = AccMgrCodes.ManagerCode
+  --INNER JOIN Client C on DI.ClientID = C.ClientID  
+  INNER JOIN TBL_DLV_ItemMethodStatus IMS on IMS.DELIVERABLEITEMID=DI.DELIVERABLEITEMID      
+  INNER JOIN TBL_DLV_DeliverableProcessStatus DIS on DIS.DeliverableItemStatusID=IMS.DeliverableItemStatusID      
+  INNER JOIN TBL_DLV_DeliverableMethod DM ON IMS.DeliveryMethodID = DM.DeliveryMethodID         
+             AND DQ.DeliverableID = DM.DeliverableID  
+             AND DM.IsPrimary = 1      
+        where DIS.StatusName in ('Scheduled')  
+  and DQ.DeliverableQueueID = @DeliverableQueueID    
+  ORDER BY DQ.DELIVERABLEQUEUEID,DID.DELIVERABLEITEMID,AccMgrCodes.ManagerCode --- Instead os passing C.BriefName to AccMgrCodes.ManagerCode in order by         
+END  
+
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_RP_GetPOReportDetails') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_RP_GetPOReportDetails';
+	END
+
+
+
+
+

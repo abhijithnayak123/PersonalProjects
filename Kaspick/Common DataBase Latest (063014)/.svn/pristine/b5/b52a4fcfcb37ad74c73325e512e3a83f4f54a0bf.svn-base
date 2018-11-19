@@ -1,0 +1,162 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ExecStagingProcedure]    Script Date: Script Date: 06/03/2013 14:30:13 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ExecStagingProcedure]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ExecStagingProcedure]
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_ExecStagingProcedure                      
+** Short Desc: To retrieve and execute the staging procedures 
+**                      
+** Full Description: To retrieve and execute the staging procedures where runthisproc is set true       
+**                              
+** Input Arguments:  @CreatedBy,@processdate,@ReturnProcessID   
+**         
+** Sample Call     
+	Declare @ReturnProcessID int
+	EXEC USP_PP_ExecStagingProcedure 1,'11/30/2012', @ReturnProcessID output
+	SELECT @ReturnProcessID
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 03-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 9/27/2013 Saravanan				Adding Payment Publish process log and added Return parameter
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ExecStagingProcedure] (
+	@CreatedBy INT
+	,@processdate DATE
+	,@ReturnProcessID INT OUTPUT 
+	)
+AS
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	SET NOCOUNT ON
+
+	DECLARE @ProcList VARCHAR(1000)
+	DECLARE @ProcName VARCHAR(100)
+	DECLARE @ProcessID INT
+	DECLARE @SPStartDateTime DATETIME
+
+	--Insert Payment Publish process log information - added by Saravanan
+	INSERT INTO TBL_PP_PaymentPublishProcessLog (ProcessStatus,StartTime,CreatedBy)
+	VALUES('Initiated',GETDATE(),@CreatedBy)
+	SELECT @ProcessID = IDENT_CURRENT('TBL_PP_PaymentPublishProcessLog')
+
+	SET @ProcessID  = ISNULL(@ProcessID,0)
+
+	--Insert Payment Publish process log details - added by Saravanan
+	INSERT INTO TBL_PP_PaymentPublishProcessLogDetail (ProcessID,[Description],Error,StartTime,EndTime)
+	VALUES (@ProcessID, 'PaymentProcess request initiated', null, GETDATE(),GETDATE())
+	
+	INSERT INTO TBL_PP_PaymentPublishProcessLogDetail (ProcessID,[Description],Error,StartTime,EndTime)
+	VALUES (@ProcessID, 'Inserting records into Staging tables', null, GETDATE(),GETDATE())
+		
+	
+	DECLARE Proc_Cur CURSOR
+	FOR
+	SELECT PayProcSumSP
+	FROM TBL_PP_PAYMENTPROCDETAIL
+	WHERE RunThisProc = 1
+	ORDER BY ExecutionSeq
+
+	OPEN Proc_Cur
+
+	FETCH NEXT
+	FROM Proc_Cur
+	INTO @ProcName
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		SET @SPStartDateTime = GETDATE()
+		IF @ProcName = 'USP_PP_InsPendingPayment'
+			EXEC USP_PP_InsPendingPayment @processdate
+		ELSE IF @ProcName = 'USP_PP_InsStagingPaymentExport'
+			EXEC @ProcName @CreatedBy, @ProcessID
+		ELSE
+			EXEC @ProcName @CreatedBy
+
+		UPDATE TBL_PP_PAYMENTPROCDETAIL
+		SET LastRunDateTime = GETDATE()
+		WHERE PayProcSumSP = @ProcName
+		
+		--Insert SP execution log details to Payment Publish Process Log details table added by Saravanan
+		INSERT INTO TBL_PP_PaymentPublishProcessLogDetail (ProcessID,[Description],Error,StartTime,EndTime)
+		VALUES (@ProcessID, 'Executing Staging Procedure - '+@ProcName, null, @SPStartDateTime,GETDATE())
+
+		FETCH NEXT
+		FROM Proc_Cur
+		INTO @ProcName
+	END
+
+	CLOSE Proc_Cur
+
+	DEALLOCATE Proc_Cur
+	
+	SET @ReturnProcessID = @ProcessID
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	CLOSE Proc_Cur
+
+	DEALLOCATE Proc_Cur
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+	--Capture the Error Log into Payment Publish Process Log Detail
+	INSERT INTO TBL_PP_PaymentPublishProcessLogDetail (ProcessID,[Description],Error,StartTime,EndTime)
+	VALUES (@ProcessID, 'Executing Staging Procedure Error - ' + @ProcName , @ErrorMessage, @SPStartDateTime,GETDATE())
+	--Update the Payment Publish Process Log Status
+	UPDATE TBL_PP_PaymentPublishProcessLog 
+	SET ProcessStatus = 'Failure'
+		,NoOfFilesProcessed = 0
+		,EndTime = GETDATE()
+	WHERE ProcessID = @ProcessID
+	
+	SET @ReturnProcessID = @ProcessID
+	
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

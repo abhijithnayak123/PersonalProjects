@@ -1,0 +1,64 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetSTGClientComment]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewGetSTGClientComment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewGetSTGClientComment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewGetSTGClientComment]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewGetSTGClientComment    
+** Short Desc:  Retrieves the client comment for the given staging id.   
+**    
+** Full Description : Retrieves the client comment for the given staging id.
+**            
+**    
+** Sample Call      
+        EXEC USP_IE_ReviewGetSTGClientComment  10
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/12/2014   
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewGetSTGClientComment] @StagingID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT EP_ClientIEComment
+		,ModifiedDate
+	FROM TBL_IE_STG_Estimate
+	WHERE StagingID = @StagingID
+
+	SET NOCOUNT OFF;
+END

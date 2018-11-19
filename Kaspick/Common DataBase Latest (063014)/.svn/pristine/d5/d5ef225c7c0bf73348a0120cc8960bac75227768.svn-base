@@ -1,0 +1,246 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport1]    Script Date: 10/04/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportGetPaymentSummarySubReport1]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport1]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportGetPaymentSummarySubReport1]    Script Date: 10/04/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_ReportGetPaymentSummarySubReport1                      
+** Short Desc:  Procedure to generate Payment summary report 
+**                      
+** Full Description:   Procedure to generate Payment summary report section1
+**					               
+**        
+**                              
+** Input Arguments:    @CustomerAccountNumber VARCHAR(14) ,@TaxYear INT
+**         
+** Sample Call     
+
+EXEC USP_PP_ReportGetPaymentSummarySubReport1  '353C134',2013   
+EXEC USP_PP_ReportGetPaymentSummarySubReport1  'AMGIL', 2013
+EXEC USP_PP_ReportGetPaymentSummarySubReport1  'AMGIL', 2014    
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 29-JAN-2014                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportGetPaymentSummarySubReport1]
+	-- paremeters here                                
+	@CustomerAccountNumber VARCHAR(14)
+	,@TaxYear INT
+AS
+--  Initial Set statements  --          
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds     
+
+DECLARE @CYDistAmount MONEY
+DECLARE @varDateOpened DATETIME
+DECLARE @varFinalPaymentType TINYINT
+DECLARE @varMatureDate DATETIME
+DECLARE @varMatureReason TINYINT
+DECLARE @RecordCount INT
+DECLARE @FundedDays INT
+DECLARE @DaysInYear INT
+DECLARE @ProratedAnnuityAmount MONEY
+DECLARE @ProratedAnnuityAmount1 MONEY
+DECLARE @DaysInFinalYearofTrust INT
+DECLARE @DaysPriortoTermination INT
+DECLARE @TerminationPercent FLOAT
+DECLARE @TerminationPercent1 MONEY
+DECLARE @FinalPaymentRule VARCHAR(100)
+DECLARE @DateofFinalPayment DATETIME
+DECLARE @TmpGiftDetail TABLE (
+	GiftDate DATETIME
+	,MarketValue MONEY
+	,GiftType VARCHAR(100)
+	,AnnualAnnuity MONEY
+	,AnnualAnnuity1 MONEY
+	,FundedDays INT
+	,DaysInYear INT
+	,ProratedAnnuityAmount MONEY
+	,ProratedAnnuityAmount1 MONEY
+	,DaysInFinalYearofTrust INT
+	,DaysPriortoTermination INT
+	,TerminationPercent FLOAT
+	,TerminationPercent1 MONEY
+	,FinalPaymentRule VARCHAR(50)
+	,DateofFinalPayment DATETIME
+	,CreationDate DATETIME
+	,TaxYear INT
+	,MatureDate DATETIME
+	,FinalPaymentType INT
+	)
+
+SELECT
+	@CYDistAmount = CTAccntDtls.CYDistAmount
+	,@varDateOpened = AccntMstr.DateOpened
+	,@varFinalPaymentType = UDFAccntMstr.UDFAMColumn017
+	,@varMatureDate = UDFAccntMstr.UDFAMColumn030
+	,@varMatureReason = UDFAccntMstr.UDFAMColumn019
+FROM SYN_IT_AccountMaster AccntMstr
+INNER JOIN SYN_IT_UDF_AccountMaster UDFAccntMstr
+	ON AccntMstr.CustomerAccountNumber = UDFAccntMstr.CustomerAccountNumber_Key
+		AND CustomerAccountNumber = @CustomerAccountNumber
+INNER JOIN SYN_IT_CTAccountDetails CTAccntDtls
+	ON AccntMstr.CustomerAccountNumber = CTAccntDtls.CustomerAccountNumber
+
+IF @TaxYear = YEAR(@varDateOpened)
+BEGIN
+	SET @FundedDays = datediff(day, @varDateOpened, cast('12/31/' + cast(year(@varDateOpened) AS VARCHAR) AS DATETIME)) + 1
+	SET @DaysInYear = dbo.Fn_ReportGetDaysInYear(@TaxYear)
+	SET @ProratedAnnuityAmount = 100 * dbo.Fn_ReportGetDateProrate(@varDateOpened)
+	SET @ProratedAnnuityAmount1 = dbo.Fn_ReportGetDateProrate(@varDateOpened) * @CYDistAmount
+END
+
+IF @varMatureDate IS NOT NULL
+	AND year(@varMatureDate) = @TaxYear
+BEGIN
+	SET @DaysInFinalYearofTrust = dbo.Fn_ReportGetDaysInYear(@TaxYear)
+	SET @DaysPriortoTermination = datediff(day, cast('1/1/' + cast(@TaxYear AS VARCHAR) AS DATETIME), @varMatureDate)
+
+	DECLARE @MatureDate DATETIME = NULL
+	DECLARE @FinalPaymentType INT = NULL
+	DECLARE @MatureReason INT = NULL
+
+	IF EXISTS (
+			SELECT 1
+			FROM TBL_PP_AnnualAccountPayoutInfo
+			WHERE CustomerAccountNumber = @CustomerAccountNumber
+				AND PayoutYear = @TaxYear
+			)
+	BEGIN
+		SELECT @MatureDate = @varMatureDate
+			,@FinalPaymentType = @varFinalPaymentType
+			,@MatureReason = @varMatureReason
+	END
+
+	SET @TerminationPercent = round(dbo.Fn_ReportGetTerminationFactor(@TaxYear, @MatureDate, @FinalPaymentType, @MatureReason) * 100, 4)
+	SET @TerminationPercent1 = (
+			CASE 
+				WHEN isnull(@ProratedAnnuityAmount1, 0) = 0
+					THEN round(@CYDistAmount * @TerminationPercent / 100, 4)
+				ELSE @ProratedAnnuityAmount1 * @TerminationPercent
+				END
+			)
+
+	IF @varFinalPaymentType = 1
+	BEGIN
+		SET @DateofFinalPayment = @varMatureDate -- check this      
+		SET @FinalPaymentRule = 'Payment Preceding D.O.D.'
+	END
+	ELSE
+		SET @FinalPaymentRule = 'Pro-rated to Termination Date'
+END
+
+-- Gift has Dependency on Tables -- TO DO
+INSERT INTO @TmpGiftDetail (
+	GiftDate
+	,MarketValue
+	,GiftType
+	)
+SELECT '2013-04-22 00:00:00.000'
+	,50.00
+	,'Addition: '
+
+--INSERT INTO @TmpGiftDetail (
+--	GiftDate
+--	,MarketValue
+--	,GiftType
+--	)
+--SELECT MAX(Gift.GiftDate) AS GiftDate
+--	,SUM(MarketValue) AS MarketValue
+--	,CASE 
+--		WHEN SUM(CONVERT(INT, IsInitialGift)) > 0
+--			THEN 'Initial Gift: '
+--		ELSE 'Addition: '
+--		END AS GiftType
+--FROM Gift
+--	,GiftAsset
+--WHERE Gift.GiftID = GiftAsset.GiftID
+--	AND Gift.AccountID = @CustomerAccountNumber
+--	AND DATEPART(year, GiftDate) = @TaxYear
+--GROUP BY Gift.GiftID
+SELECT @RecordCount = count(*)
+FROM @TmpGiftDetail
+
+IF (@RecordCount = 0)
+BEGIN
+	INSERT INTO @TmpGiftDetail (
+		GiftDate
+		,MarketValue
+		,GiftType
+		)
+	VALUES (
+		NULL
+		,0
+		,NULL
+		)
+END
+
+UPDATE @TmpGiftDetail
+SET AnnualAnnuity = @CYDistAmount
+	,AnnualAnnuity1 = @CYDistAmount
+	,FundedDays = @FundedDays
+	,DaysInYear = @DaysInYear
+	,ProratedAnnuityAmount = @ProratedAnnuityAmount
+	,ProratedAnnuityAmount1 = @ProratedAnnuityAmount1
+	,DaysInFinalYearofTrust = @DaysInFinalYearofTrust
+	,DaysPriortoTermination = @DaysPriortoTermination
+	,TerminationPercent = @TerminationPercent
+	,TerminationPercent1 = @TerminationPercent1
+	,FinalPaymentRule = @FinalPaymentRule
+	,DateofFinalPayment = @DateofFinalPayment
+	,CreationDate = @varDateOpened
+	,TaxYear = @TaxYear
+	,MatureDate = @varMatureDate
+	,FinalPaymentType = @varFinalPaymentType
+
+SELECT convert(VARCHAR, GiftDate, 101) AS GiftDate
+	,MarketValue
+	,GiftType
+	,AnnualAnnuity
+	,AnnualAnnuity1
+	,FundedDays
+	,DaysInYear
+	,ProratedAnnuityAmount
+	,ProratedAnnuityAmount1
+	,DaysInFinalYearofTrust
+	,DaysPriortoTermination
+	,TerminationPercent
+	,TerminationPercent1
+	,FinalPaymentRule
+	,DateofFinalPayment
+	,convert(VARCHAR, CreationDate, 101) AS CreationDate
+	,TaxYear
+	,convert(VARCHAR, MatureDate, 101) AS MatureDate
+	,FinalPaymentType
+FROM @TmpGiftDetail

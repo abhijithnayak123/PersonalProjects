@@ -1,0 +1,325 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]    Script Date: 10/21/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_RB_ImportReBalTrade]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_RB_ImportReBalTrade]
+GO
+
+/********************************************************************************************************************              
+* Procedure Name  : USP_RB_ImportReBalTrade          
+* Purpose         : To insert & update Asset class list       
+* Input Parameter : @SecuritySymbol - Security Symbol        
+*                 : @AssetName - Asset Name        
+*                 : @UserID - User ID        
+*            
+* Modification Log               
+* Date       Modified By         Description              
+*--------------------------------------------------------------------------------------------------------------------              
+* -    -      Import Rebalance Trades           
+* 12-Jul-13   CTS Developer    Changes to incorporate ETL Package functionalities and replace ETL Package with SP 
+  09-Jun-14   Salih				Modified synonyms as part of migration 
+* 26-jun-14   Salih				Modified Rolecode implementation from Rolecode description to ID.
+*--------------------------------------------------------------------------------------------------------------------              
+*             Exec USP_RB_ImportReBalTrade 136 ,1  
+*--------------------------------------------------------------------------------------------------------------------              
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_RB_ImportReBalTrade] (
+	@SIM_SLNO AS INTEGER
+	,@UserID AS INTEGER
+	--@TradeXML XML      
+	--@ReturnStatus Int =-1 output, -- assume SP fails and       
+	--@ErrorDesc Varchar(8000) output      
+	)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from    
+	-- interfering with SELECT statements.    
+	SET NOCOUNT ON
+
+	DECLARE @AccountCount AS INT
+	DECLARE @Counter AS INT
+	DECLARE @CurrentAccount AS INT
+	DECLARE @ReBalTransaction AS VARCHAR(20)
+
+	IF EXISTS (
+			SELECT 1
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMP_Trades]')
+			)
+		DROP TABLE [DBO].[#TEMP_Trades]
+
+	CREATE TABLE #TEMP_Trades (
+		SLNO INT NOT NULL Identity(1, 1)
+		,TradeID INT
+		,FSITypeCode VARCHAR(2)
+		,SchwabMasterID VARCHAR(12)
+		,CustodialAccount VARCHAR(50)
+		,CustomerAccountNumber VARCHAR(14)
+		,SecuritySymbol VARCHAR(25)
+		,SecurityType VARCHAR(25)
+		,TradeType VARCHAR(2)
+		,DollarTradeAmt MONEY
+		,TradeQuantity FLOAT(8)
+		,ApprovedDate DATETIME
+		,TradeDate DATETIME
+		,UserID INT
+		,Source VARCHAR(10)
+		,TradeStatus VARCHAR(10)
+		)
+
+	INSERT INTO #TEMP_Trades (
+		TradeID
+		,FSITypeCode
+		,SchwabMasterID
+		,CustodialAccount
+		,CustomerAccountNumber
+		,SecuritySymbol
+		,SecurityType
+		,TradeType
+		,DollarTradeAmt
+		,TradeQuantity
+		,ApprovedDate
+		,TradeDate
+		,UserID
+		,Source
+		,TradeStatus
+		)
+	SELECT TradeID
+		,FSITypeCode
+		,
+		--  TradeID_Enfu,  
+		SchwabMasterID
+		,CustodialAccount
+		,CustomerAccountNumber
+		,SecuritySymbol
+		,SecurityType
+		,TradeType
+		,DollarTradeAmt
+		,TradeQuantity
+		,ApprovedDate
+		,
+		--     FileGenDate,  
+		--  ReconcileDate,  
+		TradeDate
+		,
+		--  SettleDate,  
+		UserID
+		,Source
+		,TradeStatus
+	FROM SYN_RB_TBL_TR_TRADEEXPORT
+	WHERE (SIM_SLNO = @SIM_SLNO)
+
+	DECLARE @AccountTable TABLE (
+		SLNo INT identity(1, 1)
+		,CustomerAccountNumber VARCHAR(14)
+		)
+
+	INSERT INTO @AccountTable
+	SELECT DISTINCT CustomerAccountNumber
+	FROM #TEMP_Trades
+
+	SELECT @AccountCount = count(CustomerAccountNumber)
+	FROM @AccountTable
+
+	SET @ReBalTransaction = 'ReBalTransaction'
+	SET @Counter = 1
+
+	BEGIN TRANSACTION @ReBalTransaction
+
+	BEGIN TRY
+		IF (@AccountCount > 0)
+		BEGIN
+			WHILE (@Counter <= @AccountCount)
+			BEGIN
+				SELECT @CurrentAccount = CustomerAccountNumber
+				FROM @AccountTable
+				WHERE SLNo = @Counter
+
+				INSERT INTO [TBL_TR_Event] (
+					[EventStatusID]
+					,[EventName]
+					,[CreatedUser]
+					,[CreateDate]
+					,[EventSource]
+					,[Source]
+					,[AssignedTrader]
+					,[CombinedAccounts]
+					,[LastModifiedUser]
+					,[LastModifiedDate]
+					)
+				SELECT Approved.EventStatusID
+					,'RebalEvent'
+					,@UserID
+					,GetDate()
+					,'Rebalance'
+					,'Rebalance'
+					,isnull(SRTrader.UserID, 1) AS PrimaryTrader
+					,0
+					,@UserID
+					,GetDate()
+				FROM #AccountTable TmpAccnt
+				INNER JOIN SYN_IT_AccountMaster AccMst
+					ON TmpAccnt.CustomerAccountNumber = AccMst.CustomerAccountNumber
+				INNER JOIN SYN_KD_TBL_TR_EventStatus Approved
+					ON EventStatus = 'Approved'
+				LEFT OUTER JOIN (
+					SELECT DISTINCT Usr.UserID AS UserID
+						,AccMgrCod.ManagerCode AS ManagerCode
+					FROM SYN_KD_TBL_KS_User Usr
+					INNER JOIN SYN_IT_SubContactRoles SubCntRol
+						ON SubCntRol.SubContactID = Usr.InnotrustContactID
+						-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+							AND SubCntRol.ContactRoleCode = 515 -- 'Portfolio Analyst'
+					INNER JOIN SYN_IT_AccountManagerCodes AccMgrCod
+						ON AccMgrCod.ContactID = SubCntRol.ContactID
+					) SRTrader
+					ON SRTrader.ManagerCode = AccMst.ManagerCode
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @ReBalTransaction
+				END
+
+				INSERT INTO TBL_TR_EventAccount (
+					[EventID]
+					,[CustomerAccountNumber]
+					,[AccountOrder]
+					,[AccountName]
+					,[AccountType]
+					,[PayoutRate]
+					,[AnnuityAmount]
+					,[SLMasterAccount]
+					,[Managed]
+					,[Custodian]
+					,[CustodianAccountNumber]
+					,[InvestmentTypeCode]
+					,[TaxStatus]
+					,[TradeDiscretion]
+					,[TradeStatusCode]
+					,[FSIOption]
+					,[InvestmentComment]
+					,[TrancheStatusCode]
+					,[ImposedBenePayments]
+					,[ObjectiveCode]
+					,[PoliByCli]
+					,[LotAccountingCode]
+					,[LastModifiedUser]
+					,[LastModifiedDate]
+					)
+				SELECT IDENT_CURRENT('TBL_TR_Event')
+					,AT.CustomerAccountNumber
+					,1
+					,ISNULL(AccMst.CustomerDescriptionLine1, '') + ' ' + ISNULL(AccMst.CustomerDescriptionLine2, '') + ' ' + ISNULL(AccMst.CustomerDescriptionLine3, '') + ' ' + ISNULL(AccMst.CustomerDescriptionLine4, '') AS FullName
+					,AccMst.AccountTypeCode
+					,CTAcntDet.PayoutPercentage
+					,CTAcntDet.CYDistAmount
+					,InvAccPrfl.SchwabMasterID
+					,InvAccPrfl.AssetsUnderMgmt
+					,ABAVer.BankName
+					,AccMst.ExternalCustomerID
+					,InvAccPrfl.InvestmentTypeCode
+					,InvAccPrfl.InvestmentTaxStatusCode
+					,InvAccPrfl.DiscretionaryTrade
+					,InvAccPrfl.TradeStatusCode
+					,InvAccPrfl.FSITypeCode
+					,InvAccPrfl.InvestmentComment
+					,InvAccPrfl.TrancheStatusCode
+					,0
+					,InvAccPrfl.ObjectiveCode
+					,NULL
+					,InvAccPrfl.LotAccountingCode
+					,@UserID
+					,GetDate()
+				FROM #AccountTable AT
+				INNER JOIN SYN_IT_AccountMaster AccMst
+					ON AT.CustomerAccountNumber = AccMst.CustomerAccountNumber
+				INNER JOIN SYN_IT_CTAccountDetails CTAcntDet
+					ON CTAcntDet.CustomerAccountNumber = AccMst.CustomerAccountNumber
+				INNER JOIN SYN_KD_TBL_INV_AccountProfile InvAccPrfl
+					ON AccMst.CustomerAccountNumber = InvAccPrfl.CustomerAccountNumber
+				INNER JOIN SYN_IT_ABAverification ABAVer
+					ON ABAVer.ABANumber = AccMst.ClearingABA
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @ReBalTransaction
+				END
+
+				INSERT INTO TBL_TR_EventType (
+					EventID
+					,EventTypeID
+					,LastModifiedDate
+					,LastModifiedUserID
+					)
+				SELECT IDENT_CURRENT('TBL_TR_Event')
+					,EventTypeID
+					,LastModifiedDate
+					,LastModifiedUserID
+				FROM @AccountTable AT
+				INNER JOIN TBL_TR_Eventtypemaster ET
+					ON ET.EventType = 'Rebalance'
+				WHERE AT.CustomerAccountNumber = @CurrentAccount
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @ReBalTransaction
+				END
+
+				INSERT INTO TBL_TR_TSheetApprovedTrade (
+					[EventID]
+					,[EventAccountID]
+					,[TradeType]
+					,[SecurityTypeCode]
+					,[SecuritySymbol]
+					,[TradeQuantity]
+					,[DollarAmount]
+					,[TradeDate]
+					,[SubmissionType]
+					,[SplitTrade]
+					,[SubmittedQuantityTillDate]
+					,[LastModifiedUser]
+					,[LastModifiedDate]
+					)
+				SELECT IDENT_CURRENT('TBL_TR_Event')
+					,IDENT_CURRENT('TBL_TR_EventAccount')
+					,TR.TradeType
+					,TR.SecurityType
+					,TR.SecuritySymbol
+					,TR.TradeQuantity
+					,TR.DollarTradeAmt
+					,TR.TradeDate
+					,'Schwab File'
+					,0
+					,0
+					,@UserID
+					,GetDate()
+				FROM #TEMP_Trades TR
+				INNER JOIN TBL_TR_Eventtypemaster ET
+					ON ET.EventType = 'Rebalance'
+				WHERE TR.CustomerAccountNumber = @CurrentAccount
+
+				IF (@@ERROR > 0)
+				BEGIN
+					ROLLBACK TRANSACTION @ReBalTransaction
+				END
+
+				SET @Counter = @Counter + 1
+			END
+		END
+
+		COMMIT TRANSACTION @ReBalTransaction
+	END TRY
+
+	BEGIN CATCH
+		--SET @ErrorDesc = ERROR_MESSAGE();        
+		--print @ErrorDesc      
+		ROLLBACK TRANSACTION @ReBalTransaction
+			--SET @ReturnStatus = -1;          
+	END CATCH
+END

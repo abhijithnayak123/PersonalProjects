@@ -1,0 +1,59 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'FN'
+			AND NAME = 'FN_GetFundingTypeListTypeName'
+		)
+BEGIN
+	DROP FUNCTION FN_GetFundingTypeListTypeName;
+
+	PRINT 'DROPPED FN_GetFundingTypeListTypeName';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : FN_GetFundingTypeListTypeName
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the data for populating the data in the search controls of historical gifts page.
+**      
+** Sample Call      
+   SELECT dbo.[FN_GetFundingTypeListTypeName]()
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 07/18/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+
+CREATE FUNCTION [dbo].[FN_GetFundingTypeListTypeName]()
+RETURNS VARCHAR(50)
+AS
+BEGIN
+	RETURN 'Funding Type ID'
+END
+GO

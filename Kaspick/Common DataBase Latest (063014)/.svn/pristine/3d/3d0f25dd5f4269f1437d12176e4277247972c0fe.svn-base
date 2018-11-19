@@ -1,0 +1,69 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserRole]    Script Date: 06/12/2014 17:43:14 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetUserRole]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_KS_GetUserRole]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserRole]    Script Date: 06/12/2014 17:43:14 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************          
+** Name   :   USP_KS_GetUserRole          
+** Short Desc : Put in Short Description          
+**          
+** Full Description          
+**                  
+**          
+** Sample Call          
+        EXEC USP_KS_GetUserRole 100023      
+   -- parameters          
+**          
+** Return values: NONE          
+**          
+**          
+** Standard declarations          
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds          
+**           
+** Created By : Tanuj     
+** Company  :  Kaspick & Company          
+** Project  :  BOI - Katana          
+** Created DT :  05/15/2014          
+**                      
+*******************************************************************************          
+**       Change History          
+*******************************************************************************          
+** Date:        Author:  Bug #     Description:                           Rvwd          
+** --------     -------- ------    -------------------------------------- --------          
+** 05/15/2014   Tanuj             Created 
+******************************************************************************          
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved          
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION          
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetUserRole]
+AS
+BEGIN
+SELECT 
+      AM.ManagerCode
+      , KCoStaff.ContactID
+      , KCoStaff.ContactName
+      ,sub.ContactRoleCode
+      , ContactRoleCodeDesc
+      , usr.UserID
+      ,usr.FirstName
+      ,usr.LastName  
+FROM 
+      SYN_IT_ContactMaster CM
+      INNER JOIN SYN_IT_AccountManagerCodes AM ON cm.ContactID=AM.ContactID
+      INNER JOIN SYN_IT_SubContactRoles sub ON sub.ContactID=cm.ContactID
+      INNER JOIN SYN_IT_ContactRoleCodes CR ON CR.Id=sub.ContactRoleCode
+      INNER JOIN SYN_IT_ContactMaster KCoStaff  ON KCoStaff.contactID=sub.subcontactID  
+      INNER JOIN TBL_KS_User usr ON usr.InnotrustContactID=KCoStaff.ContactID
+END
+      
+     
+

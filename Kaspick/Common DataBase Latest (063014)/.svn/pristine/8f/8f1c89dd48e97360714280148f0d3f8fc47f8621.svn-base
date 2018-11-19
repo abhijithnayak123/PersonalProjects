@@ -1,0 +1,201 @@
+/****** Object:  StoredProcedure [dbo].[sp_dsInit]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_dsInit]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_dsInit]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_dsInit]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_dsInit                      
+** Short Desc: Helper proc for sp_DeliverableSchedule 
+**                      
+** Full Description: Helper proc for sp_DeliverableSchedule. Finds the FIRST scheduled date according to the specified calendar parameters
+**                              
+** Input Arguments: The @seed_date output parameter is used as a starting point for date calculations, and then returned 
+** with a new value.  
+**  
+** For accurate date calculations, one call to sp_dsInit  
+** is required before any calls to sp_ds_Increment   
+**         
+** Sample Call  
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+** 
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_dsInit @freq_type INT
+	,-- 0 = Daily; 1 = weekly; 2 = Mothly; 3 = Yearly      
+	@freq_occurrence INT
+	,@freq_month_occurrence INT
+	,@freq_day_occurrence VARCHAR(10)
+	,@seed_date DATETIME
+OUTPUT AS
+
+DECLARE @cnt INT
+	,@temp_date DATETIME
+
+/*   
+  ** Daily  
+  */
+IF (@freq_type = 0)
+	AND (@freq_day_occurrence IS NULL)
+BEGIN
+	/* Start at day indicated */
+	SELECT @seed_date = @seed_date
+END
+		/*   
+  ** Daily, Weekdays-only  
+  */
+ELSE
+	IF (@freq_type = 0)
+		AND (@freq_day_occurrence = 'MTWRF')
+	BEGIN
+		EXEC sp_dsNextWeekday @seed_date OUTPUT
+	END
+			/*   
+  ** Weekly, Certain days of the week  
+  */
+	ELSE
+		IF (@freq_type = 1)
+			AND (@freq_day_occurrence IS NOT NULL)
+		BEGIN
+			EXEC sp_dsNextDayInSet @freq_day_occurrence
+				,@seed_date OUTPUT
+		END
+				/*   
+  ** Monthly, specific day of each month  
+  */
+		ELSE
+			IF (@freq_type = 2)
+				AND (@freq_day_occurrence IS NULL)
+			BEGIN
+				/* Advance/Retreat to specified day of month */
+				SELECT @temp_date = DATEADD(day, (@freq_occurrence - DATEPART(day, @seed_date)), @seed_date)
+
+				/* For short months, retreat to last day of month */
+				WHILE DATEPART(month, @temp_date) > DATEPART(month, @seed_date)
+				BEGIN
+					SELECT @temp_date = DATEADD(day, - 1, @temp_date)
+				END
+
+				SELECT @seed_date = @temp_date
+			END
+					/*   
+  ** Monthly, 1st, 2nd, 3rd weekday of the month  
+  */
+			ELSE
+				IF (@freq_type = 2)
+					AND (@freq_day_occurrence = 'E')
+				BEGIN
+					/* Go to first day of month */
+					EXEC sp_dsFirstDayOfMonth @seed_date OUTPUT
+
+					/* Find 1st, 2nd, 3rd weekday */
+					SELECT @cnt = 0
+
+					WHILE (@cnt < @freq_occurrence)
+					BEGIN
+						EXEC sp_dsNextWeekday @seed_date OUTPUT
+
+						SELECT @cnt = @cnt + 1
+
+						IF (@cnt < @freq_occurrence)
+							SELECT @seed_date = DATEADD(day, 1, @seed_date)
+					END
+				END
+						/*   
+  ** Monthly, 1st, 2nd, 3rd... Monday, Tues, Wed...  
+  */
+				ELSE
+					IF (@freq_type = 2)
+						AND (@freq_day_occurrence IS NOT NULL)
+					BEGIN
+						/* Go to beginning of Month */
+						EXEC sp_dsFirstDayOfMonth @seed_date OUTPUT
+
+						/* Find first Mon, Tue, Wed... in month */
+						EXEC sp_dsNextDayInSet @freq_day_occurrence
+							,@seed_date OUTPUT
+
+						/* Advance # of weeks specified in @freq_occurrence */
+						SELECT @seed_date = DATEADD(week, @freq_occurrence - 1, @seed_date)
+					END
+							/*   
+  ** Yearly, Specific day of the year  
+  */
+					ELSE
+						IF (@freq_type = 3)
+							AND (@freq_day_occurrence IS NULL)
+						BEGIN
+							/* Go to specified month */
+							SELECT @seed_date = DATEADD(month, @freq_month_occurrence - DATEPART(month, @seed_date), @seed_date)
+
+							/* Go to specified day */
+							SELECT @seed_date = DATEADD(day, @freq_occurrence - DATEPART(day, @seed_date), @seed_date)
+						END
+								/*   
+  ** Yearly,  1st 2nd 3rd... weekday of specific month  
+  ** Yearly,  1st 2nd 3rd... Mon Tues Wed... of a specific month  
+  */
+						ELSE
+							IF (@freq_type = 3)
+								AND (@freq_day_occurrence IS NOT NULL)
+							BEGIN
+								/* Go to specified month */
+								SELECT @seed_date = DATEADD(month, @freq_month_occurrence - DATEPART(month, @seed_date), @seed_date)
+
+								/* Go to first day of month */
+								EXEC sp_dsFirstDayOfMonth @seed_date OUTPUT
+
+								/* 1st, 2nd, 3rd weekday */
+								IF (@freq_day_occurrence = 'E')
+								BEGIN
+									SELECT @cnt = 0
+
+									WHILE (@cnt < @freq_occurrence)
+									BEGIN
+										EXEC sp_dsNextWeekday @seed_date OUTPUT
+
+										SELECT @cnt = @cnt + 1
+
+										IF @cnt < @freq_occurrence
+											SELECT @seed_date = DATEADD(day, 1, @seed_date)
+									END
+								END
+										/* 1st, 2nd, 3rd,  Mon, Tues, Wed */
+								ELSE
+								BEGIN
+									EXEC sp_dsNextDayInSet @freq_day_occurrence
+										,@seed_date OUTPUT
+
+									SELECT @seed_date = DATEADD(week, @freq_occurrence - 1, @seed_date)
+								END
+							END
+									/*   
+  ** Error  
+  */
+							ELSE
+								SELECT @seed_date = NULL

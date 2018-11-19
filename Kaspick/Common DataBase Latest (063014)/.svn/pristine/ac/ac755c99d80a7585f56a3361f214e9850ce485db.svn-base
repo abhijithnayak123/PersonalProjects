@@ -1,0 +1,104 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_HG_GetSearchControlsData'
+		)
+BEGIN
+	DROP PROCEDURE USP_HG_GetSearchControlsData;
+
+	PRINT 'DROPPED USP_HG_GetSearchControlsData';
+END
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************      
+** Name : USP_HG_GetSearchControlsData
+** Old Name:           
+** Short Desc:       
+**      
+** Full Description      
+**        This stored proc is used to fetch the data for populating the data in the search controls of historical gifts page.
+**      
+** Sample Call      
+   EXEC [USP_HG_GetSearchControlsData]
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET NOCOUNT             ON      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Srikanth R
+** Company   : Kaspick & Company      
+** Project   : Historical Gifts      
+** Created DT: 05/22/2014
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+*******************************************************************************      
+  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_HG_GetSearchControlsData]
+(
+	@IncludeCustomerAccNum		CHAR(1) = 'Y'
+	,@IncludeSecurityType		CHAR(1) = 'Y'
+	,@IncludeFundingTypeID		CHAR(1) = 'Y'
+	,@IncludeRentRoyalIncmGen	CHAR(1) = 'Y'
+)
+AS
+BEGIN
+
+	IF(@IncludeCustomerAccNum = 'Y')
+	BEGIN
+		/* Get the list of customer account numbers*/
+		SELECT RANK() OVER (ORDER BY ManagerCodes ASC, CustomerAccountNumbers ASC, TransactionNumbers ASC) AS 'ID', CustomerAccountNumbers, ManagerCodes, TransactionNumbers FROM 
+			(
+				SELECT DISTINCT LTRIM(RTRIM(ITAM.CustomerAccountNumber)) AS 'CustomerAccountNumbers'
+								,LTRIM(RTRIM(ITAM.ManagerCode)) AS 'ManagerCodes'
+								,HG.TransactionNumber AS 'TransactionNumbers'
+				FROM
+					SYN_IT_AccountMaster ITAM
+				LEFT OUTER JOIN
+					TBL_HG_GiftHistory HG
+				ON
+					LTRIM(RTRIM(ITAM.CustomerAccountNumber)) = LTRIM(RTRIM(HG.CustomerAccountNumber))
+				WHERE ITAM.CustomerAccountNumber IS NOT NULL
+			) AS B
+		ORDER BY ID ASC
+	END
+	
+	/* Get the list of security types */
+	IF(@IncludeSecurityType = 'Y')
+	BEGIN
+		SELECT DisplaySequence AS 'ID', IvanValue AS 'SecurityTypes'
+		FROM TBL_ListItem WHERE ListTypeID = (SELECT ListTypeID FROM TBL_ListType WHERE ListTypeName = 'Security Type')
+		ORDER BY IvanValue ASC
+	END
+	
+	/* Get the list of allowed FundingTypeIDs*/
+	IF(@IncludeFundingTypeID = 'Y')
+	BEGIN
+		SELECT DisplaySequence AS 'ID', IvanValue AS 'FundingTypeIDs'
+		FROM TBL_ListItem WHERE ListTypeID = (SELECT ListTypeID FROM TBL_ListType WHERE ListTypeName = 'Funding Type ID')
+		ORDER BY IvanValue ASC
+	END
+
+	/* Get the list of allowed IsRentAgreement Values*/
+	IF(@IncludeRentRoyalIncmGen = 'Y')
+	BEGIN
+		SELECT 0 AS 'ID', 'Yes' AS 'IsRentRoyalAgreements'
+		UNION SELECT 1 AS 'ID', 'No' AS 'IsRentRoyalAgreements'
+	END
+END

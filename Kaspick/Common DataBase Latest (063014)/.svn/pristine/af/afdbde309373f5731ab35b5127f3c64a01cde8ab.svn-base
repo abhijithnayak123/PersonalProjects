@@ -1,0 +1,118 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeEventHistory'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradeEventHistory;
+
+	PRINT 'DROPPED USP_EX_GetTradeEventHistory';
+END
+GO
+
+/******************************************************************************        
+** New Name : USP_EX_GetTradeEventHistory
+** Old Name : USP_EIS_TR_GetTradeEventHistory  
+** Short Desc : Gets a list of Trade Event History for a given Advent Id   
+**        
+** Full Description        
+**                
+**        
+** Sample Call        
+        EXEC [USP_EX_GetTradeEventHistory]   
+   @AdventID = 'ACBOO',  
+   @FromDate = '12-17-2009',  
+   @ToDate = '07-22-2014'  
+   -- parameters        
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :  Prabin Varm   
+** Company  :  Kaspick & Company        
+** Project  :  Enfuego3B  
+** Created DT :  Oct/06/2010        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 12-17-2010  Soorya      Modified to get the Comment provided   
+**           during the creation of new Event.
+** 3-Apr-2014  Yugandhar  EXCREQ 7.4
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [USP_EX_GetTradeEventHistory] (
+	@AdventID VARCHAR(14)
+	,@FromDate DATETIME
+	,@ToDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+
+	SELECT EventId
+		,EventName
+		,Comments
+		,CreateDate 
+		,EventStatus
+		,CreatedUser
+		,EventType
+	FROM (
+		SELECT Evnt.EventId
+			,Evnt.EventName
+			,AdtEvnt.Comments
+			,Evnt.CreatedDate AS CreateDate
+			,(
+				SELECT EventStatus
+				FROM TBL_TR_EventStatus
+				WHERE EventStatusID = (
+						SELECT TOP (1) EventStatusId
+						FROM TBL_TR_EventTracker
+						WHERE EventID = Evnt.EventId
+							AND EventStatusId NOT IN (
+								1
+								,2
+								,3
+								,9
+								)
+						ORDER BY ModifiedDate DESC
+						)
+				) AS EventStatus
+			,KsUsr.LOGINNAME AS CreatedUser
+			,EvntTypMstr.EventType
+		FROM TBL_TR_Event Evnt
+		INNER JOIN TBL_TR_Audit_Event AdtEvnt ON Evnt.EventID = AdtEvnt.EventID
+			AND AdtEvnt.AUDITFLAG = 'I'
+		INNER JOIN TBL_TR_EventAccount EvntAcc ON Evnt.EventID = EvntAcc.EventID
+		INNER JOIN TBL_TR_EventType EvntTyp ON Evnt.EventID = EvntTyp.EventID
+		INNER JOIN TBL_TR_EventTypeMaster EvntTypMstr ON EvntTyp.EventTypeID = EvntTypMstr.EventTypeID
+		LEFT JOIN TBL_KS_USER KsUsr ON Evnt.CreatedUserID = KsUsr.[USERID]
+		WHERE EvntAcc.CustomerAccountNumber = @AdventID
+			AND Evnt.CreatedDate BETWEEN CONVERT(DATETIME, FLOOR(CONVERT(FLOAT, @FromDate))) -- Convert the from date with the time as 00:00:000  
+				AND DATEADD(millisecond, - 2, CONVERT(DATETIME, FLOOR(CONVERT(FLOAT, @ToDate + 1)))) -- Convert the to date with the time as 23:59:999  
+		) TradeEvents
+	WHERE EventStatus IS NOT NULL
+	ORDER BY CreateDate DESC
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeEventHistory'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetTradeEventHistory';
+END

@@ -1,0 +1,265 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_First_Tax_year]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_First_Tax_year]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************      
+** Name:     USP_EIS_IRS_First_Tax_year      
+** Short Desc:  First Tax year scrub   
+**      
+** Full Description      
+**        First Tax year scrub     
+**      
+** Sample Call       
+**     EXEC USP_EIS_IRS_First_Tax_year 2008, 'SM' ,'' 
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Asit Kar      
+** Company   : Ciber offshore      
+** Project   : BOI Reports & Queries     
+** Created DT: 05/09/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** <mm/dd/yyyy>      
+*******************************************************************************      
+** Copyright (Clnt) 2014, Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_First_Tax_year] (
+	@Tax_YEAR INT
+	,@CLIENT_BRIEF_NAME VARCHAR(10)
+	,@ADVENT_ID VARCHAR(10)
+	)
+AS
+BEGIN
+	IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+		AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+	BEGIN
+		/*6.	First Tax year scrub:-*/
+		SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+			,DefGiftAct.ADVENTID
+			,DefGiftAct.ACCOUNTTYPE
+			,DefGiftAct.FIRSTTAXYEAR
+			,DefGiftAct.MATUREDATE
+			,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+			,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+		FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+		INNER JOIN SYN_EP_Program Prgm
+			ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+		INNER JOIN SYN_EP_Client Clnt
+			ON Clnt.CLIENTID = Prgm.CLIENTID
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+			ON Clnt.BriefName = KCO_TA.ManagerCode
+				AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+		LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+			ON Clnt.BriefName = KCO_CM.ManagerCode
+				AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+		WHERE DefGiftAct.FIRSTTAXYEAR IS NULL
+			AND (
+				DefGiftAct.MATUREDATE IS NULL
+				OR (
+					DefGiftAct.MATUREDATE IS NOT NULL
+					AND YEAR(DefGiftAct.MATUREDATE) = @Tax_YEAR
+					)
+				)
+			AND DefGiftAct.ACCOUNTTYPE NOT IN (
+				'CORP'
+				,'ENDOW'
+				,'CGA'
+				,'OTHER'
+				,'D-A FUND'
+				,'PRIV-EXMT'
+				,'PRIV-TAX'
+				,'TMC-ASSOC'
+				,'TMC-BRANCH'
+				,'TMC-FUND'
+				,'DCA'
+				)
+			AND Clnt.BRIEFNAME NOT IN (
+				'SU'
+				,'BC'
+				,'WD'
+				)
+			AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+			AND DefGiftAct.ADVENTID = @ADVENT_ID
+		ORDER BY DefGiftAct.ADVENTID
+	END
+	ELSE
+		IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) <> ''
+			AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+		BEGIN
+			/*6.	First Tax year scrub:-*/
+			SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+				,DefGiftAct.ADVENTID
+				,DefGiftAct.ACCOUNTTYPE
+				,DefGiftAct.FIRSTTAXYEAR
+				,DefGiftAct.MATUREDATE
+				,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+				,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+			FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+			INNER JOIN SYN_EP_Program Prgm
+				ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+			INNER JOIN SYN_EP_Client Clnt
+				ON Clnt.CLIENTID = Prgm.CLIENTID
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+				ON Clnt.BriefName = KCO_TA.ManagerCode
+					AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+			LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+				ON Clnt.BriefName = KCO_CM.ManagerCode
+					AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+			WHERE DefGiftAct.FIRSTTAXYEAR IS NULL
+				AND (
+					DefGiftAct.MATUREDATE IS NULL
+					OR (
+						DefGiftAct.MATUREDATE IS NOT NULL
+						AND YEAR(DefGiftAct.MATUREDATE) = @Tax_YEAR
+						)
+					)
+				AND DefGiftAct.ACCOUNTTYPE NOT IN (
+					'CORP'
+					,'ENDOW'
+					,'CGA'
+					,'OTHER'
+					,'D-A FUND'
+					,'PRIV-EXMT'
+					,'PRIV-TAX'
+					,'TMC-ASSOC'
+					,'TMC-BRANCH'
+					,'TMC-FUND'
+					,'DCA'
+					)
+				AND Clnt.BRIEFNAME NOT IN (
+					'SU'
+					,'BC'
+					,'WD'
+					)
+				AND Clnt.BRIEFNAME = @CLIENT_BRIEF_NAME
+			ORDER BY DefGiftAct.ADVENTID
+		END
+		ELSE
+			IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+				AND RTRIM(LTRIM(@ADVENT_ID)) <> ''
+			BEGIN
+				/*6.	First Tax year scrub:-*/
+				SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+					,DefGiftAct.ADVENTID
+					,DefGiftAct.ACCOUNTTYPE
+					,DefGiftAct.FIRSTTAXYEAR
+					,DefGiftAct.MATUREDATE
+					,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+					,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+				FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+				INNER JOIN SYN_EP_Program Prgm
+					ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+				INNER JOIN SYN_EP_Client Clnt
+					ON Clnt.CLIENTID = Prgm.CLIENTID
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+					ON Clnt.BriefName = KCO_TA.ManagerCode
+						AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+				LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+					ON Clnt.BriefName = KCO_CM.ManagerCode
+						AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+				WHERE DefGiftAct.FIRSTTAXYEAR IS NULL
+					AND (
+						DefGiftAct.MATUREDATE IS NULL
+						OR (
+							DefGiftAct.MATUREDATE IS NOT NULL
+							AND YEAR(DefGiftAct.MATUREDATE) = @Tax_YEAR
+							)
+						)
+					AND DefGiftAct.ACCOUNTTYPE NOT IN (
+						'CORP'
+						,'ENDOW'
+						,'CGA'
+						,'OTHER'
+						,'D-A FUND'
+						,'PRIV-EXMT'
+						,'PRIV-TAX'
+						,'TMC-ASSOC'
+						,'TMC-BRANCH'
+						,'TMC-FUND'
+						,'DCA'
+						)
+					AND KCO_CM.ManagerCode NOT IN (
+						'SU'
+						,'BC'
+						,'WD'
+						)
+					AND DefGiftAct.ADVENTID = @ADVENT_ID
+				ORDER BY DefGiftAct.ADVENTID
+			END
+			ELSE
+				IF RTRIM(LTRIM(@CLIENT_BRIEF_NAME)) = ''
+					AND RTRIM(LTRIM(@ADVENT_ID)) = ''
+				BEGIN
+					/*6.	First Tax year scrub:-*/
+					SELECT KCO_CM.ManagerCode AS CLIENTBRIEFNAME
+						,DefGiftAct.ADVENTID
+						,DefGiftAct.ACCOUNTTYPE
+						,DefGiftAct.FIRSTTAXYEAR
+						,DefGiftAct.MATUREDATE
+						,KCO_CM.STAFFNAME AS 'CLIENT MANAGER'
+						,KCO_TA.STAFFNAME AS 'TRUST ADMINISTRATOR'
+					FROM SYN_EP_DEFERREDGIFTACCOUNT DefGiftAct
+					INNER JOIN SYN_EP_Program Prgm
+						ON DefGiftAct.PROGRAMID = Prgm.PROGRAMID
+					INNER JOIN SYN_EP_Client Clnt
+						ON Clnt.CLIENTID = Prgm.CLIENTID
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_TA
+						ON Clnt.BriefName = KCO_TA.ManagerCode
+							AND KCO_TA.RoleCode = 510 -- 'Trust Administrator'
+					LEFT OUTER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+						ON Clnt.BriefName = KCO_CM.ManagerCode
+							AND KCO_CM.RoleCode = 14 -- 'Client Manager'
+					WHERE DefGiftAct.FIRSTTAXYEAR IS NULL
+						AND (
+							DefGiftAct.MATUREDATE IS NULL
+							OR (
+								DefGiftAct.MATUREDATE IS NOT NULL
+								AND YEAR(DefGiftAct.MATUREDATE) = @Tax_YEAR
+								)
+							)
+						AND DefGiftAct.ACCOUNTTYPE NOT IN (
+							'CORP'
+							,'ENDOW'
+							,'CGA'
+							,'OTHER'
+							,'D-A FUND'
+							,'PRIV-EXMT'
+							,'PRIV-TAX'
+							,'TMC-ASSOC'
+							,'TMC-BRANCH'
+							,'TMC-FUND'
+							,'DCA'
+							)
+						AND KCO_CM.ManagerCode NOT IN (
+							'SU'
+							,'BC'
+							,'WD'
+							)
+					ORDER BY DefGiftAct.ADVENTID
+				END
+END
+GO
+
+

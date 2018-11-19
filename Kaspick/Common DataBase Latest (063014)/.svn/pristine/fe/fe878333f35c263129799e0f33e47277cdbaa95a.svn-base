@@ -1,0 +1,70 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_GetBRDTOpenStatus')
+BEGIN
+    DROP PROCEDURE USP_RP_GetBRDTOpenStatus;
+    PRINT 'DROPPED USP_RP_GetBRDTOpenStatus';
+END
+GO
+/****** Object:  StoredProcedure [dbo].[USP_RP_GetBRDTOpenStatus]    Script Date: 06/09/2014 18:36:02 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************                      
+** Old Name	:     USP_EIS_BR_DT_OPENSTATUS_SELPROC     
+** Name		:     USP_RP_GetBRDTOpenStatus          
+** Short Desc: To fetch data for Activity Console      
+**                      
+** Full Description: To fetch data for Activity Console           
+**                              
+** Input Arguments:     
+**         
+** Sample Call: USP_RP_GetBRDTOpenStatus    
+**             
+** Return values: Null    
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By:   
+** Company   : Kaspick & Company                      
+** Project   : Excelsior  - BeneReport                      
+** Created DT:                
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------  -------- ------    -------------------------------------- --------                
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.  
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/    
+CREATE PROCEDURE USP_RP_GetBRDTOpenStatus
+AS    
+BEGIN    
+	    
+	SELECT  
+	COUNT (*) AS NumberOfQueue  
+	FROM TBL_DLV_DeliverableQueue DQ  
+	INNER JOIN VW_RP_DTDeliverable DT ON DT.DeliverableID = DQ.DeliverableID  
+	WHERE QUEUESTATUSID IN   
+						(SELECT QUEUESTATUSID   
+						 FROM TBL_DLV_QueueStatus   
+						 WHERE STATUSNAME = 'OPEN')  
+	AND DT.DeliverableName = 'Beneficiary Reports'  
+       
+END   
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_GetBRDTOpenStatus')
+    BEGIN
+        PRINT 'CREATED USP_RP_GetBRDTOpenStatus';
+    END  

@@ -1,0 +1,112 @@
+/****** Object:  StoredProcedure [dbo].[USP_OF_GetData]    Script Date: 05/02/2014 15:41:22 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OF_GetData]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OF_GetData]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OF_GetData]    Script Date: 05/02/2014 15:41:22 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+  
+/********************************************************************************************************************              
+* Procedure Name  : USP_OF_GetData          
+* Purpose         :     
+* Input Parameter :        
+*                 : 
+*                 : 
+*            
+* Modification Log               
+* Date       Modified By         Description              
+*--------------------------------------------------------------------------------------------------------------------              
+* 
+* 
+*--------------------------------------------------------------------------------------------------------------------              
+*             Exec USP_OF_GetData  
+*--------------------------------------------------------------------------------------------------------------------              
+*********************************************************************************************************************/
+
+CREATE PROCEDURE [dbo].[USP_OF_GetData]    
+AS    
+BEGIN    
+ -- SET NOCOUNT ON added to prevent extra result sets from    
+ -- interfering with SELECT statements.    
+ SET NOCOUNT ON;    
+    
+ SELECT DISTINCT CAR.ContactID,     
+  CASE    
+   WHEN LEN(CAR.ContactID) =1 THEN 'K00000'+CAST(CAR.ContactID AS VARCHAR)    
+   WHEN LEN(CAR.ContactID) =2 THEN 'K0000'+CAST(CAR.ContactID AS VARCHAR)    
+   WHEN LEN(CAR.ContactID) =3 THEN 'K000'+CAST(CAR.ContactID AS VARCHAR)    
+   WHEN LEN(CAR.ContactID) =4 THEN 'K00'+CAST(CAR.ContactID AS VARCHAR)    
+   WHEN LEN(CAR.ContactID) =5 THEN 'K0'+CAST(CAR.ContactID AS VARCHAR)    
+   ELSE 'K'+CAST(CAR.ContactID AS VARCHAR)    
+  END AS PERSONID,    
+    
+  '' AS TAXID, '' AS BIRTHDATE, '' AS CONTRACTTYPE,'' AS CONTRACTNUMBER,'' AS CONTRACTSTATUSCODE, '' AS CONTRACTSTATUSDATE,    
+ CASE    
+  WHEN LEN(LTRIM(RTRIM(ISNULL(PrimaryFirstName,'')+' '+ISNULL(PrimaryMiddleInitial,'')+' '+ISNULL(PrimaryLastName,'')))) >35 THEN    
+   CASE     
+    WHEN  PrimaryFirstName IS NULL AND PrimaryLastName IS NOT NULL THEN  SUBSTRING(PrimaryLastName,1,35)    
+    WHEN LEN(LTRIM(RTRIM(ISNULL(PrimaryFirstName,'')+' '+ISNULL(PrimaryLastName,'')))) >35 THEN LTRIM(RTRIM(ISNULL(PrimaryFirstName,'')+' '+ISNULL(PrimaryMiddleInitial,'')))    
+    ELSE LTRIM(RTRIM(ISNULL(PrimaryFirstName,'')+' '+ISNULL(PrimaryLastName,'')))    
+   END    
+  ELSE LTRIM(RTRIM(ISNULL(PrimaryFirstName,'')+' '+ISNULL(PrimaryMiddleInitial,'')+' '+ISNULL(PrimaryLastName,'')))    
+ END AS CONTRACTNAME,    
+        
+ CASE      
+  WHEN ADDRESS1 IS NULL THEN ''    
+  WHEN LEN(ADDRESS1) > 35 THEN SUBSTRING(ADDRESS1,1,35)     
+  ELSE LTRIM(RTRIM(ISNULL(ADDRESS1,'')))    
+ END    
+ AS ADDRESS1,    
+    
+ CASE      
+  WHEN ADDRESS2 IS NULL THEN ''    
+  WHEN LEN(ADDRESS2) > 35 THEN SUBSTRING(ADDRESS2,1,35)     
+  ELSE LTRIM(RTRIM(ISNULL(ADDRESS2,'')))    
+ END    
+ AS ADDRESS2,    
+    
+ CASE      
+  WHEN ADDRESS3 IS NULL THEN ''    
+  WHEN LEN(ADDRESS3) > 35 THEN SUBSTRING(ADDRESS3,1,35)     
+  ELSE LTRIM(RTRIM(ISNULL(ADDRESS3,'')))    
+ END    
+ AS ADDRESS3,    
+     
+ CASE     
+  WHEN CA.CountryCode IS NULL OR CA.CountryCode = '' THEN ISNULL(CA.CITY,'')+' '+ISNULL(STATE,'')+' '+ISNULL(CA.CountryCode,'')    
+  ELSE ISNULL(CA.CITY,'')+' '+ISNULL(STATE,'')+' '+ISNULL(TIAA_COUNTRY_CODE,'')    
+ END    
+ AS ADDRESS4,    
+    
+ CASE     
+  WHEN (CA.CountryCode = 'US' OR CA.CountryCode = 'USA') THEN   
+ CASE   
+  WHEN LEN(ISNULL(REPLACE(REPLACE(LTRIM(RTRIM(ZIPCODE)),'-',''),' ',''),'')) > 9 THEN SUBSTRING(ISNULL(REPLACE(REPLACE(LTRIM(RTRIM(ZIPCODE)),'-',''),' ',''),''),1,9)  
+  ELSE ISNULL(REPLACE(REPLACE(LTRIM(RTRIM(ZIPCODE)),'-',''),' ',''),'')  
+ END  
+  ELSE ''    
+ END AS ZIPCODE,    
+ CASE     
+  WHEN CA.CountryCode IS NULL OR CA.CountryCode = '' THEN ''    
+  ELSE TIAA_COUNTRY_CODE    
+ END    
+ AS COUNTRY,     
+ '' AS ADDRESSSTATUSCODE, '' AS FILLER, 'X' AS EOR     
+ from SYN_IT_ContactAccountRoles CAR
+	INNER JOIN SYN_IT_AccountMaster A on A.CustomerAccountNumber=CAR.CustomerAccountNumber
+	INNER JOIN SYN_IT_ContactRoleCodes	CRC ON CAR.ContactRoleCode = CRC.ID
+	INNER JOIN SYN_IT_AccountManagerCodes AM ON am.ManagerCode=a.ManagerCode
+	INNER JOIN SYN_IT_ContactMaster CM on CM.ContactID = CAR.ContactID
+	INNER JOIN SYN_IT_ContactAddresses CA  ON CM.CONTACTID = CA.CONTACTID
+	INNER JOIN TBL_OF_CountryLookup OCL ON CA.CountryCode = OCL.TIAA_Country_Code AND OCL.EX_COUNTRY_NAME IS NOT NULL    
+ WHERE  
+	CRC.ContactRoleCodeDesc IN ('Proxy Recipient', 'Beneficiary', 'Donor', 'Contingent Beneficiary')
+	AND CM.DateOfDeath IS NULL
+	AND CA.PrimaryAddressFlag = -1
+	
+    
+END 

@@ -1,0 +1,114 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetUnitFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetUnitFromGiftwrapPIF]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetUnitFromGiftwrapPIF]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetUnitFromGiftwrapPIF]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetUnitFromGiftwrapPIF                      
+** Short Desc: A data extract from GiftWrap, which gives total units for selected PIF accounts 
+**                      
+** Full Description: A data extract from GiftWrap, which gives total units for selected PIF accounts 
+**      
+**                              
+** Input Arguments:   		@XMLCustomerAccountNumber XML
+**	,@ValuationDate DATETIME           
+** Sample Call     
+       
+ EXEC dbo.USP_PV_GetUnitFromGiftwrapPIF  @XMLCustomerAccountNumber = '<CustomerAccountCollection>    
+      <InsertList>    
+      <CustomerAccount CustomerAccountNumber="WMPIF3" />    
+      </InsertList>    
+      </CustomerAccountCollection>',    
+  @ValuationDate = '12/31/2013'    
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetUnitFromGiftwrapPIF] (
+	@XMLCustomerAccountNumber XML
+	,@ValuationDate DATETIME
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	DECLARE @LookupID INT
+
+	SELECT @LookupID = lookupid
+	FROM SYN_GW_TBLLookupGroup LkpGrp
+	INNER JOIN SYN_GW_TBLLookup Lkp
+		ON LkpGrp.LookupGroupID = Lkp.LookupGroupID
+			AND Lkp.Short = 'Current'
+			AND LkpGrp.LookupGroupID = (
+				SELECT LookupGroupID
+				FROM SYN_GW_TBLLookupGroup
+				WHERE GroupName = 'GiftStatus'
+				);
+
+	WITH PIFUnits
+	AS (
+		SELECT PIF.PifNickname AS PifNickName
+			,SUM(GiftDetails.units) TotalUnits
+		FROM SYN_GW_TBLGift Gift
+		INNER JOIN SYN_GW_TBLPIF Pif
+			ON Pif.PifID = Gift.PifID
+		INNER JOIN SYN_GW_TBLGiftDetail GiftDetails
+			ON Gift.GiftID = GiftDetails.GiftID
+		INNER JOIN SYN_GW_TBLGiftType GiftType
+			ON Gift.GiftTypeID = GiftType.GiftTypeID
+		INNER JOIN (
+			SELECT XMLInput.Item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS OrgAccount1
+			FROM @XMLCustomerAccountNumber.nodes('//CustomerAccountCollection/InsertList/CustomerAccount') AS XMLInput(Item)
+			) XmlInput
+			ON XmlInput.OrgAccount1 = LTRIM(RTRIM(Pif.PifNickname))
+		WHERE GiftType.Short = 'PIF'
+			AND GiftDetails.giftdate <= @ValuationDate
+			AND (
+				Gift.GiftStatusIDLookup = @LookupID
+				OR Gift.ACCOUNTCLOSEDDATE > @ValuationDate
+				)
+		GROUP BY PIF.PifNickname
+		)
+	SELECT PifNickName AS CustomerAccountNumber
+		,SUM(TotalUnits) Units
+	FROM PIFUnits
+	GROUP BY PifNickName
+	ORDER BY PifNickName
+
+	SET NOCOUNT OFF;
+END

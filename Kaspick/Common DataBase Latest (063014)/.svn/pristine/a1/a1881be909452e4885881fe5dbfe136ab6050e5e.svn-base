@@ -1,0 +1,113 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetClientAccountMatrix]    Script Date: 06/30/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetClientAccountMatrix]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetClientAccountMatrix]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetClientAccountMatrix]    Script Date: 06/30/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name:     USP_IE_GetClientAccountMatrix  
+** Short Desc:   
+**  
+** Full Description  
+**          
+**  
+** Sample Call  
+        EXEC USP_IE_GetClientAccountMatrix 1 -- parameters  
+**  
+** Return values: NONE  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Soorya  
+** Company   : Kaspick & Company  
+** Project   : Back Office Integration - Income Estimation  
+** Created DT: 06/30/2014  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+**   
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetClientAccountMatrix]
+	-- paremeters here  
+	@Universe BIT = 0
+AS
+--  Initial Set statements  --  
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+--  Variable Declarations  --  
+DECLARE @procname VARCHAR(60);
+--  Loop Variables  
+DECLARE @i_Client INT;
+DECLARE @i_Max_Client INT;
+DECLARE @ClientID INT;
+DECLARE @Briefname VARCHAR(20);
+--  Temp tables, Cursors, Table Variables  --  
+DECLARE @Unv_Accounts TABLE (
+	CustomerAccountNumber VARCHAR(14)
+	,AccountTypeCode VARCHAR(20)
+	,CreationDate DATETIME
+	,MatureDate DATETIME
+	,AccountTaxName VARCHAR(100)
+	,UnitrustPercentage FLOAT
+	,ManagerCode VARCHAR(20)
+	,ObjectiveCode VARCHAR(30)
+	,MasterObjectiveName VARCHAR(40)
+	);
+DECLARE @test TABLE (test VARCHAR(max));
+
+--  Variable Data Assignment  --  
+SET @procname = 'USP_IE_GetClientAccountMatrix';
+
+IF @Universe = 1
+BEGIN
+	--with universe  
+	INSERT INTO @Unv_Accounts
+	EXEC USP_IE_GetUniverseOfAccounts
+
+	SELECT min(c.ManagerCode) AS ManagerCode
+		,min(c.AccountTypeCode) AS accounttype
+	FROM @Unv_Accounts c
+	GROUP BY c.ManagerCode
+		,c.AccountTypeCode
+	ORDER BY c.ManagerCode
+		,c.AccountTypeCode
+END
+ELSE
+BEGIN
+	--without universe  
+	SELECT min(AccMas.ManagerCode) AS ManagerCode
+		,min(AccMas.AccountTypeCode) AS accounttype
+	FROM SYN_IT_AccountMaster AccMas
+	WHERE AccMas.ActiveFlag = - 1
+		AND AccMas.ClosedFlag <> - 1
+	GROUP BY AccMas.ManagerCode
+		,AccMas.AccountTypeCode
+	ORDER BY AccMas.ManagerCode
+		,AccMas.AccountTypeCode
+END
+
+SET NOCOUNT OFF;
+	-- End of procedure  --

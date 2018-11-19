@@ -1,0 +1,643 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_ImportEventOrTrade]    Script Date: 03/19/2014 10:39:45 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_ImportEventOrTrade]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_ImportEventOrTrade]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************              
+** Name   :   USP_TR_ImportEventOrTrade              
+** Short Desc : Put in Short Description              
+**              
+** Full Description              
+**                      
+**              
+** Sample Call    
+     DECLARE @RETURNSTATUS INT;        
+  DECLARE @ERRORDESC VARCHAR(8000);      
+    
+ exec USP_TR_ImportEventOrTrade  
+ @InsUpdDelValues =  '<EventCollection><InsertList><Event AssignedTrader="100170"  AXYSPositionDate="01/01/1900 00:00:00:000"  CancelComments=""  CombinedAccounts="False"  Comments="SW5zZXJ0IEV2ZW50"  UpdatedComments=""  CreateDate="01/01/1900 00:00:00:00
+0"  CreatedUser="300028"  EventID="0"  EventName="NewEvent1"  EventSource="Excel"  EventStatusID="1"  ImposeBenePayments="False"  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  LoadPaymentsDataUpTo="01/01/1900 00:00:00:000"  Source
+="TRex"  SourceFille="ImportEvent_sample.csv"  /><EventAccountCollection><EventAccount AccountName=""  AccountOrder="0"  AccountType=""  CustomerAccountNumber="GUBLU"  AnnuityAmount="0"  Custodian=""  EventAccountID="0"  EventID="0"  FSIOption=""  Imposed
+BenePayments="0"  InvestmentTypeCode=""  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  Managed="False"  PayoutRate="0"  RecordVersion=""  SLMasterAccount=""  TaxStatus=""  TradeDiscretion="False"  TradeStatusCode=""  TrancheStatus
+Code=""  LotAccountingCode=""  PaymentDate="01/01/1900 00:00:00:000"  ScheduledAmount="0"  AnnualPayment="0"  IMlevel1Count="0"  IMlevel2Count="0"  /></EventAccountCollection><EventTypeCollection><EventType EventID="0"  EventTypeID="1"  LastModifiedDate="
+01/01/1900 00:00:00:000"  LastModifiedUser="300028"  RecordVersion=""  /></EventTypeCollection><Event AssignedTrader="100060"  AXYSPositionDate="01/01/1900 00:00:00:000"  CancelComments=""  CombinedAccounts="False"  Comments="SW5zZXJ0IEV2ZW50"  UpdatedCom
+ments=""  CreateDate="01/01/1900 00:00:00:000"  CreatedUser="300028"  EventID="0"  EventName="NewEvent2"  EventSource="Excel"  EventStatusID="1"  ImposeBenePayments="False"  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  LoadPaymen
+tsDataUpTo="01/01/1900 00:00:00:000"  Source="TRex"  SourceFille="ImportEvent_sample.csv"  /><EventAccountCollection><EventAccount AccountName=""  AccountOrder="0"  AccountType=""  CustomerAccountNumber="SAGAP"  AnnuityAmount="0"  Custodian=""  EventAccou
+ntID="0"  EventID="0"  FSIOption=""  ImposedBenePayments="0"  InvestmentTypeCode=""  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  Managed="False"  PayoutRate="0"  RecordVersion=""  SLMasterAccount=""  TaxStatus=""  TradeDiscretio
+n="False"  TradeStatusCode=""  TrancheStatusCode=""  LotAccountingCode=""  PaymentDate="01/01/1900 00:00:00:000"  ScheduledAmount="0"  AnnualPayment="0"  IMlevel1Count="0"  IMlevel2Count="0"  /></EventAccountCollection><EventTypeCollection><EventType Even
+tID="0"  EventTypeID="1"  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  RecordVersion=""  /></EventTypeCollection><Event AssignedTrader="100060"  AXYSPositionDate="01/01/1900 00:00:00:000"  CancelComments=""  CombinedAccounts="Fal
+se"  Comments="SW5zZXJ0IEV2ZW50"  UpdatedComments=""  CreateDate="01/01/1900 00:00:00:000"  CreatedUser="300028"  EventID="0"  EventName="NewEvent3"  EventSource="Excel"  EventStatusID="1"  ImposeBenePayments="False"  LastModifiedDate="01/01/1900 00:00:00
+:000"  LastModifiedUser="300028"  LoadPaymentsDataUpTo="01/01/1900 00:00:00:000"  Source="TRex"  SourceFille="ImportEvent_sample.csv"  /><EventAccountCollection><EventAccount AccountName=""  AccountOrder="0"  AccountType=""  CustomerAccountNumber="RCGRI" 
+ AnnuityAmount="0"  Custodian=""  EventAccountID="0"  EventID="0"  FSIOption=""  ImposedBenePayments="0"  InvestmentTypeCode=""  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  Managed="False"  PayoutRate="0"  RecordVersion=""  SLMa
+sterAccount=""  TaxStatus=""  TradeDiscretion="False"  TradeStatusCode=""  TrancheStatusCode=""  LotAccountingCode=""  PaymentDate="01/01/1900 00:00:00:000"  ScheduledAmount="0"  AnnualPayment="0"  IMlevel1Count="0"  IMlevel2Count="0"  /></EventAccountCol
+lection><EventTypeCollection><EventType EventID="0"  EventTypeID="1"  LastModifiedDate="01/01/1900 00:00:00:000"  LastModifiedUser="300028"  RecordVersion=""  /></EventTypeCollection></InsertList><UpdateList></UpdateList></EventCollection>',  
+ @IsTradeImport = 0,  
+ @RETURNSTATUS = -1,  
+  @ERRORDESC = ''  
+  SELECT @ERRORDESC,@RETURNSTATUS    
+    
+       DECLARE @RETURNSTATUS INT;        
+  DECLARE @ERRORDESC VARCHAR(8000);      
+    
+ exec USP_TR_ImportEventOrTrade  
+ @InsUpdDelValues =  '<EventCollection><InsertList><Event AssignedTrader="100060"  AXYSPositionDate="01/01/1900 00:00:00:000"  CancelComments=""  CombinedAccounts="True"  Comments="473979"  UpdatedComments=""  CreateDate="01/01/1900 00:00:00:000"  Created
+User="100038"  EventID="0"  EventName="473979Import"  EventSource="Excel"  EventStatusID="1"  ImposeBenePayments="False"  LastModifiedDate="06/20/2014 06:13:40:301"  LastModifiedUser="100038"  LoadPaymentsDataUpTo="01/01/1900 00:00:00:000"  Source="TRex" 
+ SourceFille="ImportTrade_sample.csv"  /><EventAccountCollection><EventAccount AccountName=""  AccountOrder="0"  AccountType=""  CustomerAccountNumber="ACADW"  AnnuityAmount="0"  Custodian=""  EventAccountID="0"  EventID="0"  FSIOption=""  ImposedBenePaym
+ents="0"  InvestmentTypeCode=""  LastModifiedDate="06/20/2014 06:13:39:384"  LastModifiedUser="100038"  Managed="False"  PayoutRate="0"  RecordVersion=""  SLMasterAccount=""  TaxStatus=""  TradeDiscretion="False"  TradeStatusCode=""  TrancheStatusCode="" 
+ LotAccountingCode=""  /><EventAccount AccountName=""  AccountOrder="0"  AccountType=""  CustomerAccountNumber="SAGAP"  AnnuityAmount="0"  Custodian=""  EventAccountID="0"  EventID="0"  FSIOption=""  ImposedBenePayments="0"  InvestmentTypeCode=""  LastMod
+ifiedDate="06/20/2014 06:13:40:301"  LastModifiedUser="100038"  Managed="False"  PayoutRate="0"  RecordVersion=""  SLMasterAccount=""  TaxStatus=""  TradeDiscretion="False"  TradeStatusCode=""  TrancheStatusCode=""  LotAccountingCode=""  /></EventAccountC
+ollection><TSheetApprovedTradeCollection><InsertList><TSheetApprovedTrade CustomerAccountNumber="ACADW"  ActiveTradeID="0"  ArchiveTradeID=""  DollarAmount="-989.4"  EventAccountID="0"  EventID="0"  LastModifiedDate="06/20/2014 06:13:39:384"  LastModified
+User="100038"  RecordVersion=""  SecuritySymbol="CSRI.X"  SecurityTypeCode="reus"  SplitTrade="False"  SubmissionType="Executed Trades"  SubmittedQuantityTillDate="0"  TradeDate="12/12/2006 12:00:00:000"  TradeID="0"  TradeQuantity="-16.135"  TradeType="S
+"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></TSheetApprovedTradeCollection><TSheetApprovedTradeCollection><InsertList><TSheetApprovedTrade CustomerAccountNumber="SAGAP"  ActiveTradeID="0"  ArchiveTradeID=""  DollarAmount="5095.54"
+  EventAccountID="0"  EventID="0"  LastModifiedDate="06/20/2014 06:13:40:301"  LastModifiedUser="100038"  RecordVersion=""  SecuritySymbol="CSRI.X"  SecurityTypeCode="reus"  SplitTrade="False"  SubmissionType="Manual Orders"  SubmittedQuantityTillDate="0"
+  TradeDate="12/12/2006 12:00:00:000"  TradeID="0"  TradeQuantity="83.098"  TradeType="B"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></TSheetApprovedTradeCollection><EventTypeCollection><EventType EventID="0"  EventTypeID="23"  Last
+ModifiedDate="06/20/2014 06:13:40:301"  LastModifiedUser="100038"  RecordVersion=""  /></EventTypeCollection></InsertList><UpdateList></UpdateList></EventCollection>',  
+ @IsTradeImport = 1,  
+ @RETURNSTATUS = -1,  
+  @ERRORDESC = ''  
+  SELECT @ERRORDESC,@RETURNSTATUS       
+**              
+** Return values: NONE              
+**              
+**              
+** Standard declarations              
+** SET LOCK_TIMEOUT 30000   -- 30 seconds              
+**               
+** Created By :  Soorya         
+** Company  :  Kaspick & Company              
+** Project  :  Back Office Integration - TRex              
+** Created DT :  03/19/2014              
+**                          
+*******************************************************************************              
+**       Change History              
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------     -------- ------    -------------------------------------- --------              
+** 03/19/2014 Soorya      
+******************************************************************************              
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved              
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION              
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_ImportEventOrTrade] (
+	@InsUpdDelValues XML
+	,@IsTradeImport BIT
+	,@ReturnStatus INT = - 1 OUTPUT -- assume SP fails  
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+
+	DECLARE @EVENTCOUNT AS INT
+	DECLARE @CURRENTEVENTACOUNT AS VARCHAR(14)
+	DECLARE @I AS INT
+	DECLARE @NEWEVENTCREATION AS VARCHAR(15)
+	DECLARE @Errnbr AS INT
+	DECLARE @APPROVEDTRADECOUNT AS INT
+	DECLARE @SCHWABID AS VARCHAR(12)
+	DECLARE @ANNUITYAMNT AS MONEY
+	DECLARE @EVENTACNTID AS VARCHAR(14)
+	DECLARE @FSIOption AS VARCHAR(2)
+	DECLARE @CUSTODIANACCNO AS INT
+
+	SELECT @NEWEVENTCREATION = 'EVENTS'
+
+	BEGIN TRY
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPMULTIPLEEVENTS]')
+				)
+			DROP TABLE [DBO].[#TEMPMULTIPLEEVENTS]
+
+		CREATE TABLE #TEMPMULTIPLEEVENTS (
+			TEMPEVENTID BIGINT IDENTITY(1, 1)
+			,AssignedTraderID INT
+			,AXYSPositionDate DATETIME
+			,CancelComment VARCHAR(1000)
+			,CombinedAccount BIT
+			,Comment VARCHAR(1000)
+			,CreatedDate DATETIME
+			,CreatedUserID INT
+			,EventName VARCHAR(150)
+			,EventSource VARCHAR(50)
+			,EventStatusID BIGINT
+			,ImposeBenePayment BIT
+			,LastModifiedDate DATETIME
+			,LastModifiedUserID INT
+			,LoadPaymentsDataUpTo DATETIME
+			,Source VARCHAR(10)
+			,SourceFille VARCHAR(500)
+			)
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPMULTIPLEEVENTACCOUNT]')
+				)
+			DROP TABLE [DBO].[#TEMPMULTIPLEEVENTACCOUNT]
+
+		CREATE TABLE #TEMPMULTIPLEEVENTACCOUNT (
+			TEMPEVENTACCOUNTID BIGINT IDENTITY(1, 1)
+			,AccountName VARCHAR(100)
+			,AccountOrder INT
+			,AccountType VARCHAR(20)
+			,CustomerAccountNumber VARCHAR(14)
+			,AnnuityAmount MONEY
+			,Custodian VARCHAR(150)
+			,FSIOption VARCHAR(2)
+			,ImposedBenePayment MONEY
+			,InvestmentComment VARCHAR(1000)
+			,InvestmentTypeCode VARCHAR(25)
+			,LastModifiedDate DATETIME
+			,LastModifiedUserID INT
+			,Managed BIT
+			,PayoutRate FLOAT
+			,SLMasterAccount VARCHAR(12)
+			,TaxStatus VARCHAR(12)
+			,TradeDiscretion BIT
+			,TradeStatusCode VARCHAR(23)
+			,TrancheStatusCode VARCHAR(25)
+			)
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPMULTIPLEEVENTTYPE]')
+				)
+			DROP TABLE [DBO].[#TEMPMULTIPLEEVENTTYPE]
+
+		CREATE TABLE #TEMPMULTIPLEEVENTTYPE (
+			TEMPEVENTTYPEID BIGINT IDENTITY(1, 1)
+			,EventTypeID BIGINT
+			,LastModifiedDate DATETIME
+			,LastModifiedUserID INT
+			)
+
+		IF (@IsTradeImport = 'TRUE')
+		BEGIN
+			IF EXISTS (
+					SELECT *
+					FROM TEMPDB.DBO.SYSOBJECTS
+					WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPMULTIPLETSHEETAPPROVEDTRADE]')
+					)
+				DROP TABLE [DBO].[#TEMPMULTIPLETSHEETAPPROVEDTRADE]
+
+			CREATE TABLE #TEMPMULTIPLETSHEETAPPROVEDTRADE (
+				TEMPTRADEID BIGINT IDENTITY(1, 1)
+				,[CustomerAccountNumber] VARCHAR(14)
+				,[TradeType] VARCHAR(5)
+				,[SecurityTypeCode] VARCHAR(50)
+				,[SecuritySymbol] VARCHAR(50)
+				,[TradeQuantity] FLOAT
+				,[DollarAmount] MONEY
+				,[TradeDate] DATETIME
+				,[ArchiveTradeID] CHAR(10)
+				,[ActiveTradeID] INT
+				,[SubmissionType] VARCHAR(10)
+				,[SplitTrade] BIT
+				,[SubmittedQuantityTillDate] FLOAT
+				,[LastModifiedUserID] INT
+				,[LastModifiedDate] DATETIME
+				)
+
+			INSERT INTO #TEMPMULTIPLETSHEETAPPROVEDTRADE (
+				[TRADETYPE]
+				,[CustomerAccountNumber]
+				,[SecurityTypeCode]
+				,[SecuritySymbol]
+				,[TradeQuantity]
+				,[DollarAmount]
+				,[TradeDate]
+				,[ArchiveTradeID]
+				,[ActiveTradeID]
+				,[SubmissionType]
+				,[SplitTrade]
+				,[SubmittedQuantityTillDate]
+				,[LastModifiedUserID]
+				,[LastModifiedDate]
+				)
+			SELECT TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeType', 'VARCHAR(5)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@CustomerAccountNumber', 'VARCHAR(14)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@SecurityTypeCode', 'VARCHAR(50)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@SecuritySymbol', 'VARCHAR(50)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeQuantity', 'FLOAT')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@DollarAmount', 'MONEY')
+				,CASE YEAR(TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeDate', 'DATETIME'))
+					WHEN 1900
+						THEN NULL
+					ELSE TempApprovedTradeTable.ApprovedTradeColumns.value('@TradeDate', 'DATETIME')
+					END
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@ArchiveTradeID', 'CHAR(10)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@ActiveTradeID', 'INT')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@SubmissionType', 'VARCHAR(10)')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@SplitTrade', 'BIT')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@SubmittedQuantityTillDate', 'FLOAT')
+				,TempApprovedTradeTable.ApprovedTradeColumns.value('@LastModifiedUser', 'INT')
+				,GETDATE()
+			FROM @InsUpdDelValues.nodes('/EventCollection/InsertList/TSheetApprovedTradeCollection/InsertList/TSheetApprovedTrade') AS TempApprovedTradeTable(ApprovedTradeColumns)
+		END
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TEMPCREATEDEVENTS]')
+				)
+			DROP TABLE [DBO].[#TEMPCREATEDEVENTS]
+
+		CREATE TABLE #TEMPCREATEDEVENTS (CREATEDEVENTID BIGINT)
+
+		INSERT INTO #TEMPMULTIPLEEVENTS (
+			AssignedTraderID
+			,AXYSPositionDate
+			,CancelComment
+			,CombinedAccount
+			,Comment
+			,CreatedDate
+			,CreatedUserID
+			,EventName
+			,EventSource
+			,EventStatusID
+			,ImposeBenePayment
+			,LastModifiedDate
+			,LastModifiedUserID
+			,LoadPaymentsDataUpTo
+			,Source
+			,SourceFille
+			)
+		SELECT TempEventTable.EventColumns.value('@AssignedTrader', 'INT')
+			,CASE YEAR(TempEventTable.EventColumns.value('@AXYSPositionDate', 'DATETIME'))
+				WHEN 1900
+					THEN NULL
+				ELSE TempEventTable.EventColumns.value('@AXYSPositionDate', 'DATETIME')
+				END
+			,TempEventTable.EventColumns.value('@CancelComments', 'VARCHAR(1000)')
+			,TempEventTable.EventColumns.value('@CombinedAccounts', 'BIT')
+			,CAST(TempEventTable.EventColumns.value('@Comments', 'VARCHAR(max)') AS VARCHAR(1000))
+			,GETDATE()
+			,TempEventTable.EventColumns.value('@CreatedUser', 'INT')
+			,TempEventTable.EventColumns.value('@EventName', 'VARCHAR(150)')
+			,TempEventTable.EventColumns.value('@EventSource', 'VARCHAR(50)')
+			,TempEventTable.EventColumns.value('@EventStatusID', 'BIGINT')
+			,TempEventTable.EventColumns.value('@ImposeBenePayments', 'BIT')
+			,GETDATE()
+			,TempEventTable.EventColumns.value('@LastModifiedUser', 'INT')
+			,TempEventTable.EventColumns.value('@LoadPaymentsDataUpTo', 'DATETIME')
+			,TempEventTable.EventColumns.value('@Source', 'VARCHAR(10)')
+			,TempEventTable.EventColumns.value('@SourceFille', 'VARCHAR(500)')
+		FROM @InsUpdDelValues.nodes('/EventCollection/InsertList/Event') AS TempEventTable(EventColumns)
+
+		INSERT INTO #TEMPMULTIPLEEVENTACCOUNT (
+			AccountName
+			,AccountOrder
+			,AccountType
+			,CustomerAccountNumber
+			,AnnuityAmount
+			,Custodian
+			,FSIOption
+			,ImposedBenePayment
+			,InvestmentComment
+			,InvestmentTypeCode
+			,LastModifiedDate
+			,LastModifiedUserID
+			,Managed
+			,PayoutRate
+			,SLMasterAccount
+			,TaxStatus
+			,TradeDiscretion
+			,TradeStatusCode
+			,TrancheStatusCode
+			)
+		SELECT TempEventAccountTable.EventAccountColumns.value('@AccountName', 'VARCHAR(100)')
+			,TempEventAccountTable.EventAccountColumns.value('@AccountOrder', 'INT')
+			,TempEventAccountTable.EventAccountColumns.value('@AccountType', 'VARCHAR(20)')
+			,TempEventAccountTable.EventAccountColumns.value('@CustomerAccountNumber', 'VARCHAR(14)')
+			,TempEventAccountTable.EventAccountColumns.value('@AnnuityAmount', 'MONEY')
+			,TempEventAccountTable.EventAccountColumns.value('@Custodian', 'INT')
+			,TempEventAccountTable.EventAccountColumns.value('@FSIOption', 'VARCHAR(2)')
+			,TempEventAccountTable.EventAccountColumns.value('@ImposedBenePayments', 'MONEY')
+			,TempEventAccountTable.EventAccountColumns.value('@InvestmentComment', 'VARCHAR(1000)')
+			,TempEventAccountTable.EventAccountColumns.value('@InvestmentTypeCode', 'VARCHAR(25)')
+			,GETDATE()
+			,TempEventAccountTable.EventAccountColumns.value('@LastModifiedUser', 'INT')
+			,TempEventAccountTable.EventAccountColumns.value('@Managed', 'BIT')
+			,TempEventAccountTable.EventAccountColumns.value('@PayoutRate', 'FLOAT')
+			,TempEventAccountTable.EventAccountColumns.value('@SLMasterAccount', 'CHAR(12)')
+			,TempEventAccountTable.EventAccountColumns.value('@TaxStatus', 'VARCHAR(12)')
+			,TempEventAccountTable.EventAccountColumns.value('@TradeDiscretion', 'BIT')
+			,TempEventAccountTable.EventAccountColumns.value('@TradeStatusCode', 'VARCHAR(23)')
+			,TempEventAccountTable.EventAccountColumns.value('@TrancheStatusCode', 'VARCHAR(25)')
+		FROM @InsUpdDelValues.nodes('/EventCollection/InsertList/EventAccountCollection/EventAccount') AS TempEventAccountTable(EventAccountColumns)
+
+		INSERT INTO #TEMPMULTIPLEEVENTTYPE (
+			EventTypeID
+			,LastModifiedDate
+			,LastModifiedUserID
+			)
+		SELECT TempEventTypeTable.EventTypeColumns.value('@EventTypeID', 'BIGINT')
+			,GETDATE()
+			,TempEventTypeTable.EventTypeColumns.value('@LastModifiedUser', 'INT')
+		FROM @InsUpdDelValues.nodes('/EventCollection/InsertList/EventTypeCollection/EventType') AS TempEventTypeTable(EventTypeColumns)
+
+		BEGIN TRANSACTION @NEWEVENTCREATION
+
+		SET @EVENTCOUNT = (
+				SELECT COUNT(TEMPEVENTID)
+				FROM #TEMPMULTIPLEEVENTS
+				)
+		SET @I = 1
+
+		IF (
+				@EVENTCOUNT > 0
+				AND @IsTradeImport = 'FALSE'
+				)
+		BEGIN
+			WHILE (@I <= @EVENTCOUNT)
+			BEGIN
+				INSERT INTO TBL_TR_Event (
+					AssignedTraderID
+					,AXYSPositionDate
+					,CancelComment
+					,CombinedAccount
+					,Comments
+					,CreatedDate
+					,CreatedUserID
+					,EventName
+					,EventSource
+					,EventStatusID
+					,ImposeBenePayment
+					,LastModifiedDate
+					,LastModifiedUserID
+					,LoadPaymentsDataUpTo
+					,[Source]
+					,SourceFille
+					)
+				SELECT AssignedTraderID
+					,AXYSPositionDate
+					,CancelComment
+					,CombinedAccount
+					,Comment
+					,CreatedDate
+					,CreatedUserID
+					,EventName
+					,EventSource
+					,EventStatusID
+					,ImposeBenePayment
+					,LastModifiedDate
+					,LastModifiedUserID
+					,LoadPaymentsDataUpTo
+					,[Source]
+					,SourceFille
+				FROM #TEMPMULTIPLEEVENTS
+				WHERE TEMPEVENTID = @I
+
+				INSERT INTO TBL_TR_EventAccount (
+					AccountName
+					,AccountOrder
+					,AccountType
+					,CustomerAccountNumber
+					,AnnuityAmount
+					,Custodian
+					,EventID
+					,FSIOption
+					,ImposedBenePayment
+					,InvestmentComment
+					,InvestmentTypeCode
+					,LastModifiedDate
+					,LastModifiedUserID
+					,Managed
+					,PayoutRate
+					,SLMasterAccount
+					,TaxStatus
+					,TradeDiscretion
+					,TradeStatusCode
+					,TrancheStatusCode
+					)
+				SELECT AccountName
+					,AccountOrder
+					,AccountType
+					,CustomerAccountNumber
+					,AnnuityAmount
+					,Custodian
+					,IDENT_CURRENT('TBL_TR_Event')
+					,FSIOption
+					,ImposedBenePayment
+					,InvestmentComment
+					,InvestmentTypeCode
+					,LastModifiedDate
+					,LastModifiedUserID
+					,Managed
+					,PayoutRate
+					,SLMasterAccount
+					,TaxStatus
+					,TradeDiscretion
+					,TradeStatusCode
+					,TrancheStatusCode
+				FROM #TEMPMULTIPLEEVENTACCOUNT
+				WHERE TEMPEVENTACCOUNTID = @I
+
+				INSERT INTO TBL_TR_EventType (
+					EventID
+					,EventTypeID
+					,LastModifiedDate
+					,LastModifiedUserID
+					)
+				SELECT IDENT_CURRENT('TBL_TR_Event')
+					,EventTypeID
+					,LastModifiedDate
+					,LastModifiedUserID
+				FROM #TEMPMULTIPLEEVENTTYPE
+				WHERE TEMPEVENTTYPEID = @I
+
+				SET @I = @I + 1
+
+				INSERT INTO #TEMPCREATEDEVENTS
+				SELECT IDENT_CURRENT('TBL_TR_Event')
+			END
+		END
+		ELSE
+		BEGIN
+			INSERT INTO TBL_TR_Event (
+				AssignedTraderID
+				,AXYSPositionDate
+				,CancelComment
+				,CombinedAccount
+				,Comments
+				,CreatedDate
+				,CreatedUserID
+				,EventName
+				,EventSource
+				,EventStatusID
+				,ImposeBenePayment
+				,LastModifiedDate
+				,LastModifiedUserID
+				,LoadPaymentsDataUpTo
+				,[Source]
+				,SourceFille
+				)
+			SELECT AssignedTraderID
+				,AXYSPositionDate
+				,CancelComment
+				,CombinedAccount
+				,Comment
+				,CreatedDate
+				,CreatedUserID
+				,EventName
+				,EventSource
+				,EventStatusID
+				,ImposeBenePayment
+				,LastModifiedDate
+				,LastModifiedUserID
+				,LoadPaymentsDataUpTo
+				,[Source]
+				,SourceFille
+			FROM #TEMPMULTIPLEEVENTS
+
+			INSERT INTO TBL_TR_EventAccount (
+				AccountName
+				,AccountOrder
+				,AccountType
+				,CustomerAccountNumber
+				,AnnuityAmount
+				,CustodianAccountNumber
+				,EventID
+				,FSIOption
+				,ImposedBenePayment
+				,InvestmentComment
+				,InvestmentTypeCode
+				,LastModifiedDate
+				,LastModifiedUserID
+				,Managed
+				,PayoutRate
+				,SLMasterAccount
+				,TaxStatus
+				,TradeDiscretion
+				,TradeStatusCode
+				,TrancheStatusCode
+				)
+			SELECT TempEvntAcnt.AccountName
+				,TempEvntAcnt.AccountOrder
+				,TempEvntAcnt.AccountType
+				,TempEvntAcnt.CustomerAccountNumber
+				,CTAcntDet.CYDistAmount -- AnnuityAmount  
+				,CAST(LTRIM(RTRIM(ISNULL(AcntMstr.ExternalCustomerID, '0'))) AS INT) -- CustodialAccount --Custodian  
+				,IDENT_CURRENT('TBL_TR_Event')
+				,AcntPrl.FSITypeCode
+				,TempEvntAcnt.ImposedBenePayment
+				,TempEvntAcnt.InvestmentComment
+				,TempEvntAcnt.InvestmentTypeCode
+				,TempEvntAcnt.LastModifiedDate
+				,TempEvntAcnt.LastModifiedUserID
+				,TempEvntAcnt.Managed
+				,TempEvntAcnt.PayoutRate
+				,ISNULL(CAST(UTablDef.TableDesc AS VARCHAR(40)), '') -- SchwabMasterID  
+				,TempEvntAcnt.TaxStatus
+				,TempEvntAcnt.TradeDiscretion
+				,TempEvntAcnt.TradeStatusCode
+				,TempEvntAcnt.TrancheStatusCode
+			FROM SYN_IT_AccountMaster AcntMstr
+			INNER JOIN #TEMPMULTIPLEEVENTACCOUNT TempEvntAcnt ON TempEvntAcnt.CustomerAccountNumber = AcntMstr.CustomerAccountNumber
+			INNER JOIN SYN_IT_CTAccountDetails CTAcntDet ON CTAcntDet.CustomerAccountNumber = AcntMstr.CustomerAccountNumber
+			INNER JOIN TBL_INV_AccountProfile AcntPrl ON AcntPrl.CustomerAccountNumber = AcntMstr.CustomerAccountNumber
+			INNER JOIN SYN_IT_UDF_AccountMaster UAcntMstr ON UAcntMstr.CustomerAccountNumber_Key = AcntMstr.CustomerAccountNumber
+			LEFT OUTER JOIN SYN_IT_UDFTableDefinitions UTablDef ON UTablDef.TableCode = UAcntMstr.UDFAMColumn005
+
+			SELECT @APPROVEDTRADECOUNT = @InsUpdDelValues.value('count(/EventCollection/InsertList/TSheetApprovedTradeCollection/InsertList/TSheetApprovedTrade)', 'int')
+
+			IF (@APPROVEDTRADECOUNT = 0)
+			BEGIN
+				ROLLBACK TRANSACTION @NEWEVENTCREATION
+			END
+
+			INSERT INTO dbo.TBL_TR_TSheetApprovedTrade (
+				[EventID]
+				,[EventAccountID]
+				,[TradeType]
+				,[SecurityTypeCode]
+				,[SecuritySymbol]
+				,[TradeQuantity]
+				,[DollarAmount]
+				,[TradeDate]
+				,[ArchiveTradeID]
+				,[ActiveTradeID]
+				,[SubmissionType]
+				,[SplitTrade]
+				,[SubmittedQuantityTillDate]
+				,[LastModifiedUserID]
+				,[LastModifiedDate]
+				)
+			SELECT IDENT_CURRENT('TBL_TR_Event')
+				,IDENT_CURRENT('TBL_TR_EventAccount')
+				,[TradeType]
+				,[SecurityTypeCode]
+				,[SecuritySymbol]
+				,[TradeQuantity]
+				,[DollarAmount]
+				,[TradeDate]
+				,[ArchiveTradeID]
+				,[ActiveTradeID]
+				,[SubmissionType]
+				,[SplitTrade]
+				,[SubmittedQuantityTillDate]
+				,TempTShtAprvdTrd.[LastModifiedUserID]
+				,TempTShtAprvdTrd.[LastModifiedDate]
+			FROM #TEMPMULTIPLETSHEETAPPROVEDTRADE TempTShtAprvdTrd
+			INNER JOIN #TEMPMULTIPLEEVENTACCOUNT TempEvntAcnt ON TempEvntAcnt.CustomerAccountNumber = TempTShtAprvdTrd.CustomerAccountNumber
+
+			INSERT INTO TBL_TR_EventType (
+				EventID
+				,EventTypeID
+				,LastModifiedDate
+				,LastModifiedUserID
+				)
+			SELECT IDENT_CURRENT('TBL_TR_Event')
+				,EventTypeID
+				,LastModifiedDate
+				,LastModifiedUserID
+			FROM #TEMPMULTIPLEEVENTTYPE
+
+			INSERT INTO #TEMPCREATEDEVENTS
+			SELECT IDENT_CURRENT('TBL_TR_Event')
+		END
+
+		COMMIT TRANSACTION @NEWEVENTCREATION
+
+		SET @ReturnStatus = 0;
+
+		-- Get Imported Events to display to the user  
+		DECLARE @XmlOutput XML;
+
+		SET @XmlOutput = (
+				SELECT CREATEDEVENTID AS EventID
+				FROM #TEMPCREATEDEVENTS
+				FOR XML raw('Event')
+					,root('TSheet')
+				);
+
+		EXEC USP_TR_GetEventByID @XmlOutput;
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+		SET @Errnbr = ERROR_NUMBER();
+		--IF @@TRANCOUNT > 0  
+		-- ROLLBACK TRANSACTION @NEWEVENTCREATION;  
+		SET @ReturnStatus = - 1;
+	END CATCH
+END

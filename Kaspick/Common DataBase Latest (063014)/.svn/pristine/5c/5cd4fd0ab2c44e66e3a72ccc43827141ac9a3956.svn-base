@@ -1,0 +1,73 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetAllCustomerAccountNumber]    Script Date: 07/03/2014 18:20:26 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetAllCustomerAccountNumber                      
+** Short Desc: Read list of customer account number for a GroupID.
+** Full Description: Read list of customer account number for a GroupID.      
+** Input Arguments:   	@XMLGroupID XML
+** Sample Call     
+        
+DECLARE @XMLGroupID XML     
+ SET  @XMLGroupID = 
+		'<ClientParameterCollection>    
+		  <InsertList> 
+			<ClientParameter CustomerAccountNumber="ACGAP" GroupID="4"/>
+			<ClientParameter CustomerAccountNumber="WUGAP" GroupID="2"/>
+		  </InsertList>    
+		</ClientParameterCollection>'        
+ EXEC USP_PV_GetAllCustomerAccountNumber @XMLGroupID
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Aashay Thodar
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06/30/3014               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetAllCustomerAccountNumber] @XMLGroupID XML
+AS
+SET NOCOUNT ON		
+Declare @ISPrimary bit;
+
+CREATE TABLE #LocalTempTable(
+GroupID int,
+CustomerAccountNumber Varchar(14))
+
+Create TABLE #PrimaryAccountTable(
+PrimaryCustomerAccountNumber Varchar(14),
+IsPrimary int)
+
+INSERT into #LocalTempTable Select GroupID, CustomerAccountNumber
+ from SYN_IT_AccountGroupAccounts v 
+WHERE v.GroupID IN (
+		SELECT XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+		FROM @XMLGroupID.nodes('//ClientParameterCollection/InsertList/ClientParameter') AS XMLDATA(item))
+		
+INSERT into #PrimaryAccountTable  (PrimaryCustomerAccountNumber,IsPrimary) 
+SELECT XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS GroupID, 1
+		FROM @XMLGroupID.nodes('//ClientParameterCollection/InsertList/ClientParameter') AS XMLDATA(item) 		
+
+select #LocalTempTable.CustomerAccountNumber, #LocalTempTable.GroupID, ISNULL(#PrimaryAccountTable.IsPrimary,0)  AS PrimaryCAN
+from #LocalTempTable left join #PrimaryAccountTable 
+on #LocalTempTable.CustomerAccountNumber = #PrimaryAccountTable.PrimaryCustomerAccountNumber
+		
+SET NOCOUNT OFF;

@@ -1,0 +1,67 @@
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetTransactionDataImport]    Script Date: 07/09/2014 18:48:26 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetTransactionDataImport]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetTransactionDataImport]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetTransactionDataImport]    Script Date: 07/09/2014 18:48:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+/******************************************************************************   
+**      
+** Return values: Transaction Records
+**      
+**      
+** Sample Call      
+        EXEC [USP_OP_GetTransactionDataImport] '07-31-2009','07-31-2009'
+   -- parameters      
+**  
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By:       
+** Company   : Kaspick & Company      
+** Project   : Operations      
+** Created DT: 01/07/2008      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/   
+CREATE PROCEDURE [dbo].[USP_OP_GetTransactionDataImport]
+(
+  @RunFromDate datetime,
+  @RunToDate datetime
+ )
+AS     
+BEGIN
+--  Initial Set statements  --    
+	SET NOCOUNT ON;    
+	SET LOCK_TIMEOUT                30000;   -- 30 seconds    
+	
+
+SELECT [RunID]  
+      ,[RunStartDateTime]  
+      ,[RunEndDateTime]  
+      ,[NumberOfTransactions]  
+      ,RunUserID as RunUser
+  ,u.Loginname as LoginName  
+  FROM TBL_OP_TransactionDataImport imp  
+inner join tbl_ks_user u on u.userid=imp.RunUserID  
+where RunStartDateTime>= @RunFromDate and  
+RunStartDateTime<= DateAdd(day,1,@RunToDate )  
+order by  imp.RunID desc
+END
+GO
+
+

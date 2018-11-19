@@ -1,0 +1,138 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPolicyItemValue]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPolicyItemValue]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPolicyItemValue]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPolicyItemValue]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetPolicyItemValue                      
+** Short Desc: Common SP used for fetching the Policyitem Value for a particular Dimension. 
+**                      
+** Full Description: Common SP used for fetching the Policyitem Value for a particular Dimension.      
+**                              
+** Input Arguments:  
+	@EntityID		: OWNERID value for which the POLICYITEM tobe searched.          
+    @EntityType		: POLICYLEVEL value for which the POLICYITEM tobe searched.          
+    @@PolicyCategoryID	: Policy Category of the PolicyItem.                   
+    @DimensionFullName	: Dimension Name of the  policydimension to be searched.  
+**         
+** Sample Call     
+ DECLARE @Value VARCHAR(100)       
+ EXEC [USP_PP_GetPolicyItemValue] 'OF','Manager','Check signer',1,@Value OUTPUT    
+ SELECT  @Value
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetPolicyItemValue] (
+	@EntityID VARCHAR(15)
+	,@EntityType VARCHAR(20)
+	,@DimensionFullName VARCHAR(50)
+	,@PolicyCategoryID INT
+	,@Value VARCHAR(100) OUTPUT
+	,@Datatype VARCHAR(10) OUTPUT
+	,@PolicyDimensionID INT OUTPUT
+	--,@NumericValue FLOAT = 0 OUTPUT
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @LevelID INT
+	DECLARE @DatatypeInput VARCHAR(10)
+	DECLARE @PolicyDimensionIDInput INT
+
+	SELECT @Datatype = DataType
+		,@PolicyDimensionID = PolicyDimensionID
+	FROM TBL_PolicyDimension
+	WHERE FullName = @DimensionFullName
+		AND PolicyCategoryID = @PolicyCategoryID
+
+	SELECT @LevelID = PolicyLevel
+	FROM TBL_PolicyLevel
+	WHERE LevelName = @EntityType
+
+	IF (@Datatype = 'DATE')
+	BEGIN
+		SELECT @VALUE = CAST(DateValue AS VARCHAR(100))
+		FROM TBL_PolicyItem
+		WHERE PolicyDimensionID = @PolicyDimensionID
+			AND OwnerID = @EntityID
+			AND PolicyLevel = @LevelID
+	END
+	ELSE
+		IF (@Datatype = 'NUMERIC')
+		BEGIN
+			SELECT @Value = CAST(NumericValue AS varchar(100))
+			FROM TBL_PolicyItem
+			WHERE PolicyDimensionID = @PolicyDimensionID
+				AND OwnerID = @EntityID
+				AND PolicyLevel = @LevelID
+		END
+		ELSE
+			IF (@Datatype = 'LIST')
+			BEGIN
+				SELECT @VALUE = CAST(PolicyDropDownID AS VARCHAR(100))
+				FROM TBL_PolicyItem
+				WHERE PolicyDimensionID = @PolicyDimensionID
+					AND OwnerID = @EntityID
+					AND PolicyLevel = @LevelID
+			END
+			ELSE
+				IF (@Datatype = 'LOGICAL')
+				BEGIN
+					SELECT @VALUE = CAST(LOGICALVALUE AS VARCHAR(100))
+					FROM TBL_PolicyItem PItem
+					WHERE PolicyDimensionID = @PolicyDimensionID
+						AND OwnerID = @EntityID
+						AND PolicyLevel = @LevelID
+				END
+				ELSE
+					IF (@Datatype = 'TEXT')
+					BEGIN
+						SELECT @VALUE = TextValue
+						FROM TBL_PolicyItem
+						WHERE PolicyDimensionID = @PolicyDimensionID
+							AND OwnerID = @EntityID
+							AND PolicyLevel = @LevelID
+					END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_NUMBER() AS ErrorNumber
+		,ERROR_MESSAGE() AS ErrorMessage
+END CATCH

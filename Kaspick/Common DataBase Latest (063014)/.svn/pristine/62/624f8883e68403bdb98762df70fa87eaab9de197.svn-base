@@ -1,0 +1,91 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KCo_BeneficiaryDomicileException]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KCo_BeneficiaryDomicileException]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************    
+** Name:  USP_KCo_BeneficiaryDomicileException  
+** Short Desc: Generate report for the Benefiaciary address information in terms of Taxyear  
+**    
+** Full Description    
+**      Generate report for the Benefiaciary address information in terms of Taxyear  
+**    
+** Sample Call    
+EXEC USP_KCo_BeneficiaryDomicileException 2015
+ 
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Asit Kar  
+** Company   : Kaspick & Company    
+** Project   : KCo query Reports    
+** Created DT: 22-04-2014  BOI: Reports & Queries 
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 26-jun-14   Salih               Modified Rolecode implementation from Rolecode description to ID.  
+*******************************************************************************    
+** Copyright (C) 2014 Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KCo_BeneficiaryDomicileException] @TaxYear INT
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT DISTINCT AccMas.CustomerAccountNumber
+		,CMBene.ContactName AS BeneficiaryName
+		,CMBene.DateOfDeath AS ExpireDate
+		,CMBene.DomicileStateCode
+		,ConAdd.AddressType
+		,ConAdd.City
+		,ConAdd.STATE
+		,ConAdd.ZipCode
+		,ConAdd.CountryCode
+		,BenPymnt.TaxYear
+		,BenPymnt.AccountType
+	FROM SYN_IT_ContactAddresses ConAdd
+	INNER JOIN SYN_IT_ContactAccountRoles ContAccRol ON ContAccRol.ContactID = ConAdd.ContactID
+	 -- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+				AND ContAccRol.ContactRoleCode = 21 -- 'Beneficiary'
+	INNER JOIN SYN_IT_ContactMaster CMBene ON ContAccRol.ContactID = CMBene.ContactID
+	INNER JOIN SYN_IT_AccountMaster AccMas ON ContAccRol.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPymnt ON BenPymnt.CustomerAccountNumber = AccMas.CustomerAccountNumber
+		AND BenPymnt.ContactID = CMBene.ContactID
+		AND ConAdd.PrimaryAddressFlag = - 1
+		AND ConAdd.ActiveFlag = - 1
+		AND ConAdd.AddressType = 'Home'
+	WHERE BenPymnt.AccountType NOT IN (
+			'PIF'
+			,'GAP','GAPR','GAPP'
+			,'FDN'
+			)
+		AND (
+			YEAR(CMBene.DateOfDeath) >= @TaxYear
+			OR YEAR(CMBene.DateOfDeath) IS NULL
+			)
+
+	SET NOCOUNT OFF;
+END

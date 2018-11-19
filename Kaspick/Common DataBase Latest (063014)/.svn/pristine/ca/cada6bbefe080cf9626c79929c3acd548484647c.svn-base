@@ -1,0 +1,83 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllSecurityInfo]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllSecurityInfo]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_TR_GetAllSecurityInfo     
+** Short Desc: Get All Security Info    
+**      
+** Full Description : Get All Security Info
+**      
+** Sample Call      
+** EXEC USP_TR_GetAllSecurityInfo @ReturnStatus out, @ErrorDesc out
+**      
+** Return values: SecurityInfoCollection
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Chaithra Madappa     
+** Company   : Kaspick & Company      
+** Project   : Back Office Integration - Tr-Ex     
+** Created DT: Mar/13/2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** 
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllSecurityInfo] @ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+-- Body of procedure  --      
+BEGIN TRY
+	SELECT [SecuritySymbol]
+		,[SecurityTypeCode]
+		,[SecurityDescription]
+		,[IndustryGroup]
+		,[RecordVersion]
+		,[LastModifiedUserID]
+		,[LastModifiedDate]
+	FROM [TBL_TR_SecurityInfo]
+
+	SET @ReturnStatus = 0;
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1;
+	SET @ErrorDesc = error_message();
+
+	ROLLBACK TRANSACTION;
+END CATCH
+
+SET NOCOUNT OFF;
+GO
+
+

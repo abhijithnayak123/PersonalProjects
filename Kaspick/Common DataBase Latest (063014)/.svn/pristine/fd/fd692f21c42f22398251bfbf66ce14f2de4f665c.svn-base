@@ -1,0 +1,170 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail;
+
+	PRINT 'DROPPED USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail';
+END
+GO
+
+/******************************************************************************  
+** Name:     [sp_wft_get_middleware_rules_ExcelsiorLive_detail] 
+** New Name  : USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail 
+** Short Desc:   
+**  
+** Full Description  
+**        This stored proc is used to populate Address Change details  
+**  
+** Sample Call  
+ [sp_wft_get_middleware_rules_ExcelsiorLive_detail]'<root><Item AccountID="109"></Item><Item AccountID="82"></Item><Item AccountID="93"></Item></root>',8  
+ [sp_wft_get_middleware_rules_ExcelsiorLive_detail]'<root><Item AccountID="100233"></Item><Item AccountID="100814"></Item><Item AccountID="100815"></Item></root>',100831 
+  USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail '<root><Item AccountID="ACADW"></Item><Item AccountID="ACADW"></Item><Item AccountID="ACADW"></Item></root>',100831 
+**  
+** Return values:   
+**  
+**  
+** Standard declarations  
+**       SET NOCOUNT             ON  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**   
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company  
+** Project   : Excelsior  
+** Created DT: 08-March-2010  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 02-June-2014  Sanath            Webform request module in Excelsior Prime project  
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/  
+  
+CREATE PROCEDURE [dbo].[USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail]  
+(  
+ @AffectedAccountsXML nvarchar(4000),  
+ @ParticipantID int,  
+ @DOMICILECODE VARCHAR(50) OUTPUT,  
+    @SPOUSENAME VARCHAR(MAX) OUTPUT,  
+    @PAYMENTRULE INT OUTPUT,   
+    @EXCEPTIONRULE VARCHAR(50) OUTPUT,   
+    @EXCLUSIONRULE VARCHAR(50) OUTPUT  
+)    
+AS   
+BEGIN  
+   
+ Declare @RULEID INT   
+ DECLARE @IDOC INT  
+  
+ Declare @AffectedAccounts table(ID int identity(1,1),AccountID VARCHAR(14))  
+ ---load and parse the xml document---          
+ EXEC sp_xml_preparedocument @IDOC OUTPUT, @AffectedAccountsXML          
+  
+ --Insert into @AffectedAccounts  
+ -- SELECT * FROM OPENXML (@idoc, '/root/Item',1)          
+ -- WITH (ID int)   
+   
+   INSERT INTO @AffectedAccounts(ACCOUNTID)
+	SELECT ID
+	FROM OPENXML(@idoc, '/root/Item', 1) 
+	WITH (ID VARCHAR(14))
+	
+--- Get Domicile Code---------  
+ SELECT @DOMICILECODE= ConMstr.DomicileStateCode FROM         
+  SYN_IT_ContactMaster  ConMstr                              
+ --  INNER JOIN SYN_IT_ContactAccountRoles ContAccRole ON ContAccRole.ContactID=ConMstr.ContactID                              
+ where ConMstr.ContactID =@ParticipantID      
+    ------------------------------  
+  
+ --- Get Spouse Name---------  
+ --SELECT @SPOUSENAME=LTRIM(RTRIM((CASE WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryLastName)), '') = '') THEN '' ELSE (ConMstr.PrimaryLastName + ' ') END)               
+ --     + (CASE WHEN (ISNULL(LTRIM(RTRIM(ConMstr.PrimaryFirstName)), '') = '') THEN '' ELSE (ConMstr.PrimaryFirstName + ' ') END) + ISNULL(ConMstr.PrimaryMiddleInitial, '')))                               
+ --FROM SYN_IT_ContactMaster ConMstr                              
+ -- --n INNER JOIN SYN_IT_ContactAccountRoles ContAccRole ON ConMstr.ContactID=ContAccRole.ContactID                              
+ ----WHERE ConMstr.ContactID =(SELECT SPOUSE_ID  FROM VW_EX_TrustParticipantType     --- SELECT SPOUSE_ID FROM SYN_IT_ContactAccountRoles  'SPOUSE_ID ' is Absolte     
+ -- WHERE  ConMstr.ContactID=@ParticipantID--)  
+ 
+ 
+ SELECT @SPOUSENAME =DbAddChng.SpouseName from TBL_WFT_DBAddressChange  DbAddChng
+ WHERE DbAddChng.contactid=@ParticipantID
+ ----------------------------     
+  
+ ---Get MW Payment Rule---  
+-- Select @RULEID = RULEID from TBL_PP_RULES where RuleDescription='PAYMENT'    --- TBL_PP_RULES Table is Removed 
+ 
+ IF EXISTS(select * from TBL_PP_CONTACTRULE WHERE ContactID=@ParticipantID) --and RULEID=(@RULEID) and DeleteFlag=0)  
+ BEGIN  
+  select @PAYMENTRULE = DaysValue from TBL_PP_CONTACTRULE WHERE ContactID=@ParticipantID --and RULEID=(@RULEID)and DeleteFlag=0  
+ END  
+ ELSE IF EXISTS(select * from TBL_PP_ACCOUNTRULE WHERE CustomerAccountNumber IN   
+   (select CustomerAccountNumber from SYN_IT_AccountMaster where CustomerAccountNumber in(select AccountID from @AffectedAccounts)))  
+   --and RuleID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+  select @PAYMENTRULE = MAX(DaysValue) from TBL_PP_ACCOUNTRULE WHERE CustomerAccountNumber IN   
+   (select CustomerAccountNumber from SYN_IT_AccountMaster where CustomerAccountNumber in(select AccountID from @AffectedAccounts))  
+   --and RuleID=(@RULEID)and DeleteFlag=0  
+ END  
+ ELSE IF EXISTS(select* from TBL_PP_MANAGERRULE WHERE ManagerCode=(select distinct CLIENTID from VW_EX_TrustParticipantType where PARTICIPANTID= @ParticipantID) )--and RULEID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+   select @PAYMENTRULE = DaysValue from TBL_PP_MANAGERRULE WHERE ManagerCode=(select distinct CLIENTID from VW_EX_TrustParticipantType where PARTICIPANTID= @ParticipantID)-- and RULEID=(@RULEID)and DeleteFlag=0  
+ END  
+ --------------------  
+ ---Get MW Exception Rule---  
+ --Select @RULEID = RULEID from TBL_PP_RULES where RuleDescription='EXCEPTION'  
+ IF EXISTS(select * from TBL_PP_CONTACTRULE WHERE ContactID=@ParticipantID )--and RULEID=(@RULEID) and DeleteFlag=0)  
+ BEGIN  
+  set @EXCEPTIONRULE = 'Yes'  
+ END  
+ ELSE IF EXISTS(select * from TBL_PP_ACCOUNTRULE WHERE CustomerAccountNumber IN   
+   (select CustomerAccountNumber from SYN_IT_AccountMaster where CustomerAccountNumber in(select AccountID from @AffectedAccounts))) 
+  -- and RuleID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+  set @EXCEPTIONRULE = 'Yes'  
+ END  
+ ELSE IF EXISTS(select * from TBL_PP_MANAGERRULE WHERE ManagerCode=(select distinct CLIENTID from VW_EX_TrustParticipantType where PARTICIPANTID= @ParticipantID))--and RULEID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+  set @EXCEPTIONRULE = 'Yes'  
+ END  
+ IF(ISNULL(@EXCEPTIONRULE,'')='')  
+ set @EXCEPTIONRULE = 'No'  
+ -------------------------    
+ ---Get MW Exclusion Rule---  
+-- Select @RULEID = RULEID from TBL_PP_RULES where RuleDescription='EXCLUSION'  
+ IF EXISTS(select * from TBL_PP_CONTACTRULE WHERE ContactID=@ParticipantID)-- and RULEID=(@RULEID) and DeleteFlag=0)  
+ BEGIN  
+  set @EXCLUSIONRULE = 'Yes'  
+ END  
+ ELSE IF EXISTS(select * from TBL_PP_ACCOUNTRULE WHERE CustomerAccountNumber IN   
+   (select CustomerAccountNumber from SYN_IT_AccountMaster where CustomerAccountNumber in(select AccountID from @AffectedAccounts)))  
+   --and RuleID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+  set @EXCLUSIONRULE = 'Yes'  
+ END  
+ ELSE IF EXISTS(select* from TBL_PP_MANAGERRULE WHERE ManagerCode=(select distinct CLIENTID from VW_EX_TrustParticipantType where PARTICIPANTID= @ParticipantID)) --and RULEID=(@RULEID)and DeleteFlag=0)  
+ BEGIN  
+  set @EXCLUSIONRULE = 'Yes'  
+ END  
+ IF(ISNULL(@EXCLUSIONRULE,'')='')  
+  set @EXCLUSIONRULE = 'No'  
+   
+ -------------------------  
+END
+
+GO
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail'
+		)
+BEGIN
+      PRINT 'CREATED USP_EX_GetWftMiddlewareRulesExcelssiorLiveDetail';
+END
+

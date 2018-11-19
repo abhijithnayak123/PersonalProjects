@@ -1,0 +1,302 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentProfile]    Script Date: 07/09/2013 11:42:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SavePaymentProfile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SavePaymentProfile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePaymentProfile]    Script Date: 07/09/2013 11:42:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SavePaymentProfile                      
+** Short Desc: To Insert/Update the POLICYITEM table
+**                      
+** Full Description: To Insert/Update the POLICYITEM table with the DIMENSIONS              
+**     related to Manager,Alliance Number and Account    
+**                              
+** Input Arguments:  
+			@XMLDATA XML
+**         
+** Sample Call     
+        
+ EXEC USP_PP_SavePaymentProfile  
+  '<PaymentProfileCollection><UpdateList><PaymentProfileItem EntityType="Manager"  ManagerCode="OF"  AllianceNumber="All"  CustomerAccountNumber="All"  ContactID="2947"  CheckSignerPDID="130"  LogoOnEnvelopesPDID="258"  TaxPMTMailInstPDID="264"  EnvelopesPDID="267"  LogoOnBenePaymentsPDID="255"  AddressOnBenePaymentsPDID="261"  PaymentLogoPDID="411"  TemplateWithWithholdingInfoPDID="413"  ManagerPaymentConditionStatus="1733"  AccountPaymentConditionStatus="0"  ContactPaymentConditionStatus="1733"  PaymentAccountType=""  PaymentConditionNote="Test"  ValidationEngineCategoryType="1953"  ModifiedByUserID="100110"  /></UpdateList></PaymentProfileCollection>'
+ ,
+  '<AllianceNumberCollection><SelectList>
+			<AllianceNumberItem AllianceNumber="PCH" />
+			<AllianceNumberItem AllianceNumber="TUF"  />
+  </SelectList></AllianceNumberCollection>'
+,	
+  '<CustomerAccountNumberCollection><SelectList>
+			<CustomerAccountNumberItem CustomerAccountNumber="AMBRI"  />
+			<CustomerAccountNumberItem CustomerAccountNumber="GTSMIB" />
+	</SelectList></CustomerAccountNumberCollection>'
+
+**            
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 09-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SavePaymentProfile] (
+	@XMLDATA XML
+	,@XMLAllianceData XML
+	,@XMLAccountData XML
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @EntityType VARCHAR(15)
+	DECLARE @ManagerCode VARCHAR(4)
+	DECLARE @AllianceNumber VARCHAR(15)
+	DECLARE @CustomerAccountNumber VARCHAR(14)
+	DECLARE @ContactID INT
+	DECLARE @CheckSignerPolicyID INT
+	DECLARE @LogoPaymentPolicyID INT
+	DECLARE @LogoEnvelopeID INT
+	DECLARE @AddressPaymentID INT
+	DECLARE @TaxPaymentID INT
+	DECLARE @EnvelopeID INT
+	DECLARE @PmntLogoMrktgMsgID INT
+	DECLARE @TmpltWitholdingID INT
+	DECLARE @StatusID INT
+	DECLARE @ManagerPaymentConditionStatus INT
+	DECLARE @AccountPaymentConditionStatus INT
+	DECLARE @ContactPaymentConditionStatus INT
+	DECLARE @AccountType VARCHAR(1000)
+	DECLARE @Comments VARCHAR(1000)
+	DECLARE @ValidationEngineResultType INT
+	DECLARE @ModifiedByID INT
+	DECLARE @PolicyLevel INT
+	DECLARE @ListItemID INT
+
+	SELECT @EntityType = x.item.value('@EntityType[1]', 'VARCHAR(15)')
+		,@ManagerCode = x.item.value('@ManagerCode[1]', 'VARCHAR(4)')
+		,@AllianceNumber = x.item.value('@AllianceNumber[1]', 'VARCHAR(15)')
+		,@CustomerAccountNumber = x.item.value('@CustomerAccountNumber[1]', 'VARCHAR(15)')
+		,@ContactID = x.item.value('@ContactID[1]', 'INT')
+		,@CheckSignerPolicyID = x.item.value('@CheckSignerPDID[1]', 'INT')
+		,@LogoPaymentPolicyID = x.item.value('@LogoOnBenePaymentsPDID[1]', 'INT')
+		,@LogoEnvelopeID = x.item.value('@LogoOnEnvelopesPDID[1]', 'INT')
+		,@AddressPaymentID = x.item.value('@AddressOnBenePaymentsPDID[1]', 'INT')
+		,@TaxPaymentID = x.item.value('@TaxPMTMailInstPDID[1]', 'INT')
+		,@EnvelopeID = x.item.value('@EnvelopesPDID[1]', 'INT')
+		,@PmntLogoMrktgMsgID = x.item.value('@PaymentLogoPDID[1]', 'INT')
+		,@TmpltWitholdingID = x.item.value('@TemplateWithWithholdingInfoPDID[1]', 'INT')
+		,@ManagerPaymentConditionStatus = x.item.value('@ManagerPaymentConditionStatus[1]', 'INT')
+		,@AccountPaymentConditionStatus = x.item.value('@AccountPaymentConditionStatus[1]', 'INT')
+		,@ContactPaymentConditionStatus = x.item.value('@ContactPaymentConditionStatus[1]', 'INT')
+		,@AccountType = x.item.value('@PaymentAccountType[1]', 'VARCHAR(1000)')
+		,@Comments = x.item.value('@PaymentConditionNote[1]', 'VARCHAR(1000)')
+		,@ValidationEngineResultType = x.item.value('@ValidationEngineCategoryType[1]', 'INT')
+		,@ModifiedByID = x.item.value('@ModifiedByUserID[1]', 'INT')
+	FROM @XMLDATA.nodes('/PaymentProfileCollection/UpdateList/PaymentProfileItem') AS x(item)
+
+	SELECT @PolicyLevel = PolicyLevel
+	FROM dbo.TBL_PolicyLevel
+	WHERE LevelName = @EntityType
+
+	SELECT @ListItemID = ListItemID
+	FROM dbo.TBL_ListItem LI
+	INNER JOIN dbo.TBL_ListType LT
+		ON LT.ListTypeID = LI.ListTypeID
+	WHERE UPPER(LT.ListTypeName) = 'ENTITY'
+		AND UPPER(LI.ListItemName) = @EntityType
+
+	BEGIN TRANSACTION
+
+	IF (
+			@EntityType = 'Manager'
+			OR @EntityType = 'Alliance'
+			OR @EntityType = 'Account'
+			)
+	BEGIN
+		--1. Check signer              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Check signer'
+			,@NewPolicyValue = @CheckSignerPolicyID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+
+		--4. Address on Payments              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Address on Payments'
+			,@NewPolicyValue = @AddressPaymentID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+	END
+
+	IF (
+			@EntityType = 'Manager'
+			OR @EntityType = 'Alliance'
+			)
+	BEGIN
+		--2. Logo on Beneficiary Payments               
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Logo on Beneficiary Payments'
+			,@NewPolicyValue = @LogoPaymentPolicyID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+
+		--3. Logo on Envelopes              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Logo on Envelopes'
+			,@NewPolicyValue = @LogoEnvelopeID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+
+		--5. Tax Payment Mail Instruction              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Tax Pmt Mail Inst.'
+			,@NewPolicyValue = @TaxPaymentID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+
+		--6 Envelopes              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Envelopes'
+			,@NewPolicyValue = @EnvelopeID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+	END
+
+	IF (@EntityType = 'Manager')
+	BEGIN
+		--7 Payment Logo/Marketing Message    
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Payment Logo/Marketing Message'
+			,@NewPolicyValue = @PmntLogoMrktgMsgID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+
+		--8 Templates with withholding info              
+		EXEC USP_PP_SavePolicyItem @PolicyDimensionName = 'Templates with withholding info'
+			,@NewPolicyValue = @TmpltWitholdingID
+			,@PolicyLevel = @PolicyLevel
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@UserID = @ModifiedByID
+			,@XMLAllianceData = @XMLAllianceData
+			,@XMLAccountData = @XMLAccountData
+	END
+
+	IF (@EntityType <> 'Alliance')
+	BEGIN
+		SELECT @StatusID = (
+				CASE @EntityType
+					WHEN 'Manager'
+						THEN @ManagerPaymentConditionStatus
+					WHEN 'Account'
+						THEN @AccountPaymentConditionStatus
+					WHEN 'Contact'
+						THEN @ContactPaymentConditionStatus
+					END
+				)
+
+		EXEC [dbo].USP_PP_SavePaymentCondition @EntityTypeID = @ListItemID
+			,@EntityType = @EntityType
+			,@ManagerCode = @ManagerCode
+			,@AllianceNumber = @AllianceNumber
+			,@CustomerAccountNumber = @CustomerAccountNumber
+			,@ContactID = @ContactID
+			,@AccountType = @AccountType
+			,@Comments = @Comments
+			,@StatusID = @StatusID
+			,@ValidationEngineResultType = @ValidationEngineResultType
+			,@UserID = @ModifiedByID
+	END
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

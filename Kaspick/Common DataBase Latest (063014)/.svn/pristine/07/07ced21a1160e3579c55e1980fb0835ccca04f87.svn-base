@@ -1,0 +1,113 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetPaymentDetail]    Script Date: 09/19/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetPaymentDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetPaymentDetail]
+GO
+
+/******************************************************************************        
+** Name:     USP_PP_GetPaymentDetail 
+**       
+** Short Desc: To Get Payment Details
+**                      
+** Full Description:  To Get Payment Details for Beneficiary     
+**           
+**        
+** Sample Call        
+        EXEC USP_PP_GetPaymentDetail  485293    
+      
+**        
+** Return values: NONE        
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 19-Sep-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+          
+CREATE PROCEDURE [dbo].[USP_PP_GetPaymentDetail]            
+	@iPaymentID INT
+AS        
+
+BEGIN TRY
+		--  Initial Set statements  --      
+		SET NOCOUNT ON;      
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds          
+            
+           
+            
+-- Body of procedure  --            
+
+	SELECT BenPmnt.BeneficiaryDistributionID,
+	Benpmnt.InstructionID,
+	BenPmnt.TransactionNumber,
+	BenPay.BPScheduleID AS ScheduleID,
+	Benpmnt.CustomerAccountNumber,
+	BenPmnt.ContactID,
+	BenPmnt.DocumentNumber,             
+	BenPmnt.PaymentAmount,             
+	BenPmnt.TaxYear,             
+	BenPmnt.ClearDate,             
+	BenPmnt.PostDate,         
+	BenPmnt.Comment,              
+	upper(BenPmnt.PaymentMethod) PaymentMethod,             
+	BenPmnt.PaymentId,             
+	BenPmnt.SourceBankName,             
+	BenPmnt.SourceBankAddress,             
+	BenPmnt.SourceBankABA,             
+	BenPmnt.FractionalRoutingCode,             
+	BenPmnt.PayorName,             
+	BenPmnt.PayorAddress,              
+	BenPmnt.SourceAccount,             
+	BenPmnt.PayeeName,             
+	BenPmnt.PayeeAddress,             
+	BenPmnt.DestAccount,             
+	BenPmnt.DestAccountType as bankAccountType,             
+	BenPmnt.SeparateCheckAddress,             
+	BenPmnt.DestBankName,             
+	BenPmnt.DestBankAddress,             
+	BenPmnt.DestBankABA,             
+	BenPmnt.DirectDepositFlag,            
+	BenPmnt.MailingAddress,            
+	BenPmnt.GSOInfo,        
+	BenPmnt.VoidDate,        
+	BenPmnt.Memo,        
+	BenPmnt.ReissueOf,        
+	BenPmnt.ReissueAs as 'ReissueAs',        
+	BenPmnt.PaymentDate,        
+	BenPay.EPD,        
+	BenPmnt.ClearMethod,
+	BenPay.IsBackBuilt,       
+	BenPmnt.RecordVersion,  
+	BenPmnt.DisplayVoidPaymentsInWeb        
+	FROM TBL_PP_BeneficiaryPayment BenPmnt            
+	LEFT OUTER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay On BenPay.PaymentID = BenPmnt.paymentID        
+	WHERE BenPmnt.PaymentId = @iPaymentID   
+         
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH   

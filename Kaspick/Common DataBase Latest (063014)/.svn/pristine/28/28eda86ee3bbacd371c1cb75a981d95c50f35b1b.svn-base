@@ -1,0 +1,218 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_SaveRptFasbProfileInfo')
+    BEGIN
+        DROP PROCEDURE USP_EX_SaveRptFasbProfileInfo;
+        PRINT 'DROPPED USP_EX_SaveRptFasbProfileInfo';
+    END
+GO
+
+    
+/******************************************************************************                        
+** Name : USP_EX_SaveRptFasbProfileInfo    
+** Old Name:     USP_EIS_RPT_FASB_ProfileInfo_InsUpdProc                         
+** Short Desc: SP to save profile info                 
+** Full Description:                   
+**                  
+                        
+** Sample Call                        
+        EXEC USP_EX_SaveRptFasbProfileInfo                          
+**                   
+** Return values: NONE                        
+**                  
+**                   
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Ganapati                        
+** Company   : Kaspick & Company                        
+** Project   : Excelsior                        
+** Created DT: 09/18/2012                     
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------     -------- ------    -------------------------------------- --------                  
+** 04/14/2014  Mallikarjun EXCREC5.4   Modified                
+** 22-MAY-2014 Mallikarjun EXCREQ 7.4    SP Name Renamed and Formatted         
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_EX_SaveRptFasbProfileInfo] (    
+ @FASB_InstanceID INT    
+ ,@ManagerCode VARCHAR(15)    
+ ,@InstanceTypeID INT    
+ ,@ReportingMonth INT    
+ ,@MarketValueMonth INT    
+ ,@InstanceLabel VARCHAR(50)    
+ ,@DeliveryDays INT    
+ ,@DeliveryTiming INT    
+ ,@FixedDate DATE    
+ ,@ExcludedGiftKeys VARCHAR(4000)    
+ ,@CustomRequirements VARCHAR(4000)    
+ ,@UserID INT    
+ ,@ReportingDate INT    
+ )    
+AS    
+BEGIN    
+ BEGIN TRY    
+  BEGIN TRANSACTION    
+    
+  DECLARE @InstanceCount INT    
+  DECLARE @UpdatingInstanceID INT    
+    
+  SET @InstanceCount = 0    
+  SET @UpdatingInstanceID = 0    
+    
+  IF (@FASB_InstanceID = 0)    
+  BEGIN    
+   --Checking for duplicate entries        
+   SELECT @InstanceCount = COUNT(*)    
+   FROM TBL_BR_FASBProfileInformation    
+   WHERE ManagerCode = @ManagerCode    
+    AND MarketValueMonth = @MarketValueMonth    
+    
+   IF (@InstanceCount != 0)    
+   BEGIN    
+    RAISERROR 50004 '[USP_EX_SaveRptFasbProfileInfo]: Duplicate Record'    
+    
+    RETURN (- 1)    
+   END    
+    
+   INSERT INTO TBL_BR_FASBProfileInformation (    
+    ManagerCode    
+    ,InstanceTypeID    
+    ,ReportingMonth    
+    ,MarketValueMonth    
+    ,InstanceLabel    
+    ,DeliveryDays    
+    ,DeliveryTiming    
+    ,FixedDate    
+    ,ExcludedGiftKeys    
+    ,CustomRequirements    
+    ,CreatedDate    
+    ,CreatedUserID    
+    ,ModifiedDate    
+    ,ModifiedUserID    
+    ,ReportingDate    
+    )    
+   VALUES (    
+    @ManagerCode    
+    ,@InstanceTypeID    
+    ,@ReportingMonth    
+    ,@MarketValueMonth    
+    ,@InstanceLabel    
+    ,@DeliveryDays    
+    ,@DeliveryTiming    
+    ,@FixedDate    
+    ,@ExcludedGiftKeys    
+    ,@CustomRequirements    
+    ,getdate()    
+    ,@UserID    
+    ,getdate()    
+    ,@UserID    
+    ,@ReportingDate    
+    )    
+    
+   SELECT max(FASB_InstanceID)    
+   FROM TBL_BR_FASBProfileInformation    
+  END    
+  ELSE    
+  BEGIN    
+   --Checking for duplicate entries         
+   SELECT @UpdatingInstanceID = FASB_InstanceID    
+   FROM TBL_BR_FASBProfileInformation    
+   WHERE ManagerCode = @ManagerCode    
+    AND MarketValueMonth = @MarketValueMonth    
+    AND FASB_InstanceID = @FASB_InstanceID    
+    
+   IF (@UpdatingInstanceID != @FASB_InstanceID)    
+   BEGIN    
+    SELECT @InstanceCount = COUNT(*)    
+    FROM TBL_BR_FASBProfileInformation    
+    WHERE ManagerCode = @ManagerCode    
+     AND MarketValueMonth = @MarketValueMonth    
+    
+    IF (@InstanceCount != 0)    
+    BEGIN    
+     RAISERROR 50004 '[USP_EX_SaveRptFasbProfileInfo]: Duplicate Record'    
+    
+     RETURN (- 1)    
+    END    
+   END    
+    
+   UPDATE TBL_BR_FASBProfileInformation    
+   SET ManagerCode = @ManagerCode    
+    ,InstanceTypeID = @InstanceTypeID    
+    ,ReportingMonth = @ReportingMonth    
+    ,MarketValueMonth = @MarketValueMonth    
+    ,InstanceLabel = @InstanceLabel    
+    ,DeliveryDays = @DeliveryDays    
+    ,DeliveryTiming = @DeliveryTiming    
+    ,FixedDate = @FixedDate    
+    ,ExcludedGiftKeys = @ExcludedGiftKeys    
+    ,CustomRequirements = @CustomRequirements    
+    ,ModifiedDate = getdate()    
+    ,ModifiedUserID = @UserID    
+    ,ReportingDate = @ReportingDate    
+   WHERE FASB_InstanceID = @FASB_InstanceID    
+    
+   IF EXISTS (    
+     SELECT FASB_InstanceID    
+     FROM TBL_BR_FASBProfileInformation    
+     WHERE FASB_InstanceID = @FASB_InstanceID    
+     )    
+    SELECT @FASB_InstanceID    
+   ELSE    
+    SELECT 0    
+  END    
+    
+  COMMIT TRANSACTION    
+ END TRY    
+    
+ BEGIN CATCH    
+  ROLLBACK TRANSACTION    
+    
+  DECLARE @procname VARCHAR(60);    
+  DECLARE @ErrorMessage NVARCHAR(4000);    
+  DECLARE @ErrorSeverity INT;    
+  DECLARE @ErrorState INT;    
+    
+  SET @procname = 'USP_EX_SaveRptFasbProfileInfo';    
+    
+  DECLARE @ErrorNumber INT;    
+    
+  SELECT @ErrorMessage = ERROR_MESSAGE()    
+   ,@ErrorSeverity = ERROR_SEVERITY()    
+   ,@ErrorState = ERROR_STATE()    
+   ,@ErrorNumber = ERROR_NUMBER();    
+    
+  EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname    
+   ,@ErrorMessage = @ErrorMessage    
+   ,@ErrorNumber = @ErrorNumber    
+   ,@val1 = ''    
+   ,@val1str = 'USP_EX_SaveRptFasbProfileInfo: Cannot Select.'    
+   ,@val2 = ''    
+   ,@val2str = '';    
+    
+  RAISERROR (    
+    @ErrorMessage    
+    ,-- Message text.    
+    @ErrorSeverity    
+    ,-- Severity.    
+    @ErrorState -- State.    
+    );    
+ END CATCH    
+END 
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_SaveRptFasbProfileInfo') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_SaveRptFasbProfileInfo';
+	END  

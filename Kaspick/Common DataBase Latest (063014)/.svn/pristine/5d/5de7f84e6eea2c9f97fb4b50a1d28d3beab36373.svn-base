@@ -1,0 +1,500 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_SaveRule]    Script Date: 05/16/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SaveRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_SaveRule]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_SaveRule                      
+** Short Desc	:	Procedure to save/update the rules       
+*                  
+**                      
+** Full Description: Procedure to save/update the rules     
+**                              
+** Input Arguments:   XML,Type 
+**			
+** Sample Call     
+      
+    Declare @Ret INT  
+	EXEC USP_PP_SaveRule 
+	'<RuleDetailCollection>
+		<RuleDetail ManagerCode="AM" ManagerDescription="ABC" CustomerAccountNumber="" ContactID="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="1" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000001021EE2"  />
+		<RuleDetail ManagerCode="ACL" ManagerDescription="ABC" CustomerAccountNumber="" ContactID="" ContactDescription="" DaysValue="0" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000001021EDF"  />
+		<RuleDetail ManagerCode="AL" ManagerDescription="ABC" CustomerAccountNumber="" ContactID="" ContactDescription="" DaysValue="0" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC" TemplateCode="2,3" TemplateDescription="ACHWIRE_CGA,LIVECHECK_PIF" RecordVersion="0x0000000001021EE0"  />
+	</RuleDetailCollection>',
+	'Manager',
+	1,@Ret Output
+	SELECT @Ret
+	
+	Declare @Ret INT 
+	EXEC USP_PP_SaveRule
+	'<RuleDetailCollection>
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="VCPIF3" ContactID ="" ContactDescription="" DaysValue="6" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC"  RecordVersion="0x0000000000962253"  />
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="ACGAP" ContactID ="" ContactDescription="" DaysValue="2" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC"  RecordVersion="0x0000000000962263"  />
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="DCPIF4" ContactID ="" ContactDescription="" DaysValue="3" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="0" ExclusionDescription="Null"  RecordVersion="0x0000000000962273"  />
+	</RuleDetailCollection>',
+	'Account'
+	,1,@Ret Output
+	SELECT @Ret	
+	
+	Declare @Ret INT 
+	EXEC USP_PP_SaveRule
+	'<RuleDetailCollection>
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="VCPIF3" ContactID ="123" ContactDescription="ABC" DaysValue="6" IsException="1" ExceptionCode="6" ExceptionDescription="Coupon Mailing" IsExclusion="0" ExclusionDescription="ABC"  RecordVersion="0x0000000000862243" />
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="ACGAP" ContactID ="123" ContactDescription="ABC" DaysValue="2" IsException="1"  ExceptionCode="0" ExceptionDescription="ABC" IsExclusion="0" ExclusionDescription="ABC"  RecordVersion="0x0000000000762243"  />
+		<RuleDetail ManagerCode="" ManagerDescription="" CustomerAccountNumber="DCPIF4" ContactID ="123" ContactDescription="ABC" DaysValue="3" IsException="1" ExceptionCode="7" ExceptionDescription="Insert Mailing" IsExclusion="0" ExclusionDescription="Null"  RecordVersion="0x0000000000662243" />
+	</RuleDetailCollection>',
+	'Contact',
+	1,@Ret Output
+	SELECT @Ret
+	     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+**11/11/2013	Saravanan			Deleting Template Code which are not matched with source for the input Manager Code. 
+**12/31/2013	Saravanan			Replaced New line character from \\r\\n to CHAR(13) + CHAR(10)
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_SaveRule] (
+	@XMLDATA XML
+	,@Type VARCHAR(10)
+	,@ModifiedBy INT
+	,@ReturnStatus INT OUTPUT -- 0 for Normal Return, -1 for error, -2 for DirtyRead
+	)
+AS
+BEGIN TRY
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	BEGIN TRANSACTION
+
+	DECLARE @TemplateCode VARCHAR(100)
+	DECLARE @TemplateCodeDesc VARCHAR(200)
+	DECLARE @TemplateDesc VARCHAR(200)
+	DECLARE @TemplateCodeXML XML
+	DECLARE @TBL_Rule TABLE (
+		ManagerCode VARCHAR(4)
+		,ManagerDescription VARCHAR(255)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountName VARCHAR(255)
+		,ContactID INT
+		,ContactDescription VARCHAR(255)
+		,DaysValue INT
+		,IsException BIT
+		,ExceptionCode INT
+		,ExceptionCodeDesc VARCHAR(255)
+		,ExceptionDescription VARCHAR(1000)
+		,IsExclusion BIT
+		,ExclusionDescription VARCHAR(1000)
+		,TemplateCode VARCHAR(100)
+		,TemplateCodeDesc VARCHAR(255)
+		,TemplateDescription VARCHAR(500)
+		,RecordVersion VARCHAR(20)
+		,TableRecordVersion VARBINARY(8)
+		,LastModifiedBy INT
+		,LastModifiedDate DATETIME
+		)
+
+	INSERT INTO @TBL_Rule (
+		ManagerCode
+		,ManagerDescription
+		,CustomerAccountNumber
+		,AccountName
+		,ContactID
+		,ContactDescription
+		,DaysValue
+		,IsException
+		,ExceptionCode
+		,ExceptionDescription
+		,IsExclusion
+		,ExclusionDescription
+		,TemplateCode
+		,TemplateDescription
+		,RecordVersion
+		)
+	SELECT x.item.value('@ManagerCode[1]', 'VARCHAR(14)') AS ManagerCode
+		,x.item.value('@ManagerDescription[1]', 'VARCHAR(255)') AS ManagerDescription
+		,x.item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,x.item.value('@AccountName[1]', 'VARCHAR(255)') AS CustomerAccountNumber
+		,x.item.value('@ContactId[1]', 'INT') AS ContactID
+		,x.item.value('@ContactDescription[1]', 'VARCHAR(255)') AS ContactDescription
+		,x.item.value('@DaysValue[1]', 'INT') AS DaysValue
+		,x.item.value('@IsException[1]', 'BIT') AS IsException
+		,x.item.value('@ExceptionCode[1]', 'INT') AS ExceptionCode
+		,REPLACE(x.item.value('@ExceptionDescription[1]', 'VARCHAR(1000)'), '\r\n', CHAR(13) + CHAR(10)) AS ExceptionDescription
+		,x.item.value('@IsExclusion[1]', 'BIT') AS IsExclusion
+		,REPLACE(x.item.value('@ExclusionDescription[1]', 'VARCHAR(1000)'), '\r\n', CHAR(13) + CHAR(10)) AS ExclusionDescription
+		,x.item.value('@TemplateCode[1]', 'VARCHAR(200)') AS TemplateCode
+		,REPLACE(x.item.value('@TemplateDescription[1]', 'VARCHAR(200)'), '\r\n', CHAR(13) + CHAR(10)) AS TemplateDescription
+		,x.item.value('@RecordVersion[1]', 'varchar(20)') AS RecordVersion
+	FROM @XMLDATA.nodes('/RuleDetailCollection/RuleDetail') AS x(item)
+
+	SELECT DISTINCT @TemplateCode = TemplateCode
+		,@TemplateDesc = TemplateDescription
+	FROM @TBL_Rule
+
+	SET @TemplateCodeXML = cast('<A>' + replace(@TemplateCode, ',', '</A><A>') + '</A>' AS XML)
+
+	--WHERE master.sys.fn_varbintohexstr(cast(MgrRule.RecordVersion AS VARBINARY(8))) = TmpRule.RecordVersion
+	IF @Type = 'Manager'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_ManagerRule MgrRule
+				INNER JOIN @TBL_Rule TmpRule
+					ON TmpRule.ManagerCode = MgrRule.ManagerCode
+				WHERE CONVERT(VARCHAR(20), CAST(MgrRule.RecordVersion AS VARBINARY(8)), 1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+		BEGIN
+			MERGE TBL_PP_ManagerRule AS MgrRule
+			USING @TBL_Rule AS TmpRule
+				ON TmpRule.ManagerCode = MgrRule.ManagerCode
+			WHEN MATCHED
+				THEN
+					UPDATE
+					SET MgrRule.DaysValue = TmpRule.DaysValue
+						,MgrRule.IsException = TmpRule.IsException
+						,MgrRule.ExceptionCode = TmpRule.ExceptionCode
+						,MgrRule.ExceptionDescription = TmpRule.ExceptionDescription
+						,MgrRule.IsExclusion = TmpRule.IsExclusion
+						,MgrRule.ExclusionDescription = TmpRule.ExclusionDescription
+						,MgrRule.ModifiedBy = @ModifiedBy
+						,MgrRule.ModifiedDate = getdate()
+			WHEN NOT MATCHED
+				THEN
+					INSERT (
+						ManagerCode
+						,DaysValue
+						,IsException
+						,ExceptionCode
+						,ExceptionDescription
+						,IsExclusion
+						,ExclusionDescription
+						,ModifiedBy
+						,ModifiedDate
+						,CreatedBy
+						,CreatedDate
+						)
+					VALUES (
+						TmpRule.ManagerCode
+						,TmpRule.DaysValue
+						,TmpRule.IsException
+						,TmpRule.ExceptionCode
+						,TmpRule.ExceptionDescription
+						,TmpRule.IsExclusion
+						,TmpRule.ExclusionDescription
+						,@ModifiedBy
+						,GETDATE()
+						,@ModifiedBy
+						,GETDATE()
+						);
+
+			MERGE TBL_PP_TemplateTypeRule AS Target
+			USING (
+				SELECT MANAGERCODE
+					,t.value('.', 'int') AS TemplateCode
+				FROM @TemplateCodeXML.nodes('/A') AS x(t)
+					,@TBL_Rule
+				) AS Source
+				ON Target.ManagerCode = Source.ManagerCode
+					AND Source.TemplateCode = Target.TemplateCode
+			WHEN MATCHED
+				THEN
+					UPDATE
+					SET Target.TemplateDescription = @TemplateDesc
+						--WHEN NOT MATCHED BY SOURCE
+						--	THEN
+						--		DELETE
+			WHEN NOT MATCHED BY TARGET
+				THEN
+					INSERT (
+						ManagerCode
+						,TemplateCode
+						,TemplateDescription
+						,ModifiedBy
+						,ModifiedDate
+						,CreatedBy
+						,CreatedDate
+						)
+					VALUES (
+						Source.ManagerCode
+						,Source.TemplateCode
+						,@TemplateDesc
+						,@ModifiedBy
+						,GETDATE()
+						,@ModifiedBy
+						,GETDATE()
+						);
+
+			--Deleting Template Code which are not matched with source for the input Manager Code. added by Saravanan Dt 11/11/2013
+			DELETE TR
+			FROM TBL_PP_TemplateTypeRule TR
+			LEFT OUTER JOIN (
+				SELECT MANAGERCODE
+					,t.value('.', 'int') AS TemplateCode
+				FROM @TemplateCodeXML.nodes('/A') AS x(t)
+					,@TBL_Rule
+				) AS TEMP
+				ON TR.ManagerCode = TEMP.ManagerCode
+					AND TEMP.TemplateCode = TR.TemplateCode
+			WHERE TEMP.TemplateCode IS NULL
+				AND TR.MANAGERCODE IN (
+					SELECT MANAGERCODE
+					FROM @TBL_Rule
+					)
+
+			UPDATE @TBL_Rule
+			SET TableRecordVersion = cast(MgrRule.RecordVersion AS VARBINARY)
+				,LastModifiedBy = MgrRule.ModifiedBy
+				,LastModifiedDate = MgrRule.ModifiedDate
+			FROM @TBL_Rule TmpRule
+			INNER JOIN TBL_PP_ManagerRule MgrRule
+				ON TmpRule.ManagerCode = MgrRule.ManagerCode
+
+			SELECT @TemplateCodeDesc = STUFF((
+						SELECT ',' + TemplMstr.TemplateDescription
+						FROM (
+							SELECT t.value('.', 'int') AS TemplateCode
+							FROM @TemplateCodeXML.nodes('/A') AS x(t)
+							) TemplCodeInput
+						INNER JOIN TBL_PP_TemplateMaster TemplMstr
+							ON TemplCodeInput.TemplateCode = TemplMstr.TemplateCode
+						FOR XML PATH('')
+							,TYPE
+						).value('.', 'VARCHAR(500)'), 1, 1, SPACE(0))
+		END
+	END
+
+	IF @Type = 'Account'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_AccountRule AcctRule
+				INNER JOIN @TBL_Rule TmpRule
+					ON TmpRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+				WHERE CONVERT(VARCHAR(20), CAST(AcctRule.RecordVersion AS VARBINARY(8)), 1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+		BEGIN
+			MERGE TBL_PP_AccountRule AS AcctRule
+			USING @TBL_Rule AS TmpRule
+				ON TmpRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+			WHEN MATCHED
+				THEN
+					UPDATE
+					SET AcctRule.DaysValue = TmpRule.DaysValue
+						,AcctRule.IsException = TmpRule.IsException
+						,AcctRule.ExceptionCode = TmpRule.ExceptionCode
+						,AcctRule.ExceptionDescription = TmpRule.ExceptionDescription
+						,AcctRule.IsExclusion = TmpRule.IsExclusion
+						,AcctRule.ExclusionDescription = TmpRule.ExclusionDescription
+						,AcctRule.ModifiedBy = @ModifiedBy
+						,AcctRule.ModifiedDate = getdate()
+			WHEN NOT MATCHED
+				THEN
+					INSERT (
+						CustomerAccountNumber
+						,DaysValue
+						,IsException
+						,ExceptionCode
+						,ExceptionDescription
+						,IsExclusion
+						,ExclusionDescription
+						,ModifiedBy
+						,ModifiedDate
+						,CreatedBy
+						,CreatedDate
+						)
+					VALUES (
+						TmpRule.CustomerAccountNumber
+						,TmpRule.DaysValue
+						,TmpRule.IsException
+						,TmpRule.ExceptionCode
+						,TmpRule.ExceptionDescription
+						,TmpRule.IsExclusion
+						,TmpRule.ExclusionDescription
+						,@ModifiedBy
+						,GETDATE()
+						,@ModifiedBy
+						,GETDATE()
+						);
+
+			UPDATE @TBL_Rule
+			SET TableRecordVersion = cast(AcctRule.RecordVersion AS VARBINARY)
+				,LastModifiedBy = AcctRule.ModifiedBy
+				,LastModifiedDate = AcctRule.ModifiedDate
+			FROM @TBL_Rule TmpRule
+			INNER JOIN TBL_PP_AccountRule AcctRule
+				ON TmpRule.CustomerAccountNumber = AcctRule.CustomerAccountNumber
+		END
+	END
+
+	IF @Type = 'Contact'
+	BEGIN
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PP_ContactRule ContRule
+				INNER JOIN @TBL_Rule TmpRule
+					ON TmpRule.CustomerAccountNumber = ContRule.CustomerAccountNumber
+						AND TmpRule.ContactID = ContRule.ContactID
+				WHERE CONVERT(VARCHAR(20), CAST(ContRule.RecordVersion AS VARBINARY(8)), 1) <> TmpRule.RecordVersion
+				)
+		BEGIN
+			SET @ReturnStatus = - 2
+		END
+		ELSE
+			MERGE TBL_PP_ContactRule AS ContRule
+			USING @TBL_Rule AS TmpRule
+				ON TmpRule.CustomerAccountNumber = ContRule.CustomerAccountNumber
+					AND TmpRule.ContactID = ContRule.ContactID
+			WHEN MATCHED
+				THEN
+					UPDATE
+					SET ContRule.DaysValue = TmpRule.DaysValue
+						,ContRule.IsException = TmpRule.IsException
+						,ContRule.ExceptionCode = TmpRule.ExceptionCode
+						,ContRule.ExceptionDescription = TmpRule.ExceptionDescription
+						,ContRule.IsExclusion = TmpRule.IsExclusion
+						,ContRule.ExclusionDescription = TmpRule.ExclusionDescription
+						,ContRule.ModifiedBy = @ModifiedBy
+						,ContRule.ModifiedDate = getdate()
+			WHEN NOT MATCHED
+				THEN
+					INSERT (
+						CustomerAccountNumber
+						,ContactID
+						,DaysValue
+						,IsException
+						,ExceptionCode
+						,ExceptionDescription
+						,IsExclusion
+						,ExclusionDescription
+						,ModifiedBy
+						,ModifiedDate
+						,CreatedBy
+						,CreatedDate
+						)
+					VALUES (
+						TmpRule.CustomerAccountNumber
+						,TmpRule.ContactID
+						,TmpRule.DaysValue
+						,TmpRule.IsException
+						,TmpRule.ExceptionCode
+						,TmpRule.ExceptionDescription
+						,TmpRule.IsExclusion
+						,TmpRule.ExclusionDescription
+						,@ModifiedBy
+						,GETDATE()
+						,@ModifiedBy
+						,GETDATE()
+						);
+
+		UPDATE @TBL_Rule
+		SET TableRecordVersion = cast(ContRule.RecordVersion AS VARBINARY)
+			,LastModifiedBy = ContRule.ModifiedBy
+			,LastModifiedDate = ContRule.ModifiedDate
+		FROM @TBL_Rule TmpRule
+		INNER JOIN TBL_PP_ContactRule ContRule
+			ON TmpRule.ContactID = ContRule.ContactID
+				AND TmpRule.CustomerAccountNumber = ContRule.CustomerAccountNumber
+	END
+
+	IF isnull(@ReturnStatus, 0) <> - 2
+	BEGIN
+		UPDATE @TBL_Rule
+		SET ExceptionCodeDesc = Excep.ExceptionDescription
+		FROM @TBL_Rule TmpRule
+		INNER JOIN TBL_PP_ExceptionMaster Excep
+			ON TmpRule.ExceptionCode = Excep.ExceptionCode
+
+		SELECT ManagerCode
+			,TmpRule.ManagerDescription
+			,CustomerAccountNumber
+			,TmpRule.AccountName
+			,ContactID
+			,ContactDescription
+			,DaysValue
+			,IsException
+			,ExceptionCode
+			,TmpRule.ExceptionCodeDesc
+			,ExceptionDescription
+			,TmpRule.IsExclusion
+			,ExclusionDescription
+			,TemplateCode
+			,@TemplateCodeDesc AS TemplateCodeDesc
+			,TemplateDescription
+			,TableRecordVersion AS RecordVersion
+			,ModifiedUser.LoginName AS LastModifiedBy
+			,TmpRule.LastModifiedDate
+		FROM @TBL_Rule TmpRule
+		LEFT OUTER JOIN TBL_KS_User ModifiedUser
+			ON ModifiedUser.UserID = TmpRule.LastModifiedBy
+	END
+
+	SET @ReturnStatus = ISNULL(@ReturnStatus, 0)
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH
+GO
+
+

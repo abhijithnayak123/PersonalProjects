@@ -1,0 +1,676 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewSaveDiagnosticResult]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewSaveDiagnosticResult]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewSaveDiagnosticResult]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewSaveDiagnosticResult    
+** Short Desc:   For Running Diagnostics after calculation and overriding     
+**    
+** Full Description : For Running Diagnostics after calculation and overriding   
+**            
+**    
+** Sample Call    
+  EXEC USP_IE_ReviewSaveDiagnosticResult  -- parameters    
+ '<ImportStagingCollection>    
+  <InsertList>    
+   <ImportStaging StagingID="86" UserID="1" UserName="admin" />    
+   <ImportStaging StagingID="87" UserID="1" UserName="admin" />    
+   <ImportStaging StagingID="88" UserID="1" UserName="admin" />    
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>    
+ </ImportStagingCollection>'  
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/25/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewSaveDiagnosticResult] @XMLDATA XML
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @ErrorStatusID INT;
+	DECLARE @ReadyToCalcStatusID INT;
+	DECLARE @PDGIPMStatusID INT;
+	DECLARE @MissingValuationDiagID INT;
+	DECLARE @DiagnosticID INT;
+	DECLARE @DiagnosticResult VARCHAR(1000);
+
+	--  Temp tables, Cursors, Table Variables  --    
+	IF OBJECT_ID('tempdb..#TBLAccountsToBeImported') IS NOT NULL
+		DROP TABLE #TBLAccountsToBeImported
+
+	CREATE TABLE #TBLAccountsToBeImported (
+		StagingID INT
+		,UserID INT
+		,UserName VARCHAR(50)
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO #TBLAccountsToBeImported
+		SELECT XmlInput.Item.value('@StagingID[1]', 'int') AS StagingID
+			,XmlInput.Item.value('@UserID[1]', 'int') AS UserID
+			,XmlInput.Item.value('@UserName[1]', 'varchar(50)') AS UserName
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XmlInput(Item)
+
+		SELECT @ErrorStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'Error CM Valuation';
+
+		SELECT @ReadyToCalcStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'Ready To Calc';
+
+		SELECT @PDGIPMStatusID = StatusID
+		FROM TBL_IE_Status
+		WHERE STATUS = 'PDG IPM';
+		
+		SELECT @MissingValuationDiagID = DiagnosticID
+				FROM TBL_IE_Diagnostic
+				WHERE DiagnosticField = 'Missing Valuation'
+
+		--added DiagnosticID filter to only clear diagnostics which are being run    
+		DELETE
+		FROM TBL_IE_DiagnosticResult
+		WHERE StagingID IN (
+				SELECT StagingID
+				FROM #TBLAccountsToBeImported
+				)
+			AND DiagnosticID IN (
+				SELECT DiagnosticID
+				FROM TBL_IE_Diagnostic
+				WHERE DiagnosticField IN (
+						'Prior Year Overpayment'
+						,'Missing Valuation'
+						,'Missing Unitrust Amount'
+						,'Inv. Alloc. Variance (Net)(Yield on Net Income Estimate Used for Payment vs Investment Allocation Yield)'
+						,'Prior Year Q1-Q4 Variance (Net)(Net Income Estimate Used for Payment$ vs Prior Year Q1-Q4 Income$)'
+						,'Prior Year Total Variance (Net)(Net Income Estimate Used for Payment$ vs Prior Year Total Income$)'
+						,'Mid-Year Variance (Net)(New Net Income Estimate $ vs. Annual Scheduled Payment Amount $)'
+						,'Unitrust Amount caps Net Income Estimated Used for Payment'
+						,'Pays Cap Gains as Income'
+						,'Pays SGD as Income'
+						,'Unitrust Amount caps Net Income Estimated Used for Payment'
+						)
+				)
+
+		--Has Prior Year Overpayment    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Prior Year Overpayment'
+
+		--DiagnosticID = 27
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.PP_OverPayment IS NOT NULL
+			AND STGEst.PP_OverPayment <> 0
+
+		--Missing Valuation    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Valuation'
+
+		--DiagnosticID = 38
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.AccountType IN (
+				'NIMU'
+				,'NICT'
+				,'CRUT'
+				,'GLUT' 
+				,'NLUT' 
+				)
+			AND (
+				STGEst.PP_Valuation IS NULL
+				OR STGEst.PP_Valuation = 0
+				)
+
+		--Missing Unitrust Amount Account types: NIMU, NICT, CRUT, GLUT, NLUT only    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Missing Unitrust Amount'
+
+		--DiagnosticID = 39
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.AccountType IN (
+				'NIMU'
+				,'NICT'
+				,'CRUT'
+				,'NLUT' 
+				,'GLUT'
+				)
+			AND (
+				STGEst.PP_UnitrustAmount IS NULL
+				OR STGEst.PP_UnitrustAmount = 0
+				)
+
+		--Inv. Alloc. Variance (Net)    
+		--(Yield on Net Income Estimate Used for Payment vs Investment Allocation Yield)    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Inv. Alloc. Variance (Net)(Yield on Net Income Estimate Used for Payment vs Investment Allocation Yield)'
+
+		-- DiagnosticID = 42
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.Ca_InvAllocNetYieldVar > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE SettingField = 'Inv. Alloc. Variance (Net)'
+				)
+
+		--settingid = 3
+		--Prior Year Q1-Q4 Variance (Net)    
+		--(Net Income Estimate Used for Payment$ vs Prior Year Q1-Q4 Income$)    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Prior Year Q1-Q4 Variance (Net)(Net Income Estimate Used for Payment$ vs Prior Year Q1-Q4 Income$)'
+
+		-- DiagnosticID = 43
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.Ca_NetPriorYearQ1_Q4Var > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE SettingField = 'Prior Year Q1-Q4 Variance (Net)'
+				)
+
+		--6
+		--Prior Year Total Variance (Net)    
+		--(Net Income Estimate Used for Payment$ vs Prior Year Total Income$)    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Prior Year Total Variance (Net)(Net Income Estimate Used for Payment$ vs Prior Year Total Income$)'
+
+		-- DiagnosticID = 44
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.Ca_NetPriorYearTotalVar > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE SettingField = 'Prior Year Total Variance (Net)'
+				)
+
+		--4
+		--Mid-Year Variance (Net)      
+		--(New Net Income Estimate $ vs. Annual Scheduled Payment Amount $)    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Mid-Year Variance (Net)(New Net Income Estimate $ vs. Annual Scheduled Payment Amount $)'
+
+		--DiagnosticID = 45
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.Ca_NetMidYearVar > (
+				SELECT CAST(settingvalue AS FLOAT)
+				FROM TBL_IE_ApplicationSetting
+				WHERE SettingField = 'Mid-Year Variance (Net)'
+				)
+		--5
+		--Unitrust Amount caps Net Income Estimated Used for Payment    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Unitrust Amount caps Net Income Estimated Used for Payment'
+
+		--DiagnosticID = 46
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.AccountType IN (
+				'NIMU'
+				,'NICT'
+				,'CRUT'
+				,'NLUT'
+				,'GLUT'
+				)
+			AND PP_UnitrustAmount < Ca_NetIncomeEstimateUsedForPmt
+
+		--Pays Cap Gains as Income    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays Cap Gains as Income'
+
+		--59
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE IT_PayCapGainsAsIncome = 1
+			AND (
+				ActualSTGLTG IS NULL
+				OR ActualSTGLTG = 0
+				)
+
+		--Pays SGD as Income    
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Pays SGD as Income'
+
+		--60
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE IT_PaysSTGDAsIncome = 1
+			AND (
+				ActualSTGLTG IS NULL
+				OR ActualSTGLTG = 0
+				)
+
+		--Unitrust Amount caps Net Income Estimated Used for Payment  
+		SELECT @DiagnosticID = DiagnosticID
+			,@DiagnosticResult = DiagnosticField
+		FROM TBL_IE_Diagnostic
+		WHERE DiagnosticField = 'Unitrust Amount caps Net Income Estimated Used for Payment'
+
+		--66
+		INSERT INTO TBL_IE_DiagnosticResult (
+			DiagnosticID
+			,StagingID
+			,GroupID
+			,CustomerAccountNumber
+			,DiagnosticResult
+			,SecurityType
+			,SecuritySymbol
+			,CUSIP
+			,UserID
+			,UserName
+			,ModifiedDate
+			,CreatedDate
+			)
+		SELECT @DiagnosticID
+			,STGEst.StagingID
+			,STGEst.GroupID
+			,STGEst.CustomerAccountNumber
+			,@DiagnosticResult
+			,'NA' AS SecurityType
+			,'NA' AS SecuritySymbol
+			,'NA' AS CUSIP
+			,AccImp.UserID
+			,AccImp.UserName
+			,GETDATE() AS ModifiedDate
+			,GETDATE() AS CreatedDate
+		FROM #TBLAccountsToBeImported AccImp
+		INNER JOIN TBL_IE_STG_Estimate STGEst
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.AccountType IN (
+				'NIMU'
+				,'NICT'
+				,'CRUT'
+				,'NLUT'
+				,'GLUT'
+				)
+			AND PP_UnitrustAmount < Ca_NetIncomeEstimateUsedForPmt
+
+		--------------Statusing--------------------------------------------------    
+		--Change Error CM Valuation statuses and Change Ready To Calc statuses to PDG IPM status for 
+		--those staging ids which are resolved from missing valuation error (38)    
+		UPDATE TBL_IE_STG_Estimate
+		SET StatusID = @PDGIPMStatusID
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported AccImp
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE ( STGEst.StatusID = @ErrorStatusID
+				OR STGEst.statusid = @ReadyToCalcStatusID)
+			AND STGEst.StagingID NOT IN (
+				SELECT DiagRslt.StagingID
+				FROM TBL_IE_DiagnosticResult DiagRslt
+				INNER JOIN #TBLAccountsToBeImported imp
+					ON DiagRslt.StagingID = AccImp.StagingID
+				WHERE DiagnosticID = @MissingValuationDiagID
+				)
+
+		--Change Ready To Calc statuses to Error CM Valuation status for those staging ids which    
+		--have missing valuation error (38)    
+		UPDATE TBL_IE_STG_Estimate
+		SET StatusID = @ErrorStatusID
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported AccImp
+			ON STGEst.StagingID = AccImp.StagingID
+		WHERE STGEst.statusid = @ReadyToCalcStatusID
+			AND STGEst.StagingID IN (
+				SELECT DiagRslt.StagingID
+				FROM TBL_IE_DiagnosticResult DiagRslt
+				INNER JOIN #TBLAccountsToBeImported Imp
+					ON DiagRslt.StagingID = Imp.StagingID
+				WHERE DiagnosticID = @MissingValuationDiagID
+				)
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

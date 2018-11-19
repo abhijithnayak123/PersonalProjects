@@ -1,0 +1,85 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetIncomeAccrualSchedule]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetIncomeAccrualSchedule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetIncomeAccrualSchedule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetIncomeAccrualSchedule]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetIncomeAccrualSchedule    
+** Short Desc: Get details from IncomeAccrualSchedule table for the given valuationid.    
+**    
+** Full Description : Get details from IncomeAccrualSchedule table for the given valuationid.  
+**            
+**    
+** Sample Call    
+        EXEC USP_SIT_GetIncomeAccrualSchedule  2862,'01/01/2013' -- parameters    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 08/28/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [USP_SIT_GetIncomeAccrualSchedule] @ValuationID INT
+	,@PeriodEndDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --    
+	DECLARE @EndDate DATETIME
+	DECLARE @StartDate DATETIME
+
+	SET @EndDate = @PeriodEndDate
+	SET @StartDate = CAST((STR(YEAR(@enddate)) + '/' + STR(MONTH(@enddate)) + '/1') AS DATETIME)
+
+	SELECT AccMas.ExternalCustomerID AS AccountID
+		,PVal.AccountType
+		,LTRIM(RTRIM(ISNULL(AccMas.CustomerDescriptionLine1, '') + '' + ISNULL(AccMas.CustomerDescriptionLine2, '') + '' + ISNULL(AccMas.CustomerDescriptionLine3, '') + '' + ISNULL(AccMas.CustomerDescriptionLine4, ''))) AS AccountFullName
+		,IncmAccr.ValuationID
+		,IncmAccr.TotalBeginningAccrual
+		,IncmAccr.TotalIncomeEarned
+		,IncmAccr.TotalIncomeReceived
+		,IncmAccr.TotalEndingAccrual
+		,@StartDate AS StartDate
+		,@EndDate AS EndDate
+	FROM TBL_SIT_EBRIncomeAccrualSchedule IncmAccr
+	INNER JOIN TBL_PV_Valuation PVal
+		ON IncmAccr.ValuationID = PVal.ValuationID
+	INNER JOIN SYN_IT_AccountMaster AccMas
+		ON AccMas.CustomerAccountNumber = PVal.CustomerAccountNumber
+	WHERE IncmAccr.ValuationID = @ValuationID
+
+	SET NOCOUNT OFF;
+END

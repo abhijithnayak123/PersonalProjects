@@ -1,0 +1,91 @@
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_TAXREVIEWOFACCTS]    Script Date: 07/09/2014 14:21:46 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EIS_IRS_TAXREVIEWOFACCTS]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_EIS_IRS_TAXREVIEWOFACCTS]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_EIS_IRS_TAXREVIEWOFACCTS]    Script Date: 07/09/2014 14:21:46 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/*********************************************************************************************************************                                             
+* Procedure Name  : USP_EIS_IRS_TAXREVIEWOFACCTS
+* Purpose         : To retrieve the list of accounts for tax season review    
+* Input           : @TAXYEAR
+*         Exec  USP_EIS_IRS_TAXREVIEWOFACCTS   2013
+* Modification Log                                                 
+*                                
+* Date            Modified By        Description                                                
+*--------------------------------------------------------------------------------------------------------------------                                             
+* 14-Apr-10		  Yashasvi			 Created  
+* 08-Jul-14       Salih				Modifed data sources with the synonyms
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_IRS_TAXREVIEWOFACCTS] @TAXYEAR INT
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from        
+	-- interfering with SELECT statements         
+	SET NOCOUNT ON;
+
+	SELECT DISTINCT Clnt.BRIEFNAME
+		,Clnt.FULLNAME
+		,DfrGft.ADVENTID
+		,[ACCOUNT TYPE] = CASE 
+			WHEN DfrGft.FLIPDATE IS NULL
+				THEN DfrGft.ACCOUNTTYPE
+			ELSE CASE 
+					WHEN @TAXYEAR >= YEAR(DfrGft.FLIPDATE)
+						THEN 'CRUT'
+					WHEN LEN(ISNULL(DfrGft.FLIPTYPE, '')) = 0
+						THEN DfrGft.ACCOUNTTYPE
+					ELSE DfrGft.FLIPTYPE
+					END
+			END
+		,DfrGft.TAXNAME AS [TAX NAME]
+		,DfrGft.TAXID AS TAXID
+		,DfrGft.FIRSTTAXYEAR AS [FIRST TAX YEAR]
+		,DfrGft.LASTTAXYEAR AS [LAST TAX YEAR]
+		,DfrGft.CREATIONDATE AS [TRUST CREATION DATE]
+		,PlcyItm.DATEVALUE AS [ACCOUNT TRANSFER DT]
+		,Gft.GIFTDATE AS [INITIAL GIFTDATE]
+		,
+		--G.ISINITIALGIFT ,		
+		STATETAXRETURN
+		,KCO_CM.STAFFNAME AS CM
+		,DfrGft.FLIPDATE
+	FROM SYN_EP_DEFERREDGIFTACCOUNT DfrGft
+	INNER JOIN SYN_EP_Program Pgm
+		ON DfrGft.PROGRAMID = Pgm.PROGRAMID
+	INNER JOIN SYN_EP_Client Clnt
+		ON Clnt.CLIENTID = Pgm.CLIENTID
+	INNER JOIN SYN_KD_VW_KS_SysAdminKCoStaffPaging KCO_CM
+		ON Clnt.BriefName = KCO_CM.ManagerCode
+			AND KCO_CM.RoleCode = 14 -- Investment officer <--'Client Manager'
+	LEFT OUTER JOIN SYN_EP_POLICYITEM PlcyItm
+		ON PlcyItm.OWNERID = DfrGft.ACCOUNTID
+			AND PlcyItm.POLICYDIMENSIONID = 237
+	LEFT OUTER JOIN SYN_EP_GIFT Gft
+		ON Gft.ACCOUNTID = DfrGft.ACCOUNTID
+			AND Gft.ISINITIALGIFT = 1
+	WHERE (
+			DfrGft.FIRSTTAXYEAR = @TAXYEAR
+			OR YEAR(DfrGft.CREATIONDATE) = @TAXYEAR
+			OR YEAR(PlcyItm.DATEVALUE) = @TAXYEAR
+			OR YEAR(Gft.GIFTDATE) = @TAXYEAR
+			)
+	ORDER BY Clnt.BRIEFNAME
+		,DfrGft.ADVENTID
+END
+GO
+
+

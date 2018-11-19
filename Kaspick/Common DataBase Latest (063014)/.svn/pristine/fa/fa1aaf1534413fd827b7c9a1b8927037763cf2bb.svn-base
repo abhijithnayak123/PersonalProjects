@@ -1,0 +1,121 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetAllCustomerAccountNumber]    Script Date: 07/03/2014 18:20:26 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_GetAllCustomerAccountNumber]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_GetAllCustomerAccountNumber]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_GetAllCustomerAccountNumber]    Script Date: 07/03/2014 18:20:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_GetAllCustomerAccountNumber                      
+** Short Desc: Read list of customer account number for a GroupID.
+** Full Description: Read list of customer account number for a GroupID.      
+** Input Arguments:   	@XMLGroupID XML
+** Sample Call     
+        
+DECLARE @XMLGroupID XML     
+ SET  @XMLGroupID = 
+		'<ClientParameterCollection>    
+		  <InsertList> 
+			<ClientParameter CustomerAccountNumber="7776055" GroupID="10030"/>
+			<ClientParameter CustomerAccountNumber="WUGAP" GroupID="0"/>
+		  </InsertList>    
+		</ClientParameterCollection>'        
+ EXEC USP_PV_GetAllCustomerAccountNumber @XMLGroupID
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Aashay Thodar
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06/30/3014               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 07/23/2014 Ashvin				not returning the result when group id is not given
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_GetAllCustomerAccountNumber] @XMLGroupID XML
+AS
+SET NOCOUNT ON
+
+DECLARE @ISPrimary BIT;
+
+--Creating Temp Table for Client Parameter Data
+CREATE TABLE #ClientParameter (
+	GroupID INT
+	,CustomerAccountNumber VARCHAR(14)
+	,PrimaryCAN INT
+	)
+
+--Creating Temp Table for Result Set
+CREATE TABLE #LocalTempTable (
+	GroupID INT
+	,CustomerAccountNumber VARCHAR(14)
+	)
+
+--Inserting Client Parameter into Temp table
+INSERT INTO #ClientParameter (
+	GroupID
+	,CustomerAccountNumber
+	,PrimaryCAN
+	)
+SELECT XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+	,XMLDATA.item.value('@CustomerAccountNumber[1]', 'Varchar(14)') AS CustomerAccountNumber
+	,1 AS PrimaryCAN
+FROM @XMLGroupID.nodes('//ClientParameterCollection/InsertList/ClientParameter') AS XMLDATA(item)
+
+--First Inserting all the Customer Account Number Having GroupID as 0
+INSERT INTO #LocalTempTable (
+	GroupID
+	,CustomerAccountNumber
+	)
+SELECT GroupID
+	,CustomerAccountNumber
+FROM #ClientParameter
+WHERE GroupID = 0
+
+--Now Inserting all the Customer Account Number Having GroupID
+INSERT INTO #LocalTempTable (
+	GroupID
+	,CustomerAccountNumber
+	)
+SELECT GroupID
+	,CustomerAccountNumber
+FROM SYN_IT_AccountGroupAccounts
+WHERE GroupID IN (
+		SELECT GroupID
+		FROM #ClientParameter
+		WHERE GroupID != 0
+		)
+
+--Selecting Final Result
+SELECT #LocalTempTable.CustomerAccountNumber
+	,#LocalTempTable.GroupID
+	,IsNull(#ClientParameter.PrimaryCAN, 0) AS PrimaryCAN
+FROM #LocalTempTable
+LEFT JOIN #ClientParameter ON #LocalTempTable.CustomerAccountNumber = #ClientParameter.CustomerAccountNumber
+
+SET NOCOUNT OFF;

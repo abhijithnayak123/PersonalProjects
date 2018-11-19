@@ -1,0 +1,72 @@
+-- TBL_ListType Insert Script
+SET IDENTITY_INSERT TBL_ListType ON;
+
+INSERT INTO TBL_ListType (
+	ListTypeID
+	,ListTypeName
+	,IvanTableName
+	,IvanFieldLength
+	,Description
+	,Keycode
+	,IsMutable
+	,ModifiedDate
+	,ModifiedUserID
+	,CreatedDate
+	,CreatedUserID
+	,DeletedUserID
+	)
+SELECT List_Type_ID
+	,List_Type_Name
+	,Ivan_Table_Name
+	,Ivan_Field_Length
+	,Description
+	,Keycode
+	,Is_Mutable
+	,ModifiedDate
+	,ModifiedUserID
+	,CreatedDate
+	,CreatedUserID
+	,Deleted_User_ID
+FROM $(ExcelsiorDB)..TBL_EIS_LIST_TYPE
+WHERE LIST_TYPE_NAME IN ('MaturityDistributionPolicy','TerminationRule','FinalPayment','Reason')
+
+SET IDENTITY_INSERT TBL_ListType OFF;
+
+SET IDENTITY_INSERT TBL_ListItem ON
+
+INSERT INTO TBL_ListItem (
+	ListItemID
+	,ListTypeID
+	,ListItemName
+	,IvanValue
+	,Abbrev
+	,DisplaySequence
+	,IsMutable
+	,ModifiedDate
+	,ModifiedUserID
+	,CreatedDate
+	,CreatedUserID
+	,DeletedUserID
+	,CustomFlag
+	)
+SELECT LIST_ITEM_ID
+	,LIST_TYPE_ID
+	,LIST_ITEM_NAME
+	,IVAN_VALUE
+	,ABBREV
+	,DISPLAY_SEQUENCE
+	,IS_MUTABLE
+	,MODIFIEDDATE
+	,MODIFIEDUSERID
+	,CREATEDDATE
+	,CREATEDUSERID
+	,DELETED_USER_ID
+	,Custom_Flag
+FROM $(ExcelsiorDB)..TBL_EIS_LIST_ITEM
+WHERE LIST_TYPE_ID IN (
+		SELECT ListTypeID
+		FROM TBL_ListType
+		WHERE ListTypeName IN ('MaturityDistributionPolicy','TerminationRule','FinalPayment','Reason')
+		)
+
+SET IDENTITY_INSERT TBL_ListItem OFF

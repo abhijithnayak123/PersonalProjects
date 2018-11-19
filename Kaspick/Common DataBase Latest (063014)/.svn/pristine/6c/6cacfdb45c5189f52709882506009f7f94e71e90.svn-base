@@ -1,0 +1,188 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_SaveGroupAccounts]    Script Date: 07/01/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_SaveGroupAccounts]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_SaveGroupAccounts]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_SaveGroupAccounts]    Script Date: 07/01/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_SaveGroupAccounts    
+** Short Desc: Save changes made to group(s) from GUI    
+**    
+** Full Description    
+**        accepts a XML document. XML contains new account details/deleted account details    
+**    
+** Sample Call    
+	Declare @status VARCHAR(MAX)  
+	EXEC USP_IE_SaveGroupAccounts   
+		'<GroupAccountsCollection>  
+		<InsertList>  
+		<GroupAccounts StagingID="0" GroupID="0" TaxYear="0" CustomerAccountNumber="11111818" AccountType="" CreationDate="9/7/2007 5:07:05 PM" MatureDate="1/1/0001 12:00:00 AM" StatusID="0" UserID="0" />  
+		<GroupAccounts StagingID="0" GroupID="0" TaxYear="0" CustomerAccountNumber="test1" AccountType="" CreationDate="9/7/2007 5:07:08 PM" MatureDate="1/1/0001 12:00:00 AM" StatusID="0" UserID="0" />  
+		</InsertList>  
+		<UpdateList>  
+		</UpdateList>  
+		<DeleteList>  
+		</DeleteList>  
+		</GroupAccountsCollection>',  
+		@status OUTPUT  
+	Select @status     
+  
+**    
+** Return values: NONE    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 07/01/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**  
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_SaveGroupAccounts]
+	-- paremeters here    
+	@XMLDATA XML
+	,@return_status VARCHAR(MAX)
+OUTPUT AS
+
+--  Initial Set statements  --      
+SET NOCOUNT ON;
+SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+--  Variable to process XML document      
+--Declare @idoc     int;      
+DECLARE @GroupID INT;
+DECLARE @AdventID VARCHAR(20);
+DECLARE @StatusID INT;
+--  Temp tables, Cursors, Table Variables  --      
+DECLARE @TBL_Add_Group_Accounts TABLE (
+	ID INT IDENTITY(1, 1)
+	,GroupID INT NULL
+	,CustomerAccountNumber VARCHAR(14) NULL
+	,TaxYear SMALLINT NULL
+	,UserID INT NULL
+	);
+DECLARE @TBL_Delete_Group_Accounts TABLE (
+	ID INT IDENTITY(1, 1)
+	,GroupID INT NULL
+	,CustomerAccountNumber VARCHAR(14) NULL
+	,TaxYear SMALLINT NULL
+	,UserID INT NULL
+	);
+
+--  Variable Data Assignment  --      
+SELECT @StatusID = StatusID
+FROM TBL_IE_STATUS
+WHERE [Status] = 'New';
+
+SET @return_status = '';
+
+-- Body of procedure  --      
+BEGIN TRY
+	--  Transactions      
+	BEGIN TRANSACTION
+
+	INSERT INTO @TBL_Delete_Group_Accounts
+	SELECT XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+	FROM @XMLDATA.nodes('//GroupAccountsCollection/DeleteList/GroupAccounts') AS XMLDATA(item)
+
+	UPDATE TBL_IE_STG_Estimate
+	SET IsDeleted = 1
+		,UserID = DelList.UserID
+		,ModifiedDate = GETDATE()
+	FROM TBL_IE_STG_Estimate StgEst
+	INNER JOIN @TBL_Delete_Group_Accounts DelList ON StgEst.GroupID = DelList.GroupID
+		AND StgEst.CustomerAccountNumber = DelList.CustomerAccountNumber
+		AND StgEst.TaxYear = DelList.TaxYear
+
+	--Logic for Add Group Account      
+	INSERT INTO @TBL_Add_Group_Accounts
+	SELECT XMLDATA.item.value('@GroupID[1]', 'int') AS GroupID
+		,XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)') AS CustomerAccountNumber
+		,XMLDATA.item.value('@TaxYear[1]', 'smallint') AS TaxYear
+		,XMLDATA.item.value('@UserID[1]', 'int') AS UserID
+	FROM @XMLDATA.nodes('//GroupAccountsCollection/InsertList/GroupAccounts') AS XMLDATA(item)
+
+	INSERT INTO TBL_IE_STG_Estimate (
+		GroupID
+		,TaxYear
+		,CustomerAccountNumber
+		,ManagerCode
+		,AccountName
+		,AccountType
+		,CreationDate
+		,MatureDate
+		,StatusID
+		,UnitrustPercentage
+		,ObjectiveCode
+		,EP_MasterObjectiveName
+		,IsDeleted
+		,UserID
+		,CreatedDate
+		,ModifiedDate
+		)
+	SELECT GrpAcc.GroupID
+		,GrpAcc.TaxYear
+		,AccMas.CustomerAccountNumber
+		,AccMas.ManagerCode
+		,AccMas.CustomerDescriptionLine1 -- FullNAme
+		,AccMas.AccountTypeCode
+		,AccMas.DateOpened -- CreationDate
+		,UAccMas.UDFAMColumn030 -- MatureDate
+		,@StatusID
+		,ISNULL(AccDet.PayoutPercentage, 0) -- UnitrustPercentage
+		,AccProf.ObjectiveCode
+		,InvObj.MasterObjectiveName
+		,0 AS IsDeleted
+		,GrpAcc.UserID
+		,GETDATE() AS CreatedDate
+		,GETDATE() AS ModifiedDate
+	FROM @TBL_Add_Group_Accounts GrpAcc
+	INNER JOIN SYN_IT_AccountMaster AccMas ON AccMas.CustomerAccountNumber = GrpAcc.CustomerAccountNumber
+	INNER JOIN SYN_IT_UDF_AccountMaster UAccMas ON UAccMas.CustomerAccountNumber_Key = AccMas.CustomerAccountNumber
+	INNER JOIN SYN_IT_CTAccountDetails AccDet ON AccDet.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	INNER JOIN TBL_INV_AccountProfile AccProf ON AccProf.CustomerAccountNumber = AccMas.CustomerAccountNumber
+	LEFT OUTER JOIN TBL_INV_InvestmentObjective InvObj ON InvObj.ObjectiveCode = AccProf.ObjectiveCode
+	WHERE CAST(GrpAcc.GroupID AS VARCHAR) + '-' + GrpAcc.CustomerAccountNumber NOT IN (
+			SELECT CAST(GroupID AS VARCHAR) + '-' + CustomerAccountNumber
+			FROM TBL_IE_STG_Estimate
+			WHERE IsDeleted = 0
+			)
+
+	COMMIT TRANSACTION;
+
+	SET NOCOUNT OFF;
+END TRY
+
+BEGIN CATCH
+	EXEC USP_IE_RethrowError;
+
+	ROLLBACK TRANSACTION;
+END CATCH;
+	-- End of procedure  --  

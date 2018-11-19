@@ -1,0 +1,97 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingCGAPaymentDetail]    Script Date: 05/07/2013 11:01:58 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsStagingCGAPaymentDetail]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsStagingCGAPaymentDetail]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsStagingCGAPaymentDetail]    Script Date: 05/07/2013 11:01:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			: USP_PP_InsStagingCGAPaymentDetail                      
+** Short Desc	: To insert into the STG_CGAPAYMENTDETAIL     
+*                 Getting data from Base tables          
+**                      
+** Full Description: To insert into the STG_BENPAYMENT table for the payment that to be made    
+*					 Getting data from BaseTable           
+**                              
+** Input Arguments:   @CreatedBy  
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsStagingCGAPaymentDetail  1     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 7-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsStagingCGAPaymentDetail] @CreatedBy INT
+AS
+BEGIN
+	SET NOCOUNT ON
+	SET LOCK_TIMEOUT 30000
+
+	TRUNCATE TABLE dbo.TBL_PP_STG_CGAPaymentDetail
+
+	INSERT INTO dbo.TBL_PP_STG_CGAPaymentDetail (
+		PaymentID
+		,Account1
+		,PaymentAmount
+		,PersonCode
+		,ContactID
+		,GiftDate
+		,IsDeleted
+		,ModifiedBy
+		,ModifiedDate
+		,CreatedBy
+		,CreatedDate
+		)
+	SELECT TPD.PaymentID
+		,Account1
+		,PaymentAmount
+		,PersonCode
+		,TPD.ContactID
+		,GiftDate
+		,0 AS Deleteflag
+		,@CreatedBy AS ModifiedBy
+		,GetDate() AS ModifiedDate
+		,@CreatedBy AS CreatedBy
+		,GetDate() AS CreatedDate
+	FROM TBL_PP_PGCalcPaymentData TPD
+	INNER JOIN TBL_PP_PendingPayment TPP
+		ON TPD.PaymentID = TPP.PaymentID
+	WHERE --05-feb-2014-Salih: Account Type mapping changes
+		AccountType = 'GAP'
+		OR AccountType = 'GAPR'
+		OR AccountType = 'GAPP'
+	ORDER BY PersonCode
+		,GiftDate DESC
+END

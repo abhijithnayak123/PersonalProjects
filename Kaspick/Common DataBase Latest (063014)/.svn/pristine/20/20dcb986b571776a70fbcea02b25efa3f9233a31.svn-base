@@ -1,0 +1,244 @@
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserPrivilege]    Script Date: 05/10/2013 14:33:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_KS_GetUserPrivilege]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_KS_GetUserPrivilege]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_KS_GetUserPrivilege]    Script Date: 05/10/2013 14:33:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name			:   USP_KS_GetUserPrivilege                      
+** Short Desc	:	To Retrieve all privileges from TBL_KS_USER and TBL_KS_USEREXCEPTION tables based on the UserID        
+**                  
+**                      
+** Full Description: To Retrieve all privileges from TBL_KS_USER and TBL_KS_USEREXCEPTION tables based on the UserID to get this in cross tabular form on the page
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+        
+	 EXEC USP_KS_GetUserPrivilege 1,'DFD'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_KS_GetUserPrivilege] (
+	@UserID INT
+	,@SignParam CHAR(3)
+	)
+AS
+BEGIN
+	DECLARE @c_SQL AS NVARCHAR(4000)
+	DECLARE @FunctionID INT
+		,@FunctionName VARCHAR(20)
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.dbo.sysobjects
+			WHERE id = object_id(N'TEMPDB.[dbo].[#TMP_USER_ROLE_PRIVILEGE]')
+			)
+	BEGIN
+		DROP TABLE #TMP_USER_ROLE_PRIVILEGE
+	END
+
+	SELECT DISTINCT P.PrivilegeID
+		,UR.UserID
+		,'+' AS AddORSubtract
+	INTO #TMP_USER_ROLE_PRIVILEGE
+	FROM [TBL_KS_Privilege] P
+		,[TBL_KS_RolePrivilege] RP
+		,[TBL_KS_USERROLE] UR
+	WHERE P.[PrivilegeID] = RP.[PrivilegeID]
+		AND RP.[RoleID] = UR.[RoleID]
+		AND UR.[UserID] = @UserID
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.dbo.sysobjects
+			WHERE id = object_id(N'TEMPDB.[dbo].[#TMP_USEREXCEPTION_PRIVILEGE1]')
+			)
+	BEGIN
+		DROP TABLE #TMP_USEREXCEPTION_PRIVILEGE1
+	END
+
+	SELECT DISTINCT M.[ApplicationID]
+		,A.[ApplicationName] AS APPLICATION_NAME
+		,P.[ModuleID]
+		,M.[ModuleName] AS MODULE_NAME
+	INTO #TMP_USEREXCEPTION_PRIVILEGE1
+	FROM [TBL_KS_Privilege] P
+		,[TBL_KS_MODULE] M
+		,[TBL_KS_APPLICATION] A
+	WHERE P.[ModuleID] = M.[ModuleID]
+		AND M.[ApplicationID] = A.[ApplicationID]
+
+	DECLARE CUR_CREATE_USERPRIVILEGE_TABLE CURSOR
+	FOR
+	SELECT FunctionID
+		,FunctionName
+	FROM [TBL_KS_Function]
+	WHERE FunctionName <> 'NON-STANDARD'
+	ORDER BY DisplaySequence
+
+	OPEN CUR_CREATE_USERPRIVILEGE_TABLE
+
+	FETCH
+	FROM CUR_CREATE_USERPRIVILEGE_TABLE
+	INTO @FunctionID
+		,@FunctionName
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		EXEC ('ALTER TABLE #TMP_USEREXCEPTION_PRIVILEGE1 ADD  [' + @FunctionName + '] [int] NULL')
+
+		EXEC ('ALTER TABLE [#TMP_USEREXCEPTION_PRIVILEGE1] ADD  [' + @FunctionName + '_VALUE] [int] NULL')
+
+		SET @c_SQL = 'UPDATE [#TMP_USEREXCEPTION_PRIVILEGE1] SET [' + @FunctionName + '] = B.PrivilegeID,   
+                                                               [' + @FunctionName + '_VALUE] =   
+                                                                       (SELECT ISNULL(COUNT(*),0)   
+                                                                        FROM #TMP_USER_ROLE_PRIVILEGE  
+                                                                        WHERE PrivilegeID=B.PrivilegeID AND   
+                                                                              UserID=' + cast(@UserID AS VARCHAR) + ' AND   
+                                                                              AddORSubtract = ''' + @SIGNPARAM + ''')  
+    FROM [#TMP_USEREXCEPTION_PRIVILEGE1] A, [TBL_KS_Privilege] B   
+    WHERE A.ModuleID = B.ModuleID AND B.FunctionID = ' + cast(@FunctionID AS VARCHAR)
+
+		EXECUTE sp_executesql @c_SQL
+
+		PRINT @c_SQL
+		PRINT @FunctionName
+
+		FETCH NEXT
+		FROM CUR_CREATE_USERPRIVILEGE_TABLE
+		INTO @FunctionID
+			,@FunctionName
+	END
+
+	CLOSE CUR_CREATE_USERPRIVILEGE_TABLE
+
+	DEALLOCATE CUR_CREATE_USERPRIVILEGE_TABLE
+
+	ALTER TABLE #TMP_USEREXCEPTION_PRIVILEGE1
+
+	DROP COLUMN ModuleID
+		,ApplicationID
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.dbo.sysobjects
+			WHERE id = object_id(N'TEMPDB.[dbo].[#TMP_USER_ROLE_PRIVILEGE]')
+			)
+	BEGIN
+		DROP TABLE #TMP_USER_ROLE_PRIVILEGE
+	END
+
+	DECLARE @c1_SQL AS NVARCHAR(4000)
+
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.dbo.sysobjects
+			WHERE id = object_id(N'TEMPDB.[dbo].[#TMP_USEREXCEPTION_PRIVILEGE]')
+			)
+	BEGIN
+		DROP TABLE #TMP_USEREXCEPTION_PRIVILEGE
+	END
+
+	SELECT DISTINCT M.[ApplicationID]
+		,A.[ApplicationName] AS APPLICATION_NAME
+		,P.[ModuleID]
+		,M.[ModuleName] AS MODULE_NAME
+	INTO #TMP_USEREXCEPTION_PRIVILEGE
+	FROM [TBL_KS_Privilege] P
+		,[TBL_KS_Module] M
+		,[TBL_KS_Application] A
+	WHERE P.[ModuleID] = M.[ModuleID]
+		AND M.[ApplicationID] = A.[ApplicationID]
+
+	DECLARE CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE CURSOR
+	FOR
+	SELECT FunctionID
+		,FunctionName
+	FROM [TBL_KS_Function]
+	WHERE FunctionName <> 'NON-STANDARD'
+
+	OPEN CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE
+
+	FETCH
+	FROM CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE
+	INTO @FunctionID
+		,@FunctionName
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		EXEC ('ALTER TABLE #TMP_USEREXCEPTION_PRIVILEGE ADD  [' + @FunctionName + '] [int] NULL')
+
+		EXEC ('ALTER TABLE [#TMP_USEREXCEPTION_PRIVILEGE] ADD  [' + @FunctionName + '_VALUE] [int] NULL')
+
+		SET @c1_SQL = 'UPDATE [#TMP_USEREXCEPTION_PRIVILEGE] SET [' + @FunctionName + '] = B.PrivilegeID,   
+                                                               [' + @FunctionName + '_VALUE] =   
+                                                                       (SELECT ISNULL(COUNT(*),0)   
+                                                                        FROM TBL_KS_UserException  
+                                                                        WHERE PrivilegeID=B.PrivilegeID AND   
+                                                                              UserID=' + cast(@UserID AS VARCHAR) + ' AND   
+                                                                              AddORSubtract = ''' + @SIGNPARAM + ''')  
+    FROM [#TMP_USEREXCEPTION_PRIVILEGE] A, [TBL_KS_Privilege] B   
+    WHERE A.ModuleID = B.ModuleID AND B.FunctionID = ' + cast(@FunctionID AS VARCHAR)
+
+		EXECUTE sp_executesql @c1_SQL
+
+		PRINT @c1_SQL
+		PRINT @FunctionName
+
+		FETCH NEXT
+		FROM CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE
+		INTO @FunctionID
+			,@FunctionName
+	END
+
+	CLOSE CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE
+
+	DEALLOCATE CUR_CREATE_USEREXCEPTIONPRIVILEGE_TABLE
+
+	ALTER TABLE #TMP_USEREXCEPTION_PRIVILEGE
+
+	DROP COLUMN ModuleID
+		,ApplicationID
+
+	--Fetching privileges  from USER_ROLES  
+	SELECT *
+	FROM #TMP_USEREXCEPTION_PRIVILEGE1
+
+	--Fetching privileges  from USEREXCEPTION  
+	SELECT *
+	FROM #TMP_USEREXCEPTION_PRIVILEGE
+END

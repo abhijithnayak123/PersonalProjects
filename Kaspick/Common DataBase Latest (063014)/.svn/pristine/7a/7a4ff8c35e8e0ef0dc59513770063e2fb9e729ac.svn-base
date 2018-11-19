@@ -1,0 +1,95 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineRule]    Script Date: 08/06/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineRule]    Script Date: 08/06/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineRule                      
+** Short Desc: 
+**                      
+** Full Description: To get all the validation engine rules           
+**        
+**                              
+** Input Arguments:  To get all the validation engine rules
+	@IsPosted	BIT
+
+**         
+** Sample Call     
+        
+	Execute USP_PP_GetValidationEngineRule 'Scheduled'
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 6-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 13-Jan-14	Niveidtha		Updated the where clause to increase performance 
+									and reduce code length
+*** 
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineRule] @PaymentStatus VARCHAR(10)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	-- Body of procedure  --    
+	SELECT ValRule.RuleID
+		,ValRule.RuleCategory
+		,ValRule.RuleName
+		,ValRule.ExecutionOrder
+		,ValRule.ResultType
+		,ValRule.DisplayMessage
+		,ValRule.RuleLeadTime
+		,ValRule.IsActive
+		,ValRule.StopValidationIfFails
+		,ValRule.SPName
+		,VAlRule.Invokemethod
+		,ValRuleAttrib.AttributeID
+		,ValRuleAttrib.Attribute
+		,ValRuleAttrib.ExpectedValue
+		,ValRuleAttrib.EvaluationOrder
+		,ValRuleAttrib.OperatorType
+		,ValRuleAttrib.Datatype
+	FROM TBL_PP_ValidationRule ValRule
+	INNER JOIN TBL_PP_ValidationRuleAttribute ValRuleAttrib
+		ON ValRule.RuleID = ValRuleAttrib.RuleID
+			--13-Jan-14	Niveidtha: Updated the where clause 
+			AND ValRule.IsActive = 1
+			AND ValRule.PaymentStatus = CASE 
+				WHEN @PaymentStatus = 'All'
+					THEN PaymentStatus
+				ELSE @PaymentStatus
+				END
+	ORDER BY ExecutionOrder
+END
+
+SET NOCOUNT OFF;

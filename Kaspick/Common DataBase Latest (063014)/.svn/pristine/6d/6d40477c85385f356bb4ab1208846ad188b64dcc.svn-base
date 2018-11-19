@@ -1,0 +1,250 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchPaymentExport]    Script Date: 05/21/2013 14:37:50 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsArchPaymentExport]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsArchPaymentExport]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsArchPaymentExport]    Script Date: 05/21/2013 17:10:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_InsArchPaymentExport                      
+** Short Desc: Insert all values into TBL_PP_ARCH_PAYMENTEXPORT From TBL_PP_STG_PAYMENTEXPORT] 
+**                      
+** Full Description: Insert all values into TBL_PP_ARCH_PAYMENTEXPORT From TBL_PP_STG_PAYMENTEXPORT]         
+**                              
+** Input Arguments:   @Option -- Values can be 'Standard' or 'Exception'  or 'All'
+**         
+** Sample Call     
+        
+ EXEC USP_PP_InsArchPaymentExport  'Exception'   
+ EXEC USP_PP_InsArchPaymentExport  'Standard'   
+ EXEC USP_PP_InsArchPaymentExport  'All'   
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 09-Sep-13	Saravanan   Added ProcessID to track Payment publish process log information 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsArchPaymentExport] @TemplateType AS VARCHAR(10) --Values can be 'Standard' or 'Exception'  or 'All'
+AS
+SET NOCOUNT ON
+
+INSERT INTO TBL_PP_ARCH_PaymentExport (
+	PaymentID
+	,ProcessID
+	,CustomerAccountNumber
+	,ContactID
+	,ContactRoleCode
+	,InstructionID
+	,DocumentNumber
+	,TransactionNumber
+	,ManagerCode
+	,LastName
+	,ClientName1
+	,ClientName2
+	,AccountName1
+	,AccountName2
+	,ClientAddress1
+	,ClientAddress2
+	,ClientAddress3
+	,ClientAddress4
+	,ClientAddress5
+	,SourceBankName
+	,SourceBankAddress
+	,PayeeName
+	,AcctForDisplay
+	,PaymentDate
+	,PaymentAmount
+	,PaymentAddress1
+	,PaymentAddress2
+	,PaymentAddress3
+	,PaymentAddress4
+	,PaymentAddress5
+	,PaymentAddress6
+	,MemoLine1
+	,MemoLine2
+	,SourceBankABA
+	,SourceAccount
+	,BenPaymentAmount
+	,PaymentFrequency
+	,PayeeName1
+	,PayeeName2
+	,MailingAddress1
+	,MailingAddress2
+	,MailingAddress3
+	,MailingAddress4
+	,MailingAddress5
+	,MailingAddress6
+	,PeriodEndDate
+	,PIFUnits
+	,PIFValue
+	,PIFIncome
+	,TaxWithHolding
+	,BenPaymentAddress1
+	,DestAccount
+	,Memo
+	,Reminder
+	,BriefName
+	,PaymentMethod
+	,AccountType
+	,ExceptionCode
+	,ExceptionDescription
+	,RefBacktoIVAN
+	,PrintSeqNo
+	,TemplateCode
+	,CurrentPageNo
+	,TotalNoOfPages
+	,ClientCode
+	,Custom1
+	,Custom2
+	,Custom3
+	,Custom4
+	,Custom5
+	,Custom6
+	,Custom7
+	,Custom8
+	,Custom9
+	,Custom10
+	,MarketingMessage
+	,PaymentStatus
+	,ProcessedByMiddleWare
+	,ProcessedDateMiddleWare
+	,IsPrintedOnCheck
+	,PrintedDate
+	,JobID
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+	)
+SELECT PaymentID
+	,ProcessID
+	,CustomerAccountNumber
+	,ContactID
+	,ContactRoleCode
+	,InstructionID
+	,DocumentNumber
+	,TransactionNumber
+	,ManagerCode
+	,LastName
+	,ClientName1
+	,ClientName2
+	,AccountName1
+	,AccountName2
+	,ClientAddress1
+	,ClientAddress2
+	,ClientAddress3
+	,ClientAddress4
+	,ClientAddress5
+	,SourceBankName
+	,SourceBankAddress
+	,PayeeName
+	,AcctForDisplay
+	,PaymentDate
+	,PaymentAmount
+	,PaymentAddress1
+	,PaymentAddress2
+	,PaymentAddress3
+	,PaymentAddress4
+	,PaymentAddress5
+	,PaymentAddress6
+	,MemoLine1
+	,MemoLine2
+	,SourceBankABA
+	,SourceAccount
+	,BenPaymentAmount
+	,PaymentFrequency
+	,PayeeName1
+	,PayeeName2
+	,MailingAddress1
+	,MailingAddress2
+	,MailingAddress3
+	,MailingAddress4
+	,MailingAddress5
+	,MailingAddress6
+	,PeriodEndDate
+	,PIFUnits
+	,PIFValue
+	,PIFIncome
+	,TaxWithHolding
+	,BenPaymentAddress1
+	,DestAccount
+	,Memo
+	,Reminder
+	,BriefName
+	,PaymentMethod
+	,AccountType
+	,ExceptionCode
+	,ExceptionDescription
+	,RefBacktoIVAN
+	,PrintSeqno AS PrintSeqNo
+	,TemplateCode
+	,CurrentPageNo
+	,TotalNoofPages
+	,ClientCode
+	,Custom1
+	,Custom2
+	,Custom3
+	,Custom4
+	,Custom5
+	,Custom6
+	,Custom7
+	,Custom8
+	,Custom9
+	,Custom10
+	,MarketingMessage
+	,'P' AS PaymentStatus
+	,1 AS ProcessedByMiddleWare
+	,CreatedDate AS ProcessedDateMiddleWare
+	,1 AS Printed_OnChecks
+	,CreatedDate AS PrintedDate
+	,0 AS Jobid
+	,IsDeleted
+	,ModifiedBy
+	,ModifiedDate
+	,CreatedBy
+	,CreatedDate
+FROM dbo.TBL_PP_STG_PaymentExport
+WHERE ExceptionCode = CASE 
+		WHEN @TemplateType = 'Standard'
+			AND ExceptionCode = 0
+			THEN ExceptionCode
+		WHEN @TemplateType = 'Exception'
+			AND ExceptionCode > 0
+			THEN ExceptionCode
+		WHEN @TemplateType = 'All'
+			THEN ExceptionCode
+		ELSE - 9999
+		END
+ORDER BY ManagerCode
+	,LastName
+	,ContactID

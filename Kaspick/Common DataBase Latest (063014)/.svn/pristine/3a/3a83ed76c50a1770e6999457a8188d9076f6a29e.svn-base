@@ -1,0 +1,73 @@
+
+   
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbAdventIDByInstance')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbAdventIDByInstance;
+        PRINT 'DROPPED USP_EX_GetRptFasbAdventIDByInstance';
+    END
+GO
+
+
+       
+/******************************************************************************                  
+** New Name   : USP_EX_GetRptFasbAdventIDByInstance  
+** Old Name   : USP_EIS_RPT_FASB_AdventID_By_Instance_SelProc                  
+** Short Desc : Selects Advent ID for FASB based on instance id    
+**                  
+** Full Description                  
+**                      
+**                  
+** Return values: NONE                  
+**           
+** Sample Call        
+**            
+** EXEC USP_EIS_RPT_FASB_AdventID_SelProc 12             
+**                   
+** Created By : Ganapati            
+** Company  :  Kaspick & Company                  
+** Project  :  FASB                  
+** Created DT :  Sep/18/2012                  
+**                              
+*******************************************************************************                  
+**       Change History                  
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------     -------- ------    -------------------------------------- --------                  
+**  Sep/18/2012   Ganapati           Created    
+**  Apr/12/2014   Mallikarjun     EXCREQ5.4 Modified   
+** 23/05/2014   Mallikarjun  SP Name Renamed and Formatted  
+******************************************************************************                  
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/             
+        
+Create PROCEDURE [dbo].[USP_EX_GetRptFasbAdventIDByInstance]     
+@FASB_InstanceID int,    
+@Type varchar(100)    
+AS     
+    
+ Select     
+ AccMst.CustomerAccountNumber,    
+ AccExcCndLst.ConditionComments,    
+ LstItm.ListItemName as [Type]    
+ from TBL_BR_FASBAccountExclusionConditionList AccExcCndLst    
+ inner join SYN_IT_AccountMaster AccMst on AccMst.CustomerAccountNumber = AccExcCndLst.CustomerAccountNumber  
+ inner join TBL_ListItem LstItm on LstItm.ListItemID = AccExcCndLst.ListType  
+ inner join TBL_ListType LstTyp on LstItm.ListTypeID = LstTyp.ListTypeID  
+ and LstTyp.ListTypeName = 'FASB AdventID'     
+ where AccExcCndLst.FASB_InstanceID = @FASB_InstanceID    
+ and LstItm.ListItemName = @Type  
+   
+   
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbAdventIDByInstance') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbAdventIDByInstance';
+	END

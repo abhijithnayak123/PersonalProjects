@@ -1,0 +1,1213 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsAutoPostingPayment]    Script Date: 11/11/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_InsAutoPostingPayment]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_InsAutoPostingPayment]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_InsAutoPostingPayment]    Script Date: 11/11/2013 14:22:39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                
+** Name   :   USP_PP_InsAutoPostingPayment                
+** Short Desc : This SP will be called every day to make transaction for payment              
+**                
+** Full Description :This SP will be called every day to make transaction for payment 
+**                        
+**                
+** Sample Call                
+  
+  Declare @Ret INT  
+  EXEC USP_PP_InsAutoPostingPayment 
+ 	'<ArrayOfListItem pageNumber="1" pageSize="" type="" code="" message="" refCode="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+ 	    <ListItem xsi:type="ScheduledPayments">
+ 			<__RowState>Added</__RowState><InnotrustTransactionID>21416400035</InnotrustTransactionID><CheckNumber></CheckNumber><CustomerAccountNumber>PABAT</CustomerAccountNumber><ContactID>0</ContactID><AccountTypeCode>CRUT</AccountTypeCode><TrustTypeCode>CRUT</TrustTypeCode><ManagerCode>PA</ManagerCode><TaxID></TaxID><PayeeName>Catarina J. Stocking</PayeeName><ContactName>Catarina J. Stocking</ContactName><PayeeAddress1>3184 Beechcraft Drive</PayeeAddress1><PayeeAddress2>P.O. Box 3965</PayeeAddress2><PayeeAddress3>c/o Accounts Payable</PayeeAddress3><PayeeAddressCity>Salt Lake City</PayeeAddressCity><PayeeAddressState>CA</PayeeAddressState><PayeeAddressZip>43451</PayeeAddressZip><PayeeAddressCountry>US</PayeeAddressCountry><SourceBankName></SourceBankName><SourceBankAddress></SourceBankAddress><SourceBankABA>466166730</SourceBankABA><SourceBankFRNumber></SourceBankFRNumber><SourceAccount>3760176529</SourceAccount><PayorBriefName></PayorBriefName><PayorName>Catarina J. Stocking</PayorName><PayorAddress1>2181 Hollowbrook Circle</PayorAddress1><PayorAddress2>Suite 400</PayorAddress2><PayorAddress3>International Headquarters</PayorAddress3><PayorAddressCity></PayorAddressCity><PayorAddressState></PayorAddressState><PayorAddressZip></PayorAddressZip><PayorAddressCountry></PayorAddressCountry><DestBankName>Eldorado Bank</DestBankName><DestBankABA>122234783</DestBankABA><DestAccount>364619924</DestAccount><DestAccountType>C</DestAccountType><TaxCode>570</TaxCode><ChargeType></ChargeType><ProxyContactID>24196</ProxyContactID><PaymentMethod>ACH</PaymentMethod><MailingAddress1></MailingAddress1><MailingAddress2></MailingAddress2><MailingAddress3></MailingAddress3><MailingAddressCity></MailingAddressCity><MailingAddressState></MailingAddressState><MailingAddressZip></MailingAddressZip><MailingAddressCountry></MailingAddressCountry><PrintAdvice>-1</PrintAdvice><PaymentFrequency>4</PaymentFrequency><PrimaryLastName>Johnathon</PrimaryLastName><BeneficiaryDistributionID>595819</BeneficiaryDistributionID><PaymentAmount>29332.6</PaymentAmount><TaxYear>2014</TaxYear><ParagonScheduleID>672915</ParagonScheduleID><ParagonPaymentType>BeneficiaryPayment</ParagonPaymentType><InstructionID>2726</InstructionID><PaymentDate>2014-09-30</PaymentDate><ErrorMessage></ErrorMessage><AllianceDesc>Delaware State University</AllianceDesc><FailFlag></FailFlag><CustomerShortName>Rogelio</CustomerShortName><PaidForAddress1></PaidForAddress1><PaidForAddress2></PaidForAddress2><PaidForAddress3></PaidForAddress3><PaidForAddressCity></PaidForAddressCity><PaidForAddressState></PaidForAddressState><PaidForAddressZip></PaidForAddressZip><PaidForAddressCountry></PaidForAddressCountry>
+ 		</ListItem></ArrayOfListItem>',0,100207,0,
+	@Ret Output
+	SELECT @Ret 
+	
+**                
+** Return values: NONE                
+**                
+**                
+** Standard declarations                
+**       SET LOCK_TIMEOUT         30000   --30 seconds        
+**                 
+** Created By: Debajyoti kalita         
+** Company   : Kaspick & Company            
+** Project   : BackOffice Integration            
+** Created DT: 11/11/2013            
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- -----               
+** 16-jan-14	Niveditha		   Splitcheck implementation changes, code comment changes and 
+**									address field length  changes as per innotrust
+** 23-may-14	Salih              Splitcheck implementation changes, PrintAdvice check modified from 1 to -4  	
+** 03-mar-14    Salih              Fix for the issue #16174 - Added check for the Transaction Number	
+** 10-Jun-14    Anand              Updated for inserting actual error message in validation result for transaction id rule 	
+** 18-Jun-14	Anand			   Storing record version in temp table and returning for maintaining record version after posting data from Account payout screen.
+** 25-Jun-14	Anand			   Added condition for record version changes.
+** 26-jun-14    Salih              Modified Rolecode implementation from Rolecode description to ID					
+						           and Removed 'select * from' USAGE
+** 5-Aug-14		Anand			   Assigned ContactName AS payee Name IN INPUT XML- ContactName will be sent as PayeeName from innotrust xml 
+								   (innotrust xml logic: IF PayeeNme IS NullOrEmpty assign ContactName AS PayeeName ELSE use PayeeName.) 
+**7-Aug-14		Saravanan		   Updated Transaction Number to CheckNumber column if checknumber is null	
+**12-Aug-14		Saravanan		   Included TransactionNumber in the return collection to update AccountPayout grid 					   					           
+**21-Aug-14		Saravanan		   ET 16714 - Payor Name re maaped from XML input to CustomerDescriptionLine 1 to 4 from AccountMaster table
+**11-Sep-14		Anand			   Removing OnHold condition from filter (ET#16833)
+
+*******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_InsAutoPostingPayment] @XMLData XML
+	,@PostType BIT
+	,-----1 for Auto,0 for Mannual
+	@UserID INT
+	,@PaymentProcessID INT = 0
+	,--Manual = 0,Auto = need process id to recognize the process 
+	@ReturnStatus INT
+OUTPUT AS
+
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+	SET @ReturnStatus = 0
+
+	--- Declare Variables
+	DECLARE @User INT
+	DECLARE @CRLF VARCHAR(2)
+	DECLARE @RuleID INT
+	DECLARE @RuleMessage VARCHAR(500)
+	DECLARE @ContactRoleCode INT
+	DECLARE @PostedCount INT
+	DECLARE @UnPostedCount INT
+
+	---Assigning value to Variable
+	SELECT @RuleID = RuleID
+		,@RuleMessage = DisplayMessage
+	FROM TBL_PP_ValidationRule
+	WHERE RuleName = 'Transaction ID not received'
+		AND RuleCategory = 'Beneficiary payment'
+
+	-- 26-jun-2014  Salih: Modified Rolecode implementation from Rolecode description to ID.
+	SET @ContactRoleCode = 21 --'Beneficiary'
+
+	SELECT @CRLF = CHAR(13) + CHAR(10)
+
+	IF @PostType = 'TRUE'
+	BEGIN
+		SELECT @User = USERID
+		FROM TBL_KS_User
+		WHERE LOGINNAME = 'administrator'
+	END
+	ELSE
+	BEGIN
+		SELECT @User = @UserID
+	END
+
+	IF OBJECT_ID('tempdb..#TBL_Paymentdata') IS NOT NULL
+		DROP TABLE #TBL_Paymentdata
+
+	CREATE TABLE #TBL_Paymentdata (
+		TransactionNumber VARCHAR(11)
+		,CheckNumber VARCHAR(15)
+		,BeneficiaryDistributionID INT
+		,CustomerAccountNumber VARCHAR(14)
+		,ContactID INT
+		,InstructionID INT
+		,AccountTypeCode VARCHAR(20)
+		--,TrustTypeCode VARCHAR(255)
+		,ManagerCode VARCHAR(4)
+		,TaxID INT
+		,PayeeName VARCHAR(100)
+		--,ContactName VARCHAR(100)
+		,PayeeAddress1 VARCHAR(40)
+		,PayeeAddress2 VARCHAR(40)
+		,PayeeAddress3 VARCHAR(40)
+		,PayeeAddressCity VARCHAR(30)
+		,PayeeAddressState VARCHAR(2)
+		,PayeeAddressZip VARCHAR(10)
+		,PayeeAddressCountry VARCHAR(2)
+		,SourceBankName VARCHAR(100)
+		,SourceBankAddress VARCHAR(255)
+		,SourceBankABA VARCHAR(20)
+		,SourceBankFRNumber VARCHAR(20)
+		,SourceAccount VARCHAR(20)
+		,PayorBriefName VARCHAR(15)
+		--,PayorName VARCHAR(100)
+		,PayorAddress1 VARCHAR(40)
+		,PayorAddress2 VARCHAR(40)
+		,PayorAddress3 VARCHAR(40)
+		,PayorAddressCity VARCHAR(30)
+		,PayorAddressState VARCHAR(2)
+		,PayorAddressZip VARCHAR(10)
+		,PayorAddressCountry VARCHAR(2)
+		,DestBankName VARCHAR(100)
+		,DestBankABA VARCHAR(20)
+		,DestAccount VARCHAR(20)
+		,DestAccountType VARCHAR(10)
+		,TaxCode INT
+		,ChargeType CHAR(1)
+		,ProxyContactID INT
+		,PaymentMethod VARCHAR(20)
+		,MailingAddress1 VARCHAR(40)
+		,MailingAddress2 VARCHAR(40)
+		,MailingAddress3 VARCHAR(40)
+		,MailingAddressCity VARCHAR(30)
+		,MailingAddressState VARCHAR(2)
+		,MailingAddressZip VARCHAR(10)
+		,MailingAddressCountry VARCHAR(2)
+		,PrintAdvice INT
+		,PaymentFrequency INT
+		,PrimaryLastName VARCHAR(50)
+		,PaidForAddress1 VARCHAR(40)
+		,PaidForAddress2 VARCHAR(40)
+		,PaidForAddress3 VARCHAR(40)
+		,PaidForAddressCity VARCHAR(30)
+		,PaidForAddressState VARCHAR(2)
+		,PaidForAddressZip VARCHAR(10)
+		,PaidForAddressCountry VARCHAR(2)
+		,PaymentAmount MONEY
+		,EventDate DATETIME -- Paragon payment date to be stored for reference on the disbursement
+		--,SettleDate datetime
+		,TaxYear INT
+		--,PrintLocalChecksFlag BIT
+		,ScheduleID INT
+		,PaymentType VARCHAR(20)
+		,ErrorMessage VARCHAR(255)
+		,ReturnStatus INT DEFAULT(0)
+		)
+
+	IF OBJECT_ID('tempdb..#ReturnData') IS NOT NULL
+		DROP TABLE #ReturnData
+
+	CREATE TABLE #ReturnData (
+		PaymentType VARCHAR(20)
+		,ScheduleID INT
+		,PaymentID INT
+		,PaymentRecordVersion VARBINARY(8)
+		,ScheduleRecordVersion VARBINARY(8)
+		,APSRecordVersion VARBINARY(8)
+		,Return_Status INT DEFAULT(0)
+		,TransactionNumber VARCHAR(11)
+		)
+
+	BEGIN TRANSACTION
+
+	--Inserting XML input data into Temp table   
+	INSERT INTO #TBL_Paymentdata (
+		TransactionNumber
+		,CheckNumber
+		,BeneficiaryDistributionID
+		,CustomerAccountNumber
+		,ContactID
+		,InstructionID
+		,AccountTypeCode
+		--,TrustTypeCode
+		,ManagerCode
+		,TaxID
+		,PayeeName
+		--,ContactName
+		,PayeeAddress1
+		,PayeeAddress2
+		,PayeeAddress3
+		,PayeeAddressCity
+		,PayeeAddressState
+		,PayeeAddressZip
+		,PayeeAddressCountry
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,SourceBankFRNumber
+		,SourceAccount
+		,PayorBriefName
+		--,PayorName
+		,PayorAddress1
+		,PayorAddress2
+		,PayorAddress3
+		,PayorAddressCity
+		,PayorAddressState
+		,PayorAddressZip
+		,PayorAddressCountry
+		,DestBankName
+		,DestBankABA
+		,DestAccount
+		,DestAccountType
+		,TaxCode
+		,ChargeType
+		,ProxyContactID
+		,PaymentMethod
+		,MailingAddress1
+		,MailingAddress2
+		,MailingAddress3
+		,MailingAddressCity
+		,MailingAddressState
+		,MailingAddressZip
+		,MailingAddressCountry
+		,PrintAdvice
+		,PaymentFrequency
+		,PrimaryLastName
+		,PaidForAddress1
+		,PaidForAddress2
+		,PaidForAddress3
+		,PaidForAddressCity
+		,PaidForAddressState
+		,PaidForAddressZip
+		,PaidForAddressCountry
+		,PaymentAmount
+		,EventDate
+		--,SettleDate 
+		,TaxYear
+		--,PrintLocalChecksFlag 
+		,ScheduleID
+		,PaymentType
+		,ErrorMessage
+		)
+	SELECT ltrim(rtrim(x.item.value('InnotrustTransactionID[1]', 'VARCHAR(11)'))) AS TransactionNumber
+		,x.item.value('CheckNumber[1]', 'varchar(15)') AS CheckNumber
+		,x.item.value('BeneficiaryDistributionID[1]', 'INT') AS BeneficiaryDistributionID
+		,x.item.value('CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		,x.item.value('ContactID[1]', 'INT') AS ContactID
+		,x.item.value('InstructionID[1]', 'INT') AS InstructionID
+		,x.item.value('AccountTypeCode[1]', 'VARCHAR(20)') AS AccountTypeCode
+		--,x.item.value('TrustTypeCode[1]', 'VARCHAR(255)') AS TrustTypeCode
+		,x.item.value('ManagerCode[1]', 'Varchar(4)') AS ManagerCode
+		,x.item.value('TaxID[1]', 'INT') AS TaxID
+		,x.item.value('ContactName[1]', 'VARCHAR(100)') AS PayeeName
+		--,x.item.value('ContactName[1]', 'VARCHAR(100)') AS ContactName
+		,x.item.value('PayeeAddress1[1]', 'VARCHAR(40)') AS PayeeAddress1
+		,x.item.value('PayeeAddress2[1]', 'VARCHAR(40)') AS PayeeAddress2
+		,x.item.value('PayeeAddress3[1]', 'VARCHAR(40)') AS PayeeAddress3
+		,x.item.value('PayeeAddressCity[1]', 'VARCHAR(30)') AS PayeeAddressCity
+		,x.item.value('PayeeAddressState[1]', 'VARCHAR(2)') AS PayeeAddressState
+		,x.item.value('PayeeAddressZip[1]', 'VARCHAR(10)') AS PayeeAddressZip
+		,x.item.value('PayeeAddressCountry[1]', 'VARCHAR(2)') AS PayeeAddressCountry
+		,x.item.value('SourceBankName[1]', 'VARCHAR(100)') AS SourceBankName
+		,x.item.value('SourceBankAddress[1]', 'VARCHAR(255)') AS SourceBankAddress
+		,x.item.value('SourceBankABA[1]', 'VARCHAR(20)') AS SourceBankABA
+		,x.item.value('SourceBankFRNumber[1]', 'VARCHAR(20)') AS SourceBankFRNumber
+		,x.item.value('SourceAccount[1]', 'VARCHAR(20)') AS SourceAccount
+		,x.item.value('PayorBriefName[1]', 'VARCHAR(15)') AS PayorBriefName
+		--,x.item.value('PayorName[1]', 'VARCHAR(100)') AS PayorName
+		,x.item.value('PayorAddress1[1]', 'VARCHAR(40)') AS PayorAddress1
+		,x.item.value('PayorAddress2[1]', 'VARCHAR(40)') AS PayorAddress2
+		,x.item.value('PayorAddress3[1]', 'VARCHAR(40)') AS PayorAddress3
+		,x.item.value('PayorAddressCity[1]', 'VARCHAR(30)') AS PayorAddressCity
+		,x.item.value('PayorAddressState[1]', 'VARCHAR(2)') AS PayorAddressState
+		,x.item.value('PayorAddressZip[1]', 'VARCHAR(10)') AS PayorAddressZip
+		,x.item.value('PayorAddressCountry[1]', 'VARCHAR(2)') AS PayorAddressCountry
+		,x.item.value('DestBankName[1]', 'VARCHAR(1000)') AS DestBankName
+		,x.item.value('DestBankABA[1]', 'VARCHAR(20)') AS DestBankABA
+		,x.item.value('DestAccount[1]', 'VARCHAR(20)') AS DestAccount
+		,x.item.value('DestAccountType[1]', 'VARCHAR(10)') AS DestAccountType
+		,x.item.value('TaxCode[1]', 'INT') AS TaxCode
+		,x.item.value('ChargeType[1]', 'Char(1)') AS ChargeType
+		,x.item.value('ProxyContactID[1]', 'INT') AS ProxyContactID
+		,x.item.value('PaymentMethod[1]', 'varchar(20)') AS PaymentMethod
+		,x.item.value('MailingAddress1[1]', 'VARCHAR(40)') AS MailingAddress1
+		,x.item.value('MailingAddress2[1]', 'VARCHAR(40)') AS MailingAddress2
+		,x.item.value('MailingAddress3[1]', 'VARCHAR(40)') AS MailingAddress3
+		,x.item.value('MailingAddressCity[1]', 'VARCHAR(30)') AS MailingAddressCity
+		,x.item.value('MailingAddressState[1]', 'VARCHAR(2)') AS MailingAddressState
+		,x.item.value('MailingAddressZip[1]', 'VARCHAR(10)') AS MailingAddressZip
+		,x.item.value('MailingAddressCountry[1]', 'VARCHAR(2)') AS MailingAddressCountry
+		,x.item.value('PrintAdvice[1]', 'INT') AS PrintAdvice
+		,x.item.value('PaymentFrequency[1]', 'INT') AS PaymentFrequency
+		,x.item.value('PrimaryLastName[1]', 'VARCHAR(50)') AS PrimaryLastName
+		,x.item.value('PaidForAddress1[1]', 'VARCHAR(40)') AS PaidForAddress1
+		,x.item.value('PaidForAddress2[1]', 'VARCHAR(40)') AS PaidForAddress2
+		,x.item.value('PaidForAddress3[1]', 'VARCHAR(40)') AS PaidForAddress3
+		,x.item.value('PaidForAddressCity[1]', 'VARCHAR(30)') AS PaidForAddressCity
+		,x.item.value('PaidForAddressState[1]', 'VARCHAR(2)') AS PaidForAddressState
+		,x.item.value('PaidForAddressZip[1]', 'VARCHAR(10)') AS PaidForAddressZip
+		,x.item.value('PaidForAddressCountry[1]', 'VARCHAR(2)') AS PaidForAddressCountry
+		,x.item.value('PaymentAmount[1]', 'Money') AS PaymentAmount
+		,x.item.value('@EventDate[1]', 'DateTime') AS EventDate
+		--,x.item.value('@SettleDate[1]', 'DateTime') AS SettleDate  
+		,x.item.value('TaxYear[1]', 'Int') AS TaxYear
+		--,x.item.value('@PrintLocalChecksFlag[1]', 'Bit') AS PrintLocalChecksFlag  
+		,x.item.value('ParagonScheduleID[1]', 'Int') AS ScheduleID
+		,x.item.value('ParagonPaymentType[1]', 'Varchar(20)') AS PaymentType
+		,x.item.value('ErrorMessage[1]', 'VARCHAR(255)') AS ErrorMessage
+	FROM @XMLDATA.nodes('/ArrayOfListItem/ListItem') AS x(item)
+	OPTION (
+			OPTIMIZE FOR (@XMLDATA = NULL)
+			)
+
+	--- Count number of input Payments
+	SELECT @UnpostedCount = COUNT(*)
+	FROM #TBL_Paymentdata
+
+	---Insert into TBL_PP_BeneficiaryPayment for PaymentType = 'BeneficiaryPayment'
+	INSERT INTO TBL_PP_BeneficiaryPayment (
+		DocumentNumber
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		,BeneficiaryDistributionID
+		,TransactionNumber
+		,AccountType
+		,ManagerCode
+		,PaymentDate
+		,TaxYear
+		,PayeeName
+		,PayeeAddress
+		,PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,FractionalRoutingCode
+		,SourceAccount
+		,AllianceNumber
+		,PayorName
+		,PayorAddress
+		,DestBankName
+		,DestBankABA
+		,DestAccount
+		,DestAccountType
+		,TaxCode
+		,ChargeType
+		,PaidforContactID
+		,PaymentMethod
+		,MailingAddress
+		,PrintAdvice
+		,PaymentFreq
+		,LastName
+		,STATUS
+		,PostDate
+		,SeparateCheck
+		,SeparateCheckAddress
+		,Memo
+		,Comment
+		,Withholding
+		,IsBackBuilt
+		,CreatedDate
+		,CreatedBy
+		,ModifiedDate
+		,ModifiedBy
+		)
+	SELECT CASE 
+			WHEN ISNULL(CheckNumber, '') = ''
+				THEN TransactionNumber
+			ELSE CheckNumber
+			END AS CheckNumber
+		,TmpData.CustomerAccountNumber
+		,TmpData.ContactID
+		,ContactRoleCode
+		,InstructionID
+		,TmpData.BeneficiaryDistributionID
+		,TransactionNumber
+		,TmpData.AccountTypeCode
+		,TmpData.ManagerCode
+		,BenPay.PaymentDate
+		,TmpData.TaxYear
+		,PayeeName
+		--,PayeeAddress1 + @CRLF + PayeeAddress2 + @CRLF + PayeeAddress3 + @CRLF + PayeeAddressCity + @CRLF + PayeeAddressState + @CRLF + PayeeAddressZip + @CRLF + PayeeAddressCountry
+		,CASE 
+			WHEN isnull(PayeeAddress1, '') = ''
+				THEN ''
+			ELSE PayeeAddress1 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddress2, '') = ''
+				THEN ''
+			ELSE PayeeAddress2 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddress3, '') = ''
+				THEN ''
+			ELSE PayeeAddress3 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressCity, '') = ''
+				THEN ''
+			ELSE PayeeAddressCity + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressState, '') = ''
+				THEN ''
+			ELSE PayeeAddressState + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressZip, '') = ''
+				THEN ''
+			ELSE PayeeAddressZip + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressCountry, '') = ''
+				THEN ''
+			ELSE PayeeAddressCountry
+			END
+		,PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,SourceBankFRNumber
+		,SourceAccount
+		,PayorBriefName
+		--,PayorName
+		,RTRIM(CASE 
+				WHEN ISNULL(CustomerDescriptionLine1, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine1) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine2, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine2) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine3, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine3) + ' '
+				END + ISNULL(CustomerDescriptionLine4, ''))
+		--,PayorAddress1 + @CRLF + PayorAddress2 + @CRLF + PayorAddress3 + @CRLF + PayorAddressCity + @CRLF + PayorAddressState + @CRLF + PayorAddressZip + @CRLF + PayorAddressCountry
+		,CASE 
+			WHEN ISNULL(PayorAddress1, '') = ''
+				THEN ''
+			ELSE PayorAddress1 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddress2, '') = ''
+				THEN ''
+			ELSE PayorAddress2 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddress3, '') = ''
+				THEN ''
+			ELSE PayorAddress3 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressCity, '') = ''
+				THEN ''
+			ELSE PayorAddressCity + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressState, '') = ''
+				THEN ''
+			ELSE PayorAddressState + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressZip, '') = ''
+				THEN ''
+			ELSE PayorAddressZip + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressCountry, '') = ''
+				THEN ''
+			ELSE PayorAddressCountry
+			END
+		,DestBankName
+		,DestBankABA
+		,DestAccount
+		,DestAccountType
+		,TaxCode
+		,ChargeType
+		,ProxyContactID
+		,PaymentMethod
+		--,MailingAddress1 + @CRLF + MailingAddress2 + @CRLF + MailingAddress3 + @CRLF + MailingAddressCity + @CRLF + MailingAddressState + @CRLF + MailingAddressZip + @CRLF + MailingAddressCountry
+		,CASE 
+			WHEN ISNULL(MailingAddress1, '') = ''
+				THEN ''
+			ELSE MailingAddress1 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddress2, '') = ''
+				THEN ''
+			ELSE MailingAddress2 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddress3, '') = ''
+				THEN ''
+			ELSE MailingAddress3 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressCity, '') = ''
+				THEN ''
+			ELSE MailingAddressCity + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressState, '') = ''
+				THEN ''
+			ELSE MailingAddressState + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressZip, '') = ''
+				THEN ''
+			ELSE MailingAddressZip + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressCountry, '') = ''
+				THEN ''
+			ELSE MailingAddressCountry
+			END
+		,PrintAdvice
+		,PaymentFrequency
+		,PrimaryLastName
+		,'Posted'
+		,GETDATE()
+		-- SplitCheck implementation
+		,CASE 
+			-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+			WHEN PaymentMethod = 'Check'
+				AND TmpData.PrintAdvice = - 4
+				THEN 1
+			ELSE 0
+			END
+		,CASE 
+			-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+			WHEN PaymentMethod = 'Check'
+				AND TmpData.PrintAdvice = - 4
+				THEN --PayeeAddress1 + @CRLF + PayeeAddress2 + @CRLF + PayeeAddress3 + @CRLF + PayeeAddressCity + @CRLF + PayeeAddressState + @CRLF + PayeeAddressZip + @CRLF + PayeeAddressCountry
+					(
+						CASE 
+							WHEN isnull(PayeeAddress1, '') = ''
+								THEN ''
+							ELSE PayeeAddress1 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddress2, '') = ''
+								THEN ''
+							ELSE PayeeAddress2 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddress3, '') = ''
+								THEN ''
+							ELSE PayeeAddress3 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressCity, '') = ''
+								THEN ''
+							ELSE PayeeAddressCity + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressState, '') = ''
+								THEN ''
+							ELSE PayeeAddressState + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressZip, '') = ''
+								THEN ''
+							ELSE PayeeAddressZip + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressCountry, '') = ''
+								THEN ''
+							ELSE PayeeAddressCountry
+							END
+						)
+			END
+		,Memo
+		,Comments
+		,NULL
+		,IsBackBuilt
+		,GETDATE()
+		,@User
+		,GETDATE()
+		,@User
+	FROM #TBL_Paymentdata TmpData
+	INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay
+		ON TmpData.ScheduleID = BenPay.BPScheduleID
+	INNER JOIN SYN_IT_AccountMaster AcctMstr
+		ON TmpData.CustomerAccountNumber = AcctMstr.CustomerAccountNumber
+	WHERE ISNull(ErrorMessage, '') = ''
+		-- 03-mar-2014: Salih - Fix for the issue #16174 - Added check for the Transaction Number
+		AND ISNull(TransactionNumber, '') <> ''
+		--AND BenPay.Status<> 'OnHold'
+		AND PaymentType = 'BeneficiaryPayment'
+		AND (
+			(
+				IsBackBuilt = 1
+				AND @PostType = 'FALSE'
+				)
+			OR (
+				@PostType = 'FALSE'
+				AND Benpay.PaymentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+				)
+			OR (
+				(
+					@PostType = 'TRUE'
+					AND Benpay.PaymentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+					)
+			
+				)
+			)
+
+	---number of posted payments
+	SELECT @postedCount = @@ROWCOUNT
+
+	----Update Withholding amount for trusts
+	--UPDATE TBL_PP_BeneficiaryPayment
+	--SET Withholding = dbo.FN_GetWithHoldingAmountForTrust(TmpData.CustomerAccountNumber, TmpData.ContactID, BenPmnt.PaymentDate, TmpData.TaxYear)
+	--FROM TBL_PP_BeneficiaryPayment BenPmnt
+	--INNER JOIN #TBL_Paymentdata TmpData
+	--	ON BenPmnt.TransactionNumber = Tmpdata.TransactionNumber
+	--WHERE TmpData.PaymentType = 'BeneficiaryPayment'
+	--Update Withholding amount for trusts
+	UPDATE TBL_PP_BeneficiaryPayment
+	SET Withholding = ISNULL(TmpData.Withholding, 0)
+	FROM TBL_PP_BeneficiaryPayment BenPmnt
+	INNER JOIN (
+		SELECT DISTINCT Tmpdata.TransactionNumber
+			,TmpData.PaymentType
+			,SUM(ISNULL(bps.ScheduledAmount, 0)) AS WithHolding
+		FROM TBL_PP_BeneficiaryPayoutSchedule bps
+		INNER JOIN dbo.TBL_PP_AccountPayoutSchedule aps
+			ON bps.APScheduleID = aps.APScheduleID
+		INNER JOIN #TBL_Paymentdata TmpData
+			ON TmpData.CustomerAccountNumber = aps.CustomerAccountNumber
+				AND TmpData.TaxYear = bps.TaxYear
+		INNER JOIN (
+			SELECT DISTINCT paymentdate
+				,transactionnumber
+			FROM TBL_PP_BeneficiaryPayment
+			) BenPmnt
+			ON BenPmnt.TransactionNumber = Tmpdata.TransactionNumber
+		WHERE TmpData.PaymentType = 'BeneficiaryPayment'
+			AND DATEDIFF(DAY, bps.PaymentDate, BenPmnt.PaymentDate) = 0
+			AND bps.ContactID IN (
+				SELECT PayeeID
+				FROM dbo.SYN_IT_RemittanceInstructions ri
+				INNER JOIN dbo.SYN_IT_BeneficiaryDistributions bd
+					ON ri.instructionid = bd.instructionID
+				WHERE CustomerAccountNumber = TmpData.CustomerAccountNumber
+					AND Contactid = TmpData.ContactID
+					AND PayeeID != TmpData.ContactID
+				)
+		GROUP BY Tmpdata.TransactionNumber
+			,TmpData.PaymentType
+		) TmpData
+		ON BenPmnt.TransactionNumber = Tmpdata.TransactionNumber
+	WHERE TmpData.PaymentType = 'BeneficiaryPayment'
+
+	UPDATE BenPmnt
+	SET Withholding = ISNULL(Withholding, 0)
+	FROM TBL_PP_BeneficiaryPayment BenPmnt
+	INNER JOIN #TBL_Paymentdata TmpData
+		ON BenPmnt.TransactionNumber = Tmpdata.TransactionNumber
+	WHERE TmpData.PaymentType = 'BeneficiaryPayment'
+
+	--- Update  TBL_PP_BeneficiaryPayoutSchedule
+	UPDATE TBL_PP_BeneficiaryPayoutSchedule
+	SET PaymentID = Benpmnt.PaymentID
+		,STATUS = 'Posted'
+		,ModifiedBy = @User
+		,ModifiedDate = GETDATE()
+	FROM TBL_PP_BeneficiaryPayoutSchedule BenPay
+	INNER JOIN #TBL_Paymentdata TmpData
+		ON BenPay.BPScheduleID = TmpData.ScheduleID
+			AND TmpData.PaymentType = 'BeneficiaryPayment'
+	INNER JOIN TBL_PP_BeneficiaryPayment Benpmnt
+		ON Benpmnt.TransactionNumber = TmpData.TransactionNumber
+	WHERE ISNull(ErrorMessage, '') = ''
+		-- 03-mar-2014: Salih - Fix for the issue #16174 - Added check for the Transaction Number
+		AND ISNull(TmpData.TransactionNumber, '') <> ''
+
+	---Insert INTO TBL_PP_BeneficiaryPayment for PaymentType = 'PGCalcImport'
+	INSERT INTO TBL_PP_BeneficiaryPayment (
+		DocumentNumber
+		,CustomerAccountNumber
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		,BeneficiaryDistributionID
+		,TransactionNumber
+		,AccountType
+		,ManagerCode
+		,PaymentDate
+		,TaxYear
+		,PayeeName
+		,PayeeAddress
+		,PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,FractionalRoutingCode
+		,SourceAccount
+		,AllianceNumber
+		,PayorName
+		,PayorAddress
+		,DestBankName
+		,DestBankABA
+		,DestAccount
+		,DestAccountType
+		,TaxCode
+		,ChargeType
+		,PaidforContactID
+		,PaymentMethod
+		,MailingAddress
+		,PrintAdvice
+		,PaymentFreq
+		,LastName
+		,STATUS
+		,PostDate
+		,SeparateCheck
+		,SeparateCheckAddress
+		,Memo
+		,Comment
+		,Withholding
+		,IsBackBuilt
+		,CreatedDate
+		,CreatedBy
+		,ModifiedDate
+		,ModifiedBy
+		)
+	SELECT CASE 
+			WHEN ISNULL(CheckNumber, '') = ''
+				THEN TransactionNumber
+			ELSE CheckNumber
+			END AS CheckNumber
+		,TmpData.CustomerAccountNumber
+		,TmpData.ContactID
+		,ContactRoleCode
+		,TmpData.InstructionID
+		,TmpData.BeneficiaryDistributionID
+		,TransactionNumber
+		,TmpData.AccountTypeCode
+		,TmpData.ManagerCode
+		,Pgcalc.PaymentDate
+		,TmpData.TaxYear
+		,TmpData.PayeeName
+		--,PayeeAddress1 + @CRLF + PayeeAddress2 + @CRLF + PayeeAddress3 + @CRLF + PayeeAddressCity + @CRLF + PayeeAddressState + @CRLF + PayeeAddressZip + @CRLF + PayeeAddressCountry
+		,CASE 
+			WHEN isnull(PayeeAddress1, '') = ''
+				THEN ''
+			ELSE PayeeAddress1 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddress2, '') = ''
+				THEN ''
+			ELSE PayeeAddress2 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddress3, '') = ''
+				THEN ''
+			ELSE PayeeAddress3 + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressCity, '') = ''
+				THEN ''
+			ELSE PayeeAddressCity + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressState, '') = ''
+				THEN ''
+			ELSE PayeeAddressState + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressZip, '') = ''
+				THEN ''
+			ELSE PayeeAddressZip + @CRLF
+			END + CASE 
+			WHEN isnull(PayeeAddressCountry, '') = ''
+				THEN ''
+			ELSE PayeeAddressCountry
+			END
+		,TmpData.PaymentAmount
+		,SourceBankName
+		,SourceBankAddress
+		,SourceBankABA
+		,SourceBankFRNumber
+		,SourceAccount
+		,PayorBriefName
+		--,PayorName
+		,RTRIM(CASE 
+				WHEN ISNULL(CustomerDescriptionLine1, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine1) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine2, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine2) + ' '
+				END + CASE 
+				WHEN ISNULL(CustomerDescriptionLine3, '') = ''
+					THEN ''
+				ELSE RTRIM(CustomerDescriptionLine3) + ' '
+				END + ISNULL(CustomerDescriptionLine4, ''))
+		--,PayorAddress1 + @CRLF + PayorAddress2 + @CRLF + PayorAddress3 + @CRLF + PayorAddressCity + @CRLF + PayorAddressState + @CRLF + PayorAddressZip + @CRLF + PayorAddressCountry
+		,CASE 
+			WHEN ISNULL(PayorAddress1, '') = ''
+				THEN ''
+			ELSE PayorAddress1 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddress2, '') = ''
+				THEN ''
+			ELSE PayorAddress2 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddress3, '') = ''
+				THEN ''
+			ELSE PayorAddress3 + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressCity, '') = ''
+				THEN ''
+			ELSE PayorAddressCity + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressState, '') = ''
+				THEN ''
+			ELSE PayorAddressState + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressZip, '') = ''
+				THEN ''
+			ELSE PayorAddressZip + @CRLF
+			END + CASE 
+			WHEN ISNULL(PayorAddressCountry, '') = ''
+				THEN ''
+			ELSE PayorAddressCountry
+			END
+		,DestBankName
+		,DestBankABA
+		,DestAccount
+		,DestAccountType
+		,TaxCode
+		,ChargeType
+		,ProxyContactID
+		,PaymentMethod
+		--,MailingAddress1 + @CRLF + MailingAddress2 + @CRLF + MailingAddress3 + @CRLF + MailingAddressCity + @CRLF + MailingAddressState + @CRLF + MailingAddressZip + @CRLF + MailingAddressCountry
+		,CASE 
+			WHEN ISNULL(MailingAddress1, '') = ''
+				THEN ''
+			ELSE MailingAddress1 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddress2, '') = ''
+				THEN ''
+			ELSE MailingAddress2 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddress3, '') = ''
+				THEN ''
+			ELSE MailingAddress3 + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressCity, '') = ''
+				THEN ''
+			ELSE MailingAddressCity + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressState, '') = ''
+				THEN ''
+			ELSE MailingAddressState + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressZip, '') = ''
+				THEN ''
+			ELSE MailingAddressZip + @CRLF
+			END + CASE 
+			WHEN ISNULL(MailingAddressCountry, '') = ''
+				THEN ''
+			ELSE MailingAddressCountry
+			END
+		,PrintAdvice
+		,PaymentFrequency
+		,PrimaryLastName
+		,'Posted'
+		,GETDATE()
+		-- SplitCheck implementation
+		-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+		,CASE 
+			WHEN PaymentMethod = 'Check'
+				AND TmpData.PrintAdvice = - 4
+				THEN 1
+			ELSE 0
+			END
+		,CASE 
+			-- 23-may-2014 Salih: Splitcheck implementation changes, PrintAdvice check modified from 1 to -4 
+			WHEN PaymentMethod = 'Check'
+				AND TmpData.PrintAdvice = - 4
+				THEN --PayeeAddress1 + @CRLF + PayeeAddress2 + @CRLF + PayeeAddress3 + @CRLF + PayeeAddressCity + @CRLF + PayeeAddressState + @CRLF + PayeeAddressZip + @CRLF + PayeeAddressCountry
+					(
+						CASE 
+							WHEN isnull(PayeeAddress1, '') = ''
+								THEN ''
+							ELSE PayeeAddress1 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddress2, '') = ''
+								THEN ''
+							ELSE PayeeAddress2 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddress3, '') = ''
+								THEN ''
+							ELSE PayeeAddress3 + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressCity, '') = ''
+								THEN ''
+							ELSE PayeeAddressCity + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressState, '') = ''
+								THEN ''
+							ELSE PayeeAddressState + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressZip, '') = ''
+								THEN ''
+							ELSE PayeeAddressZip + @CRLF
+							END + CASE 
+							WHEN isnull(PayeeAddressCountry, '') = ''
+								THEN ''
+							ELSE PayeeAddressCountry
+							END
+						)
+			END
+		,Memo
+		,Comment
+		,TaxWithholding
+		,0
+		,GETDATE()
+		,@User
+		,GETDATE()
+		,@User
+	FROM #TBL_Paymentdata TmpData
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged Pgcalc
+		ON TmpData.ScheduleID = Pgcalc.MergedPGCalcPaymentID
+	INNER JOIN SYN_IT_AccountMaster AcctMstr
+		ON TmpData.CustomerAccountNumber = AcctMstr.CustomerAccountNumber
+	WHERE ISNull(ErrorMessage, '') = ''
+		-- 03-mar-2014: Salih - Fix for the issue #16174 - Added check for the Transaction Number
+		AND ISNull(TmpData.TransactionNumber, '') <> ''
+		AND PaymentType = 'PGCalcImport'
+		AND (
+			(
+				@PostType = 'FALSE'
+				AND Pgcalc.PaymentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+				)
+			OR (
+				(
+					@PostType = 'TRUE'
+					AND Pgcalc.PaymentDate >= CONVERT(DATETIME, CONVERT(VARCHAR(25), GETDATE(), 101))
+					)
+				
+				)
+			)
+
+	-- Updating the number of posted payments
+	SELECT @postedCount = @postedCount + @@ROWCOUNT
+
+	-- Commenting the below code refer ET# 
+	----- Auditing PGCalcimport data before updating TBL_PP_PGCalcPaymentDataMerged
+	--INSERT INTO TBL_PP_AUDIT_PGCalcPaymentDataMerged (
+	--	AuditUserId
+	--	,AuditDatetime
+	--	,AuditType
+	--	,AuditDetails
+	--	,MergedPGCalcPaymentID
+	--	,PaymentBatch
+	--	,ManagerCode
+	--	,CustomerAccountNumber
+	--	,PersonCode
+	--	,PayeeName
+	--	,PaymentAmount
+	--	,PaymentDate
+	--	,SeparateCheck
+	--	,Account1
+	--	,Account2
+	--	,GiftDate
+	--	,PIFUnits
+	--	,PIFValue
+	--	,PIFIncome
+	--	,TaxWithholding
+	--	,PaymentID
+	--	,EPD
+	--	,Taxyear
+	--	,STATUS
+	--	,ContactID
+	--	,ContactRoleCode
+	--	,InstructionID
+	--	,beneficiaryDistributionID
+	--	,PeriodEndDate
+	--	,Memo
+	--	,Comment
+	--	,ModifiedDate
+	--	,ModifiedBy
+	--	,CreatedDate
+	--	,CreatedBy
+	--	,MatchType
+	--	,GiftWrapPaymentReviewDate
+	--	,GiftWrapPaymentReviewedBy
+	--	,DeletedUserId
+	--	)
+	--SELECT @User
+	--	,GETDATE()
+	--	,'U'
+	--	,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+	--	,PgCalc.MergedPGCalcPaymentID
+	--	,PgCalc.PaymentBatch
+	--	,PgCalc.ManagerCode
+	--	,PgCalc.CustomerAccountNumber
+	--	,PgCalc.PersonCode
+	--	,PgCalc.PayeeName
+	--	,PgCalc.PaymentAmount
+	--	,PgCalc.PaymentDate
+	--	,PgCalc.SeparateCheck
+	--	,PgCalc.Account1
+	--	,PgCalc.Account2
+	--	,PgCalc.GiftDate
+	--	,PgCalc.PIFUnits
+	--	,PgCalc.PIFValue
+	--	,PgCalc.PIFIncome
+	--	,PgCalc.TaxWithholding
+	--	,PgCalc.PaymentID
+	--	,PgCalc.EPD
+	--	,PgCalc.Taxyear
+	--	,PgCalc.STATUS
+	--	,PgCalc.ContactID
+	--	,Pgcalc.ContactRoleCode
+	--	,PgCalc.InstructionID
+	--	,PgCalc.BeneficiaryDistributionID
+	--	,PgCalc.PeriodEndDate
+	--	,PgCalc.Memo
+	--	,PgCalc.Comment
+	--	,PgCalc.ModifiedDate
+	--	,PgCalc.ModifiedBy
+	--	,PgCalc.CreatedDate
+	--	,PgCalc.CreatedBy
+	--	,PgCalc.MatchType
+	--	,GiftWrapPaymentReviewDate
+	--	,GiftWrapPaymentReviewedBy
+	--	,@User
+	--FROM TBL_PP_PGCalcPaymentDataMerged Pgcalc
+	--INNER JOIN #TBL_Paymentdata TmpData
+	--	ON PgCalc.MergedPGCalcPaymentID = TmpData.ScheduleID
+	--WHERE ISNull(ErrorMessage, '') = ''
+	---Update TBL_PP_PGCalcPaymentDataMerged			
+	UPDATE TBL_PP_PGCalcPaymentDataMerged
+	SET PaymentID = Benpmnt.PaymentID
+		,STATUS = 'Posted'
+		,ModifiedBy = @User
+		,ModifiedDate = GETDATE()
+	FROM TBL_PP_PGCalcPaymentDataMerged Pgcalc
+	INNER JOIN #TBL_Paymentdata TmpData
+		ON Pgcalc.MergedPGCalcPaymentID = TmpData.ScheduleID
+			AND TmpData.PaymentType = 'PGCalcImport'
+	INNER JOIN TBL_PP_BeneficiaryPayment Benpmnt
+		ON Benpmnt.TransactionNumber = TmpData.TransactionNumber
+	WHERE ISNull(ErrorMessage, '') = ''
+		-- 03-mar-2014: Salih - Fix for the issue #16174 - Added check for the Transaction Number
+		AND ISNull(TmpData.TransactionNumber, '') <> ''
+
+	---Update TBL_PP_PGCAlcPaymentData
+	UPDATE TBL_PP_PGCAlcPaymentData
+	SET PaymentID = Pgcalcmerg.PaymentID
+	FROM TBL_PP_PGCAlcPaymentData PgCalcData
+	INNER JOIN TBL_PP_PGCalcPaymentDataRelation PgCalcReln
+		ON PgCalcReln.PGCalcPaymentID = PgCalcData.PGCalcPaymentID
+	INNER JOIN TBL_PP_PGCalcPaymentDataMerged Pgcalcmerg
+		ON Pgcalcmerg.MergedPGCalcPaymentID = PgCalcReln.MergedPGCalcPaymentID
+
+	--Updating Status in ValidationResult table for records which has just been posted & has an entry in that table
+	UPDATE dbo.TBL_PP_ValidationResult
+	SET STATUS = 'Posted'
+		,UserID = @User
+	FROM TBL_PP_ValidationResult ValRslt
+	INNER JOIN #TBL_Paymentdata TmpData
+		ON PaymentScheduleID = ScheduleID
+	INNER JOIN TBL_PP_BeneficiaryPayment BenPmnt
+		ON BenPmnt.TransactionNumber = TmpData.TransactionNumber
+			AND ValRslt.STATUS = 'A'
+			AND ValRslt.PaymentType IN (
+				'BeneficiaryPayment'
+				,'PGCalcImport'
+				)
+			AND ISNull(ErrorMessage, '') = ''
+			AND ISNull(TmpData.TransactionNumber, '') <> ''
+
+	--IF Auto Posting then Update TBL_PP_PaymentPostingProcessLog
+	SET @UnpostedCount = @UnpostedCount - @PostedCount
+
+	IF @PostType = 'TRUE'
+	BEGIN
+		UPDATE TBL_PP_PaymentPostingProcessLog
+		SET PaymentsPosted = @PostedCount
+			,PaymentsNotPosted = @UnpostedCount
+		WHERE PaymentPostingProcessLogID = @PaymentProcessID
+	END
+
+	----Insert entry into ValidationResult Table for payments which were not successful i.e. TransactionID not received
+	INSERT INTO TBL_PP_ValidationResult (
+		PaymentScheduleID
+		,RuleID
+		,PaymentType
+		,ErrorDetails
+		,IsAcknowledged
+		,STATUS
+		,RunDate
+		,UserID
+		)
+	SELECT ScheduleID
+		,@RuleID
+		,PaymentType
+		,ErrorMessage
+		--,@RuleMessage
+		,0
+		,'A'
+		,getdate()
+		,@User
+	FROM #TBL_Paymentdata
+	WHERE ISNull(ErrorMessage, '') <> ''
+		-- 03-mar-2014: Salih - Fix for the issue #16174 - Added check for the Transaction Number
+		OR ISNull(TransactionNumber, '') = ''
+
+	-- 06/18/2014: Anand - Storing record version in temp table and returning for maintaining record version after posting data from Account payout screen
+	IF @PostType = 'FALSE'
+	BEGIN
+		INSERT INTO #ReturnData (
+			PaymentType
+			,ScheduleID
+			,PaymentID
+			,ScheduleRecordVersion
+			,APSRecordVersion
+			,Return_Status
+			,TransactionNumber
+			)
+		SELECT TmpData.PaymentType
+			,TmpData.ScheduleID
+			,benePay.PaymentID
+			,benePay.RecordVersion
+			,aps.RecordVersion
+			,@ReturnStatus
+			,TmpData.TransactionNumber
+		FROM #TBL_Paymentdata TmpData
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule benePay
+			ON TmpData.ScheduleID = benePay.BPScheduleID
+		INNER JOIN TBL_PP_AccountPayoutSchedule aps
+			ON aps.APScheduleID = benePay.APScheduleID
+		WHERE benePay.PaymentID > 0
+			AND TmpData.PaymentType = 'BeneficiaryPayment'
+		
+		UNION ALL
+		
+		SELECT TmpData.PaymentType
+			,TmpData.ScheduleID
+			,pgcalc.PaymentID
+			,pgcalc.RecordVersion
+			,NULL
+			,@ReturnStatus
+			,TmpData.TransactionNumber
+		FROM #TBL_Paymentdata TmpData
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged pgcalc
+			ON TmpData.ScheduleID = pgcalc.MergedPGCalcPaymentID
+		WHERE pgcalc.PaymentID > 0
+			AND TmpData.PaymentType = 'PGCalcImport'
+
+		-- 26-jun-2014  Salih: Removed 'select * from' Usage.
+		SELECT PaymentType
+			,ScheduleID
+			,PaymentID
+			,PaymentRecordVersion
+			,ScheduleRecordVersion
+			,APSRecordVersion
+			,Return_Status
+			,TransactionNumber
+		FROM #ReturnData
+	END
+
+	IF OBJECT_ID('tempdb..#TBL_Paymentdata') IS NOT NULL
+		DROP TABLE #TBL_Paymentdata
+
+	IF OBJECT_ID('tempdb..#ReturnData') IS NOT NULL
+		DROP TABLE #ReturnData
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @ReturnStatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

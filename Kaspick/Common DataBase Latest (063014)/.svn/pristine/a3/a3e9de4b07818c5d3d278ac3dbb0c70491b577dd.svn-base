@@ -1,0 +1,89 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetManagerCode]    Script Date: 05/23/2013 12:11:16 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetManagerCode]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetManagerCode]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetManagerCode]    Script Date: 05/23/2013 12:11:16 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name			:   USP_PP_GetManagerCode                      
+** Short Desc	:	To Get Manager Codes from Kasper - staffrole
+*                  
+**                      
+** Full Description: To Get Manager Codes from Kasper - Staffrole based on user and group
+**                              
+** Input Arguments:   ManagerGroups,Userid  
+**         
+** Sample Call     
+        
+	 EXEC USP_PP_GetManagerCode 'My Manager Codes', 100134 
+	 EXEC USP_PP_GetManagerCode 'My Backup Manager Codes', 100134 
+	 EXEC USP_PP_GetManagerCode 'All Manager Codes', 100134 
+	 EXEC USP_PP_GetManagerCode 'Assigned', 100110 
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha  
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Jun-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 23/09/2013	Ashvin				Adding Assigned Manager Code Group (Required for Paragon - Valuation and Auto Scheduler)
+** 03/12/2013	Saravanan			Added All Customer Account Numbers,My Customer Account Numbers,My Backup Customer Account Numbers as part of Account Payout Module
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetManagerCode] @ManagerGroup AS VARCHAR(35)
+	,@UserId AS INT = NULL
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT DISTINCT ManagerCode
+	FROM TBL_KS_StaffRole
+	WHERE IsPrimary = CASE @ManagerGroup
+			WHEN 'My Manager Codes'
+				THEN 1
+			WHEN 'My Backup Manager Codes'
+				THEN 0
+			WHEN 'All Manager Codes'
+				THEN IsPrimary
+			When 'Assigned'
+				Then IsPrimary
+			WHEN 'My Customer Account Numbers'
+				THEN 1
+			WHEN 'My Backup Customer Account Numbers'
+				THEN 0
+			WHEN 'All Customer Account Numbers'
+				THEN IsPrimary
+			ELSE - 999
+			END
+		AND USerID = CASE 
+			WHEN (@ManagerGroup = 'All Manager Codes' OR @ManagerGroup = 'All Customer Account Numbers' )
+				THEN UserID
+			ELSE @UserID
+			END
+END
+

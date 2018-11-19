@@ -1,0 +1,78 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeRestrictionList'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_GetTradeRestrictionList;
+
+	PRINT 'DROPPED USP_EX_GetTradeRestrictionList';
+END
+GO
+
+/******************************************************************************        
+** New Name : USP_EX_GetTradeRestrictionList
+** Old Name : USP_EIS_TR_GetTradeRestrictionList  
+** Short Desc : Gets a list of Trade Restrictions for a given Account ID   
+**        
+** Full Description        
+**                
+**        
+** Sample Call        
+        EXEC USP_EIS_TR_GetTradeRestrictionList 103938  
+   -- parameters        
+**        
+** Return values: NONE        
+**        
+**        
+** Standard declarations        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds        
+**         
+** Created By :  Soorya   
+** Company  :  Kaspick & Company        
+** Project  :  Enfuego3B  
+** Created DT :  10/25/2010        
+**                    
+*******************************************************************************        
+**       Change History        
+*******************************************************************************        
+** Date:        Author:  Bug #     Description:                           Rvwd        
+** --------     -------- ------    -------------------------------------- --------        
+** 8-Apr-2014   Abhijith    EXCREQ 7.4
+******************************************************************************        
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION        
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_GetTradeRestrictionList] (@AccountID CHAR(14))
+AS
+BEGIN
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+		--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+
+	SELECT TradeRestrictionID
+		,TradRstnTypMstr.RestrictionType AS TradeRestrictionType
+		,SecuritySymbol
+		,RestrictionStartDate AS StartDate
+		,RestrictionEndDate AS EndDate
+		,KsUser.LoginName AS CreatedBy
+		,RestrictionComment AS Comments
+	FROM TBL_TR_TradeRestriction TradRstn
+	INNER JOIN TBL_TR_TradeRestrictionTypeMaster TradRstnTypMstr ON TradRstnTypMstr.RestrictionTypeID = TradRstn.TradeRestrictionTypeID
+	INNER JOIN TBL_KS_User KsUser ON KsUser.UserId = TradRstn.CreatedUserID
+	WHERE TradRstn.CustomerAccountNumber = @AccountID
+		AND TradRstn.IsActive = 1
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_GetTradeRestrictionList'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_GetTradeRestrictionList';
+END

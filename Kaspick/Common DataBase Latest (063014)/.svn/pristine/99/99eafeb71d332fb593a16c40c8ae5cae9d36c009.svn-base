@@ -1,0 +1,228 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_DelPGCalcActivityConsole]    Script Date: 08/13/2013 09:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_DelPGCalcActivityConsole]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_DelPGCalcActivityConsole]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_DelPGCalcActivityConsole]    Script Date: 08/13/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_DelPGCalcActivityConsole                      
+** Short Desc: To delete PGCal Payment data
+**                      
+** Full Description: To delete PGCal Payment data for Activity Console        
+**        
+**                              
+** Input Arguments:  
+		@XMLDATA xml
+ 
+**         
+** Sample Call     
+
+DECLARE @Ret INT    
+ EXEC USP_PP_DelPGCalcActivityConsole    
+		'<PGCalcPaymentDataCollection><InsertList></InsertList><UpdateList></UpdateList> <DeleteList>
+			<PGCalcPaymentData UserId="1" PGCalcPaymentID="16"  /> 
+			<PGCalcPaymentData UserId="1" PGCalcPaymentID="17"  />  
+		</DeleteList></PGCalcPaymentDataCollection>'  
+		,@Ret output     
+		Select @Ret 
+
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 13-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_DelPGCalcActivityConsole] @XMLDATA XML
+	,@ReturnStatus INT
+OUTPUT AS
+
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000 -- 30 seconds 
+	--  Variable Data Assignment  --      
+	SET @Returnstatus = 0
+
+	-- Body of procedure  --        
+	CREATE TABLE #TmpXmlData (
+		MergedPGCalcPaymentId INT
+		,CurrentUserID INT
+		)
+
+	DECLARE @UserID INT
+
+	----Insert input data into temp table
+	INSERT INTO #TmpXmlData
+	SELECT XMLDATA.item.value('@PGCalcPaymentID[1]', 'INT') AS MergedPGCalcPaymentID
+		,XMLDATA.item.value('@UserId[1]', 'INT') AS CurrentUserID
+	FROM @XMLDATA.nodes('//PGCalcPaymentDataCollection/DeleteList/PGCalcPaymentData') AS XMLDATA(item)
+
+	SELECT DISTINCT @UserID = CurrentUserID
+	FROM #TmpXmlData
+
+	DELETE
+	FROM TBL_PP_PGCAlcPaymentData
+	WHERE PGCalcPaymentID IN (
+			SELECT PGCalcPaymentID
+			FROM TBL_PP_PGCalcPaymentDataRelation PGCalcRln
+			INNER JOIN #TmpXmlData TmpXml
+				ON PGCalcRln.MergedPGCalcPaymentID = TmpXml.MergedPGCalcPaymentId
+			)
+
+	DELETE
+	FROM TBL_PP_PGCalcPaymentDataRelation
+	WHERE MergedPGCalcPaymentId IN (
+			SELECT MergedPGCalcPaymentId
+			FROM #TmpXmlData
+			)
+
+	INSERT INTO TBL_PP_Audit_PgCalcPaymentDataMerged (
+		AuditUserId
+		,AuditDatetime
+		,AuditType
+		,AuditDetails
+		,MergedPGCalcPaymentID
+		,PaymentBatch
+		,ManagerCode
+		,CustomerAccountNumber
+		,PersonCode
+		,PayeeName
+		,PaymentAmount
+		,PaymentDate
+		,SeparateCheck
+		,Account1
+		,Account2
+		,GiftDate
+		,PIFUnits
+		,PIFValue
+		,PIFIncome
+		,TaxWithholding
+		,PaymentID
+		,EPD
+		,Taxyear
+		,STATUS
+		,ContactID
+		,ContactRoleCode
+		,InstructionID
+		,beneficiaryDistributionID
+		,PeriodEndDate
+		,Memo
+		,Comment
+		,MatchType
+		,GiftWrapPaymentReviewDate
+		,GiftWrapPaymentReviewedBy
+		,ModifiedDate
+		,ModifiedBy
+		,CreatedDate
+		,CreatedBy
+		,DeletedUserId
+		)
+	SELECT @UserID
+		,GETDATE()
+		,'D'
+		,'LOGIN_NAME->' + SYSTEM_USER + ',SYSTEM_ID->' + HOST_ID() + ',HOST_NAME->' + HOST_NAME() + ',USER->' + USER
+		,PgCalc.MergedPGCalcPaymentID
+		,PgCalc.PaymentBatch
+		,PGCalc.ManagerCode
+		,PgCalc.CustomerAccountNumber
+		,PgCalc.PersonCode
+		,PgCalc.PayeeName
+		,PgCalc.PaymentAmount
+		,PgCalc.PaymentDate
+		,PgCalc.SeparateCheck
+		,PgCalc.Account1
+		,PgCalc.Account2
+		,PgCalc.GiftDate
+		,PgCalc.PIFUnits
+		,PgCalc.PIFValue
+		,PgCalc.PIFIncome
+		,PgCalc.TaxWithholding
+		,PgCalc.PaymentID
+		,PgCalc.EPD
+		,PgCalc.Taxyear
+		,PgCalc.STATUS
+		,PgCalc.ContactID
+		,PgCalc.ContactRoleCode
+		,PgCalc.InstructionID
+		,PgCalc.beneficiaryDistributionID
+		,PgCalc.PeriodEndDate
+		,PgCalc.Memo
+		,PgCalc.Comment
+		,PgCalc.MatchType
+		,PgCalc.GiftWrapPaymentReviewDate
+		,PgCalc.GiftWrapPaymentReviewedBy
+		,PgCalc.ModifiedDate
+		,PgCalc.ModifiedBy
+		,PgCalc.CreatedDate
+		,PgCalc.CreatedBy
+		,@UserID
+	FROM TBL_PP_PGCalcPaymentDataMerged PGCalc
+	WHERE MergedPGCalcPaymentID IN (
+			SELECT MergedPGCalcPaymentID
+			FROM #TmpXmlData
+			)
+
+	DELETE
+	FROM TBL_PP_PGCalcPaymentDataMerged
+	WHERE MergedPGCalcPaymentID IN (
+			SELECT MergedPGCalcPaymentID
+			FROM #TmpXmlData
+			)
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	SET @Returnstatus = - 1
+
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+
+	PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+END CATCH

@@ -1,0 +1,119 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule]    Script Date: 08/12/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule]    Script Date: 08/12/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule                      
+** Short Desc: To get Manager Payment rule   
+**                      
+** Full Description:To get Manager Payment rule for Beneficiary Payment/PGCalc Payment type          
+**        
+**                            
+** Input Arguments: 
+@UserId INT ,
+@Type Bit =1--auto  
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule 1
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 12-Aug-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+                
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineBeneficiaryPaymentManagerMWareRule]
+
+@UserId INT ,
+@Type Bit =1--auto                     
+                  
+AS 
+	BEGIN TRY        
+        
+		--  Initial Set statements  --        
+		SET NOCOUNT ON;        
+		SET LOCK_TIMEOUT                30000;   -- 30 seconds 
+		
+		---Declare Variable
+		DECLARE @RuleID INT
+		
+		---Assigning value to Variable
+		SELECT @RuleID = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Missing MW client payment rule'
+			AND RuleCategory = 'Beneficiary payment'
+         
+     
+        
+		-- Body of procedure  --               
+		---Return Data
+		SELECT PaymentType
+			,ScheduleID
+			,@RuleID AS RuleID
+			,'DaysValue' AS Attribute
+			,ISNULL(DaysValue, - 1) AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN TBL_PP_BeneficiaryPayoutSchedule BenPay ON StgData.Scheduleid = BenPay.BPScheduleID
+		INNER JOIN TBL_PP_AccountPayoutSchedule AccntPay ON BenPay.APScheduleid = AccntPay.APScheduleID
+		LEFT JOIN TBL_PP_ManagerRule MgrRule ON AccntPay.ManagerCode = MgrRule.ManagerCode
+			AND MgrRule.DaysValue IS NOT NULL --- is Middle Ware payment rule.  
+		WHERE StgData.PaymentType = 'Beneficiarypayment'
+			AND UserID = @UserId
+		
+		UNION ALL
+		
+		SELECT PaymentType
+			,ScheduleID
+			,@RuleID AS RuleID
+			,'DaysValue' AS Attribute
+			,ISNULL(DaysValue, - 1) AS ActualValue
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput StgData
+		INNER JOIN TBL_PP_PGCalcPaymentDataMerged pgcalc ON StgData.ScheduleID = pgcalc.MergedPGCalcPaymentID
+		LEFT JOIN TBL_PP_ManagerRule MgrRule ON pgcalc.ManagerCode = MgrRule.ManagerCode
+			AND MgrRule.DaysValue IS NOT NULL --- is Middle Ware payment rule.  
+		WHERE StgData.PaymentType = 'PGCalcImport'
+			AND UserID = @UserId
+
+   
+END TRY          
+BEGIN CATCH
+
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+	
+END CATCH 
+
+SET NOCOUNT OFF;

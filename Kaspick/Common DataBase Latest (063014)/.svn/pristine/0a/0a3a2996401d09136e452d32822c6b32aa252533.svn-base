@@ -1,0 +1,88 @@
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_GetValidationRules'
+		)
+BEGIN
+	DROP PROCEDURE USP_BR_FASB_GetValidationRules;
+
+	PRINT 'DROPPED USP_BR_FASB_GetValidationRules';
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/******************************************************************************            
+** Name		  : USP_BR_FASB_GetValidationRules
+** Old Name   : USP_EIS_RPT_FASB_VALIDATION_RULES_SelProc            
+** Short Desc :Selects all the validation rules for FASB
+**            
+** Full Description            
+**                
+**            
+** Return values: NONE            
+**     
+** Sample Call  
+**      
+** EXEC USP_BR_FASB_GetValidationRules 'FASB'         
+**             
+** Created By : Ganapati      
+** Company  :  Kaspick & Company            
+** Project  :  FASB            
+** Created DT :  Aug/25/2012            
+**                        
+*******************************************************************************            
+**       Change History            
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------     -------- ------    -------------------------------------- --------            
+**  Aug/10/2012		Ganapati		Created    
+    Oct/18/2012		Ganapati		Added @RuleCategory parameter
+**  Nov/19/12		Saravanan		Modified - re-mapped validation Rules table from TBL_EIS_PP_Validation_Rules to TBL_EIS_DT_Validation_Rules
+**  09/05/2014		Srikanth R		Migrated as part of BOI
+******************************************************************************            
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION            
+*******************************************************************************/       
+  
+CREATE PROCEDURE [dbo].[USP_BR_FASB_GetValidationRules]
+(
+	@RuleCategory varchar(25)
+)
+AS
+BEGIN
+	----Clear Validation Result table
+	DELETE FROM TBL_BR_FASBValidationResult
+	
+	----Select validation rules
+	--Select ValidationRuleID,
+	--RuleName,
+	--SPName
+	--from TBL_EIS_RPT_FASB_VALIDATION_RULES
+	--where IsActive = 1 order by ExecutionOrder
+	SELECT
+		ValidationRuleID, DisplayMessage AS RuleName, SPName 
+	FROM
+		TBL_DLV_ValidationRule VR
+	INNER JOIN
+		TBL_DLV_Deliverable D
+	ON
+		VR.DeliverableID = D.DeliverableID 
+	WHERE
+		D.DeliverableName = @RuleCategory
+		AND VR.IsActive = 1
+	ORDER BY
+		VR.ExecutionOrder
+END
+GO
+IF EXISTS (
+		SELECT 1
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_BR_FASB_GetValidationRules'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_BR_FASB_GetValidationRules';
+END

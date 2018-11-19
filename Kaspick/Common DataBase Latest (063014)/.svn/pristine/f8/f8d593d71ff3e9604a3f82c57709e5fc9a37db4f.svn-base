@@ -1,0 +1,392 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_UpdValuation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_UpdValuation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_UpdValuation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_UpdValuation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_UpdValuation                      
+** Short Desc: Updating Valuation Details and tracking the old records . 
+**                      
+** Full Description: Updating Valuation Details and tracking the old records  . 
+**      
+**                              
+** Input Arguments:  @Action VARCHAR(50)
+**	,@XMLValuation XML
+**	,@UserID INT
+**	,@Comment VARCHAR(8000)
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT         
+** Sample Call     
+
+DECLARE @XMLValuation XML
+DECLARE @ReturnStatus INT = - 1
+DECLARE @ErrorDesc VARCHAR(8000)
+SET @XMLValuation = '<ValuationCollection> <UpdateList> <Valuation ValuationID = "156" RecordVersion = "0x00000000020A2066" OtherAdjustment = "100.00" CurrentStatus = "Cancelled" CurrentStatusID = "4" GiftWrapCashtracInput = "1" GiftWrapMVDARptGenerated = "1" /> </UpdateList> 
+                     </ValuationCollection>'
+EXEC USP_PV_UpdValuation  'Completed' ,@XMLValuation,1,'TestComplete',@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_UpdValuation] (
+	@Action VARCHAR(50)
+	,@XMLValuation XML
+	,@UserID INT
+	,@Comment VARCHAR(8000)
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  -- 
+	IF EXISTS (
+			SELECT *
+			FROM TEMPDB.DBO.SYSOBJECTS
+			WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpValuationData]')
+			)
+	BEGIN
+		DROP TABLE [DBO].[#TmpValuationData]
+	END
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		CREATE TABLE #TmpValuationData (
+			ValuationID INT
+			,RecordVersion VARCHAR(1000)
+			,OtherAdjustment DECIMAL
+			,CurrentStatusID INT
+			,CurrentStatus VARCHAR(50)
+			,GiftWrapCashtracInput BIT
+			,GiftWrapMVDARptGenerated BIT
+			)
+
+		DECLARE @ActionStatusID INT
+
+		---Inserting input XML into Temp Table	        
+		INSERT INTO #TmpValuationData (
+			ValuationID
+			,RecordVersion
+			,OtherAdjustment
+			,CurrentStatusID
+			,CurrentStatus
+			,GiftWrapCashtracInput
+			,GiftWrapMVDARptGenerated
+			)
+		SELECT XmlInput.Item.value('@ValuationID[1]', 'INT') AS PaymentID
+			,XmlInput.Item.value('@RecordVersion[1]', 'VARCHAR(1000)') AS RecordVersion
+			,XmlInput.Item.value('@OtherAdjustment[1]', 'DECIMAL(20,4)') AS OtherAdjustment
+			,XmlInput.Item.value('@CurrentStatusID[1]', 'INT') AS CurrentStatusID
+			,XmlInput.Item.value('@CurrentStatus[1]', 'VARCHAR(50)') AS CurrentStatus
+			,XmlInput.Item.value('@GiftWrapCashtracInput[1]', 'BIT') AS GiftWrapCashtracInput
+			,XmlInput.Item.value('@GiftWrapMVDARptGenerated[1]', 'BIT') AS GiftWrapMVDARptGenerated
+		FROM @XMLValuation.nodes('//ValuationCollection/UpdateList/Valuation') AS XmlInput(Item)
+
+		IF NOT EXISTS (
+				SELECT 1
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+						AND sys.fn_varbintohexsubstring(1, PVal.RecordVersion, 1, 0) <> TmpValData.RecordVersion
+				)
+		BEGIN
+			IF @Action = 'Comment'
+			BEGIN
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			IF @Action = 'EditMisc'
+			BEGIN
+				UPDATE TBL_PV_Valuation
+				SET OtherAdjustment = TmpValData.OtherAdjustment
+					,FinalFMV = InitialFMV + PendingSeverence + PendingGiftAddition + EarlyTradedPayments + GiftwrapPaymentsAsOfDate + TmpValData.OtherAdjustment
+					,NAV = CASE 
+						WHEN (
+								AccountType = 'PIF'
+								AND GiftwrapEquityUnit > 0
+								)
+							THEN ((InitialFMV + PendingSeverence + PendingGiftAddition + TmpValData.OtherAdjustment) / GiftwrapEquityUnit)
+						ELSE 0
+						END
+					,Comment = @Comment
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			IF (@Action = 'Approved')
+			BEGIN
+				SELECT @ActionStatusID = StatusID
+				FROM TBL_PV_ValuationStatus
+				WHERE STATUS = 'Approved'
+
+				--insert previous status into tracker table  
+				INSERT INTO TBL_PV_ValuationTracker (
+					ValuationID
+					,ModifiedDate
+					,ModifiedBy
+					,PreviousStatusID
+					,PreviousStatus
+					,CurrentStatusID
+					,CurrentStatus
+					)
+				SELECT TmpValData.ValuationID
+					,GETDATE() AS ModifiedDate
+					,@UserID AS ModifiedBy
+					,TmpValData.CurrentStatusID AS PreviousStatusID
+					,TmpValData.CurrentStatus AS PreviousStatus
+					,@ActionStatusID
+					,'Approved'
+				FROM #TmpValuationData TmpValData
+
+				--update current status with comments  
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment + CHAR(13) + CHAR(10) + PVal.Comment
+					,CurrentStatusID = @ActionStatusID
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+			
+			IF @Action = 'Rejected'
+			BEGIN
+				SELECT @ActionStatusID = StatusID
+				FROM TBL_PV_ValuationStatus
+				WHERE STATUS = 'RequiresReview'
+
+				--insert prv status into tracker table  
+				INSERT INTO TBL_PV_ValuationTracker (
+					ValuationID
+					,ModifiedDate
+					,ModifiedBy
+					,PreviousStatusID
+					,PreviousStatus
+					,CurrentStatusID
+					,CurrentStatus
+					)
+				SELECT TmpValData.ValuationID
+					,GETDATE() AS ModifiedDate
+					,@UserID AS ModifiedBy
+					,TmpValData.CurrentStatusID AS PreviousStatusID
+					,TmpValData.CurrentStatus AS PreviousStatus
+					,@ActionStatusID
+					,'RequiresReview'
+				FROM #TmpValuationData TmpValData
+
+				--update current status with comments  
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment + CHAR(13) + CHAR(10) + PVal.Comment
+					,CurrentStatusID = @ActionStatusID
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			IF @Action = 'Cancelled'
+			BEGIN
+				SELECT @ActionStatusID = StatusID
+				FROM TBL_PV_ValuationStatus
+				WHERE STATUS = 'Cancelled'
+
+				--insert prv status into tracker table  
+				INSERT INTO TBL_PV_ValuationTracker (
+					ValuationID
+					,ModifiedDate
+					,ModifiedBy
+					,PreviousStatusID
+					,PreviousStatus
+					,CurrentStatusID
+					,CurrentStatus
+					)
+				SELECT TmpValData.ValuationID
+					,GETDATE() AS ModifiedDate
+					,@UserID AS ModifiedBy
+					,TmpValData.CurrentStatusID AS PreviousStatusID
+					,TmpValData.CurrentStatus AS PreviousStatus
+					,@ActionStatusID
+					,'Cancelled'
+				FROM #TmpValuationData TmpValData
+
+				--update current status with comments  
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment + CHAR(13) + CHAR(10) + PVal.Comment
+					,CurrentStatusID = @ActionStatusID
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			IF (@Action = 'ReadyForApproval')
+			BEGIN
+				SELECT @ActionStatusID = StatusID
+				FROM TBL_PV_ValuationStatus
+				WHERE STATUS = 'ReadyForApproval'
+
+				--insert prv status into tracker table  
+				INSERT INTO TBL_PV_ValuationTracker (
+					ValuationID
+					,ModifiedDate
+					,ModifiedBy
+					,PreviousStatusID
+					,PreviousStatus
+					,CurrentStatusID
+					,CurrentStatus
+					)
+				SELECT TmpValData.ValuationID
+					,GETDATE() AS ModifiedDate
+					,@UserID AS ModifiedBy
+					,TmpValData.CurrentStatusID AS PreviousStatusID
+					,TmpValData.CurrentStatus AS PreviousStatus
+					,@ActionStatusID
+					,'ReadyForApproval'
+				FROM #TmpValuationData TmpValData
+
+				--update current status with comments  
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment + CHAR(13) + CHAR(10) + PVal.Comment
+					,CurrentStatusID = @ActionStatusID
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			IF (@Action = 'GWInput')
+			BEGIN
+				SELECT @ActionStatusID = StatusID
+				FROM TBL_PV_ValuationStatus
+				WHERE STATUS = 'Completed'
+
+				--insert prv status into tracker table  
+				INSERT INTO TBL_PV_ValuationTracker (
+					ValuationID
+					,ModifiedDate
+					,ModifiedBy
+					,PreviousStatusID
+					,PreviousStatus
+					,CurrentStatusID
+					,CurrentStatus
+					)
+				SELECT TmpValData.ValuationID
+					,GETDATE() AS ModifiedDate
+					,@UserID AS ModifiedBy
+					,TmpValData.CurrentStatusID AS PreviousStatusID
+					,TmpValData.CurrentStatus AS PreviousStatus
+					,@ActionStatusID
+					,'Completed'
+				FROM #TmpValuationData TmpValData
+
+				--update current status with comments  
+				UPDATE TBL_PV_Valuation
+				SET Comment = @Comment + PVal.Comment + CHAR(13) + CHAR(10)
+					,GiftWrapCashtracInput = TmpValData.GiftWrapCashtracInput
+					,GiftWrapMVDARptGenerated = TmpValData.GiftWrapMVDARptGenerated
+					,CurrentStatusID = @ActionStatusID
+				FROM TBL_PV_Valuation PVal
+				INNER JOIN #TmpValuationData TmpValData
+					ON TmpValData.ValuationID = PVal.ValuationID
+			END
+
+			SET @ReturnStatus = 0;
+			SET @ErrorDesc = '';
+
+			--Return fresh resultset  
+			SELECT PVal.ValuationID
+				,ValuationDate
+				,Reconfromdate
+				,Recontodate
+				,CustomerAccountNumber
+				,ManagerCode
+				,ManageCodeName
+				,PVal.CurrentStatusID
+				,PValStat.STATUS AS CurrentStatus
+				,InitialFMV
+				,PendingSeverence
+				,PendingGiftAddition
+				,EarlyTradedPayments
+				,GiftwrapPaymentsAsOfDate
+				,InnoTrustPaymentsAsOfDate
+				,PVal.OtherAdjustment
+				,FinalFMV
+				,GiftwrapEquityUnit
+				,NAV
+				,ReconcilliationType
+				,Comment
+				,PVal.RecordVersion
+				,ReconWithDW
+				,PVal.GiftWrapCashtracInput
+				,PVal.GiftWrapMVDARptGenerated
+				,PVal.CreatedDate
+				,PVal.CreatedBy
+				,PVal.ModifiedDate
+				,PVal.ModifiedBy
+				,Usr.LoginName AS 'LoginName'
+				,AccountType
+				,HasGiftExclusion
+				,GiftExclusionComment
+				,ValuationType
+			FROM TBL_PV_Valuation PVal
+			INNER JOIN #TmpValuationData TmpValData
+				ON TmpValData.ValuationID = PVal.ValuationID
+			INNER JOIN TBL_KS_User Usr
+				ON Usr.UserID = PVal.ModifiedBy
+			INNER JOIN TBL_PV_ValuationStatus PValStat
+				ON PValStat.StatusID = PVal.CurrentStatusID
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+			SET @ErrorDesc = 'Dirty Write';
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+	END CATCH
+END

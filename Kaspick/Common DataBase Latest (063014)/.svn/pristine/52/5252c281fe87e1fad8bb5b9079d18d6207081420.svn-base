@@ -1,0 +1,136 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc'
+		)
+BEGIN
+	DROP PROCEDURE USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc;
+
+	PRINT 'DROPPED USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc';
+END
+GO
+
+/******************************************************************************                  
+** Name:     USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc                  
+** Short Desc: Retrieves PortfolioCode and PortfolioDescription for deliverable items. 
+**                  
+** Full Description: To retrieve  details
+**                          
+** Input Arguments: 
+**					
+** Sample Call 
+**		
+	DECLARE @XMLDeliverableItems XML
+    SET @XMLDeliverableItems ='<DeliverableItemsDataToValidateCollection><InsertList></InsertList><UpdateList></UpdateList><DeleteList></DeleteList><SelectList><DeliverableItemsDataToValidate AccountID="446"  BeneficiaryID="645"  ClientEmployeeID="0"  ClientID="1"  DeliverableItemID="3"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="27"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="104456"  BeneficiaryID="119953"  ClientEmployeeID="0"  ClientID="100089"  DeliverableItemID="2352"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="120019"  DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="100511"  BeneficiaryID="100848"  ClientEmployeeID="0"  ClientID="100019"  DeliverableItemID="1682"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="100346"  
+DeliverableFrequency="A"  /><DeliverableItemsDataToValidate AccountID="105314"  BeneficiaryID="124840"  ClientEmployeeID="0"  ClientID="100135"  DeliverableItemID="2962"  DeliverableQueueID="1"  DonorID="0"  TrustparticipantID="124781"  DeliverableFrequency="A"  /></SelectList></DeliverableItemsDataToValidateCollection>' 
+	EXEC USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc
+    @XMLDeliverableItems
+	
+	
+**									
+** Return values: Null
+**                  
+**                  
+** Standard declarations                  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                  
+**                   
+** Created By: Venugopal B
+** Company   : Kaspick & Company                  
+** Project   : Excelsior  - BeneReport                  
+** Created DT: 08/17/2009                  
+**                              
+*******************************************************************************            
+**       Change History                  
+*******************************************************************************            
+** Date:        Author:  Bug #     Description:                           Rvwd            
+** --------		-------- ------    -------------------------------------- --------            
+** 09/09/2009   Venugopal ET #10313 Deletion of record from BeneReportComments is considered.
+									Inner join is replaced with Left Join for tabel BeneReportComments.   
+   01/08/2009	Venugopal ET #11170 The column TBL_EIS_DT_STG_EndingMarketValue.PortfolioObjectiveDescription
+                                    is used. 
+** 03/12/2012	  Anand Kumar    Changes for Adding Comments as per Stored Procedure standard template. 
+** 03/14/2012	  Anand Kumar    ERD changes implemetation.      
+** 24-Jun-2014		Mukesh		 SP Name Renamed and Formatted
+*******************************************************************************                  
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc]
+	-- paremeters here      
+	@XMLDeliverableItems XML
+AS
+BEGIN
+	--  Initial Set statements  --      
+	--SET NOCOUNT ON;      
+	--SET LOCK_TIMEOUT                30000;   -- 30 seconds      
+	--SET TRANSACTION ISOLATION LEVEL SNAPSHOT;      
+	--  Variable Declarations  --      
+	DECLARE @procname VARCHAR(60);
+	DECLARE @ErrorMessage VARCHAR(1000);
+	DECLARE @ErrorNumber INT;
+	DECLARE @PriorPeriodAdjustmentFlag BIT;
+	-- Variables used for error handling - uncomment if needed      
+	DECLARE @val1 VARCHAR(30);
+	DECLARE @val2 VARCHAR(30);
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @DeliverableItemData TABLE (
+		DeliverableItemID INT
+		,AccountID INT
+		);
+
+	--  Variable Data Assignment  --      
+	SET @procname = 'USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc';
+
+	-- Body of procedure  --      
+	BEGIN TRY
+		INSERT INTO @DeliverableItemData
+		SELECT XMLdoc.DeliverableItemData.value('@DeliverableItemID[1]', 'int') AS DeliverableItemID
+			,XMLdoc.DeliverableItemData.value('@AccountID[1]', 'int') AS AccountID --,    
+		FROM @XMLDeliverableItems.nodes('//DeliverableItemsDataToValidateCollection/SelectList/DeliverableItemsDataToValidate') AS XMLdoc(DeliverableItemData)
+
+		SELECT DID.DeliverableItemID
+			,32 AS RuleID
+			,'MasterObjectiveName' AS Attribute
+			,(
+				CASE 
+					WHEN ISNULL(FA.PortfolioObjectiveDescription, '') = ''
+						THEN 'Null'
+					ELSE 'Not Null'
+					END
+				) AS ActualValue
+			,'' AS DisplayMessage
+		FROM @DeliverableItemData DID
+		INNER JOIN TBL_EIS_DT_DELIVERABLE_ITEMS DI ON DI.DeliverableItemId = DID.DeliverableItemId
+		INNER JOIN TBL_EIS_DT_DELIVERABLE_QUEUE DQ ON DQ.DeliverableQueueId = DI.DeliverableQueueId
+		INNER JOIN TBL_EIS_DT_STG_EndingMarketValue FA ON FA.accountid = DID.AccountID  -- Not changed to Kaspick DB table since AccountID is changed to CustomerAccountNumber
+			AND FA.DQueueId = DQ.DeliverableQueueId
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorMessage = ERROR_MESSAGE();
+		SET @ErrorNumber = ERROR_NUMBER();
+		SET @val1 = '';
+		SET @val2 = '';
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname
+			,@errmsg = @ErrorMessage
+			,@errnbr = @ErrorNumber
+			,@val1 = ''
+			,@val1str = 'USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc: Cannot Select.'
+			,@val2 = ''
+			,@val2str = '';
+	END CATCH
+		-- End of procedure  -- 
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc'
+		)
+BEGIN
+	PRINT 'CREATED USP_EIS_RPT_BR_VE_DQ_MissingInvestmentAllocationDescription_SelProc';
+END

@@ -1,0 +1,122 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetNewGiftFile]    Script Date: 08/19/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetNewGiftFile]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetNewGiftFile]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetNewGiftFile]    Script Date: 08/19/2013 16:48:51 ******/
+SET ANSI_NULLS OFF
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************                      
+** Name		 : USP_SIT_GetNewGiftFile                      
+** Short Desc: Get audit log detail for specified user
+** Full Description: Get audit log detail for specified user
+** Input Arguments:  
+** Sample Call
+ EXEC USP_SIT_GetNewGiftFile 1, 13600
+**
+**
+**
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Lipika Rout 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 27-Aug-14               
+**
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_GetNewGiftFile]  
+(   
+ @giftType varchar(50),  
+ @valuationID int  
+)  
+AS  
+  
+BEGIN  
+  
+SELECT gift.ValuationID  
+     ,gift.GiftKey  
+     ,GDH.DataHubIdentifier  
+     ,gift.GiftType  
+           ,gift.GiftName  
+           ,gift.SortName  
+           ,LTRIM(RTRIM(gift.ManagerRefNumberOne)) AS 'ManagerRefNumberOne'  
+           ,LTRIM(RTRIM(gift.ManagerRefNumberTwo)) AS 'ManagerRefNumberTwo'  
+           ,gift.PriorReferenceNumber  
+           ,gift.PooledType  
+           ,gift.GiftDate  
+           ,gift.GiftPostedDate  
+           ,gift.TaxForm  
+           ,gift.PayOut   
+           ,gift.FirstPaymentDate  
+           ,gift.PaymentFrequency  
+           ,gift.PaymentTiming  
+           ,gift.OriginalGiftAmount  
+           ,gift.OriginalGiftUnit  
+           ,gift.GiftSubType  
+           ,gift.ReserveState  
+           ,gift.Testamentary  
+           ,gift.CharitableDeduction  
+           ,gift.IRSDiscountRate  
+           ,gift.Endowed  
+           ,gift.TotalGiftUnit  
+           ,gift.GiftStatus  
+           ,gift.DistributionAmount  
+           ,gift.UnDistributedInContact  
+           ,LTRIM(RTRIM(gift.TaxID)) AS 'TaxID'  
+           ,gift.AssociationType  
+           ,gift.PartyType  
+           ,gift.FirstName  
+           ,gift.MiddleName  
+           ,gift.LastName  
+           ,gift.Gender  
+           ,gift.BeneficiaryPercentage  
+           ,gift.LifePrecedesTerm  
+           ,gift.HomeAddressLine1  
+           ,gift.HomeAddressLine2  
+           ,gift.HomeCity  
+           ,gift.HomeState  
+           ,gift.HomeZipCode  
+           ,gift.HomeCountry  
+           ,gift.PayToTheOrderOf  
+           ,gift.DateOfBirth  
+           ,gift.PartyStatus  
+           ,gift.DoNotCombineCheck  
+           ,gift.AddressType  
+           ,gift.FundCode  
+           ,gift.ContributionPercentage   
+           ,CP.ManagerCode AS OrgShortName  
+           ,gift.OriginalGiftAmount AS OriginalPooledAmount   
+           FROM  TBL_SIT_GiftAssociation gift  
+           INNER JOIN TBL_PV_Valuation VAL ON VAL.ValuationID =gift.ValuationID  
+     INNER JOIN TBL_PV_ManagerCodeParameter CP on CP.CustomerAccountNumber = VAL.CustomerAccountNumber  
+     LEFT OUTER JOIN TBL_SIT_GiftDataHubIdentifier GDH ON gift.GiftKey = GDH.GiftKey  
+WHERE   
+ gift.GiftType = @giftType   
+ AND gift.ValuationID = @valuationID  
+ --AND gift.GIFT_POSTED_DATE <= @GIFT_POSTED_DATE  
+  
+END   
+  

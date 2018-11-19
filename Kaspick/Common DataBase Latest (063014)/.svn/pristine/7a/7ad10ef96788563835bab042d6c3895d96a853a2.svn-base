@@ -1,0 +1,245 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]    Script Date: 10/21/2013 11:22:21 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]    Script Date: 10/21/2013 11:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_GetValidationEngineMissingPaymentAccount                      
+** Short Desc:  Returns all active/transition accounts
+**                      
+** Full Description:    Returns all active/transition accounts where payments is missing for designated period.        
+**        
+**                              
+** Input Arguments: 
+@UserID INT,
+@Type Bit =1--auto
+
+**         
+** Sample Call     
+
+EXEC USP_PP_GetValidationEngineMissingPaymentAccount  1     
+
+                 	
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-Oct-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 05-feb-2014 Salih			Account Type mapping changes
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetValidationEngineMissingPaymentAccount]
+	-- paremeters here                                
+	@UserID INT
+	,@Type BIT = 1 --auto
+AS
+BEGIN TRY
+	--  Initial Set statements  --        
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds  
+
+	IF @Type = 1
+	BEGIN
+		---Declare Variable
+		DECLARE @RuleID1 INT
+		DECLARE @RuleID2 INT
+		DECLARE @IsruleActive BIT
+		DECLARE @CurrentDate DATETIME
+		DECLARE @PaymentDate DATETIME
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpEligibleCustomerAccountNumber]')
+				)
+		BEGIN
+			DROP TABLE [DBO].[#TmpEligibleCustomerAccountNumber]
+		END
+
+		IF EXISTS (
+				SELECT *
+				FROM TEMPDB.DBO.SYSOBJECTS
+				WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpCustomerAccountNumberContact]')
+				)
+		BEGIN
+			DROP TABLE [DBO].[#TmpCustomerAccountNumberContact]
+		END
+
+		---Assigning value to Variable
+		SELECT @RuleID1 = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Account payment missing for designated period'
+			AND RuleCategory = 'Account'
+
+		SELECT @RuleID2 = RuleID
+		FROM TBL_PP_ValidationRule
+		WHERE RuleName = 'Beneficiary Payment Missing for Designated Period'
+			AND RuleCategory = 'Account'
+
+		SET @CurrentDate = GETDATE()
+		SET @IsruleActive = 0
+
+		SELECT @IsruleActive = IsActive
+		FROM TBL_PP_ValidationRule
+		WHERE ruleid = @RuleID2
+
+		-- Body of procedure  --      
+		CREATE TABLE #TmpEligibleCustomerAccountNumber (
+			ID INT IDENTITY(1, 1) PRIMARY KEY
+			,CustomerAccountNumber VARCHAR(14)
+			,PaymentDate DATETIME
+			,MissingPayment BIT DEFAULT(0)
+			,UserID INT
+			)
+
+		CREATE TABLE #TmpCustomerAccountNumberContact (
+			ID INT IDENTITY(1, 1) PRIMARY KEY
+			,CustomerAccountNumber VARCHAR(14)
+			,ContactID INT
+			,PaymentDate DATETIME
+			,MissingPayment BIT DEFAULT(0)
+			,UserID INT
+			)
+
+		INSERT INTO #TmpEligibleCustomerAccountNumber (
+			CustomerAccountNumber
+			,UserID
+			)
+		SELECT CustomerAccountNumber
+			,UserID
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput
+		WHERE AccountActive = 1
+			--05-feb-2014-Salih: Account Type mapping changes
+			AND AccountTypeCode NOT IN (
+				'PIF'
+				,'GAP'
+				,'GAPR'
+				,'GAPP'
+				)
+			AND UserID = @UserID
+		ORDER BY CustomerAccountNumber
+
+		UPDATE #TmpEligibleCustomerAccountNumber
+		SET PaymentDate = dbo.FN_GetNextDate(@CurrentDate, FirstEventDay, FirstEventMonth, FirstOccurrence, AnnualFrequency)
+		FROM TBL_PP_STG_InnoTrustValidationEngineInput STGData
+		INNER JOIN #TmpEligibleCustomerAccountNumber Accnt
+			ON STGData.CustomerAccountNumber = Accnt.CustomerAccountNumber
+				AND STGData.UserID = Accnt.UserID
+
+		DELETE
+		FROM #TmpEligibleCustomerAccountNumber
+		WHERE PaymentDate IS NULL
+			OR PaymentDate > DATEADD(DAY, 14, @CurrentDate)
+
+		UPDATE TmpAccnt1
+		SET TmpAccnt1.MissingPayment = 1
+		FROM #TmpEligibleCustomerAccountNumber TmpAccnt1
+		WHERE TmpAccnt1.CustomerAccountNumber NOT IN (
+				SELECT CustomerAccountNumber
+				FROM TBL_PP_AccountPayoutSchedule
+				WHERE Taxyear = year(@CurrentDate)
+					AND PaymentDate BETWEEN DATEADD(DAY, - 15, TmpAccnt1.PaymentDate)
+						AND DATEADD(DAY, 15, TmpAccnt1.PaymentDate)
+				)
+
+		IF @IsruleActive = 1
+		BEGIN
+			INSERT INTO #TmpCustomerAccountNumberContact (
+				CustomerAccountNumber
+				,ContactID
+				,PaymentDate
+				,UserID
+				)
+			SELECT DISTINCT STGData.CustomerAccountNumber
+				,STGData.ContactID
+				,TmpAccount.PaymentDate
+				,STGData.UserID
+			FROM TBL_PP_STG_InnoTrustValidationEngineInput STGData
+			INNER JOIN #TmpEligibleCustomerAccountNumber TmpAccount
+				ON STGData.CustomerAccountNumber = TmpAccount.CustomerAccountNumber
+					AND STGData.UserID = TmpAccount.UserID
+			WHERE TmpAccount.MissingPayment = 0
+				AND StgData.PercentOfPayment > 0
+				AND StgData.PercentOfPayment IS NOT NULL
+				AND ISNULL(Stgdata.FixedPayment, 0) = 0
+
+			DELETE
+			FROM TmpCnt1
+			FROM #TmpCustomerAccountNumberContact TmpCnt1
+			WHERE CustomerAccountNumber NOT IN (
+					SELECT CustomerAccountNumber
+					FROM TBL_PP_AccountPayoutSchedule
+					WHERE Taxyear = year(@CurrentDate)
+						AND PaymentDate BETWEEN DATEADD(DAY, - 15, TmpCnt1.PaymentDate)
+							AND DATEADD(DAY, 15, TmpCnt1.PaymentDate)
+					)
+
+			UPDATE TmpCnt1
+			SET TmpCnt1.MissingPayment = 1
+			FROM #TmpCustomerAccountNumberContact TmpCnt1
+			WHERE TmpCnt1.ContactID NOT IN (
+					SELECT ContactID
+					FROM TBL_PP_BeneficiaryPayoutSchedule
+					WHERE Taxyear = year(@CurrentDate)
+						AND Paymentdate BETWEEN DATEADD(DAY, - 15, TmpCnt1.PaymentDate)
+							AND DATEADD(DAY, 15, TmpCnt1.PaymentDate)
+					)
+		END
+
+		---Return Data  
+		SELECT 'Account' AS PaymentType
+			,CustomerAccountNumber AS ScheduleID
+			,@RuleID1 AS RuleID
+			,'MissingPayment' AS Attribute
+			,MissingPayment AS ActualValue
+		FROM #TmpEligibleCustomerAccountNumber
+		WHERE MissingPayment = 1
+		
+		UNION ALL
+		
+		SELECT 'Account' AS PaymentType
+			,Convert(VARCHAR(14), ContactID) AS ScheduleID
+			,@RuleID2 AS RuleID
+			,'BeneMissingPayment' AS Attribute
+			,MissingPayment AS ActualValue
+		FROM #TmpCustomerAccountNumberContact
+		WHERE MissingPayment = 1
+
+		DROP TABLE [DBO].[#TmpEligibleCustomerAccountNumber]
+
+		DROP TABLE [DBO].[#TmpCustomerAccountNumberContact]
+	END
+END TRY
+
+BEGIN CATCH
+	SELECT ERROR_MESSAGE() AS ErrorMessage
+END CATCH
+
+SET NOCOUNT OFF;

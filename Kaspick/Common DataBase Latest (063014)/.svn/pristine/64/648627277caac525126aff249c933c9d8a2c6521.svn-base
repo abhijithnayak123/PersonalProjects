@@ -1,0 +1,92 @@
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Assign]    Script Date: 05/22/2013 11:19:33 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[sp_Deliverable_Assign]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[sp_Deliverable_Assign]
+GO
+
+/****** Object:  StoredProcedure [dbo].[sp_Deliverable_Assign]    Script Date: 05/22/2013 11:19:33 ******/
+/******************************************************************************                      
+** Name:     sp_Deliverable_Assign                      
+** Short Desc: Associates a DeliverableSet with a Client
+**                      
+** Full Description: Associates a DeliverableSet with a Client
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha Narasimha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 18-Jun-14
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE sp_Deliverable_Assign @setID INT
+	,@clientID INT
+	,@lagDays INT
+	,@minDate DATETIME
+AS
+DECLARE @calendarID INT
+	,@key INT
+	,@freq VARCHAR(20)
+
+/* Get ID for new DeliverableDetail */
+SELECT @key = 0
+
+EXEC GetNextUniqueID @IDType = 'DELIVERABLEDETAIL'
+	,@Result = @key OUTPUT
+
+IF @key > 0
+BEGIN
+	/* See if calendar is defined at document level */
+	SELECT @calendarID = Deliverable.CalendarParameterID
+		,@freq = Deliverable.DerivedFrequency
+	FROM Deliverable
+		,DeliverableSet
+	WHERE Deliverable.DeliverableID = DeliverableSet.DeliverableID
+		AND DeliverableSet.DeliverableSetID = @setID
+
+	/* Create DeliverableDetail Row */
+	INSERT INTO DeliverableDetail (
+		DeliverableDetailID
+		,ClientID
+		,DeliverableSetID
+		,DerivedFrequency
+		,LagDays
+		,CalendarParameterID
+		)
+	VALUES (
+		@key
+		,@clientID
+		,@setID
+		,@freq
+		,@lagDays
+		,@calendarID
+		)
+
+	/* Set up horizon */
+	EXEC sp_Deliverable_Schedule @DetailID = @key
+		,@MinDate = @minDate
+END

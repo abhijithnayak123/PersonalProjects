@@ -1,0 +1,92 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetMessageManagement]    Script Date: 05/21/2013 12:52:37 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_GetMessageManagement]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_GetMessageManagement]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_GetMessageManagement]    Script Date: 05/21/2013 12:52:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name:     USP_PP_GetMessageManagement                      
+** Short Desc: To Get the Alliance/Manager level message details
+**                      
+** Full Description: To Get the Alliance/Manager level message details       
+**                              
+** Input Arguments:   
+**         
+** Sample Call     
+ 
+EXEC USP_PP_GetMessageManagement  
+'<MessageManagementCollection>
+			  <MessageManagement MessageMgmtCode="AM" Description="" RemainderMessage="" MarketingMessage=""  RecordVersion="0x0000000000962243"  />
+			  <MessageManagement MessageMgmtCode="ACL" Description="" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			</MessageManagementCollection>',
+			'Manager'
+
+EXEC USP_PP_GetMessageManagement        
+'<MessageManagementCollection>
+			  <MessageManagement MessageMgmtCode="AM" Description="a" RemainderMessage="" MarketingMessage=""  RecordVersion="0x0000000000962243"  />
+			  <MessageManagement MessageMgmtCode="ACL" Description="b" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			  <MessageManagement MessageMgmtCode="zzz" Description="c" RemainderMessage="" MarketingMessage="" RecordVersion="0x0000000000962244"  />
+			</MessageManagementCollection>',
+			'Alliance'
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Niveditha   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 21-May-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_GetMessageManagement] @MessageFilterXML XML
+	,@MessageMgmtType AS VARCHAR(10)
+AS
+SET NOCOUNT ON
+
+BEGIN
+	SELECT XMLCodeInput.MessageMgmtCode
+		,XMLCodeInput.Description
+		,ReminderText
+		,MarketingText
+		,ModUser.LoginName AS LastModifiedBy
+		,MsgMgmt.ModifiedDate AS LastModifiedDate
+		,MsgMgmt.RecordVersion
+	FROM TBL_PP_MessageMgmt MsgMgmt
+	INNER JOIN TBL_KS_User ModUser ON ModUser.UserID = MsgMgmt.ModifiedBy
+	RIGHT OUTER JOIN (
+		SELECT XMLDoc.item.value('@MessageMgmtCode[1]', 'VARCHAR(15)') AS MessageMgmtCode
+			,XMLDoc.item.value('@Description[1]', 'VARCHAR(255)') AS Description
+		FROM @MessageFilterXML.nodes('//MessageManagementCollection/MessageManagement') AS XMLDoc(item)
+		) XMLCodeInput ON XMLCodeInput.MessageMgmtCode = MsgMgmt.MessageMgmtCode
+		AND MessageMgmtType = @MessageMgmtType
+		AND IsDeleted = 0
+END
+GO
+
+

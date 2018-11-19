@@ -1,0 +1,3048 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetPolicyReportingDTL')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetPolicyReportingDTL;
+        PRINT 'DROPPED USP_EX_GetPolicyReportingDTL';
+    END
+GO
+
+
+      
+/******************************************************************************                        
+** Name : USP_EX_GetPolicyReportingDTL  
+** Old Name:     USP_EIS_EX_POLICY_REPORTING_DTLSelProc                         
+** Short Desc: Put in Short Description                        
+**                        
+** Full Description                        
+**                                
+**                        
+** Sample Call  EXEC USP_EX_GetPolicyReportingDTL    100170, "CLIENT"    
+                EXEC USP_EX_GetPolicyReportingDTL    302210, "ACCOUNT"    
+      
+**                        
+** Return values: NONE                        
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: VShivhare                        
+** Company   : Kaspick & Company                        
+** Project   : Excelsior                        
+** Created DT: 05/18/2007                        
+**                                    
+*******************************************************************************                        
+**       Change History                        
+*******************************************************************************                        
+** Date:        Author:  Bug #     Description:                           Rvwd                        
+** --------     -------- ------    -------------------------------------- --------                        
+**05/18/2007 Vshivhare                               
+**10/14/2008 A Chadha   Fix as per the SP08-295 Excelsior Reporting Tab to default Account             
+**10/17/2008 Pramod Pati    Fix for reporting tab last modified field issue. HelpDesk ticket #8997          
+**         Reporting policies to Client level Policiy rather than Global Defaults.            
+**06/01/2009 Pankaja    Added the SP invoke USP_EIS_EX_INDICES_MGMT_DDLSelProc to fetch the Indices Management details        
+**06/05/2009 Saravanan PM  Added New Reporting Policies. Excelsior-BeneReport Enhancement        
+**08/06/2009 Saravanan P Muthu KCBP - Quickbase CR #4 - Bene Report performance inception date change request (Move the field to the Reporting tab on the Beneficiary Report page)      
+         KCBP - ET #10074 - Remove "client" information on account level screen of Reporting tab      
+**09/04/2009 Saravanan PM  ET 10272 - Removed Client Logo Policy Delete Cascading functionality      
+**09/10/2009 Saravanan PM  ET10285 - The FYE used for this is a client field on the Administration tab in the top right corner. The FASB field on the Accounting tab is not to be used      
+**09/27/2009 Saravanan PM  KCBP - ET #10829 - Added Cascading functionality for Client Logo      
+**09/25/2013 Alok - Stanford Enhancements - Added logic to show the saved value of ‘Display Payments on Report’ dropdown    
+**4-Apr-2014 Yugandhar  EXCREQ 5.4        
+** 23/05/2014 MallikArjun   SP Name Rename and Formatted                  
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/                        
+CREATE PROCEDURE USP_EX_GetPolicyReportingDTL --'a','Account'  
+ (    
+  @ENTITYID   VARCHAR(15)  
+ ,@ENTITYTYPE VARCHAR(20)    
+ )    
+AS    
+          
+             
+BEGIN    
+ DECLARE @CLIENTNAMEFORREPORTS VARCHAR(100)    
+  ,@REPORTSCHEDULE INT    
+  ,@MONTHLYBENEREPORTCOPIES INT    
+  ,@QUARTLYBENEREPORTCOPIES INT    
+  ,@SEMIANNUALBENEREPORTCOPIES INT    
+  ,@ANNUALBENEREPORTCOPIES INT    
+  ,@ANNUALDONORREPORTCOPIES INT    
+  ,@MONTHLYDVDREPORTCOPIES INT    
+  ,@QUARTLYDVDREPORTCOPIES INT   
+  ,@SEMIANNUALDVDREPORTCOPIES INT    
+  ,@ANNUALDVDREPORTCOPIES INT    
+  ,@MONTHLYWEBPUPBLISH BIT    
+  ,@QUARTLYWEBPUPBLISH BIT    
+  ,@SEMIANNUALWEBPUPBLISH BIT    
+  ,@ANNUALWEBPUPBLISH BIT    
+  ,@PAYMENTSUMMARY INT    
+  ,@ACCOUNTHISTORY INT    
+  ,@ASSETALLOCATIONSUMMARY INT    
+  ,@PERFORMANCESUMMARY INT    
+  ,@PERFORMANCESUMMARYPERIODIC INT    
+  ,@PORTFOLIOAPPRAISAL INT    
+  ,@PORTFOLIOAPPRAISALPERIODIC INT    
+  ,@DISPLAYCLIENTACCOUNTNUMBER INT    
+  ,@PRIORPERIODADJUSTMENT INT    
+  ,@SPIGOTSPECIALPAGE INT    
+  ,@MINREQDISTRIBUTION INT    
+  ,@DAFSPECIALPAGE INT    
+  ,@PIFKEYSTATISTICS INT    
+  ,@PIFACCOUNTHISTORY INT    
+  ,@PIFUINTDECIMAL INT    
+  ,@CLIENTCOLORSCHEME INT    
+  ,@CUSTOMLABEL INT    
+  ,@CLIENTLOGOPATH VARCHAR(100)    
+  ,@LABELLOGOPATH VARCHAR(100)    
+  ,@CLIENTCONTACTINFO VARCHAR(100)    
+  ,@CLIENTNOTE VARCHAR(500)    
+  ,@SPECIALINSTRUCTIONSTATUS INT    
+  ,@SPECIALINSTRUCTION VARCHAR(300)    
+  ,@ERRORCONDITIONSTATUS INT    
+  ,@ERRORCONDITION VARCHAR(300)    
+  ,@WARNINGCONDITIONSTATUS INT    
+  ,@WARNINGCONDITION VARCHAR(300)    
+  ,@TARPCOSTBASISROLLOVER INT    
+  ,@TARPMARKETVALUEROLLOVER INT    
+  ,@TARPEXCELDATAEXTRACT INT    
+  ,@TARPPRODUCTIONCYCLE INT    
+  ,@TARPCALENDAR INT    
+  ,@CTSCLIENTVERSIONS INT    
+  ,@CTSVERSION INT    
+  ,@PERFNETOFFEES INT    
+  ,@PVBYACCOUNTTYPE INT    
+  ,@PVBYDESIGNATION INT    
+  ,@RETIREMENTPERPETUAL INT    
+  ,@COMPARATIVESTATISTICSREPORT INT    
+  ,@EXCLUDEFROMMEDIANS INT    
+  ,@DATATYPE VARCHAR(10)    
+  ,@TEMP VARCHAR(100)    
+  ,@LIST_TYPE_NAME VARCHAR(100)    
+  ,@DIMENSIONID INT    
+  ,@USER_NAME VARCHAR(100)    
+  ,@LAST_MODIFIED_DATE DATETIME    
+  ,@CLIENTID varchar(15)    
+  ,@POLICYLEVEL INT    
+  ,@INDICES VARCHAR(MAX)    
+  ,@CONDITIONXML VARCHAR(MAX)    
+  ,@MonSendTo INT    
+  ,@QtrlySendTo INT    
+  ,@SAnnSendTo INT    
+  ,@AnnSendTo INT    
+  ,@MonClientRecipient INT    
+  ,@QtrlyClientRecipient INT    
+  ,@SAnnClientRecipient INT    
+  ,@AnnClientRecipient INT    
+  ,@PERFORMANCESUMMARYMONTHLY INT    
+  ,@PERFORMANCESUMMARYSEMIANNUAL INT    
+  ,@PORTFOLIOAPPRAISALMONTHLY INT    
+  ,@PORTFOLIOAPPRAISALSEMIANNUAL INT    
+  ,@DISPLAYPAYMENTSONREPORT INT    
+ DECLARE @CL_CLIENTNAMEFORREPORTS VARCHAR(100)    
+  ,  @CL_ACCOUNTHISTORY INT    
+  ,@CL_ASSETALLOCATIONSUMMARY INT    
+  ,@CL_PERFORMANCESUMMARY INT    
+  ,@CL_PORTFOLIOAPPRAISAL INT    
+  ,@CL_PIFKEYSTATISTICS INT    
+  , @CL_DISPLAYCLIENTACCOUNTNUMBER INT    
+  ,@CL_TARPCOSTBASISROLLOVER INT    
+  ,@CL_TARPMARKETVALUEROLLOVER INT    
+  ,@CL_TARPEXCELDATAEXTRACT INT    
+  ,@CL_CTSVERSION INT    
+  ,@CL_PVBYACCOUNTTYPE INT    
+  ,@CL_PVBYDESIGNATION INT    
+  ,@CL_RETIREMENTPERPETUAL INT    
+  ,@PARENT_ENTITYTYPE VARCHAR(20)    
+  ,@PARENT_ENTITYID VARCHAR(15)    
+  
+ DECLARE @CL_REPORTSCHEDULE INT    
+  ,@CL_MONTHLYBENEREPORTCOPIES INT    
+  ,@CL_QUARTLYBENEREPORTCOPIES INT    
+  ,@CL_SEMIANNUALBENEREPORTCOPIES INT    
+  ,@CL_ANNUALBENEREPORTCOPIES INT    
+  ,@CL_ANNUALDONORREPORTCOPIES INT    
+  ,@CL_MONTHLYWEBPUPBLISH INT    
+  ,@CL_QUARTLYWEBPUPBLISH INT    
+  ,@CL_SEMIANNUALWEBPUPBLISH INT    
+  ,@CL_ANNUALWEBPUPBLISH INT    
+  ,@CL_PAYMENTSUMMARY INT    
+  ,@CL_PERFORMANCESUMMARYPERIODIC INT    
+  ,@CL_PORTFOLIOAPPRAISALPERIODIC INT    
+  ,@CL_SPIGOTSPECIALPAGE INT    
+  ,@CL_MINREQDISTRIBUTION INT    
+  ,@CL_DAFSPECIALPAGE INT    
+  ,@CL_PIFACCOUNTHISTORY INT    
+  ,@CL_PIFUINTDECIMAL INT    
+  ,@CL_CLIENTCOLORSCHEME INT    
+  ,@CL_CLIENTLOGOPATH VARCHAR(100)    
+  ,@CL_CLIENTCONTACTINFO VARCHAR(100)    
+  
+ DECLARE @PERFORMANCE_START_DATE DATETIME    
+  ,@CL_PERFORMANCE_START_DATE DATETIME    
+  
+ DECLARE @PO_START_DATE DATETIME    
+  ,@CL_PO_START_DATE DATETIME    
+  ,@PO_END_DATE DATETIME    
+  ,@CL_PO_END_DATE DATETIME    
+  ,@QAS_START_DATE DATETIME    
+  ,@CL_QAS_START_DATE DATETIME    
+  
+ DECLARE @CL_MonSendTo INT    
+  ,@CL_QtrlySendTo INT    
+  ,@CL_SAnnSendTo INT    
+  ,@CL_AnnSendTo INT    
+ --ClientRecipient     
+ DECLARE @CL_MonClientRecipient INT    
+  ,@CL_QtrlyClientRecipient INT    
+  ,@CL_SAnnClientRecipient INT    
+  ,@CL_AnnClientRecipient INT    
+  ,@CL_LABELLOGOPATH VARCHAR(100)    
+  , @CL_PERFORMANCESUMMARYMONTHLY INT    
+  ,@CL_PERFORMANCESUMMARYSEMIANNUAL INT    
+  ,@CL_PORTFOLIOAPPRAISALMONTHLY INT    
+  ,@CL_PORTFOLIOAPPRAISALSEMIANNUAL INT    
+ --Display Payments on Report    
+ DECLARE @CL_DisplayPaymentsOnReport INT    
+ DECLARE @MDATE DATETIME    
+ DECLARE @MUSERID INT    
+ DECLARE @TMP_POLICYITEM TABLE (    
+  MODIFIED_USER_ID INT    
+  ,MODIFIED_DATE DATETIME    
+  )    
+    
+ INSERT INTO @TMP_POLICYITEM (    
+  MODIFIED_USER_ID    
+  ,MODIFIED_DATE    
+  )    
+ SELECT PlcItmMdfy.ModifiedUserId    
+  ,PlcItmMdfy.ModifiedDate    
+ FROM TBL_PolicyItem PlcItm    
+ INNER JOIN TBL_PolicyItem PlcItmMdfy ON PlcItm.POLICYITEMID = PlcItmMdfy.POLICYITEMID    
+ WHERE PlcItm.POLICYDIMENSIONID IN (    
+   SELECT POLICYDIMENSIONID    
+   FROM TBL_PolicyDimension    
+   WHERE POLICYCATEGORYID = (    
+     SELECT POLICYCATEGORYID    
+     FROM TBL_PolicyCategory    
+     WHERE FULLNAME = 'REPORTING'    
+     )    
+    AND PlcItm.POLICYDIMENSIONID NOT IN (    
+     188    
+     ,104    
+     ,218    
+     ,219    
+     ,204    
+     )    
+   )    
+  AND PlcItm.OWNERID = @ENTITYID    
+  AND PlcItm.POLICYLEVEL = (    
+   SELECT POLICYLEVEL    
+   FROM TBL_PolicyLevel    
+   WHERE LEVELNAME = @ENTITYTYPE    
+   )    
+    
+ SELECT @MDATE = MAX(MODIFIED_DATE)    
+ FROM @TMP_POLICYITEM    
+    
+ SELECT @MUSERID = MODIFIED_USER_ID    
+ FROM @TMP_POLICYITEM    
+ WHERE MODIFIED_DATE = @MDATE    
+    
+ SELECT @USER_NAME = FIRSTNAME + ' ' + LASTNAME    
+  ,@LAST_MODIFIED_DATE = @MDATE    
+ FROM TBL_KS_USER    
+ WHERE [USERID] = @MUSERID    
+    
+ --Color Scheme default value      
+ DECLARE @COLOR_SCHEME_DEFAULT INT    
+    
+ SELECT @COLOR_SCHEME_DEFAULT = COLORSCHEMEID    
+ FROM TBL_BR_ReportColorScheme    
+ WHERE COLORSCHEMEBRIEFNAME = 'KASPICK & COMPANY COLOR SCHEME'    
+    
+ /**********************************************************************************************************************************/    
+ -- Iteamic Onsite 10/14/2008 -- Moved the client level values From Bottom STARTS HERE             
+ IF (@ENTITYTYPE = 'ACCOUNT')    
+ BEGIN    
+  SET @PARENT_ENTITYTYPE = 'MANAGER'    
+    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Client Name'    
+    
+  SELECT @CL_CLIENTNAMEFORREPORTS = TEXTVALUE    
+  FROM TBL_PolicyItem    
+  WHERE POLICYDIMENSIONID = @DIMENSIONID    
+   AND OWNERID = @PARENT_ENTITYID    
+   AND POLICYLEVEL = (    
+    SELECT POLICYLEVEL    
+    FROM TBL_PolicyLevel    
+    WHERE LEVELNAME = @PARENT_ENTITYTYPE    
+    )    
+    
+  --For Report Schedule      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Rpt Schedule'    
+    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Report Schedule'     ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_REPORTSCHEDULE = CAST(@TEMP AS INT)    
+    
+  IF (@CL_REPORTSCHEDULE IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Report Schedule'    
+    ,@LIST_ITEM_NAME = 'Calendar year'    
+    ,@LIST_ITEM_ID = @CL_REPORTSCHEDULE OUTPUT    
+    
+  --For Monthly Beneficiary Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM tbl_POLICYDIMENSION    
+  WHERE FULLNAME = 'Mon Bene Rpt Prn set'    
+    
+  --PRINT 'Commented child SP'  
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_MONTHLYBENEREPORTCOPIES OUTPUT    
+    
+  IF (@CL_MONTHLYBENEREPORTCOPIES IS NULL)    
+   SET @CL_MONTHLYBENEREPORTCOPIES = 0    
+  --For Quartly Beneficiary Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Qtrly report copies'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_QUARTLYBENEREPORTCOPIES OUTPUT    
+    
+  IF (@CL_QUARTLYBENEREPORTCOPIES IS NULL)    
+   SET @CL_QUARTLYBENEREPORTCOPIES = 0    
+  --For Semi-Annual Beneficiary Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'SAnn Ben Rpt Prnset'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_SEMIANNUALBENEREPORTCOPIES OUTPUT    
+    
+  IF (@CL_SEMIANNUALBENEREPORTCOPIES IS NULL)    
+   SET @CL_SEMIANNUALBENEREPORTCOPIES = 0    
+  --For Annual Beneficiary Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Bene Rpt Copies'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_ANNUALBENEREPORTCOPIES OUTPUT    
+    
+  IF (@CL_ANNUALBENEREPORTCOPIES IS NULL)    
+   SET @CL_ANNUALBENEREPORTCOPIES = 1    
+  --For Annual Donor Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Don Rpt Prn set'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_ANNUALDONORREPORTCOPIES OUTPUT    
+    
+  IF (@CL_ANNUALDONORREPORTCOPIES IS NULL)    
+   SET @CL_ANNUALDONORREPORTCOPIES = 0    
+  --For Monthly Publish to Web      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Mon Publish to Web'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_MONTHLYWEBPUPBLISH = CAST(@TEMP AS INT)    
+    
+  IF (@CL_MONTHLYWEBPUPBLISH IS NULL)    
+   SET @CL_MONTHLYWEBPUPBLISH = 19    
+  --For Quarlty Publish to Web        
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Qtr Publish to Web'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_QUARTLYWEBPUPBLISH = CAST(@TEMP AS INT)    
+    
+  IF (@CL_QUARTLYWEBPUPBLISH IS NULL)    
+   SET @CL_QUARTLYWEBPUPBLISH = 19    
+  --For Semi-Annual Publish to Web       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'SAnn Publish to Web'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_SEMIANNUALWEBPUPBLISH = CAST(@TEMP AS INT)    
+    
+  IF (@CL_SEMIANNUALWEBPUPBLISH IS NULL)    
+   SET @CL_SEMIANNUALWEBPUPBLISH = 19    
+  --For Annual Publish to Web       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Publish to Web'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_ANNUALWEBPUPBLISH = CAST(@TEMP AS INT)    
+    
+  IF (@CL_ANNUALWEBPUPBLISH IS NULL)    
+   SET @CL_ANNUALWEBPUPBLISH = 18    
+  --For Payment Summary       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Payment Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PAYMENTSUMMARY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PAYMENTSUMMARY IS NULL)    
+   SET @CL_PAYMENTSUMMARY = 18    
+  --For Account History                
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Acct History'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_ACCOUNTHISTORY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_ACCOUNTHISTORY IS NULL)    
+   SET @CL_ACCOUNTHISTORY = 18    
+   
+ SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Alloc Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_ASSETALLOCATIONSUMMARY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_ASSETALLOCATIONSUMMARY IS NULL)    
+   SET @CL_ASSETALLOCATIONSUMMARY = 18    
+  --For Performance Summary                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Perf Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PERFORMANCESUMMARY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PERFORMANCESUMMARY IS NULL)    
+   SET @CL_PERFORMANCESUMMARY = 18    
+  --For Performance Summary Periodic                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Per Perf Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PERFORMANCESUMMARYPERIODIC = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PERFORMANCESUMMARYPERIODIC IS NULL)    
+   SET @CL_PERFORMANCESUMMARYPERIODIC = 18    
+  --For Performance Start Date                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Srt dt for perform.'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PERFORMANCE_START_DATE = CAST(@TEMP AS DATETIME)    
+  --KCBP - Quickbase CR #4 -End here      
+  --For Portfolio Appraisal                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Ann Portfolio App'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PORTFOLIOAPPRAISAL = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PORTFOLIOAPPRAISAL IS NULL)    
+   SET @CL_PORTFOLIOAPPRAISAL = 18    
+  --For Portfolio Appraisal Periodic                      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Per Portfolio App'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PORTFOLIOAPPRAISALPERIODIC = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PORTFOLIOAPPRAISALPERIODIC IS NULL)    
+   SET @CL_PORTFOLIOAPPRAISALPERIODIC = 18    
+  --For Display Client Account Number                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Cli Acct # on Rpts'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_DISPLAYCLIENTACCOUNTNUMBER = CAST(@TEMP AS INT)    
+    
+  IF (@CL_DISPLAYCLIENTACCOUNTNUMBER IS NULL)    
+   SET @CL_DISPLAYCLIENTACCOUNTNUMBER = 19    
+  --For Spigot Special Page                      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Spigot Special Page'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_SPIGOTSPECIALPAGE = CAST(@TEMP AS INT)    
+    
+  IF (@CL_SPIGOTSPECIALPAGE IS NULL)    
+   SET @CL_SPIGOTSPECIALPAGE = 18    
+  --For Minimum Required Distribution DAF       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Min Req Dist (DAF)'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_MINREQDISTRIBUTION = CAST(@TEMP AS INT)    
+    
+  IF (@CL_MINREQDISTRIBUTION IS NULL)    
+   SET @CL_MINREQDISTRIBUTION = 18    
+  --For Donor Advised Fund Special Page       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Donor Advised Fund'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_DAFSPECIALPAGE = CAST(@TEMP AS INT)    
+    
+  IF (@CL_DAFSPECIALPAGE IS NULL)    
+   SET @CL_DAFSPECIALPAGE = 18    
+  --For PIF Key Statistics                         
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PIF Key Statistics'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PIFKEYSTATISTICS = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PIFKEYSTATISTICS IS NULL)    
+   SET @CL_PIFKEYSTATISTICS = 18    
+  --For PIF Account History       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PIF Account History'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PIFACCOUNTHISTORY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PIFACCOUNTHISTORY IS NULL)    
+   SET @CL_PIFACCOUNTHISTORY = 18    
+  --For PIF Unit Decimal Precision      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PIF Unit Dec Prec'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_PIFUINTDECIMAL OUTPUT    
+    
+  IF (@CL_PIFUINTDECIMAL IS NULL)    
+   SET @CL_PIFUINTDECIMAL = 2    
+  --For Client Color Scheme (Color Scheme ID)                        
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Client Color Scheme'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_CLIENTCOLORSCHEME OUTPUT    
+    
+  IF (@CL_CLIENTCOLORSCHEME IS NULL)    
+   SET @CL_CLIENTCOLORSCHEME = @COLOR_SCHEME_DEFAULT    
+  --For Client Logo Path (URL)                        
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Client Logo'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @CL_CLIENTLOGOPATH OUTPUT    
+    
+  IF (@CL_CLIENTLOGOPATH IS NULL)    
+   SET @CL_CLIENTLOGOPATH = ''    
+  --For Client Contact Info                       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Client Contact'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @CL_CLIENTCONTACTINFO OUTPUT    
+    
+  IF (@CL_CLIENTCONTACTINFO IS NULL)    
+   SET @CL_CLIENTCONTACTINFO = ''    
+  -- --For Annual Report Color Copies                          
+  --  set @TEMP=NULL              
+  --  SELECT @DIMENSIONID=POLICYDIMENSIONID,@DATATYPE=DATATYPE FROM POLICYDIMENSION WHERE FULLNAME='Ann Bene Rpt Copies'                           
+  --  EXEC USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                          
+  --   @ENTITYID=@PARENT_ENTITYID,                            
+  --   @ENTITYTYPE=@PARENT_ENTITYTYPE,                            
+  --   @LIST_TYPE_NAME =NULL,                            
+  --   @DATATYPE=@DATATYPE,                           
+  --   @DIMENSIONID=@DIMENSIONID,                            
+  --   @VALUE=@TEMP OUTPUT ,                
+  --   @NUMERIC_VALUE =@CL_ANNUALREPORTCOLORCOPIES OUTPUT                        
+  --  IF(@CL_ANNUALREPORTCOLORCOPIES is null)              
+  --   SET @CL_ANNUALREPORTCOLORCOPIES=1                          
+  --               
+  --   --For Annual Report B/W Copies                          
+  --  set @TEMP=NULL              
+  --  SELECT @DIMENSIONID=POLICYDIMENSIONID,@DATATYPE=DATATYPE FROM POLICYDIMENSION WHERE FULLNAME='No. B/W copies - Ann'                           
+  --  EXEC USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                          
+  --   @ENTITYID=@PARENT_ENTITYID,                            
+  --   @ENTITYTYPE=@PARENT_ENTITYTYPE,                            
+  --   @LIST_TYPE_NAME =NULL,                            
+  --   @DATATYPE=@DATATYPE,                           
+  --   @DIMENSIONID=@DIMENSIONID,                            
+  --   @VALUE=@TEMP OUTPUT,                
+  --   @NUMERIC_VALUE= @CL_ANNUALREPORTBWCOPIES OUTPUT                          
+  --  if(@CL_ANNUALREPORTBWCOPIES is null)              
+  --   SET @CL_ANNUALREPORTBWCOPIES=0                          
+  --         
+  -- --For Quarterly Bene Report                          
+  --  set @TEMP=NULL              
+  --  SELECT @DIMENSIONID=POLICYDIMENSIONID,@DATATYPE=DATATYPE FROM POLICYDIMENSION WHERE FULLNAME='Qtrly Bene Rpt'                           
+  --  EXEC USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                          
+  --   @ENTITYID=@PARENT_ENTITYID,                            
+  --   @ENTITYTYPE=@PARENT_ENTITYTYPE,                            
+  --   @LIST_TYPE_NAME ='LOGICAL VALUE',                            
+  --   @DATATYPE=@DATATYPE,                           
+  --   @DIMENSIONID=@DIMENSIONID,                            
+  --   @VALUE=@TEMP OUTPUT                          
+  --  SET @CL_QUARTERLYBENEREPORT=CAST(@TEMP AS INT)                          
+  --  if(@CL_QUARTERLYBENEREPORT is null)              
+  --   set @CL_QUARTERLYBENEREPORT=19              
+  --      
+  -- --For Quarterly Report Color Copies                          
+  --  set @TEMP=NULL              
+  --  SELECT @DIMENSIONID=POLICYDIMENSIONID,@DATATYPE=DATATYPE FROM POLICYDIMENSION WHERE FULLNAME='Qtrly report copies'                           
+  --  EXEC USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                          
+  --   @ENTITYID=@PARENT_ENTITYID,                            
+  --   @ENTITYTYPE=@PARENT_ENTITYTYPE,                            
+  --   @LIST_TYPE_NAME =NULL,                            
+  --   @DATATYPE=@DATATYPE,                           
+  --   @DIMENSIONID=@DIMENSIONID,                            
+  --   @VALUE=@TEMP OUTPUT,                
+  --   @NUMERIC_VALUE  =@CL_QUARTERLYREPORTCOLORCOPIES OUTPUT                        
+  --  if(@CL_QUARTERLYREPORTCOLORCOPIES is null)              
+  --   SET @CL_QUARTERLYREPORTCOLORCOPIES=1                          
+  --      
+  -- --For Monthly Bene Report                          
+  --  set @TEMP=NULL              
+  --  SELECT @DIMENSIONID=POLICYDIMENSIONID,@DATATYPE=DATATYPE FROM POLICYDIMENSION WHERE FULLNAME='Monthly Bene Report'                           
+  --  EXEC USP_EIS_EX_POLICYDIMENSION_VALUE_SelProc                          
+  --   @ENTITYID=@PARENT_ENTITYID,                            
+  --   @ENTITYTYPE=@PARENT_ENTITYTYPE,                            
+  --   @LIST_TYPE_NAME ='LOGICAL VALUE',                            
+  --   @DATATYPE=@DATATYPE,                           
+  --   @DIMENSIONID=@DIMENSIONID,                            
+  --   @VALUE=@TEMP OUTPUT                          
+  --  SET @CL_MONTHLYBENEREPORT=CAST(@TEMP AS INT)                          
+  --  if(@CL_MONTHLYBENEREPORT is null)              
+  --   set @CL_MONTHLYBENEREPORT=19              
+  --For TARP Cost Basis Rollover                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'TARP FCB Rollover'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_TARPCOSTBASISROLLOVER = CAST(@TEMP AS INT)    
+    
+  IF (@CL_TARPCOSTBASISROLLOVER IS NULL)    
+   SET @CL_TARPCOSTBASISROLLOVER = 18    
+  --For TARP Market Value Rollover                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'TARP Mkt Value Roll.'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_TARPMARKETVALUEROLLOVER = CAST(@TEMP AS INT)    
+    
+  IF (@CL_TARPMARKETVALUEROLLOVER IS NULL)    
+   SET @CL_TARPMARKETVALUEROLLOVER = 18    
+  --For TARP Excel Data Extract                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'TARP Data Extract'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_TARPEXCELDATAEXTRACT = CAST(@TEMP AS INT)    
+    
+  IF (@CL_TARPEXCELDATAEXTRACT IS NULL)    
+   SET @CL_TARPEXCELDATAEXTRACT = 18    
+  --For CTS Client Versions                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'CTS Client Policy'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'CTS Version'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_CTSVERSION = CAST(@TEMP AS INT)    
+    
+  IF (@CL_CTSVERSION IS NULL)    
+   SET @CL_CTSVERSION = 1075    
+  --For PV by Account Type                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PV Rpt by Acct Type'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'PV Rpt'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PVBYACCOUNTTYPE = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PVBYACCOUNTTYPE IS NULL)    
+   SET @CL_PVBYACCOUNTTYPE = 1098    
+  --For PV by Designation                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PV Rpt by Designatn'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'PV Rpt'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PVBYDESIGNATION = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PVBYDESIGNATION IS NULL)    
+   SET @CL_PVBYDESIGNATION = 1097    
+  --For Retirement/Perpetual                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Retirement/Perpetual'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Retirement/Perpetual'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_RETIREMENTPERPETUAL = CAST(@TEMP AS INT)    
+    
+  IF (@CL_RETIREMENTPERPETUAL IS NULL)    
+   SET @CL_RETIREMENTPERPETUAL = 1079    
+  --For PO Start Date                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PO Start Date'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @PO_START_DATE = CAST(@TEMP AS DATETIME)    
+    
+  IF (@PO_START_DATE IS NULL)    
+  BEGIN    
+   IF (@ENTITYTYPE = 'ACCOUNT')    
+    SET @PO_START_DATE = @CL_PO_START_DATE    
+  END    
+    
+  --For PO End Date                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'PO End Date'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @PO_END_DATE = CAST(@TEMP AS DATETIME)    
+    
+  IF (@PO_END_DATE IS NULL)    
+  BEGIN    
+   IF (@ENTITYTYPE = 'ACCOUNT')    
+    SET @PO_END_DATE = @CL_PO_END_DATE    
+  END    
+    
+  --For QAS Start Date                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'QAS Start Date'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @QAS_START_DATE = CAST(@TEMP AS DATETIME)    
+    
+  IF (@QAS_START_DATE IS NULL)    
+  BEGIN    
+   IF (@ENTITYTYPE = 'ACCOUNT')    
+    SET @QAS_START_DATE = @CL_QAS_START_DATE    
+  END    
+    
+  --For Send To    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Mon Send To'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Send To'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_MonSendTo = CAST(@TEMP AS INT)    
+    
+  IF (@CL_MonSendTo IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @CL_MonSendTo OUTPUT    
+    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Qtrly Send To'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Send To'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_QtrlySendTo = CAST(@TEMP AS INT)    
+    
+  IF (@CL_QtrlySendTo IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @CL_QtrlySendTo OUTPUT    
+    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'SAnn Send To'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Send To'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_SAnnSendTo = CAST(@TEMP AS INT)    
+    
+  IF (@CL_SAnnSendTo IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @CL_SAnnSendTo OUTPUT    
+    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Ann Send To'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Send To'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_AnnSendTo = CAST(@TEMP AS INT)    
+    
+  IF (@CL_AnnSendTo IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Client'    
+    ,@LIST_ITEM_ID = @CL_AnnSendTo OUTPUT    
+    
+  --For Client Recipient    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_PolicyDimension    
+  WHERE FULLNAME = 'Mon Client Recipient'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_MonClientRecipient OUTPUT    
+    
+  SET @CL_MonClientRecipient = CAST(@TEMP AS INT)    
+    
+  IF (@CL_MonClientRecipient IS NULL)    
+   SET @CL_MonClientRecipient = 0    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Qtr Client Recipient'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_QtrlyClientRecipient OUTPUT    
+    
+  SET @CL_QtrlyClientRecipient = CAST(@TEMP AS INT)    
+    
+  IF (@CL_QtrlyClientRecipient IS NULL)    
+   SET @CL_QtrlyClientRecipient = 0    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'SA Client Recipient'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_SAnnClientRecipient OUTPUT    
+    
+  SET @CL_SAnnClientRecipient = CAST(@TEMP AS INT)    
+    
+  IF (@CL_SAnnClientRecipient IS NULL)    
+   SET @CL_SAnnClientRecipient = 0    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Ann Client Recipient'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @CL_AnnClientRecipient OUTPUT    
+    
+  SET @CL_AnnClientRecipient = CAST(@TEMP AS INT)    
+    
+  IF (@CL_AnnClientRecipient IS NULL)    
+   SET @CL_AnnClientRecipient = 0    
+  --For Performance Summary Monthly                       
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Mon Perf Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PERFORMANCESUMMARYMONTHLY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PERFORMANCESUMMARYMONTHLY IS NULL)    
+   SET @CL_PERFORMANCESUMMARYMONTHLY = 18    
+  --For Performance Summary Semi Annual                          
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE   
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'SA Perf Summary'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PERFORMANCESUMMARYSEMIANNUAL = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PERFORMANCESUMMARYSEMIANNUAL IS NULL)    
+   SET @CL_PERFORMANCESUMMARYSEMIANNUAL = 18    
+  --For Portfolio Appraisal Monthly                         
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Mon Portfolio App'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PORTFOLIOAPPRAISALMONTHLY = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PORTFOLIOAPPRAISALMONTHLY IS NULL)    
+   SET @CL_PORTFOLIOAPPRAISALMONTHLY = 18    
+  --For Portfolio Appraisal Semi Annual                      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'SA Portfolio App'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_PORTFOLIOAPPRAISALSEMIANNUAL = CAST(@TEMP AS INT)    
+    
+  IF (@CL_PORTFOLIOAPPRAISALSEMIANNUAL IS NULL)    
+   SET @CL_PORTFOLIOAPPRAISALSEMIANNUAL = 19    
+  --For Display Payments on Report    
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Display Pmt Report'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @PARENT_ENTITYID    
+   ,@ENTITYTYPE = @PARENT_ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Display Payments on Report'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CL_DisplayPaymentsOnReport = CAST(@TEMP AS INT)    
+    
+  IF (@CL_DisplayPaymentsOnReport IS NULL)    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Display Payments on Report'    
+    ,@LIST_ITEM_NAME = 'Scheduled Payments'    
+    ,@LIST_ITEM_ID = @CL_DisplayPaymentsOnReport OUTPUT    
+ END    
+    
+ --For Client Name                          
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Client Name'    
+    
+    
+ SELECT @CLIENTNAMEFORREPORTS = TEXTVALUE    
+ FROM TBL_PolicyItem    
+ WHERE POLICYDIMENSIONID = @DIMENSIONID    
+  AND OWNERID = @ENTITYID    
+  AND POLICYLEVEL = (    
+   SELECT POLICYLEVEL    
+   FROM TBL_PolicyLevel    
+   WHERE LEVELNAME = @ENTITYTYPE    
+   )    
+    
+ --For Report Schedule      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Rpt Schedule'    
+   
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Report Schedule'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+  
+    
+ SET @REPORTSCHEDULE = CAST(@TEMP AS INT)    
+    
+ IF (@REPORTSCHEDULE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @ACCOUNTHISTORY = @CL_REPORTSCHEDULE    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Report Schedule'    
+    ,@LIST_ITEM_NAME = 'Calendar year'    
+    ,@LIST_ITEM_ID = @REPORTSCHEDULE OUTPUT    
+ END    
+    
+ --For Monthly Beneficiary Copies      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Bene Rpt Prn set'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @MONTHLYBENEREPORTCOPIES OUTPUT    
+    
+ IF (@MONTHLYBENEREPORTCOPIES IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @MONTHLYBENEREPORTCOPIES = @CL_MONTHLYBENEREPORTCOPIES    
+  ELSE    
+   SET @MONTHLYBENEREPORTCOPIES = 0    
+ END    
+    
+ --For Quartly Beneficiary Copies      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Qtrly report copies'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @QUARTLYBENEREPORTCOPIES OUTPUT    
+    
+ IF (@QUARTLYBENEREPORTCOPIES IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @QUARTLYBENEREPORTCOPIES = @CL_QUARTLYBENEREPORTCOPIES    
+  ELSE    
+   SET @QUARTLYBENEREPORTCOPIES = 0    
+ END    
+    
+    
+ --For Semi-Annual Beneficiary Copies      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SAnn Ben Rpt Prnset'    
+    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @SEMIANNUALBENEREPORTCOPIES OUTPUT    
+    
+    
+ IF (@SEMIANNUALBENEREPORTCOPIES IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @SEMIANNUALBENEREPORTCOPIES = @CL_SEMIANNUALBENEREPORTCOPIES    
+  ELSE    
+   SET @SEMIANNUALBENEREPORTCOPIES = 0    
+ END    
+    
+ --For Annual Beneficiary Copies      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Bene Rpt Copies'    
+    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @ANNUALBENEREPORTCOPIES OUTPUT    
+    
+    
+ IF (@ANNUALBENEREPORTCOPIES IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @ANNUALBENEREPORTCOPIES = @CL_ANNUALBENEREPORTCOPIES    
+  ELSE    
+   SET @ANNUALBENEREPORTCOPIES = 1    
+ END    
+    
+ --For Annual Donor Copies      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Don Rpt Prn set'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @ANNUALDONORREPORTCOPIES OUTPUT    
+    
+ IF (@ANNUALDONORREPORTCOPIES IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @ANNUALDONORREPORTCOPIES = @CL_ANNUALDONORREPORTCOPIES    
+  ELSE    
+   SET @ANNUALDONORREPORTCOPIES = 0    
+ END    
+    
+ --For Monthly Publish to Web      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Publish to Web'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @MONTHLYWEBPUPBLISH = dbo.FN_GetItemName(CAST(@TEMP AS INT))    
+    
+ IF (@MONTHLYWEBPUPBLISH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @CL_MONTHLYWEBPUPBLISH    
+    ,@IVAN_VALUE = @MONTHLYWEBPUPBLISH OUTPUT    
+  ELSE    
+   SET @MONTHLYWEBPUPBLISH = 0    
+ END    
+    
+ --For Quarlty Publish to Web        
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Qtr Publish to Web'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @QUARTLYWEBPUPBLISH = dbo.FN_GetItemName(CAST(@TEMP AS INT))    
+    
+ IF (@QUARTLYWEBPUPBLISH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @CL_QUARTLYWEBPUPBLISH    
+    ,@IVAN_VALUE = @QUARTLYWEBPUPBLISH OUTPUT    
+  ELSE    
+   SET @QUARTLYWEBPUPBLISH = 0    
+ END    
+    
+ --For Semi-Annual Publish to Web       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SAnn Publish to Web'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @SEMIANNUALWEBPUPBLISH = dbo.FN_GetItemName(CAST(@TEMP AS INT))    
+    
+ IF (@SEMIANNUALWEBPUPBLISH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @CL_SEMIANNUALWEBPUPBLISH    
+    ,@IVAN_VALUE = @SEMIANNUALWEBPUPBLISH OUTPUT    
+  ELSE    
+   SET @SEMIANNUALWEBPUPBLISH = 0    
+ END    
+    
+ --For Annual Publish to Web       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Publish to Web'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @ANNUALWEBPUPBLISH = dbo.FN_GetItemName(CAST(@TEMP AS INT))    
+    
+ IF (@ANNUALWEBPUPBLISH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   EXEC USP_EX_GetListItemIvanvalue @LIST_ITEM_ID = @CL_ANNUALWEBPUPBLISH    
+    ,@IVAN_VALUE = @ANNUALWEBPUPBLISH OUTPUT    
+  ELSE    
+   SET @ANNUALWEBPUPBLISH = 1    
+ END    
+    
+ --For Payment Summary       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Payment Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PAYMENTSUMMARY = CAST(@TEMP AS INT)    
+    
+ IF (@PAYMENTSUMMARY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PAYMENTSUMMARY = @CL_PAYMENTSUMMARY    
+  ELSE    
+   SET @PAYMENTSUMMARY = 18    
+ END    
+    
+ --For Account History                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Acct History'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @ACCOUNTHISTORY = CAST(@TEMP AS INT)    
+    
+ IF (@ACCOUNTHISTORY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @ACCOUNTHISTORY = @CL_ACCOUNTHISTORY    
+  ELSE    
+   SET @ACCOUNTHISTORY = 18    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Alloc Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @ASSETALLOCATIONSUMMARY = CAST(@TEMP AS INT)    
+    
+ IF (@ASSETALLOCATIONSUMMARY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @ASSETALLOCATIONSUMMARY = @CL_ASSETALLOCATIONSUMMARY    
+  ELSE    
+   SET @ASSETALLOCATIONSUMMARY = 18    
+ END    
+    
+ --For Performance Summary                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Perf Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PERFORMANCESUMMARY = CAST(@TEMP AS INT)    
+    
+ IF (@PERFORMANCESUMMARY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PERFORMANCESUMMARY = @CL_PERFORMANCESUMMARY    
+  ELSE    
+   SET @PERFORMANCESUMMARY = 18    
+ END    
+    
+ --For Performance Summary Periodic                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Per Perf Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PERFORMANCESUMMARYPERIODIC = CAST(@TEMP AS INT)    
+    
+ IF (@PERFORMANCESUMMARYPERIODIC IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PERFORMANCESUMMARYPERIODIC = @CL_PERFORMANCESUMMARYPERIODIC    
+  ELSE    
+   SET @PERFORMANCESUMMARYPERIODIC = 18    
+ END    
+    
+ --For Performance Start Date                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Srt dt for perform.'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PERFORMANCE_START_DATE = CAST(@TEMP AS DATETIME)    
+    
+ IF (@PERFORMANCE_START_DATE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PERFORMANCE_START_DATE = @CL_PERFORMANCE_START_DATE    
+ END    
+    
+ --For Portfolio Appraisal                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Portfolio App'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PORTFOLIOAPPRAISAL = CAST(@TEMP AS INT)    
+    
+ IF (@PORTFOLIOAPPRAISAL IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PORTFOLIOAPPRAISAL = @CL_PORTFOLIOAPPRAISAL    
+  ELSE    
+   SET @PORTFOLIOAPPRAISAL = 18    
+ END    
+    
+ --For Portfolio Appraisal Periodic                      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Per Portfolio App'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PORTFOLIOAPPRAISALPERIODIC = CAST(@TEMP AS INT)    
+    
+ IF (@PORTFOLIOAPPRAISALPERIODIC IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PORTFOLIOAPPRAISALPERIODIC = @CL_PORTFOLIOAPPRAISALPERIODIC    
+  ELSE    
+   SET @PORTFOLIOAPPRAISALPERIODIC = 19    
+ END    
+    
+ --For Display Client Account Number                 
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Cli Acct # on Rpts'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @DISPLAYCLIENTACCOUNTNUMBER = CAST(@TEMP AS INT)    
+    
+ IF (@DISPLAYCLIENTACCOUNTNUMBER IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @DISPLAYCLIENTACCOUNTNUMBER = @CL_DISPLAYCLIENTACCOUNTNUMBER    
+  ELSE    
+   SET @DISPLAYCLIENTACCOUNTNUMBER = 18    
+ END    
+    
+ --For Spigot Special Page                      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Spigot Special Page'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @SPIGOTSPECIALPAGE = CAST(@TEMP AS INT)    
+    
+ IF (@SPIGOTSPECIALPAGE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @SPIGOTSPECIALPAGE = @CL_SPIGOTSPECIALPAGE    
+  ELSE    
+   SET @SPIGOTSPECIALPAGE = 18    
+ END    
+    
+ --For Minimum Required Distribution DAF       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Min Req Dist (DAF)'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @MINREQDISTRIBUTION = CAST(@TEMP AS INT)    
+    
+ IF (@MINREQDISTRIBUTION IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @MINREQDISTRIBUTION = @CL_MINREQDISTRIBUTION    
+  ELSE    
+   SET @MINREQDISTRIBUTION = 18    
+ END    
+    
+ --For Donor Advised Fund Special Page       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Donor Advised Fund'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @DAFSPECIALPAGE = CAST(@TEMP AS INT)    
+    
+ IF (@DAFSPECIALPAGE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @DAFSPECIALPAGE = @CL_DAFSPECIALPAGE    
+  ELSE    
+   SET @DAFSPECIALPAGE = 18    
+ END    
+    
+ --For PIF Key Statistics                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PIF Key Statistics'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PIFKEYSTATISTICS = CAST(@TEMP AS INT)    
+    
+ -- set @PIFKEYSTATISTICS=18             
+ IF (@PIFKEYSTATISTICS IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PIFKEYSTATISTICS = @CL_PIFKEYSTATISTICS    
+  ELSE    
+   SET @PIFKEYSTATISTICS = 18    
+ END    
+    
+ --For PIF Account History       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PIF Account History'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PIFACCOUNTHISTORY = CAST(@TEMP AS INT)    
+    
+ IF (@PIFACCOUNTHISTORY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PIFACCOUNTHISTORY = @CL_PIFACCOUNTHISTORY    
+  ELSE    
+   SET @PIFACCOUNTHISTORY = 18    
+ END    
+    
+ --For PIF Unit Decimal Precision      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PIF Unit Dec Prec'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @PIFUINTDECIMAL OUTPUT    
+    
+ IF (@PIFUINTDECIMAL IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PIFUINTDECIMAL = @CL_PIFUINTDECIMAL    
+  ELSE    
+   SET @PIFUINTDECIMAL = 2    
+ END    
+    
+ --For Client Color Scheme (Color Scheme ID)                        
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Client Color Scheme'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @CLIENTCOLORSCHEME OUTPUT    
+    
+ IF (@CLIENTCOLORSCHEME IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @CLIENTCOLORSCHEME = @CL_CLIENTCOLORSCHEME    
+  ELSE    
+   SET @CLIENTCOLORSCHEME = @COLOR_SCHEME_DEFAULT    
+ END    
+    
+ --For Client Logo Path (URL)                        
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Client Logo'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @CLIENTLOGOPATH OUTPUT    
+    
+ IF (@CLIENTLOGOPATH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @CLIENTLOGOPATH = @CL_CLIENTLOGOPATH    
+  ELSE    
+   SET @CLIENTLOGOPATH = ''    
+ END    
+    
+ --For Label Logo Path (URL)                        
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Label Logo'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @LABELLOGOPATH OUTPUT    
+    
+ IF (@LABELLOGOPATH IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @LABELLOGOPATH = @CL_LABELLOGOPATH    
+  ELSE    
+   SET @LABELLOGOPATH = ''    
+ END    
+    
+ --For Client Contact Info                       
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Client Contact'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @CLIENTCONTACTINFO OUTPUT    
+    
+ IF (@CLIENTCONTACTINFO IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @CLIENTCONTACTINFO = @CL_CLIENTCONTACTINFO    
+  ELSE    
+   SET @CLIENTCONTACTINFO = ''    
+ END    
+    
+             
+ IF (@ENTITYTYPE = 'MANAGER')    
+ BEGIN    
+  --For Monthly  No. of DVD Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Mon DVD copies'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+,@NUMERIC_VALUE = @MONTHLYDVDREPORTCOPIES OUTPUT    
+    
+  IF (@MONTHLYDVDREPORTCOPIES IS NULL)    
+   SET @MONTHLYDVDREPORTCOPIES = 0    
+  --For Quartly No. of DVD Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Qtr DVD copies'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @QUARTLYDVDREPORTCOPIES OUTPUT    
+    
+  IF (@QUARTLYDVDREPORTCOPIES IS NULL)    
+   SET @QUARTLYDVDREPORTCOPIES = 0    
+  --For Semi-Annual No. of DVD Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'SAnn DVD copies'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @SEMIANNUALDVDREPORTCOPIES OUTPUT    
+    
+  IF (@SEMIANNUALDVDREPORTCOPIES IS NULL)    
+   SET @SEMIANNUALDVDREPORTCOPIES = 0    
+  --For Annual No. of DVD Copies      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'No. of CD - Ann Rpt'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = NULL    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+   ,@NUMERIC_VALUE = @ANNUALDVDREPORTCOPIES OUTPUT    
+    
+  IF (@ANNUALDVDREPORTCOPIES IS NULL)    
+   SET @ANNUALDVDREPORTCOPIES = 1    
+  --For Prior Period Adjustment                      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Prior Period Adj'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @PRIORPERIODADJUSTMENT = CAST(@TEMP AS INT)    
+    
+  IF (@PRIORPERIODADJUSTMENT IS NULL)    
+   SET @PRIORPERIODADJUSTMENT = 19    
+  --For Client Custom Label                      
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Custom label'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'Custom label'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CUSTOMLABEL = CAST(@TEMP AS INT)    
+    
+  IF (@CUSTOMLABEL IS NULL)    
+   SELECT @CUSTOMLABEL = dbo.FN_GetListItemID('TT Fees', 'Custom label')    
+    
+               
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'TARP Prod. Cycle'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'TARP Production Cycle'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @TARPPRODUCTIONCYCLE = CAST(@TEMP AS INT)    
+    
+  IF (@TARPPRODUCTIONCYCLE IS NULL)    
+   SET @TARPPRODUCTIONCYCLE = 1066    
+  --For TARP Calendar                 
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'TARP Calendar'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'TARP Calendar'   
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @TARPCALENDAR = CAST(@TEMP AS INT)    
+    
+  IF (@TARPCALENDAR IS NULL)    
+   SET @TARPCALENDAR = 1071    
+  --For CTS Client Versions                 
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'CTS Production'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'CTS Client Versions'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @CTSCLIENTVERSIONS = CAST(@TEMP AS INT)    
+    
+  IF (@CTSCLIENTVERSIONS IS NULL)    
+   SET @CTSCLIENTVERSIONS = 1072    
+  --For Perf Net of Fees                   
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Perf Net of Fees'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @PERFNETOFFEES = CAST(@TEMP AS INT)    
+    
+  IF (@PERFNETOFFEES IS NULL)    
+   SET @PERFNETOFFEES = 18    
+  --For Comparative Statistics Report                 
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Comp. Statistics Rpt'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'PV Rpt'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @COMPARATIVESTATISTICSREPORT = CAST(@TEMP AS INT)    
+    
+  IF (@COMPARATIVESTATISTICSREPORT IS NULL)    
+   SET @COMPARATIVESTATISTICSREPORT = 1098    
+  --For Exclude from Medians                         
+  SET @TEMP = NULL    
+    
+  SELECT @DIMENSIONID = POLICYDIMENSIONID    
+   ,@DATATYPE = DATATYPE    
+  FROM TBL_POLICYDIMENSION    
+  WHERE FULLNAME = 'Exc from Rpt Medians'    
+    
+  EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+   ,@ENTITYTYPE = @ENTITYTYPE    
+   ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+   ,@DATATYPE = @DATATYPE    
+   ,@DIMENSIONID = @DIMENSIONID    
+   ,@VALUE = @TEMP OUTPUT    
+    
+  SET @EXCLUDEFROMMEDIANS = CAST(@TEMP AS INT)    
+    
+  IF (@EXCLUDEFROMMEDIANS IS NULL)    
+   SET @EXCLUDEFROMMEDIANS = 19    
+  --For Client Reporting Indices Management       
+  SET @TEMP = NULL    
+    
+  EXEC USP_EX_GetRptReportIndicesManagementDetail @CLIENTID = @ENTITYID    
+   ,@INDICESXML = @INDICES OUTPUT    
+ END    
+    
+                  
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'TARP FCB Rollover'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @TARPCOSTBASISROLLOVER = CAST(@TEMP AS INT)    
+    
+ IF (@TARPCOSTBASISROLLOVER IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @TARPCOSTBASISROLLOVER = @CL_TARPCOSTBASISROLLOVER    
+  ELSE    
+   SET @TARPCOSTBASISROLLOVER = 18    
+ END    
+    
+ --For TARP Market Value Rollover                
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'TARP Mkt Value Roll.'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @TARPMARKETVALUEROLLOVER = CAST(@TEMP AS INT)    
+    
+ IF (@TARPMARKETVALUEROLLOVER IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @TARPMARKETVALUEROLLOVER = @CL_TARPMARKETVALUEROLLOVER    
+  ELSE    
+   SET @TARPMARKETVALUEROLLOVER = 18    
+ END    
+    
+ --For TARP Excel Data Extract                
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'TARP Data Extract'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @TARPEXCELDATAEXTRACT = CAST(@TEMP AS INT)    
+    
+ IF (@TARPEXCELDATAEXTRACT IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @TARPEXCELDATAEXTRACT = @CL_TARPEXCELDATAEXTRACT    
+  ELSE    
+   SET @TARPEXCELDATAEXTRACT = 18    
+ END    
+    
+ --For CTS Version                        
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'CTS Client Policy'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'CTS Version'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @CTSVERSION = CAST(@TEMP AS INT)    
+    
+ IF (@CTSVERSION IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @CTSVERSION = @CL_CTSVERSION    
+  ELSE    
+   SET @CTSVERSION = 1075    
+ END    
+    
+ --For PV by Account Type                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PV Rpt by Acct Type'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'PV Rpt'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PVBYACCOUNTTYPE = CAST(@TEMP AS INT)    
+    
+ IF (@PVBYACCOUNTTYPE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PVBYACCOUNTTYPE = @CL_PVBYACCOUNTTYPE    
+  ELSE    
+   SET @PVBYACCOUNTTYPE = 1098    
+ END    
+    
+ --For PV by Designation                     
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PV Rpt by Designatn'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'PV Rpt'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PVBYDESIGNATION = CAST(@TEMP AS INT)    
+    
+ IF (@PVBYDESIGNATION IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PVBYDESIGNATION = @CL_PVBYDESIGNATION    
+  ELSE    
+   SET @PVBYDESIGNATION = 1097    
+ END    
+    
+ --For Retirement/Perpetual                  
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Retirement/Perpetual'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Retirement/Perpetual'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @RETIREMENTPERPETUAL = CAST(@TEMP AS INT)    
+    
+ IF (@RETIREMENTPERPETUAL IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @RETIREMENTPERPETUAL = @CL_RETIREMENTPERPETUAL    
+  ELSE    
+   SET @RETIREMENTPERPETUAL = 1079    
+ END    
+    
+ --For PO Start Date                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PO Start Date'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PO_START_DATE = CAST(@TEMP AS DATETIME)    
+    
+ IF (@PO_START_DATE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PO_START_DATE = @CL_PO_START_DATE    
+ END    
+    
+ --For PO End Date                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'PO End Date'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PO_END_DATE = CAST(@TEMP AS DATETIME)    
+    
+ IF (@PO_END_DATE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PO_END_DATE = @CL_PO_END_DATE    
+ END    
+    
+ --For QAS Start Date                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'QAS Start Date'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @QAS_START_DATE = CAST(@TEMP AS DATETIME)    
+    
+ IF (@QAS_START_DATE IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @QAS_START_DATE = @CL_QAS_START_DATE    
+ END    
+    
+ --For Send To    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Send To'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Send To'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @MonSendTo = CAST(@TEMP AS INT)    
+    
+ IF (@MonSendTo IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @MonSendTo = @CL_MonSendTo    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @MonSendTo OUTPUT    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Qtrly Send To'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Send To'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @QtrlySendTo = CAST(@TEMP AS INT)    
+    
+ IF (@QtrlySendTo IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @QtrlySendTo = @CL_QtrlySendTo    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @QtrlySendTo OUTPUT    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SAnn Send To'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Send To'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @SAnnSendTo = CAST(@TEMP AS INT)    
+    
+ IF (@SAnnSendTo IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @SAnnSendTo = @CL_SAnnSendTo    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Participant'    
+    ,@LIST_ITEM_ID = @SAnnSendTo OUTPUT    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Send To'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Send To'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @AnnSendTo = CAST(@TEMP AS INT)    
+    
+ IF (@AnnSendTo IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @AnnSendTo = @CL_AnnSendTo    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Send To'    
+    ,@LIST_ITEM_NAME = 'Client'    
+    ,@LIST_ITEM_ID = @AnnSendTo OUTPUT    
+ END    
+    
+ --For Cleint Recipient    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Client Recipient'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @MonClientRecipient OUTPUT    
+    
+ IF (@MonClientRecipient IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @MonClientRecipient = @CL_MonClientRecipient    
+  ELSE    
+   SET @MonClientRecipient = 0    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Qtr Client Recipient'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @QtrlyClientRecipient OUTPUT    
+    
+ IF (@QtrlyClientRecipient IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @QtrlyClientRecipient = @CL_QtrlyClientRecipient    
+  ELSE    
+   SET @QtrlyClientRecipient = 0    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SA Client Recipient'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @SAnnClientRecipient OUTPUT    
+    
+ IF (@SAnnClientRecipient IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @SAnnClientRecipient = @CL_SAnnClientRecipient    
+  ELSE    
+   SET @SAnnClientRecipient = 0    
+ END    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Ann Client Recipient'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+  ,@NUMERIC_VALUE = @AnnClientRecipient OUTPUT    
+    
+ IF (@AnnClientRecipient IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @AnnClientRecipient = @CL_AnnClientRecipient    
+  ELSE    
+   SET @AnnClientRecipient = 0    
+ END    
+    
+ --For Performance Summary Monthly                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Perf Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PERFORMANCESUMMARYMONTHLY = CAST(@TEMP AS INT)    
+    
+ IF (@PERFORMANCESUMMARYMONTHLY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PERFORMANCESUMMARYMONTHLY = @CL_PERFORMANCESUMMARYMONTHLY    
+  ELSE    
+   SET @PERFORMANCESUMMARYMONTHLY = 18    
+ END    
+    
+ --For Performance Summary SemiAnnual                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SA Perf Summary'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PERFORMANCESUMMARYSEMIANNUAL = CAST(@TEMP AS INT)    
+    
+ IF (@PERFORMANCESUMMARYSEMIANNUAL IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PERFORMANCESUMMARYSEMIANNUAL = @CL_PERFORMANCESUMMARYSEMIANNUAL    
+  ELSE    
+   SET @PERFORMANCESUMMARYSEMIANNUAL = 18    
+ END    
+    
+ --For Portfolio Appraisal Monthly                          
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Mon Portfolio App'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PORTFOLIOAPPRAISALMONTHLY = CAST(@TEMP AS INT)    
+    
+ IF (@PORTFOLIOAPPRAISALMONTHLY IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PORTFOLIOAPPRAISALMONTHLY = @CL_PORTFOLIOAPPRAISALMONTHLY    
+  ELSE    
+   SET @PORTFOLIOAPPRAISALMONTHLY = 18    
+ END    
+    
+ --For Portfolio Appraisal Semi Annual                      
+ SET @TEMP = NULL    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'SA Portfolio App'    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'LOGICAL VALUE'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+ SET @PORTFOLIOAPPRAISALSEMIANNUAL = CAST(@TEMP AS INT)    
+    
+ IF (@PORTFOLIOAPPRAISALSEMIANNUAL IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @PORTFOLIOAPPRAISALSEMIANNUAL = @CL_PORTFOLIOAPPRAISALPERIODIC    
+  ELSE    
+   SET @PORTFOLIOAPPRAISALSEMIANNUAL = 19    
+ END    
+    
+    
+ --For Display Payments on Report    
+ SET @TEMP = NULL    
+    
+    
+ SELECT @DIMENSIONID = POLICYDIMENSIONID    
+  ,@DATATYPE = DATATYPE    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Display Pmt Report'    
+    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@LIST_TYPE_NAME = 'Display Payments on Report'    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+    
+ SET @DISPLAYPAYMENTSONREPORT = CAST(@TEMP AS INT)    
+    
+    
+ IF (@DISPLAYPAYMENTSONREPORT IS NULL)    
+ BEGIN    
+  IF (@ENTITYTYPE = 'ACCOUNT')    
+   SET @DISPLAYPAYMENTSONREPORT = @CL_DisplayPaymentsOnReport    
+  ELSE    
+   EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'Display Payments on Report'    
+    ,@LIST_ITEM_NAME = 'Scheduled Payments'    
+    ,@LIST_ITEM_ID = @DISPLAYPAYMENTSONREPORT OUTPUT    
+ END    
+    
+    
+ ---------------------------------------------------------------------------------------------------------------------------------            
+ DECLARE @IsNewClient BIT    
+  ,@LEVEL INT    
+ DECLARE @FISCALYEARMONTHDATE VARCHAR(10)    
+ DECLARE @ENTITYID_FYI VARCHAR(15)    
+  ,@ENTITYTYPE_FYI VARCHAR(100)    
+    
+    
+ IF (@ENTITYTYPE = 'ACCOUNT')    
+ BEGIN    
+ SELECT @ENTITYID_FYI = AlnsNmbr.AllianceNumber   
+ FROM SYN_IT_AllianceNumbers AlnsNmbr  
+  INNER JOIN SYN_IT_ContactMaster ConMstr ON AlnsNmbr.CONTACTID=ConMstr.CONTACTID  
+  INNER JOIN SYN_IT_AccountMaster AccMstr ON AccMstr.OwnerContactID=ConMstr.CONTACTID     
+ WHERE AccMstr.CustomerAccountNumber = @ENTITYID  
+    
+  SET @ENTITYTYPE_FYI = 'PROGRAM'    
+ END    
+ ELSE    
+ BEGIN    
+  SET @ENTITYID_FYI = @ENTITYID    
+  SET @ENTITYTYPE_FYI = @ENTITYTYPE    
+ END    
+    
+    
+ SET @TEMP = NULL    
+    
+ SELECT @DATATYPE = DATATYPE    
+  ,@DIMENSIONID = POLICYDIMENSIONID    
+ FROM TBL_POLICYDIMENSION    
+ WHERE FULLNAME = 'Fiscal Year End'    
+    
+    
+ EXEC USP_EX_GetPolicydimensionValue @ENTITYID = @ENTITYID_FYI    
+  ,@ENTITYTYPE = @ENTITYTYPE_FYI    
+  ,@LIST_TYPE_NAME = NULL    
+  ,@DATATYPE = @DATATYPE    
+  ,@DIMENSIONID = @DIMENSIONID    
+  ,@VALUE = @TEMP OUTPUT    
+    
+    
+ IF (@TEMP IS NOT NULL)    
+ BEGIN    
+  SET @FISCALYEARMONTHDATE = @TEMP    
+ END    
+ ELSE    
+  SET @FISCALYEARMONTHDATE = ''    
+    
+    
+ EXEC USP_EX_GetRptReportConditionDetail @ENTITYID = @ENTITYID    
+  ,@ENTITYTYPE = @ENTITYTYPE    
+  ,@CONDITIONXML = @CONDITIONXML OUTPUT    
+    
+ IF (@ENTITYTYPE = 'MANAGER')    
+  SET @LEVEL = 100    
+ ELSE    
+  SET @LEVEL = 300    
+    
+    
+    
+ SELECT @CLIENTNAMEFORREPORTS AS CLIENTNAMEFORREPORTS    
+  ,    
+  @REPORTSCHEDULE AS REPORTSCHEDULE    
+  ,@MONTHLYBENEREPORTCOPIES AS MONTHLYBENEREPORTCOPIES    
+  ,@QUARTLYBENEREPORTCOPIES AS QUARTLYBENEREPORTCOPIES    
+  ,@SEMIANNUALBENEREPORTCOPIES AS SEMIANNUALBENEREPORTCOPIES    
+  ,@ANNUALBENEREPORTCOPIES AS ANNUALBENEREPORTCOPIES    
+  ,@ANNUALDONORREPORTCOPIES AS ANNUALDONORREPORTCOPIES    
+  ,@MONTHLYDVDREPORTCOPIES AS MONTHLYDVDREPORTCOPIES    
+  ,@QUARTLYDVDREPORTCOPIES AS QUARTLYDVDREPORTCOPIES    
+  ,@SEMIANNUALDVDREPORTCOPIES AS SEMIANNUALDVDREPORTCOPIES    
+  ,@ANNUALDVDREPORTCOPIES AS ANNUALDVDREPORTCOPIES    
+  ,@MONTHLYWEBPUPBLISH AS MONTHLYWEBPUPBLISH    
+  ,@QUARTLYWEBPUPBLISH AS QUARTLYWEBPUPBLISH    
+  ,@SEMIANNUALWEBPUPBLISH AS SEMIANNUALWEBPUPBLISH    
+  ,@ANNUALWEBPUPBLISH AS ANNUALWEBPUPBLISH    
+  ,@PAYMENTSUMMARY AS PAYMENTSUMMARY    
+  ,@ACCOUNTHISTORY AS ACCOUNTHISTORY    
+  ,@ASSETALLOCATIONSUMMARY AS ASSETALLOCATIONSUMMARY    
+  ,@PERFORMANCESUMMARY AS PERFORMANCESUMMARY    
+  ,@PERFORMANCESUMMARYPERIODIC AS PERFORMANCESUMMARYPERIODIC    
+  ,@PORTFOLIOAPPRAISAL AS PORTFOLIOAPPRAISAL    
+  ,@PORTFOLIOAPPRAISALPERIODIC AS PORTFOLIOAPPRAISALPERIODIC    
+  ,@PRIORPERIODADJUSTMENT AS PRIORPERIODADJUSTMENT    
+  ,@SPIGOTSPECIALPAGE AS SPIGOTSPECIALPAGE    
+  ,@MINREQDISTRIBUTION AS MINREQDISTRIBUTION    
+  ,@DAFSPECIALPAGE AS DAFSPECIALPAGE    
+  ,@PIFKEYSTATISTICS AS PIFKEYSTATISTICS    
+  ,@PIFACCOUNTHISTORY AS PIFACCOUNTHISTORY    
+  ,@PIFUINTDECIMAL AS PIFUINTDECIMAL    
+  ,@CLIENTCOLORSCHEME AS CLIENTCOLORSCHEME    
+  ,@CUSTOMLABEL AS CUSTOMLABEL    
+  ,@CLIENTLOGOPATH AS CLIENTLOGOPATH    
+  ,@CLIENTCONTACTINFO AS CLIENTCONTACTINFO    
+  ,   @DISPLAYCLIENTACCOUNTNUMBER AS DISPLAYCLIENTACCOUNTNUMBER    
+  ,  @TARPCOSTBASISROLLOVER AS TARPCOSTBASISROLLOVER    
+  ,@TARPMARKETVALUEROLLOVER AS TARPMARKETVALUEROLLOVER    
+  ,@TARPEXCELDATAEXTRACT AS TARPEXCELDATAEXTRACT    
+  ,@TARPPRODUCTIONCYCLE AS TARPPRODUCTIONCYCLE    
+  ,@TARPCALENDAR AS TARPCALENDAR    
+  ,@CTSCLIENTVERSIONS AS CTSCLIENTVERSIONS    
+  ,@CTSVERSION AS CTSVERSION    
+  ,@PERFNETOFFEES AS PERFNETOFFEES    
+  ,@PVBYACCOUNTTYPE AS PVBYACCOUNTTYPE    
+  ,@PVBYDESIGNATION AS PVBYDESIGNATION    
+  ,@RETIREMENTPERPETUAL AS RETIREMENTPERPETUAL    
+  ,@COMPARATIVESTATISTICSREPORT AS COMPARATIVESTATISTICSREPORT    
+  ,@EXCLUDEFROMMEDIANS AS EXCLUDEFROMMEDIANS    
+  ,@USER_NAME AS USERNAME    
+  ,@LAST_MODIFIED_DATE AS LAST_MODIFIED_DATE    
+  ,@IsNewClient AS IsNewClient    
+  ,@FISCALYEARMONTHDATE AS FISCALYEARMONTHDATE    
+  ,@INDICES AS CLIENTINDICES    
+  ,@CONDITIONXML AS CONDITIONXML    
+  ,@PERFORMANCE_START_DATE AS PERFORMANCESTARTDATE    
+  , @MonSendTo AS MonSendTo    
+  ,@QtrlySendTo AS QtrlySendTo    
+  ,@SAnnSendTo AS SAnnSendTo    
+  ,@AnnSendTo AS AnnSendTo    
+  ,  @MonClientRecipient AS MonClientRecipient    
+  ,@QtrlyClientRecipient AS QtrlyClientRecipient    
+  ,@SAnnClientRecipient AS SAnnClientRecipient    
+  ,@AnnClientRecipient AS AnnClientRecipient    
+  ,   @LABELLOGOPATH AS LABELLOGOPATH    
+  ,@PORTFOLIOAPPRAISALMONTHLY AS PORTFOLIOAPPRAISALMONTHLY    
+  ,@PORTFOLIOAPPRAISALSEMIANNUAL AS PORTFOLIOAPPRAISALSEMIANNUAL    
+  ,@PERFORMANCESUMMARYMONTHLY AS PERFORMANCESUMMARYMONTHLY    
+  ,@PERFORMANCESUMMARYSEMIANNUAL AS PERFORMANCESUMMARYSEMIANNUAL    
+  ,@PO_START_DATE AS POSTARTDATE    
+  ,@PO_END_DATE AS POENDDATE    
+  ,@QAS_START_DATE AS QASSTARTDATE    
+  ,@DISPLAYPAYMENTSONREPORT AS DISPLAYPAYMENTSONREPORT    
+    
+    
+ IF (@@ERROR != 0)    
+  RAISERROR 10004 'USP_EX_GetPolicyReportingDTL:cannot fetch records from policy table'    
+END    
+    
+    
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetPolicyReportingDTL') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetPolicyReportingDTL';
+	END

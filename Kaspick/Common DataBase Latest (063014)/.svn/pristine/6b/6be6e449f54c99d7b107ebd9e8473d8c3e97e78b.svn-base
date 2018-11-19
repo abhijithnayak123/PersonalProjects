@@ -1,0 +1,173 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_SaveGroup]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_SaveGroup]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_SaveGroup      
+** Short Desc : Saves the group to TBL_TR_STG_AccountGroup  
+**      
+** Full Description : Saves the group to TBL_TR_STG_AccountGroup when a group is created/edited
+**              
+**      
+** Sample Call      
+ DECLARE @GroupXML XML 
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(MAX) 
+ SET  @GroupXML = '<AccountGroupCollection> 
+						<Groups>
+							<AccountGroup  GroupName="AMcorpus1" GroupType="" CreationDate="" LastRefreshed="" GroupDescription="Corpus sensitive test" Refreshable="False" QueryName=""/>
+							</Groups>
+						</AccountGroupCollection>' 
+  EXEC USP_TR_SaveGroup @GroupXML ,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+  Select @ReturnStatus,@ErrorDesc
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/27/2014   
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_SaveGroup] @GroupXML AS XML
+	,@ReturnStatus INT = - 1
+OUTPUT
+	,-- assume SP fails and 
+	@ErrorDesc VARCHAR(8000)
+OUTPUT AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds        
+
+	DECLARE @SaveGroupTRAN AS VARCHAR(15)
+
+	SET @SaveGroupTRAN = 'SaveGroupTRAN'
+
+	BEGIN TRANSACTION @SaveGroupTRAN
+
+	BEGIN TRY
+		IF OBJECT_ID('tempdb..[#TmpAccountGroup]') IS NOT NULL
+			DROP TABLE [#TmpAccountGroup]
+
+		DECLARE @StartTime DATETIME = GETDATE ()
+		DECLARE @EndTime DATETIME
+
+		CREATE TABLE #TmpAccountGroup (
+			GroupName VARCHAR(30)
+			,GroupType VARCHAR(30)
+			,CreationDate DATETIME
+			,LastRefreshed DATETIME
+			,GroupDescription VARCHAR(255)
+			,Refreshable BIT
+			,QueryName VARCHAR(200)
+			)
+
+		INSERT INTO #TmpAccountGroup (
+			GroupName
+			,GroupType
+			,CreationDate
+			,LastRefreshed
+			,GroupDescription
+			,Refreshable
+			,QueryName
+			)
+		SELECT XMLDATA.item.value('@GroupName[1]', 'varchar(30)') AS GroupName
+			,XMLDATA.item.value('@GroupType[1]', 'varchar(30)') AS GroupType
+			,XMLDATA.item.value('@CreationDate[1]', 'Datetime') AS CreationDate
+			,XMLDATA.item.value('@LastRefreshed[1]', 'Datetime') AS LastRefreshed
+			,XMLDATA.item.value('@GroupDescription[1]', 'varchar(255)') AS GroupDescription
+			,XMLDATA.item.value('@Refreshable[1]', 'bit') Refreshable
+			,XMLDATA.item.value('@QueryName[1]', 'varchar(200)') AS QueryName
+		FROM @GroupXML.nodes('//AccountGroupCollection/Groups/AccountGroup') AS XMLDATA(item)
+
+		MERGE TBL_TR_STG_AccountGroup StgAcntGrp
+		USING #TmpAccountGroup NewAcntGrp
+			ON NewAcntGrp.GroupName = StgAcntGrp.GroupName
+		WHEN MATCHED
+			THEN
+				UPDATE
+				SET GroupType = NewAcntGrp.GroupType
+					,LastRefreshed = GetDate()
+					,GroupDescription = NewAcntGrp.GroupDescription
+					,Refreshable = NewAcntGrp.Refreshable
+					,QueryName = NewAcntGrp.QueryName
+		WHEN NOT MATCHED
+			THEN
+				INSERT (
+					[GroupName]
+					,[GroupType]
+					,[CreationDate]
+					,[LastRefreshed]
+					,[GroupDescription]
+					,[Refreshable]
+					,[QueryName]
+					)
+				VALUES (
+					NewAcntGrp.GroupName
+					,NewAcntGrp.GroupType
+					,GetDate()
+					,GetDate()
+					,NewAcntGrp.GroupDescription
+					,NewAcntGrp.Refreshable
+					,NewAcntGrp.QueryName
+					);
+
+		-- Dropping temporary table
+		DROP TABLE #TmpAccountGroup
+
+		DELETE GrpAcnt
+		FROM TBL_TR_GroupXAccount GrpAcnt
+		INNER JOIN (
+			SELECT XMLDATA.item.value('@GroupName[1]', 'varchar(30)') AS GroupName
+			FROM @GroupXML.nodes('//AccountGroupCollection/GroupAccounts/GroupAccount') AS XMLDATA(item)
+			) StgAcntGrp ON GrpAcnt.GroupName = StgAcntGrp.GroupName
+
+		INSERT INTO TBL_TR_GroupXAccount (
+			[GroupName]
+			,[CustomerAccountNumber]
+			)
+		SELECT XMLDATA.item.value('@GroupName[1]', 'varchar(30)')
+			,XMLDATA.item.value('@CustomerAccountNumber[1]', 'varchar(14)')
+		FROM @GroupXML.nodes('//AccountGroupCollection/GroupAccounts/GroupAccount') AS XMLDATA(item)
+
+		COMMIT TRANSACTION @SaveGroupTRAN
+	END TRY
+
+	BEGIN CATCH
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION @SaveGroupTRAN;
+
+		SET @ReturnStatus = - 1;
+	END CATCH
+END
+GO
+
+

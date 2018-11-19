@@ -1,0 +1,352 @@
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails]    Script Date: 05/14/2014 18:11:51 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin
+		DROP PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails]
+		PRINT 'Dropped USP_WFT_GetEmailRuleEngineAttributeDetails Procedure'
+	End
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails]    Script Date: 05/14/2014 18:11:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name:     [USP_WFT_GetEmailRuleEngineAttributeDetails]
+** Short Desc:	
+**
+** Full Description
+**        
+**
+** Sample Call
+	[USP_WFT_GetEmailRuleEngineAttributeDetails] '<root><request><id>3067</id><type>N</type></request><request><id>3065</id><type>N</type></request><request><id>3063</id><type>M</type></request><request><id>121</id><type>N</type></request></root>'
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Abhishek
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	20-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails] @requestxml XML
+AS
+BEGIN
+	--declare @requestxml xml
+	--set @requestxml='<root><request><id>3067</id><type>N</type></request><request><id>3065</id><type>N</type></request><request><id>3063</id><type>N</type></request><request><id>121</id><type>N</type></request></root>'
+	DECLARE @XmlRequestInfo TABLE (
+		ID INT IDENTITY(1, 1)
+		,request_id INT
+		,type CHAR(1)
+		,formid INT
+		)
+
+	INSERT INTO @XmlRequestInfo (
+		request_id
+		,type
+		,formid
+		)
+	SELECT req.value('id[1]', 'int') AS request_id
+		,req.value('type[1]', 'char(1)') AS type
+		,r.formid
+	FROM @requestxml.nodes('//request') a(req)
+	INNER JOIN wft_request r ON r.request_id = req.value('id[1]', 'int')
+
+	--select * from @XmlRequestInfo
+	--select partial_distribution,* from wft_trust_termination
+	--form_id = 89
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN era.attribute_name = 'reason_for_notification'
+				THEN isnull(li.LIST_ITEM_NAME, '')
+			WHEN era.attribute_name = 'is_distribution_available'
+				THEN CASE 
+						WHEN isnull(lipd.LIST_ITEM_NAME, '') = ''
+							THEN 'No'
+						ELSE lipd.LIST_ITEM_NAME
+						END
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_trust_termination tt ON r.guid = tt.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	LEFT OUTER JOIN V_EIS_LIST_ITEMS li ON tt.action_on_account = li.LIST_ITEM_ID
+	LEFT OUTER JOIN V_EIS_LIST_ITEMS lipd ON tt.action_on_distribution = lipd.LIST_ITEM_ID
+	
+	UNION
+	
+	--form_id = 91
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,cast(r.is_authorized AS VARCHAR) AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_name_change nc ON r.guid = nc.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 92
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,cast(r.is_authorized AS VARCHAR) AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_address_change ac ON r.guid = ac.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 93
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,cast(r.is_authorized AS VARCHAR) AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_third_party_change tpc ON r.guid = tpc.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 94
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,cast(r.is_authorized AS VARCHAR) AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_bank_payment_change bpc ON r.guid = bpc.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 128
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN era.attribute_name = 'has_ta2_limit'
+				THEN isnull(rtrim(ltrim(cr.has_ta2_limit)), '')
+			WHEN era.attribute_name = 'amount_requested_gte_ta2_limit'
+				THEN CASE 
+						WHEN isnull(cr.payment_amount, 0) >= isnull(cr.ta2_limit_amount, 0)
+							THEN 'Yes'
+						ELSE 'No'
+						END
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_Check_Request cr ON r.guid = cr.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 132
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,NULL AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_multiple_beneficiaries mb ON r.guid = mb.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 133
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN era.attribute_name = 'investment_and_trading_strategy'
+				THEN nti.investment_strategy
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_New_Trust_Info nti ON r.guid = nti.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 152
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN era.attribute_name = 'asset_delivery_arrival'
+				THEN ada.asset_delivery_arrival
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_additional_donated_asssets ada ON r.guid = ada.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 153
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN era.attribute_name = 'investment_and_trading_strategy'
+				THEN att.investment_trading_strategy
+			WHEN era.attribute_name = 'is_revised_submission'
+				THEN att.is_revised_submission
+			WHEN era.attribute_name = 'account_type'
+				THEN att.account_type
+			WHEN era.attribute_name = 'total_gift_value'
+				THEN cast(att.total_gift_value AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_addition_to_trust att ON r.guid = att.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 154
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+					--when era.attribute_name = 'investment_and_trading_strategy' then pgda.investment_trading_strategy
+			WHEN era.attribute_name = 'is_revised_submission'
+				THEN pgda.is_revised_submission
+			WHEN era.attribute_name = 'account_type'
+				THEN pgda.account_type
+			WHEN era.attribute_name = 'total_gift_value'
+				THEN cast(pgda.total_gift_value AS VARCHAR)
+			ELSE NULL
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_pif_gap_participant_data_asset_valution pgda ON r.guid = pgda.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 155
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,NULL AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN wft_trust_asset_valuation tav ON r.guid = tav.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+	
+	UNION
+	
+	--form_id = 157
+	SELECT r.request_id
+		,er.email_rule_id
+		,era.attribute_name
+		,CASE 
+			WHEN era.attribute_name = 'is_authorized'
+				THEN cast(r.is_authorized AS VARCHAR)
+			WHEN attribute_name = 'is_second_signature_required'
+				THEN id.is_second_signature_required
+			END AS actualAttributeValue
+	FROM wft_request r
+	INNER JOIN @XmlRequestInfo xri ON r.request_id = xri.request_id
+	INNER JOIN WFT_Investment_Directive id ON r.guid = id.guid
+	INNER JOIN WFT_EmailRule er ON r.formid = er.formid
+		AND er.is_active = 1
+		AND er.new_or_modified = xri.type
+	LEFT OUTER JOIN WFT_EmailRuleAttribute era ON er.email_rule_id = era.email_rule_id
+END
+GO
+
+
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_WFT_GetEmailRuleEngineAttributeDetails]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin
+		PRINT 'Created USP_WFT_GetEmailRuleEngineAttributeDetails Procedure.'
+	End
+GO

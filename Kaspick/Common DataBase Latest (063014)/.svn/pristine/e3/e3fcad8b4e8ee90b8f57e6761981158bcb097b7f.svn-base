@@ -1,0 +1,93 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetUserPrivilegeState]    Script Date: 06/13/2014 01:01:38 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_GetUserPrivilegeState]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_GetUserPrivilegeState]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_GetUserPrivilegeState]    Script Date: 06/13/2014 01:01:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name:     USP_IE_GetUserPrivilegeState      
+** Short Desc: Get Default states, From States and To States associated with user.      
+**      
+** Full Description      
+**        Get Default states, From States and To States associated with user. This is used
+**        in Income Estimation modules to setup Filter values and workflow for the Groups.      
+**      
+** Sample Call
+
+	EXEC USP_IE_GetUserPrivilegeState 'spadekal'
+     
+**  
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By: Soorya    
+** Company   : Kaspick & Company    
+** Project   : BackOffice Integration    
+** Created DT: 13-Jun-2014      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**       
+*******************************************************************************      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+********************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_GetUserPrivilegeState] (@UserLoginName VARCHAR(50))
+AS
+BEGIN
+	--  Initial Set statements  --      
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds      
+
+	SELECT Pri.PrivilegeName
+		,Module.ModuleName
+		,DefSet.DefaultSetting
+		,'' AS FromState
+		,'' AS ToState
+		,DefSet.SettingType
+	FROM TBL_IE_DefaultSetting DefSet
+	INNER JOIN TBL_KS_Privilege Pri ON Pri.PrivilegeID = DefSet.PrivilegeID
+	INNER JOIN TBL_KS_Module Module ON Module.ModuleID = DefSet.ModuleID
+	INNER JOIN TBL_KS_RolePrivilege RolPriv ON RolPriv.PrivilegeID = Pri.PrivilegeID
+	INNER JOIN TBL_KS_UserRole UsrRol ON UsrRol.RoleID = RolPriv.RoleID
+	INNER JOIN TBL_KS_User Usr ON Usr.UserID = UsrRol.UserID
+	WHERE Usr.LoginName = @UserLoginName
+	
+	UNION ALL
+	
+	SELECT Pri.PrivilegeName
+		,'' AS ModuleName
+		,'' AS DefaultSetting
+		,Stat.StateName AS FromState
+		,Statt.StateName AS ToState
+		,'PRIVSTATE' AS SettingType
+	FROM TBL_KS_Privilege Pri
+	INNER JOIN TBL_KS_RolePrivilege RolPriv ON RolPriv.PrivilegeID = Pri.PrivilegeID
+	INNER JOIN TBL_KS_UserRole UsrRol ON UsrRol.RoleID = RolPriv.RoleID
+	INNER JOIN TBL_KS_User Usr ON Usr.UserID = UsrRol.UserID
+	INNER JOIN TBL_IE_PrivilegeStateFlow PrivFlow ON PrivFlow.PrivilegeID = Pri.PrivilegeID
+	INNER JOIN TBL_IE_StateFlow Flow ON Flow.StateFlowID = PrivFlow.StateFlowID
+	INNER JOIN TBL_IE_State Stat ON Stat.StateID = Flow.FromStateID
+	LEFT OUTER JOIN TBL_IE_State Statt ON Statt.StateID = Flow.ToStateID
+	WHERE Usr.LoginName = @UserLoginName
+END

@@ -1,0 +1,229 @@
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewCalcNetIncome]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_IE_ReviewCalcNetIncome]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_IE_ReviewCalcNetIncome]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_IE_ReviewCalcNetIncome]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_IE_ReviewCalcNetIncome    
+** Short Desc:  Used for Net Income Calculation in Data Review Module     
+**    
+** Full Description : Used for Net Income Calculation in Data Review Module 
+**            
+**    
+** Sample Call    
+  Declare @XMLDATA XML  
+	set @XMLDATA =   '<ImportStagingCollection>  
+  <InsertList>  
+   <ImportStaging StagingID="12" />  
+   <ImportStaging StagingID="13" />  
+   <ImportStaging StagingID="14" />  
+  </InsertList><UpdateList></UpdateList><DeleteList></DeleteList>  
+	</ImportStagingCollection>'  
+	EXEC USP_IE_ReviewCalcNetIncome  @XMLDATA    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Income Estimation    
+** Created DT: 08/18/2014    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_IE_ReviewCalcNetIncome] @XMLDATA XML AS
+
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	--  Variable Declarations  --   
+	--  Temp tables, Cursors, Table Variables  --  
+	IF OBJECT_ID('tempdb..#TBLAccountsToBeImported') IS NOT NULL
+		DROP TABLE #TBLAccountsToBeImported
+
+	CREATE TABLE #TBLAccountsToBeImported (StagingID INT NOT NULL)
+
+	BEGIN TRY
+		--  Transactions  
+		BEGIN TRANSACTION
+
+		--Get acounts to be imported from xml  
+		INSERT INTO #TBLAccountsToBeImported
+		SELECT XMLInput.Item.value('@StagingID[1]', 'int') AS StagingID
+		FROM @XMLDATA.nodes('//ImportStagingCollection/InsertList/ImportStaging') AS XMLInput(Item)
+
+		--reset all values previously calculated  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_NewNetIncomeEstimate = 0
+			,Ax_NetIncomeYieldOnStartDate = 0
+			,Ca_NetIncomeEstimateUsedForPmt = 0
+			,Ca_PmtYield = 0
+			,Ca_NetPriorYearQ1_Q4Var = 0
+			,Ca_NetPriorYearTotalVar = 0
+			,Ca_InvAllocNetYieldVar = 0
+			,Ca_NetMidYearVar = 0
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Calculate Net Income  
+		/*Gross Income Estimate - Reclassified Income - YTD IM Fee - Projected IM Fee - YTD TA Fee - Project TA Fee - YTD Trustee Fee - 
+		Project Trustee Fee -TMC Annual Service Charge to Income - YTD Other Expenses - Estimated Other Expenses - 
+		Prior Year Overpayment(+Prior Year Underpayment) - Prior Year Accrued Income + Current Year Accrued Income - 
+		Asset Amortization( + Asset Accretion) + Actual SGD + Estimated SGD + Actual STG/LTG = New Net Income Estimate */
+		
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_NewNetIncomeEstimate = ISNULL(Ax_GrossIncomeEstimate, 0) - ISNULL(Ax_ReClassIncome, 0) - ISNULL(IT_YTDIMFee_Income, 0) - ISNULL(IT_ProjectedIMFee_Income, 0) - ISNULL(IT_YTDTAFee_Income, 0) - ISNULL(IT_ProjectedTAFee_Income, 0) - ISNULL(IT_YTDTrusteeFee_Income, 0) - ISNULL(IT_ProjectedTrusteeFee_Income, 0) - ISNULL(Ax_TMCAnnualChg_Income, 0) - ISNULL(Ax_YTDOtherEx, 0) - ISNULL(EstimatedOtherExpenses, 0) - ISNULL(PP_OverPayment, 0) - ISNULL(Ax_PriorYearAccruedIncome, 0) + ISNULL(CurrentYearAccruedIncome, 0) - ISNULL(AssetAmortAccret, 0) + ISNULL(Ax_ActualSGD, 0) + ISNULL(Ax_EstimatedSGD, 0) + ISNULL(ActualSTGLTG, 0)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Net Income Yield on start date  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ax_NetIncomeYieldOnStartDate = CASE 
+				WHEN ISNULL(Ax_FMVOnStartDate, 0) = 0
+					OR Ax_FMVOnStartDate = 0
+					THEN 0
+				ELSE ISNULL(Ca_NewNetIncomeEstimate, 0) / Ax_FMVOnStartDate
+				END
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Net Income Estimate used for Payment  
+		/*Rounding Rules: Per Account  
+		New Net Income Estimate rounded based on following rules:  
+		If New Net Income Estimate >$50,000, rounddown to the nearest $5000.
+		If New Net Income Estimate <$50,000 rounddown to the nearest $1000
+		If New Net Income Estimate <$25,000, rounddown to the nearest $500
+		If New Net Income Estimate <$10,000, rounddown to the nearest $100
+		If New Net Income Estimate <$5,000, rounddown to the nearest $50
+		If New Net Income Estimate <$1000, rounddown to the nearest $25
+		If New Net Income Estimate <$500, rounddown to the nearest $5*/
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_NetIncomeEstimateUsedForPmt = (
+				CASE 
+					WHEN Ca_NewNetIncomeEstimate <= 0
+						THEN 0
+					WHEN Ca_NewNetIncomeEstimate > 0
+						AND Ca_NewNetIncomeEstimate < 500
+						THEN 5 * FLOOR(Ca_NewNetIncomeEstimate / 5)
+					WHEN Ca_NewNetIncomeEstimate >= 500
+						AND Ca_NewNetIncomeEstimate < 1000
+						THEN 25 * FLOOR(Ca_NewNetIncomeEstimate / 25)
+					WHEN Ca_NewNetIncomeEstimate >= 1000
+						AND Ca_NewNetIncomeEstimate < 5000
+						THEN 50 * FLOOR(Ca_NewNetIncomeEstimate / 50)
+					WHEN Ca_NewNetIncomeEstimate >= 5000
+						AND Ca_NewNetIncomeEstimate < 10000
+						THEN 100 * FLOOR(Ca_NewNetIncomeEstimate / 100)
+					WHEN Ca_NewNetIncomeEstimate >= 10000
+						AND Ca_NewNetIncomeEstimate < 25000
+						THEN 500 * FLOOR(Ca_NewNetIncomeEstimate / 500)
+					WHEN Ca_NewNetIncomeEstimate >= 25000
+						AND Ca_NewNetIncomeEstimate < 50000
+						THEN 1000 * FLOOR(Ca_NewNetIncomeEstimate / 1000)
+					ELSE 5000 * FLOOR(Ca_NewNetIncomeEstimate / 5000)
+					END
+				)
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		--Payment Yield %  
+		--Prior Year Q1-Q4 Variance (Net)  
+		--'= IF(NetIncomeYield%onJan1 = 0, 0, ((Net Income Estimate used for Payment/Year-1 Q1-Q4 Payments) -1 ) * 100  
+		--Prior Year Total Variance (Net)  
+		--'= IF(NetIncomeYield%onJan1 = 0, 0, ((Net Income Estimate used for Payment/Year -1 Total Payments) -1 ) * 100 
+		--Inv Alloc Net Yield Variance
+		--Mid Year Variance  
+		UPDATE TBL_IE_STG_Estimate
+		SET Ca_PmtYield = CASE 
+				WHEN ISNULL(Ax_FMVOnStartDate, 0) = 0
+					OR Ax_FMVOnStartDate = 0
+					THEN 0
+				ELSE ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / Ax_FMVOnStartDate
+				END
+			,Ca_NetPriorYearQ1_Q4Var = CASE 
+				WHEN ISNULL(PP_Q1_Q4PaymentsPriorYear1, 0) = 0
+					OR PP_Q1_Q4PaymentsPriorYear1 = 0
+					THEN 0
+				ELSE ((ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / PP_Q1_Q4PaymentsPriorYear1) - 1)
+				END
+			,Ca_NetPriorYearTotalVar = CASE 
+				WHEN ISNULL(PP_TotalPaymentsPriorYear1, 0) = 0
+					OR PP_TotalPaymentsPriorYear1 = 0
+					THEN 0
+				ELSE ((ISNULL(Ca_NetIncomeEstimateUsedForPmt, 0) / PP_TotalPaymentsPriorYear1) - 1)
+				END
+			,Ca_InvAllocNetYieldVar = CASE 
+				WHEN ISNULL(PP_InvestmentAllocationYield, 0) = 0
+					OR PP_InvestmentAllocationYield = 0
+					THEN 0
+				ELSE ((Ax_NetIncomeYieldOnStartDate / (PP_InvestmentAllocationYield)) - 1)
+				END
+			,Ca_NetMidYearVar = CASE 
+				WHEN ISNULL(PP_ScheduledPaymentAmount, 0) = 0
+					OR PP_ScheduledPaymentAmount = 0
+					THEN 0
+				ELSE ((Ca_NetIncomeEstimateUsedForPmt / (PP_ScheduledPaymentAmount)) - 1)
+				END
+			,ModifiedDate = GETDATE()
+		FROM TBL_IE_STG_Estimate STGEst
+		INNER JOIN #TBLAccountsToBeImported ImpAcc
+			ON STGEst.StagingID = ImpAcc.StagingID
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

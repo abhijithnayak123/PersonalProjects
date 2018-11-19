@@ -1,0 +1,58 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllCustodians]    Script Date: 05/15/2014 16:21:23 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_OP_GetAllCustodians]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_OP_GetAllCustodians]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_OP_GetAllCustodians]    Script Date: 05/15/2014 16:21:23 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_OP_GetAllCustodians      
+** Short Desc : Put in Short Description      
+**      
+** Full Description      
+**              
+**      
+** Sample Call      
+        EXEC USP_OP_GetAllCustodians 
+**      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Tanuj Gupta 
+** Company  :		Kaspick & Company      
+** Project  :		Katana      
+** Created DT :		May/13/2007      
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+** May/15/2014   Tanuj             Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/      
+CREATE PROCEDURE [dbo].[USP_OP_GetAllCustodians] --300008    
+AS       
+	
+BEGIN
+	select CustodianID, 
+			CustodianCode,
+			CustodianName,
+			TransactionFileFolder,
+			IsActive
+	from TBL_OP_Custodian
+
+End
+GO
+
+

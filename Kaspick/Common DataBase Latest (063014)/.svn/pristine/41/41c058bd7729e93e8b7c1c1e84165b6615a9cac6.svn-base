@@ -1,0 +1,121 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsNewStatusLog]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_InsNewStatusLog]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_InsNewStatusLog]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_InsNewStatusLog]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_InsNewStatusLog    
+** Short Desc:   Inserts status change log entry to table TBL_SIT_StatusChangeLog for the given valuation id
+**    
+** Full Description : Inserts status change log entry to table TBL_SIT_StatusChangeLog for the given valuation id
+**            
+**    
+** Sample Call    
+  Declare @status int    
+        EXEC USP_SIT_InsNewStatusLog  4636,6,1,'Test',''
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_SIT_InsNewStatusLog] @ValuationID INT
+	,@NewStatus VARCHAR(100)
+	,@StatusChangeUserID INT
+	,@Comment VARCHAR(250)
+	,@StatusChangeDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+		--  Variable Declarations  --   
+		--  Temp tables, Cursors, Table Variables  --    
+
+	DECLARE @NewStatusID INT
+	DECLARE @OldStatusID INT
+
+	SELECT @NewStatusID = SITStatusID
+	FROM TBL_SIT_Status
+	WHERE StatusName = @NewStatus
+
+	SELECT TOP 1 @NewStatusID = NewStatusID
+	FROM TBL_SIT_StatusChangeLog
+	WHERE ValuationID = @ValuationID
+	ORDER BY StatusChangeLogID DESC
+	BEGIN TRY
+	BEGIN TRANSACTION
+	INSERT INTO TBL_SIT_StatusChangeLog (
+		ValuationID
+		,OldStatusID
+		,NewStatusID
+		,Comment
+		,StatusChangeUserID
+		,StatusChangeDate
+		)
+	VALUES (
+		@ValuationID
+		,@NewStatusID
+		,@NewStatusID
+		,@Comment
+		,@StatusChangeUserID
+		,GetDate()
+		)
+
+	COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+
+		PRINT N'The transaction is in an uncommittable state. ' + 'Rolling back transaction.'
+	END CATCH;
+
+	SET NOCOUNT OFF;
+END

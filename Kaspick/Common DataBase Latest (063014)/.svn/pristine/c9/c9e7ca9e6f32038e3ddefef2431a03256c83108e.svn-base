@@ -1,0 +1,100 @@
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetValuationByCustomerAccountNumber]    Script Date: 07/02/2014 09:22:21 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_SIT_GetValuationByCustomerAccountNumber]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_SIT_GetValuationByCustomerAccountNumber]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_SIT_GetValuationByCustomerAccountNumber]    Script Date: 07/02/2014 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** Name:     USP_SIT_GetValuationByCustomerAccountNumber
+** Short Desc:  Get valuation status log data for selected customer account number
+**    
+** Full Description : Get valuation status log data for selected customer account number
+**            
+**    
+** Sample Call     
+         EXEC USP_SIT_GetValuationByCustomerAccountNumber '2010-01-31', '7775674'
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Mohamed Salih    
+** Company   : Kaspick & Company    
+** Project   : Back Office Integration - Sub Accounting   
+** Created DT: 09/01/2014      
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+**   
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE USP_SIT_GetValuationByCustomerAccountNumber @valuationDate DATETIME
+	,@customerAccountNumber VARCHAR(14)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	SELECT ValuationID
+		,ValuationDate
+		,Reconfromdate
+		,Recontodate
+		,CustomerAccountNumber
+		,ManagerCode
+		,ManageCodeName
+		,CurrentStatusID
+		,vs.STATUS AS CurrentStatus
+		,InitialFMV
+		--,OutstandingPaymentParagon
+		,PendingSeverence
+		,PendingGiftAddition
+		,EarlyTradedPayments
+		,InnoTrustPaymentsAsOfDate
+		,GiftwrapPaymentsAsOfDate
+		,OtherAdjustment
+		,FinalFMV
+		,GiftwrapEquityUnit
+		,NAV
+		,ReconcilliationType
+		,Comment
+		,RecordVersion
+		,ReconWithDW
+		,GiftWrapCashtracInput
+		,GiftWrapMVDARptGenerated
+		,v.CreatedDate
+		,v.CreatedBy
+		,v.ModifiedDate
+		,v.ModifiedBy
+		,u.LoginName
+		,AccountType
+		,HasGiftExclusion
+		,GiftExclusionComment
+		,ValuationType
+	FROM TBL_PV_Valuation v
+	INNER JOIN TBL_PV_ValuationStatus vs ON vs.StatusID = v.CurrentStatusID
+	INNER JOIN TBL_KS_User u ON u.USERID = v.ModifiedBy
+	WHERE v.ValuationDate = @Valuationdate
+		AND v.CustomerAccountNumber = @customerAccountNumber
+	ORDER BY v.CustomerAccountNumber
+END

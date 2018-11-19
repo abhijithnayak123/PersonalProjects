@@ -1,0 +1,297 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveWftRequestDetail'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveWftRequestDetail;
+
+	PRINT 'DROPPED USP_EX_SaveWftRequestDetail';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************    
+** New Name :    USP_EX_SaveWftRequestDetail
+** Old Name :     sp_wft_save_request_detail    
+** Short Desc:     
+**    
+** Full Description    
+**        This stored proc is used to save the request details.    
+**    
+** Sample Call    
+   sp_wft_save_request_detail 4151, 2,4,22,'Comment 1','Comment 2','Comment 3','http:\\www.yahoo.com', 10    
+ sp_wft_insert_update_request_flow 584,29,16,'test#2 Insert/Update SP',1    
+**    
+** Return values: NONE    
+**    
+**    
+** Standard declarations    
+**       SET NOCOUNT             ON    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds    
+**     
+** Created By: Abhishek    
+** Company   : Kaspick & Company    
+** Project   : Excelsior    
+** Created DT: 8/3/2009    
+**                
+*******************************************************************************    
+**       Change History    
+*******************************************************************************    
+** Date:        Author:  Bug #     Description:                           Rvwd    
+** --------     -------- ------    -------------------------------------- --------    
+** 09/29/2009 Abhishek   Change the lenghth of the comment field from varchar 256 to 2000    
+** 8/16/2012	Tanuj	Special Project - Added AutoPopulate Functionality for Donoe Bene Name Change  
+** 21-Mar-2014  Yugandhar EXCREQ9.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION    
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_SaveWftRequestDetail]
+	-- paremeters here      
+	@request_id INT
+	,@form_flow_id1 INT = NULL
+	,@form_flow_id2 INT = NULL
+	,@form_flow_id3 INT = NULL
+	,@flow_status_id1 INT = NULL
+	,@flow_status_id2 INT = NULL
+	,@flow_status_id3 INT = NULL
+	,@flow_comment1 VARCHAR(2000)
+	,@flow_comment2 VARCHAR(2000)
+	,@flow_comment3 VARCHAR(2000)
+	,@workflow_form_url VARCHAR(1000)
+	,
+	--09/14      
+	@current_flow_status_id1 INT = NULL
+	,@current_flow_status_id2 INT = NULL
+	,@current_flow_status_id3 INT = NULL
+	,@current_flow_comment1 VARCHAR(2000)
+	,@current_flow_comment2 VARCHAR(2000)
+	,@current_flow_comment3 VARCHAR(2000)
+	,@current_workflow_form_url VARCHAR(1000)
+	,@user_id INT
+	,
+	--03/31/2010    
+	@PriorityFlag BIT
+	,@AutoPopulateExcelsiorFlag BIT
+	,@Iscountry_Address4Exists INT OUTPUT
+AS
+--  Variable Declarations  --      
+DECLARE @number_of_flows INT
+DECLARE @is_closed1 INT
+DECLARE @is_closed2 INT
+DECLARE @is_closed3 INT
+DECLARE @completed_status_id INT
+
+--  Temp tables, Cursors, Table Variables  --      
+--  Variable Data Assignment  --      
+SET @Iscountry_Address4Exists = 0;
+
+SELECT @number_of_flows = number_of_flows
+FROM TBL_WFT_Request Rqst
+INNER JOIN TBL_WFT_ML_FrmCtrlExtn FCExtn ON Rqst.formid = FCExtn.formid
+	AND Rqst.request_id = @request_id
+
+EXEC USP_EX_GetListItemID @LIST_TYPE_NAME = 'WFT Flow Status'
+	,@LIST_ITEM_NAME = 'Completed'
+	,@LIST_ITEM_ID = @completed_status_id OUTPUT
+
+SELECT @is_closed1 = is_closed
+FROM TBL_WFT_FlowStatus
+WHERE flow_status_id = @flow_status_id1
+
+IF (
+		@number_of_flows >= 2
+		AND isnull(@flow_status_id2, 0) <> 0
+		)
+	SELECT @is_closed2 = is_closed
+	FROM TBL_WFT_FlowStatus
+	WHERE flow_status_id = @flow_status_id2
+ELSE
+	SET @is_closed2 = 1
+
+IF (
+		@number_of_flows >= 3
+		AND isnull(@flow_status_id3, 0) <> 0
+		)
+	SELECT @is_closed3 = is_closed
+	FROM TBL_WFT_FlowStatus
+	WHERE flow_status_id = @flow_status_id3
+ELSE
+	SET @is_closed3 = 1
+
+-- Body of procedure  -- 
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	IF (
+			isnull(@form_flow_id1, 0) <> 0
+			AND isnull(@flow_status_id1, 0) <> 0
+			)
+		EXEC USP_EX_SaveWftRequestFlow @request_id
+			,@form_flow_id1
+			,@flow_status_id1
+			,@flow_comment1
+			,@current_flow_status_id1
+			,@current_flow_comment1
+			,@user_id
+
+	IF (
+			isnull(@form_flow_id2, 0) <> 0
+			AND isnull(@flow_status_id2, 0) <> 0
+			)
+		EXEC USP_EX_SaveWftRequestFlow @request_id
+			,@form_flow_id2
+			,@flow_status_id2
+			,@flow_comment2
+			,@current_flow_status_id2
+			,@current_flow_comment2
+			,@user_id
+
+	IF (
+			isnull(@form_flow_id3, 0) <> 0
+			AND isnull(@flow_status_id3, 0) <> 0
+			)
+		EXEC USP_EX_SaveWftRequestFlow @request_id
+			,@form_flow_id3
+			,@flow_status_id3
+			,@flow_comment3
+			,@current_flow_status_id3
+			,@current_flow_comment3
+			,@user_id
+
+	-- Update WFT_Request table      
+	IF (
+			@is_closed1 = 1
+			AND @is_closed2 = 1
+			AND @is_closed3 = 1
+			)
+	BEGIN
+		UPDATE TBL_WFT_Request
+		SET request_status_id = @completed_status_id
+			,status_datetime = getdate()
+			,workflow_form_url = @Workflow_Form_Url
+			,status_user_id = @User_Id
+			,priority_flag = @PriorityFlag -- Exclesior 4: 03/31/10 - Offshore    
+		WHERE request_id = @Request_Id
+	END
+	ELSE
+	BEGIN
+		UPDATE TBL_WFT_Request
+		SET workflow_form_url = @Workflow_Form_Url
+			,priority_flag = @PriorityFlag -- Exclesior 4: 03/31/10 - Offshore    
+		WHERE request_id = @Request_Id
+	END
+
+	DECLARE @formid INT
+	DECLARE @AutoPopulateDate DATETIME
+
+	SELECT @formid = formid
+		,@AutoPopulateDate = Auto_Populate_date
+	FROM TBL_WFT_Request
+	WHERE request_id = @Request_Id
+
+	IF (
+			@AutoPopulateExcelsiorFlag = 1
+			AND @flow_status_id1 = (
+				SELECT flow_status_id
+				FROM TBL_WFT_FlowStatus
+				WHERE flow_status_name = 'TA QA Received'
+				)
+			AND @formid = 92
+			AND isnull(@AutoPopulateDate, '') = ''
+			)
+	BEGIN
+		EXEC USP_EX_UpdWftAutoPouplateBeneAddressChange @Request_Id
+			,@User_Id
+			,@Iscountry_Address4Exists OUTPUT
+
+		IF (@Iscountry_Address4Exists = 0)
+		BEGIN
+			UPDATE TBL_WFT_Request
+			SET Auto_Populate_Excelsior = @AutoPopulateExcelsiorFlag
+				,Auto_Populate_date = getdate()
+			WHERE request_id = @Request_Id
+		END
+	END
+
+	IF (
+			@AutoPopulateExcelsiorFlag = 1
+			AND @flow_status_id1 = (
+				SELECT flow_status_id
+				FROM TBL_WFT_FlowStatus
+				WHERE flow_status_name = 'TA QA Received'
+				)
+			AND @formid = 94
+			AND isnull(@AutoPopulateDate, '') = ''
+			)
+	BEGIN
+		UPDATE TBL_WFT_Request
+		SET Auto_Populate_Excelsior = @AutoPopulateExcelsiorFlag
+			,Auto_Populate_date = getdate()
+		WHERE request_id = @Request_Id
+
+		EXEC USP_EX_UpdWftAutopouplateBankpymtchg @Request_Id
+			,@User_Id
+	END
+
+	-- Added AutoPopulate Functionality for Donoe Bene Name Change   
+	IF (
+			@AutoPopulateExcelsiorFlag = 1
+			AND @flow_status_id1 = (
+				SELECT flow_status_id
+				FROM TBL_WFT_FlowStatus
+				WHERE flow_status_name = 'TA QA Received'
+				)
+			AND @formid = 91
+			AND isnull(@AutoPopulateDate, '') = ''
+			)
+	BEGIN
+		UPDATE TBL_WFT_Request
+		SET Auto_Populate_Excelsior = @AutoPopulateExcelsiorFlag
+			,Auto_Populate_date = getdate()
+		WHERE request_id = @Request_Id
+
+		EXEC USP_EX_UpdWftAutopouplateBeneNameChange @Request_Id
+			,@User_Id
+	END
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	DECLARE @ErrorMessage NVARCHAR(4000);
+	DECLARE @ErrorSeverity INT;
+	DECLARE @ErrorState INT;
+
+	SELECT @ErrorMessage = ERROR_MESSAGE()
+		,@ErrorSeverity = ERROR_SEVERITY()
+		,@ErrorState = ERROR_STATE();
+
+	RAISERROR (
+			@ErrorMessage
+			,-- Message text.
+			@ErrorSeverity
+			,-- Severity.
+			@ErrorState -- State.
+			);
+              
+	RETURN (- 1)
+END CATCH
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveWftRequestDetail'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveWftRequestDetail';
+END

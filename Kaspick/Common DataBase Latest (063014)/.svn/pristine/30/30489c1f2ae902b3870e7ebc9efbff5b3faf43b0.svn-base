@@ -1,0 +1,118 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdSysadminBenereportcomments'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdSysadminBenereportcomments;
+
+	PRINT 'DROPPED USP_EX_UpdSysadminBenereportcomments';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************  
+** Name : USP_EX_UpdSysadminBenereportcomments
+** Old Name:     USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_UpdProc  
+** Short Desc: This procedure is used to update particular record in   
+**    BeneReportComments table. Input is captured through Investment Allocation Decription  
+**    screen of SysAdmin section.  
+**  
+** Full Description  
+**        More detailed description if necessary  
+**  
+** Sample Call  
+        EXEC USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_UpdProc 460,'100% Mutual Funds','Mutual Funds','Exclusively mutual funds',36,0  -- parameters  
+**  
+** Return values: None  
+**  
+**  
+** Standard declarations  
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds  
+**       SET TRANSACTION ISOLATION LEVEL SNAPSHOT;  
+**   
+** Created By: Ritu Jetly  
+** Company   : Kaspick & Company  
+** Project   : IM Profiles  
+** Created DT: 03/13/2007  
+**              
+*******************************************************************************  
+**       Change History  
+*******************************************************************************  
+** Date:        Author:  Bug #     Description:                           Rvwd  
+** --------     -------- ------    -------------------------------------- --------  
+** 03/15/2007 Ritu     Added Try Catch block for Exception  
+**       Handling.Commented SET NOCOUNT ON  
+** 20-March-2014  Sanath   EXCREQ3.1   Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************  
+** Copyright (C) <CopyrightYear,2007,Year> Kaspick & Company, All Rights Reserved  
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION  
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_UpdSysadminBenereportcomments]
+	-- paremeters here        
+	@brcommentid INT
+	,@portfoliocode VARCHAR(39)
+	,@portfoliolabel VARCHAR(39)
+	,@portfoliodescription VARCHAR(750)
+	,@modified_user_id INT
+AS
+SET LOCK_TIMEOUT 30000;-- 30 seconds        
+	--  Variable Declarations  --        
+
+DECLARE @procname VARCHAR(60);
+DECLARE @ErrorMessage VARCHAR(1000);
+DECLARE @ErrorNumber INT;
+-- Variables used for error handling - uncomment if needed        
+DECLARE @val1 VARCHAR(30);
+DECLARE @val2 VARCHAR(30);
+
+--  Variable Data Assignment  --        
+SET @procname = 'USP_EX_UpdSysadminBenereportcomments';
+
+-- Body of procedure  --        
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	-- Updating record of BeneReportComments table        
+	UPDATE TBL_INV_BeneReportComment
+	SET PortfolioCode = @portfoliocode
+		,PortfolioLabel = @portfoliolabel
+		,PortfolioDescription = @portfoliodescription
+		,ModifiedDate = getdate()
+		,ModifiedBy = @modified_user_id
+	WHERE brcommentid = @brcommentid
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	SET @ErrorMessage = ERROR_MESSAGE();
+	SET @ErrorNumber = ERROR_NUMBER();
+	SET @val1 = Cast(@PortfolioCode AS VARCHAR(30));
+	SET @val2 = Cast(@PortfolioLabel AS VARCHAR(30));
+
+	EXEC dbo.USP_EX_SYSErrorHandler @codename = @procname
+		,@ErrorMessage = @ErrorMessage
+		,@ErrorNumber = @ErrorNumber
+		,@val1 = @val1
+		,@val1str = 'PortfolioCode'
+		,@val2 = @val2
+		,@val2str = 'PortfolioLabel';
+END CATCH;
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdSysadminBenereportcomments'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_UpdSysadminBenereportcomments';
+END

@@ -1,0 +1,102 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdSysadminCgasetup'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_UpdSysadminCgasetup;
+
+	PRINT 'DROPPED PROCEDURE USP_EX_UpdSysadminCgasetup';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*********************************************************************************************************************                                                   
+* New Procedure Name  : USP_EX_UpdSysadminCgasetup
+* Old Procedure Name  : USP_EIS_EX_SYSADMIN_CGASETUP_SelProc          
+* Description     :       
+* Input Parameter :       
+*                                      
+* Modification Log                                                       
+*                                      
+* Date   Modified By   Description                                                      
+*--------------------------------------------------------------------------------------------------------------------                                                   
+* 02-Feb-07  Venugopal.B  To update state cga rule. 
+* 09-Apr-14  Sanath       Excelsior Prime project for req EXCREQ 3.1 
+* 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted      
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_UpdSysadminCgasetup] (
+	@SETUP_ID INT
+	,@STATE_TYPE_ID INT
+	,@CGATYPE_TYPE_ID INT
+	,@RESERVE_TYPE_ID INT
+	,@ANNUAL_FORM_TYPE_ID INT
+	,@DAYS_FORM_DUE_AFTER_FY_OR_CY VARCHAR(100)
+	,@ANNUAL_REPORTING_FORM_RULE VARCHAR(100)
+	,@SUBMIT_FINANCIAL_STATEMENT_TYPE_ID INT
+	,@ANNUAL_FINANCIAL_STATEMENT_TYPE_ID INT
+	,@DAYS_STATEMENT_DUE_AFTER_FY_OR_CY INT
+	,@ANNUAL_FINANCIAL_STATEMENT_RULE VARCHAR(100)
+	,@WEBSITE_ADDRESS VARCHAR(255)
+	,@USERID INT
+	)
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		UPDATE TBL_BR_CGASetup
+		SET STATE_TYPE_ID = @STATE_TYPE_ID
+			,CGATYPE_TYPE_ID = @CGATYPE_TYPE_ID
+			,RESERVE_TYPE_ID = @RESERVE_TYPE_ID
+			,ANNUAL_FORM_TYPE_ID = @ANNUAL_FORM_TYPE_ID
+			,DAYS_FORM_DUE_AFTER_FY_OR_CY = @DAYS_FORM_DUE_AFTER_FY_OR_CY
+			,ANNUAL_REPORTING_FORM_RULE = @ANNUAL_REPORTING_FORM_RULE
+			,SUBMIT_FINANCIAL_STATEMENT_TYPE_ID = @SUBMIT_FINANCIAL_STATEMENT_TYPE_ID
+			,ANNUAL_FINANCIAL_STATEMENT_TYPE_ID = @ANNUAL_FINANCIAL_STATEMENT_TYPE_ID
+			,DAYS_STATEMENT_DUE_AFTER_FY_OR_CY = @DAYS_STATEMENT_DUE_AFTER_FY_OR_CY
+			,ANNUAL_FINANCIAL_STATEMENT_RULE = @ANNUAL_FINANCIAL_STATEMENT_RULE
+			,WEBSITE_ADDRESS = @WEBSITE_ADDRESS
+			,MODIFIED_DATE = getdate()
+			,MODIFIED_USER_ID = @USERID
+		WHERE SETUP_ID = @SETUP_ID
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+				RETURN (-1)  
+	END CATCH
+		
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_UpdSysadminCgasetup'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_UpdSysadminCgasetup';
+END

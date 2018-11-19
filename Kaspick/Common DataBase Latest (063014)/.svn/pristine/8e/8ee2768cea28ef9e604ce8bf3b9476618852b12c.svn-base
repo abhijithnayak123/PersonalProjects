@@ -1,0 +1,234 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_SaveReconcilliation]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_SaveReconcilliation]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_SaveReconcilliation]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_SaveReconcilliation]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_SaveReconcilliation                      
+** Short Desc: Updating valuation details for the given valuationid and displaying the details  . 
+**                      
+** Full Description: Updating valuation details for the given valuationid and displaying the details  .
+**      
+**                              
+** Input Arguments:   @ReconType VARCHAR(50)
+**	,@XMLGiftAdditionData XML
+**	,@XMLGiftSeveredData XML
+**	,@XMLInnoTrustData XML
+**	,@ValuationID INT
+**	,@ValuationRecordVersion VARCHAR(1000)
+**	,@PendingAmount DECIMAL(20, 4)
+**	,@UserID INT
+**	,@ReturnStatus OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT            
+** Sample Call     
+
+DECLARE @XMLGiftAdditionData XML
+DECLARE @XMLGiftSeveredData XML
+DECLARE @XMLInnoTrustData XML
+DECLARE @ReturnStatus INT =-1
+DECLARE @ErrorDesc VARCHAR(8000)
+SET @XMLGiftAdditionData = '<ValuationGiftwrapTransactionCollection><InsertList></InsertList><UpdateList><ValuationGiftwrapTransaction GiftKey="4618230"  MatchKey=""  MatchStatus=""  MatchComment="Un matched"  /></UpdateList><DeleteList></DeleteList></ValuationGiftwrapTransactionCollection>'
+                        
+SET @XMLGiftSeveredData = '<GiftwrapSeveredPersonCollection> 
+						<UpdateList> <GiftwrapSeveredPerson  PersonID="82385" MatchKey="01142010OSGAPTest" MatchStatus="A" MatchComment="Test"/>
+						</UpdateList> 
+                        </GiftwrapSeveredPersonCollection>'       
+                        
+SET @XMLInnoTrustData = '<ValuationInnoTrustTransactionCollection><InsertList></InsertList><UpdateList><ValuationInnoTrustTransaction TransactionID="72686"  ValuationID="12309"  MatchKey=""  MatchStatus=""  MatchComment="Un matched"  /></UpdateList><DeleteList></DeleteList></ValuationInnoTrustTransactionCollection>'
+EXEC USP_PV_SaveReconcilliation  'GiftAddition',@XMLGiftAdditionData,@XMLGiftSeveredData,@XMLInnoTrustData,12309,'0x00000000003CBFF4',-164086.06,1,@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+Select @ReturnStatus,@ErrorDesc
+
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 4/7/2014	Saravanan				Renamed @XMLGiftAdditionData collection root node 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_SaveReconcilliation] (
+	@ReconType VARCHAR(50)
+	,@XMLGiftAdditionData XML
+	,@XMLGiftSeveredData XML
+	,@XMLInnoTrustData XML
+	,@ValuationID INT
+	,@ValuationRecordVersion VARCHAR(1000)
+	,@PendingAmount DECIMAL(20, 4)
+	,@UserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  -- 
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_PV_Valuation PVal
+				WHERE ValuationID = @ValuationID
+					AND sys.fn_varbintohexsubstring(1, PVal.RecordVersion, 1, 0) = @ValuationRecordVersion
+				)
+		BEGIN
+			UPDATE TBL_PV_Valuation
+			SET PendingGiftAddition = CASE @ReconType
+					WHEN 'GiftAddition'
+						THEN @PendingAmount
+					ELSE PendingGiftAddition
+					END
+				,PendingSeverence = CASE @ReconType
+					WHEN 'Severances'
+						THEN @PendingAmount
+					ELSE PendingSeverence
+					END
+				,FinalFMV = InitialFMV + PendingSeverence + PendingGiftAddition + EarlyTradedPayments + GiftwrapPaymentsAsOfDate + InnoTrustPaymentsAsOfDate + OtherAdjustment
+				,NAV = CASE 
+					WHEN GiftwrapEquityUnit = 0
+						THEN 0
+					ELSE ((InitialFMV + PendingSeverence + PendingGiftAddition + OtherAdjustment) / GiftwrapEquityUnit)
+					END
+				,ModifiedDate = GETDATE()
+				,ModifiedBy = @UserID
+			WHERE ValuationID = @ValuationID
+
+			--update giftwrap transactions  
+			UPDATE TBL_PV_ValuationGiftwrapTransaction
+			SET MatchKey = XmlInput.MatchKey
+				,MatchStatus = XmlInput.MatchStatus
+				,MatchComment = XmlInput.MatchComment
+			FROM TBL_PV_ValuationGiftwrapTransaction GWTrans
+			INNER JOIN (
+				SELECT XmlInput.Item.value('@GiftKey[1]', 'INT') AS GiftKey
+					,XmlInput.Item.value('@MatchKey[1]', 'VARCHAR(50)') AS MatchKey
+					,XmlInput.Item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+					,XmlInput.Item.value('@MatchComment[1]', 'VARCHAR(50)') AS MatchComment
+				FROM @XMLGiftAdditionData.nodes('//ValuationGiftwrapTransactionCollection/UpdateList/ValuationGiftwrapTransaction') AS XmlInput(Item)
+				) XmlInput
+				ON GWTrans.GiftKey = XmlInput.GiftKey
+			WHERE GWTrans.ValuationID = @ValuationID
+
+			UPDATE TBL_PV_ValuationGiftwrapTransaction
+			SET MatchKey = XmlInput.MatchKey
+				,MatchStatus = XmlInput.MatchStatus
+				,MatchComment = XmlInput.MatchComment
+			FROM TBL_PV_ValuationGiftwrapTransaction GWTrans
+			INNER JOIN (
+				SELECT XmlInput.Item.value('@PersonID[1]', 'INT') AS PersonID
+					,XmlInput.Item.value('@MatchKey[1]', 'VARCHAR(50)') AS MatchKey
+					,XmlInput.Item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+					,XmlInput.Item.value('@MatchComment[1]', 'VARCHAR(50)') AS MatchComment
+				FROM @XMLGiftSeveredData.nodes('//GiftwrapSeveredPersonCollection/UpdateList/GiftwrapSeveredPerson') AS XmlInput(Item)
+				) XmlInput
+				ON GWTrans.PersonID = XmlInput.PersonID
+			WHERE GWTrans.ValuationID = @ValuationID
+
+			--update Innotrust transactions  
+			UPDATE TBL_PV_ValuationInnoTrustTransaction
+			SET MatchKey = XmlInput.MatchKey
+				,MatchStatus = XmlInput.MatchStatus
+				,MatchComment = XmlInput.MatchComment
+			FROM TBL_PV_ValuationInnoTrustTransaction ITTrans
+			INNER JOIN (
+				SELECT XmlInput.Item.value('@TransactionID[1]', 'INT') AS TransactionID
+					,XmlInput.Item.value('@MatchKey[1]', 'VARCHAR(50)') AS MatchKey
+					,XmlInput.Item.value('@MatchStatus[1]', 'CHAR(1)') AS MatchStatus
+					,XmlInput.Item.value('@MatchComment[1]', 'VARCHAR(50)') AS MatchComment
+				FROM @XMLInnoTrustData.nodes('//ValuationInnoTrustTransactionCollection/UpdateList/ValuationInnoTrustTransaction') AS XmlInput(Item)
+				) XmlInput
+				ON ITTrans.TransactionID = XmlInput.TransactionID
+			WHERE ITTrans.ValuationID = @ValuationID
+
+			SET @ReturnStatus = 0;
+			SET @ErrorDesc = '';
+
+			SELECT ValuationID
+				,ValuationDate
+				,ReconFromDate
+				,ReconToDate
+				,CustomerAccountNumber
+				,ManagerCode
+				,ManageCodeName
+				,CurrentStatusID
+				,PValStat.STATUS AS CurrentStatus
+				,InitialFMV
+				,PendingSeverence
+				,PendingGiftAddition
+				,EarlyTradedPayments
+				,GiftwrapPaymentsAsOfDate
+				,InnoTrustPaymentsAsOfDate
+				,OtherAdjustment
+				,FinalFMV
+				,GiftwrapEquityUnit
+				,NAV
+				,ReconcilliationType
+				,Comment
+				,RecordVersion
+				,ReconWithDW
+				,GiftWrapCashtracInput
+				,GiftWrapMVDARptGenerated
+				,Pval.CreatedDate
+				,Pval.CreatedBy
+				,Pval.ModifiedDate
+				,Pval.ModifiedBy
+				,Usr.LoginName AS 'LoginName'
+				,AccountType
+				,HasGiftExclusion
+				,GiftExclusionComment
+				,ValuationType
+			FROM TBL_PV_Valuation Pval
+			INNER JOIN TBL_KS_User Usr
+				ON Usr.UserID = Pval.ModifiedBy
+			INNER JOIN TBL_PV_ValuationStatus PValStat
+				ON PValStat.StatusID = CurrentStatusID
+			WHERE ValuationID = @ValuationID
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+			SET @ErrorDesc = 'Dirty Write';
+		END
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION;
+	END CATCH
+END

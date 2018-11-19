@@ -1,0 +1,161 @@
+/****** Object:  StoredProcedure [dbo].[USP_PV_SaveManagerCodeParameter]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PV_SaveManagerCodeParameter]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PV_SaveManagerCodeParameter]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PV_SaveManagerCodeParameter]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PV_SaveManagerCodeParameter                      
+** Short Desc: Saves managercode parameters  . 
+**                      
+** Full Description: Saves managercode parameters . 
+**      
+**                              
+** Input Arguments:   @XMLManagerCodeParam XML
+**	,@UserID INT
+**	,@Comment VARCHAR(8000)
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+**	,@ReturnStatus INT  OUTPUT
+** Sample Call     
+
+DECLARE @XMLManagerCodeParam XML
+DECLARE @ReturnStatus INT = - 1
+DECLARE @ErrorDesc VARCHAR(8000)
+SET @XMLManagerCodeParam = '<ManagerCodeParametersCollection> 
+						<InsertList> <ManagerCodeParameters  CustomerAccountNumber="GTGAP" AccountType="GAP" ManagerCode="GT" ManagerCodeName="Governors State University" GiftWrapAccount="" GroupID="" HasGiftExclusion="1" ExcludeAccruedInterest="0" AccountingRoutine="" IsSubAccountingSystemFIMS="1" ExcludeIncomeCash="0"/>
+						</InsertList>
+						<UpdateList> <ManagerCodeParameters  CustomerAccountNumber="GTGAP" AccountType="GAP" ManagerCode="GT" ManagerCodeName="Governors State University" GiftWrapAccount="" GroupID="" HasGiftExclusion="0" ExcludeAccruedInterest="1" AccountingRoutine="" IsSubAccountingSystemFIMS="0" ExcludeIncomeCash="1"/>
+						</UpdateList> 
+                     </ManagerCodeParametersCollection>'
+EXEC USP_PV_SaveManagerCodeParameter  @XMLManagerCodeParam,1,'Test Manager code',@ReturnStatus OUTPUT,@ErrorDesc OUTPUT
+Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 06-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PV_SaveManagerCodeParameter] (
+	@XMLManagerCodeParam XML
+	,@UserID INT
+	,@Comment VARCHAR(8000)
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	-- Body of procedure  -- 
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT TBL_PV_ManagerCodeParameter (
+			CustomerAccountNumber
+			,AccountType
+			,ManagerCode
+			,ManagerCodeName
+			,GiftWrapAccount
+			,GroupID
+			,HasGiftExclusion
+			,GiftExclusionComment
+			,ExcludeAccruedInterest
+			,AccountingRoutine
+			,IsSubAccountingSystemFIMS
+			,ExcludeIncomeCash
+			)
+		SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+			,XmlInput.Item.value('@AccountType[1]', 'VARCHAR(20)') AS AccountType
+			,XmlInput.Item.value('@ManagerCode[1]', 'CHAR(4)') AS ManagerCode
+			,XmlInput.Item.value('@ManagerCodeName[1]', 'VARCHAR(100)') AS ManagerCodeName
+			,XmlInput.Item.value('@GiftWrapAccount[1]', 'VARCHAR(8)') AS GiftWrapAccount
+			,XmlInput.Item.value('@GroupID[1]', 'INT') AS GroupID
+			,XmlInput.Item.value('@HasGiftExclusion[1]', 'BIT') AS HasGiftExclusion
+			,@Comment AS GiftsExclusionComments
+			,XmlInput.Item.value('@ExcludeAccruedInterest[1]', 'BIT') AS ExcludeAccruedInterest
+			,XmlInput.Item.value('@AccountingRoutine[1]', 'VARCHAR(20)') AS AccountingRoutine
+			,XmlInput.Item.value('@IsSubAccountingSystemFIMS[1]', 'BIT') AS IsSubAccountingSystemFIMS
+			,XmlInput.Item.value('@ExcludeIncomeCash[1]', 'BIT') AS ExcludeIncomeCash
+		FROM @XMLManagerCodeParam.nodes('//ManagerCodeParametersCollection/InsertList/ManagerCodeParameters') AS XmlInput(Item)
+
+		UPDATE TBL_PV_ManagerCodeParameter
+		SET GroupID = XmlInput.GroupID
+			,HasGiftExclusion = XmlInput.HasGiftExclusion
+			,GiftExclusionComment = @Comment
+			,ExcludeAccruedInterest = XmlInput.ExcludeAccruedInterest
+			,ExcludeIncomeCash = XmlInput.ExcludeIncomeCash
+			,AccountingRoutine = XmlInput.AccountingRoutine
+			,IsSubAccountingSystemFIMS = XmlInput.IsSubAccountingSystemFIMS
+		FROM TBL_PV_ManagerCodeParameter MParam
+		INNER JOIN (
+			SELECT XmlInput.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+				,XmlInput.Item.value('@GroupID[1]', 'INT') AS GroupID
+				,XmlInput.Item.value('@HasGiftExclusion[1]', 'BIT') AS HasGiftExclusion
+				,XmlInput.Item.value('@ExcludeAccruedInterest[1]', 'BIT') AS ExcludeAccruedInterest
+				,XmlInput.Item.value('@AccountingRoutine[1]', 'VARCHAR(20)') AS AccountingRoutine
+				,XmlInput.Item.value('@IsSubAccountingSystemFIMS[1]', 'BIT') AS IsSubAccountingSystemFIMS
+				,XmlInput.Item.value('@ExcludeIncomeCash[1]', 'BIT') AS ExcludeIncomeCash
+			FROM @XMLManagerCodeParam.nodes('//ManagerCodeParametersCollection/UpdateList/ManagerCodeParameters') AS XmlInput(Item)
+			) AS XmlInput
+			ON XmlInput.CustomerAccountNumber = MParam.CustomerAccountNumber
+
+		SELECT ParameterID
+			,CustomerAccountNumber
+			,AccountType
+			,ManagerCode
+			,ManagerCodeName
+			,GiftWrapAccount
+			,GroupID
+			,HasGiftExclusion
+			,GiftExclusionComment
+			,ExcludeAccruedInterest
+			,AccountingRoutine
+			,IsSubAccountingSystemFIMS
+			,ExcludeIncomeCash
+		FROM TBL_PV_ManagerCodeParameter
+
+		SET @ReturnStatus = 0
+		SET @ErrorDesc = '';
+
+		COMMIT TRANSACTION;
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1
+		SET @ErrorDesc = ERROR_MESSAGE();
+
+		ROLLBACK TRANSACTION
+	END CATCH
+END

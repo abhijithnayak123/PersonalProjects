@@ -1,0 +1,132 @@
+/****** Object:  StoredProcedure [dbo].[USP_TR_UpdRejectTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_UpdRejectTSheet]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_UpdRejectTSheet]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_TR_UpdRejectTSheet]    Script Date: 06/26/2013 16:48:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_TR_UpdRejectTSheet                      
+** Short Desc: Rejects the TSheet for the specified EventID
+**                      
+** Full Description: Updates the EventstatusID to Rejected state for the specified EventID
+**      
+**                              
+** Input Arguments:   	@EventID INT
+**	,@ReturnStatus INT  OUTPUT
+**	,@ErrorDesc VARCHAR(8000) OUTPUT             
+** Sample Call     
+
+ DECLARE @XMLTSheet XML
+ DECLARE @ReturnStatus INT     
+ DECLARE @ErrorDesc VARCHAR(MAX)   
+ SET @XMLTSheet= '<TSheet>
+				  <Event EventID="1" RecordVersion="0x00000000016E06DA" Comments="rbandak 11/18/2009 09:19: investing proceeds 11/18" UpdatedComments="rbandak 11/18/2010 09:19: investing proceeds 11/18" />
+	               </TSheet> '
+ EXEC dbo.USP_TR_UpdRejectTSheet @XMLTSheet,11479,1,@ReturnStatus OUTPUT ,@ErrorDesc  OUTPUT
+  Select @ReturnStatus,@ErrorDesc
+**             
+**                      
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Mohamed Salih 
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 10-Mar-14               
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_UpdRejectTSheet] (
+	@XMLTSheet XML
+	,@RejectStatusID INT
+	,@RejectUserID INT
+	,@ReturnStatus INT = - 1 OUTPUT
+	,@ErrorDesc VARCHAR(8000) OUTPUT
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds 
+
+	--  Variable Declarations  --            
+	DECLARE @procname VARCHAR(60);
+
+	--  Variable Data Assignment  --            
+	SET @procname = 'USP_TR_UpdRejectTSheet';
+
+	-- Body of procedure  --            
+	BEGIN TRY
+		IF EXISTS (
+				SELECT 1
+				FROM TBL_TR_Event Evnt
+				INNER JOIN (
+					SELECT XMLInput.Item.value('@EventID[1]', 'int') AS EventID
+						,XMLInput.Item.value('@RecordVersion[1]', 'varchar(1000)') AS EventRecordVersion
+					FROM @XMLTSheet.nodes('//TSheet/Event') AS XMLInput(Item)
+					) XmlInput ON XmlInput.EventID = Evnt.EventID
+					AND sys.fn_varbintohexsubstring(1, Evnt.RecordVersion, 1, 0) = XmlInput.EventRecordVersion
+				)
+		BEGIN
+			BEGIN TRANSACTION @procname
+
+			UPDATE TBL_TR_Event
+			SET EventStatusID = @RejectStatusID
+				,LastModifiedUserID = @RejectUserID
+				,LastModifiedDate = GetDate()
+				,Comments = XmlInput.Comments
+				,TradeComment = XmlInput.TradeComment
+			FROM TBL_TR_Event Evnt
+			INNER JOIN (
+				SELECT XMLInput.Item.value('@EventID[1]', 'int') AS EventID
+					,XMLInput.Item.value('@Comments[1]', 'varchar(1000)') AS Comments
+					,XMLInput.Item.value('@UpdatedComments[1]', 'varchar(1000)') AS TradeComment
+				FROM @XMLTSheet.nodes('//TSheet/Event') AS XMLInput(Item)
+				) XmlInput ON XmlInput.EventID = Evnt.EventID
+
+			SET @ReturnStatus = 0;
+
+			EXEC USP_TR_GetEventByID @XMLTSheet
+
+			COMMIT TRANSACTION @procname
+		END
+		ELSE
+		BEGIN
+			SET @ReturnStatus = - 2;
+			SET @ErrorDesc = 'Dirty Write';
+		END
+	END TRY
+
+	BEGIN CATCH
+		SET @ReturnStatus = - 1;
+		SET @ErrorDesc = error_message();
+
+		ROLLBACK TRANSACTION @procname
+	END CATCH
+
+	SET NOCOUNT OFF;
+END

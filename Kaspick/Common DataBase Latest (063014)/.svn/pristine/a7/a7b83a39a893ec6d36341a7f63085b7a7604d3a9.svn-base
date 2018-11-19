@@ -1,0 +1,135 @@
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_TR_GetAllApprovedTradeForSubmission]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_TR_GetAllApprovedTradeForSubmission]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************      
+** Name   :   USP_TR_GetAllApprovedTradeForSubmission      
+** Short Desc : Get all Approved Trade for Submission from table TBL_TR_TSheetApprovedTrade 
+**      
+** Full Description : Get all Approved Trade for Submission from table TBL_TR_TSheetApprovedTrade based on the Search Criteria
+**              
+**      
+** Sample Call 
+	EXEC USP_TR_GetAllApprovedTradeForSubmission 'All',-1,'All','All'
+	EXEC USP_TR_GetAllApprovedTradeForSubmission 'All',-1,'All','Manual Orders'
+	EXEC USP_TR_GetAllApprovedTradeForSubmission 'All',-1,'All','Executed Trades' 
+	EXEC USP_TR_GetAllApprovedTradeForSubmission 'All',-1,'All','Schwab File'  
+**      
+** Return values: NONE      
+**      
+**      
+** Standard declarations      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds      
+**       
+** Created By :		Chaithra Madappa
+** Company  :		Kaspick & Company      
+** Project  :		Back Office Integration (T-Rex)     
+** Created DT :		Feb/10/2014     
+**                  
+*******************************************************************************      
+**       Change History      
+*******************************************************************************      
+** Date:        Author:  Bug #     Description:                           Rvwd      
+** --------     -------- ------    -------------------------------------- --------      
+**                                 Created    
+******************************************************************************      
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION      
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_TR_GetAllApprovedTradeForSubmission] (
+	@SLMASTERACCOUNT VARCHAR(12)
+	,@TRADERID VARCHAR(15)
+	,@SOURCE VARCHAR(10)
+	,@SUBMISSIONTYPE VARCHAR(25)
+	)
+AS
+BEGIN
+	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+	DECLARE @STATUS AS VARCHAR(50)
+
+	SET @STATUS = 'APPROVED'
+
+	SELECT Evnt.EVENTID
+		,EvntAcnt.CustomerAccountNumber
+		,EvntAcnt.SLMASTERACCOUNT
+		,TAprvdTrd.TRADEID
+		,TAprvdTrd.SECURITYSYMBOL
+		,TAprvdTrd.SECURITYTYPECODE
+		,TAprvdTrd.TRADETYPE
+		,(TAprvdTrd.TRADEQUANTITY - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0)) AS TRADEQUANTITY
+		,TAprvdTrd.SUBMISSIONTYPE
+		,TAprvdTrd.DOLLARAMOUNT
+		,TAprvdTrd.SPLITTRADE
+		,TAprvdTrd.SUBMITTEDQUANTITYTILLDATE
+		,ISNULL(EvntAcnt.CUSTODIANACCOUNTNUMBER, 0) CUSTODIANACCOUNTNUMBER
+		,Evnt.SOURCE
+		,EnvtStatus.EVENTSTATUS
+		,EvntAcnt.FSIOPTION
+		,TAprvdTrd.RECORDVERSION
+	FROM TBL_TR_TSheetApprovedTrade TAprvdTrd
+	INNER JOIN TBL_TR_EventACCOUNT EvntAcnt ON TAprvdTrd.EventAccountID = EvntAcnt.EventAccountID
+	INNER JOIN TBL_TR_Event Evnt ON TAprvdTrd.EVENTID = Evnt.EVENTID
+	INNER JOIN TBL_TR_EventSTATUS EnvtStatus ON Evnt.EVENTSTATUSID = EnvtStatus.EVENTSTATUSID
+	LEFT OUTER JOIN TBL_TR_TradeImport TrdImpt ON TAprvdTrd.TradeID = TrdImpt.TradeIDTRex
+	LEFT OUTER JOIN TBL_TR_TradeError TrdError ON TAprvdTrd.TradeID = TrdError.TradeID
+	WHERE EnvtStatus.EVENTSTATUS = @STATUS
+		AND (
+			CASE 
+				WHEN TAprvdTrd.SUBMISSIONTYPE = 'Schwab File'
+					AND isnull(TrdImpt.TradeID, 0) = 0
+					THEN 1
+				ELSE (ISNULL(TAprvdTrd.TRADEQUANTITY, 0) - ISNULL(TAprvdTrd.SUBMITTEDQUANTITYTILLDATE, 0))
+				END
+			) <> 0
+		AND isnull(TrdError.TradeID, 0) = 0
+		AND (
+			(
+				(
+					@SLMASTERACCOUNT <> 'All'
+					AND EvntAcnt.SLMasterAccount = @SLMASTERACCOUNT
+					)
+				OR @SLMASTERACCOUNT = 'All'
+				)
+			AND (
+				(
+					@TRADERID <> '-1'
+					AND Evnt.AssignedTraderID = LTRIM(RTRIM(@TRADERID))
+					)
+				OR @TRADERID = '-1'
+				)
+			AND (
+				(
+					@SOURCE <> 'All'
+					AND Evnt.Source = @SOURCE
+					)
+				OR @SOURCE = 'All'
+				)
+			AND (
+				(
+					@SUBMISSIONTYPE <> 'All'
+					AND TAprvdTrd.SubmissionType = @SUBMISSIONTYPE
+					)
+				OR @SUBMISSIONTYPE = 'All'
+				)
+			)
+END
+GO
+
+

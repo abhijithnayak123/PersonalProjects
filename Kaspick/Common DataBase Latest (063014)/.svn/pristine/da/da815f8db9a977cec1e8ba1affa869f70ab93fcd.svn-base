@@ -1,0 +1,67 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbCalculationMethod')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbCalculationMethod;
+        PRINT 'DROPPED USP_EX_GetRptFasbCalculationMethod';
+    END
+GO
+
+
+
+    
+/******************************************************************************                
+** New Name :  USP_EX_GetRptFasbCalculationMethod  
+** Old Name   :   USP_EIS_RPT_FASB_CalculationMethod_SelProc                
+** Short Desc : To select calculation methods based on trust type.      
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_EX_GetRptFasbCalculationMethod            
+**                 
+** Created By : Anand Kumar          
+** Company    : Kaspick & Company                
+** Project    : FASB                
+** Created DT : 01/17/2013               
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------          
+** 2-Apr-14     Mallikarjun  EXCREQ 5.4      
+** 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/    
+CREATE PROCEDURE USP_EX_GetRptFasbCalculationMethod     
+AS    
+BEGIN    
+    
+ SELECT DISTINCT VwLstItmTrst.ListItemID , FasbTrstTypTrnsltn.TrustTypeCalcMethod as LIST_ITEM_NAME , LabelID   FROM        
+ TBL_BR_FASBTrustTypeLabelMap  MAP      
+ INNER JOIN VW_EX_ListItem VwLstItm ON VwLstItm.ListItemID = MAP.List_Item_ID  
+ INNER JOIN TBL_BR_FASBTrustTypeTranslation FasbTrstTypTrnsltn ON FasbTrstTypTrnsltn.InnotrustAccountType  = VwLstItm.ListItemName   
+ INNER JOIN VW_EX_ListItem VwLstItmTrst ON VwLstItmTrst.ListItemName  = FasbTrstTypTrnsltn.TrustTypeCalcMethod    
+ AND VwLstItmTrst.ListTypeName = 'Calculation Method'      
+    
+END    
+
+
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbCalculationMethod') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbCalculationMethod';
+	END

@@ -1,0 +1,128 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsSysadminCgasetup'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_InsSysadminCgasetup;
+
+	PRINT 'DROPPED PROCEDURE USP_EX_InsSysadminCgasetup';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*********************************************************************************************************************                                                   
+* New Procedure Name : USP_EX_InsSysadminCgasetup
+* Old Procedure Name  : USP_EIS_EX_SYSADMIN_CGASETUP_InsProc         
+* Description     :       
+* Input Parameter :       
+*                                      
+* Modification Log                                                       
+*                                      
+* Date   Modified By   Description                                                      
+*--------------------------------------------------------------------------------------------------------------------                                                   
+* 01-Feb-07  Venugopal.B  To insert new state cga rule.     
+* 18-May-06  Venugopal B  Delete_Flag is removed  
+* 09-Apr-14   Sanath     Ecxelsior Prime project for req EXCREQ3.1   
+* 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted      
+*********************************************************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_InsSysadminCgasetup] (
+	@STATE_TYPE_ID INT
+	,@CGATYPE_TYPE_ID INT
+	,@RESERVE_TYPE_ID INT
+	,@ANNUAL_FORM_TYPE_ID INT
+	,@DAYS_FORM_DUE_AFTER_FY_OR_CY VARCHAR(100)
+	,@ANNUAL_REPORTING_FORM_RULE VARCHAR(100)
+	,@SUBMIT_FINANCIAL_STATEMENT_TYPE_ID INT
+	,@ANNUAL_FINANCIAL_STATEMENT_TYPE_ID INT
+	,@DAYS_STATEMENT_DUE_AFTER_FY_OR_CY INT
+	,@ANNUAL_FINANCIAL_STATEMENT_RULE VARCHAR(100)
+	,@WEBSITE_ADDRESS VARCHAR(255)
+	,@USERID INT
+	,@SETUP_ID INT OUTPUT
+	)
+AS
+BEGIN
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO TBL_BR_CGASetup (
+			STATE_TYPE_ID
+			,CGATYPE_TYPE_ID
+			,RESERVE_TYPE_ID
+			,ANNUAL_FORM_TYPE_ID
+			,DAYS_FORM_DUE_AFTER_FY_OR_CY
+			,ANNUAL_REPORTING_FORM_RULE
+			,SUBMIT_FINANCIAL_STATEMENT_TYPE_ID
+			,ANNUAL_FINANCIAL_STATEMENT_TYPE_ID
+			,DAYS_STATEMENT_DUE_AFTER_FY_OR_CY
+			,ANNUAL_FINANCIAL_STATEMENT_RULE
+			,WEBSITE_ADDRESS
+			,MODIFIED_DATE
+			,MODIFIED_USER_ID
+			,CREATED_DATE
+			,CREATED_USER_ID
+			)
+		VALUES (
+			@STATE_TYPE_ID
+			,@CGATYPE_TYPE_ID
+			,@RESERVE_TYPE_ID
+			,@ANNUAL_FORM_TYPE_ID
+			,@DAYS_FORM_DUE_AFTER_FY_OR_CY
+			,@ANNUAL_REPORTING_FORM_RULE
+			,@SUBMIT_FINANCIAL_STATEMENT_TYPE_ID
+			,@ANNUAL_FINANCIAL_STATEMENT_TYPE_ID
+			,@DAYS_STATEMENT_DUE_AFTER_FY_OR_CY
+			,@ANNUAL_FINANCIAL_STATEMENT_RULE
+			,@WEBSITE_ADDRESS
+			,GETDATE()
+			,@USERID
+			,GETDATE()
+			,@USERID
+			)
+
+		SET @SETUP_ID = IDENT_CURRENT('TBL_BR_CGASetup')
+
+		COMMIT TRANSACTION
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+		--IF (@@error!=0)            
+		--BEGIN            
+		-- RAISERROR  20000 'USP_EX_InsSysadminCgasetup: Cannot insert.'            
+		-- ROLLBACK TRAN            
+		-- RETURN (-1)      
+		--END            
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsSysadminCgasetup'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_InsSysadminCgasetup';
+END

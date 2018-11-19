@@ -1,0 +1,71 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTStatus'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetBRDTStatus;
+
+	PRINT 'DROPPED USP_RP_GetBRDTStatus';
+END
+GO
+
+/************************************r******************************************                    
+** New Name:     USP_RP_GetBRDTStatus                    
+** Old Name:     USP_EIS_BR_DT_Status_SelProc                    
+** Short Desc: To retrieve Filter Section details  
+**                    
+** Full Description: o retrieve Filter Section details  
+**                            
+** Input Arguments:   
+**       
+** Sample Call                    
+**  USP_EIS_BR_DT_Status_SelProc 1  
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Tanuj Gupta  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 08/26/2009                    
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- ----,----              
+** Mar-12-2012 Ashvin   Changes for Adding Comments as per Stored Procedure standard template.  
+** Mar-14-2012 Ashvin   ERD changes implemetation.
+** Jun-10-2014 Abhijith Sp name renamed as per Kaspick naming convention standard.  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/                    
+CREATE PROCEDURE USP_RP_GetBRDTStatus    
+(  
+ @DeliverableID int  
+)               
+AS              
+BEGIN  
+  Select DPS.DeliverableItemStatusID as DDVALUE, DPS.StatusName as DDTEXT  
+  From TBL_DLV_DeliverableProcessStatus As DPS   
+   Inner Join TBL_DLV_Deliverable As DD On DPS.DeliverableProcessID = DD.DeliverableProcessID  
+  Where DD.DeliverableID = @DeliverableID   
+  Order by DPS.StatusName  
+END  
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetBRDTStatus'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetBRDTStatus';
+END

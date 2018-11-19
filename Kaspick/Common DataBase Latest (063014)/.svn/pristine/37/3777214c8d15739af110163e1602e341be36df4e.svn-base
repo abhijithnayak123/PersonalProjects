@@ -1,0 +1,131 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsSysadminBenereportcomments'
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_InsSysadminBenereportcomments;
+
+	PRINT 'DROPPED USP_EX_InsSysadminBenereportcomments';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************
+** Name : USP_EX_InsSysadminBenereportcomments
+** Old Name:     USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_InsProc
+** Short Desc:	This procedure is used to insert new records in BeneReportComments
+**				table. Input is captured through Investment Allocation Decription
+**				screen of SysAdmin section.
+**
+** Full Description
+**        More detailed description if necessary
+**
+** Sample Call
+        EXEC USP_EIS_EX_SYSADMIN_BENEREPORTCOMMENTS_InsProc '100% Mutual Funds','Mutual Funds','Exclusively mutual funds',36,0  -- parameters
+**
+** Return values: @RETURN_VALUE: Returns ID of new record
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: N.R.Amaranth
+**	Company	  :	Kaspick & Company
+**	Project	  :	IM Profiles
+**	Created DT:	03/12/2007
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+
+** 20-March-2014  Sanath  EXCREQ 3.1 Modified
+** 23-MAY-2014  Mallikarjun     SP Name Renamed and Formatted
+*******************************************************************************
+** Copyright (C) <CopyrightYear,2007,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EX_InsSysadminBenereportcomments] --'dd','dd','dd',100038,0
+	-- paremeters here      
+	@portfoliocode VARCHAR(39)
+	,@portfoliolabel VARCHAR(39)
+	,@portfoliodescription VARCHAR(750)
+	,@created_user_id INT
+	,@return_value INT OUTPUT
+AS
+--  Variable Declarations  --      
+DECLARE @procname VARCHAR(60);
+DECLARE @ErrorMessage VARCHAR(1000);
+DECLARE @ErrorNumber INT;
+-- Variables used for error handling       
+DECLARE @val1 VARCHAR(30);
+DECLARE @val2 VARCHAR(30);
+
+--  Variable Data Assignment  --      
+SET @procname = 'USP_EX_InsSysadminBenereportcomments';
+
+-- Body of procedure  --      
+BEGIN TRY
+	SELECT @return_value = max(BRCommentID) + 1
+	FROM TBL_INV_BeneReportComment
+
+	BEGIN TRANSACTION
+
+	-- Inserting record in BeneReportComments table      
+	INSERT INTO TBL_INV_BeneReportComment (
+		BRCommentID
+		,PortfolioCode
+		,PortfolioLabel
+		,PortfolioDescription
+		,ModifiedDate
+		,ModifiedBy
+		,CreatedDate
+		,CreatedBy
+		)
+	VALUES (
+		@return_value
+		,@portfoliocode
+		,@portfoliolabel
+		,@portfoliodescription
+		,getdate()
+		,@created_user_id
+		,getdate()
+		,@created_user_id
+		)
+
+	COMMIT TRANSACTION
+END TRY
+
+BEGIN CATCH
+	ROLLBACK TRANSACTION
+
+	SET @ErrorMessage = ERROR_MESSAGE();
+	SET @ErrorNumber = ERROR_NUMBER();
+	SET @val1 = Cast(@PortfolioCode AS VARCHAR(30));
+	SET @val2 = Cast(@PortfolioLabel AS VARCHAR(30));
+
+	EXEC USP_EX_SYSErrorHandler @codename = @procname
+		,@ErrorMessage = @ErrorMessage
+		,@ErrorNumber = @ErrorNumber
+		,@val1 = @val1
+		,@val1str = 'PortfolioCode'
+		,@val2 = @val2
+		,@val2str = 'PortfolioLabel';
+END CATCH;
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_InsSysadminBenereportcomments'
+		)
+BEGIN
+	PRINT 'CREATED USP_EX_InsSysadminBenereportcomments';
+END

@@ -1,0 +1,352 @@
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveDeliverableClientReport '
+		)
+BEGIN
+	DROP PROCEDURE USP_EX_SaveDeliverableClientReport;
+
+	PRINT 'DROPPED USP_EX_SaveDeliverableClientReport ';
+END
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                    
+** New Name:     USP_EX_SaveDeliverableClientReport
+** Old Name:     USP_EIS_DLV_ClientReport_InsUpdProc                    
+** Short Desc: To insert/Update/Delete into  Client Report Package Detail   
+**                    
+** Full Description: To insert/update Client Report Package Detail   
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+     
+EXEC USP_EX_DLV_ClientReport_InsUpdProc '<DeliverableCollection><InsertList><Deliverable Action="D"  ColumnName="YearType"  DeliverableID="26"  FrequencyTypeID="28"  ClientFrequencyTypeID="28"  ClientDeliverableID="37"  /><Deliverable Action="D"  ColumnN
+ame="Frequency"  DeliverableID="26"  FrequencyTypeID="51"  ClientFrequencyTypeID="51"  ClientDeliverableID="37"  /><Deliverable Action="D"  ColumnName="YearType"  DeliverableID="26"  FrequencyTypeID="28"  ClientFrequencyTypeID="28"  ClientDeliverableID="3
+7"  /><Deliverable Action="D"  ColumnName="Frequency"  DeliverableID="26"  FrequencyTypeID="51"  ClientFrequencyTypeID="51"  ClientDeliverableID="37"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></DeliverableCollection>',100008,100038 
+  
+**           
+** Return values: Return Status  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Tanuj  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - Deliverable Tool                    
+** Created DT: 18-April-2011               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------              
+** 02-Apr-14  Yugandhar			 EXCREQ 5.4
+** 23-May-2014  Sanath   Sp name renamed as per Kaspick naming convention standard 
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/
+CREATE PROCEDURE USP_EX_SaveDeliverableClientReport --'AM','<DeliverableCollection><InsertList><Deliverable Action="I"  ColumnName="YearType"  DeliverableID="1"  FrequencyTypeID="1"  ClientFrequencyTypeID="0"  ClientDeliverableID="0"  /><Deliverable Action="I"  ColumnName="Frequency"  DeliverableID="1"  FrequencyTypeID="1"  ClientFrequencyTypeID="0"  ClientDeliverableID="0"  /></InsertList><UpdateList></UpdateList><DeleteList></DeleteList></DeliverableCollection>','',100038 
+	(
+	@ClientID VARCHAR(15)
+	,@ClientReportXML XML
+	,@ClientYearTypeDateXML XML
+	,@UserID INT
+	)
+AS
+BEGIN
+	--Declare @ListCount int  
+	DECLARE @ClientReportPackage TABLE (
+		ID INT identity(1, 1)
+		,Action CHAR(1)
+		,ColumnName VARCHAR(20)
+		,DeliverableID INT
+		,FrequencyTypeID INT
+		,ClientFrequencyTypeID INT
+		,ClientDeliverableID INT
+		,OtherMonth INT
+		,OtherDayOfMonth INT
+		)
+	DECLARE @ClientYearTypeDate TABLE (
+		ID INT identity(1, 1)
+		,Action CHAR(1)
+		,ColumnName VARCHAR(20)
+		,DeliverableID INT
+		,OtherMonth INT
+		,OtherDayOfMonth INT
+		,ClientDeliverableID INT
+		,FrequencyTypeID INT
+		)
+
+	BEGIN TRY
+		BEGIN TRANSACTION
+
+		INSERT INTO @ClientReportPackage
+		SELECT TempTable.ActivityColumns.value('@Action[1]', 'char') AS Action
+			,TempTable.ActivityColumns.value('@ColumnName[1]', 'Varchar(20)') AS ColumnName
+			,TempTable.ActivityColumns.value('@DeliverableID[1]', 'int') AS DeliverableID
+			,TempTable.ActivityColumns.value('@FrequencyTypeID[1]', 'int') AS FrequencyTypeID
+			,TempTable.ActivityColumns.value('@ClientFrequencyTypeID[1]', 'int') AS ClientFrequencyTypeID
+			,TempTable.ActivityColumns.value('@ClientDeliverableID[1]', 'Varchar(20)') AS ClientDeliverableID
+			,NULL
+			,NULL
+		FROM @ClientReportXML.nodes('/DeliverableCollection/InsertList/Deliverable') AS TempTable(ActivityColumns)
+
+		INSERT INTO @ClientYearTypeDate
+		SELECT TempTable.ActivityColumns.value('@Action[1]', 'char') AS Action
+			,TempTable.ActivityColumns.value('@ColumnName[1]', 'Varchar(20)') AS ColumnName
+			,TempTable.ActivityColumns.value('@DeliverableID[1]', 'int') AS DeliverableID
+			,TempTable.ActivityColumns.value('@OtherMonth[1]', 'int') AS OtherMonth
+			,TempTable.ActivityColumns.value('@OtherDayOfMonth[1]', 'int') AS OtherDayOfMonth
+			,TempTable.ActivityColumns.value('@ClientDeliverableID[1]', 'Varchar(20)') AS ClientDeliverableID
+			,TempTable.ActivityColumns.value('@FrequencyTypeID[1]', 'Varchar(20)') AS FrequencyTypeID
+		FROM @ClientYearTypeDateXML.nodes('/DeliverableCollection/InsertList/Deliverable') AS TempTable(ActivityColumns)
+
+		UPDATE @ClientReportPackage
+		SET rp.OtherMonth = dt.OtherMonth
+			,rp.OtherDayOfMonth = dt.OtherDayOfMonth
+		FROM @ClientYearTypeDate dt
+		INNER JOIN @ClientReportPackage rp ON dt.Action = rp.Action
+			AND dt.DeliverableID = rp.DeliverableID
+			AND dt.FrequencyTypeID = rp.FrequencyTypeID
+		WHERE rp.Action = 'I'
+
+		INSERT INTO TBL_DLV_ManagerCodeDeliverable (
+			[DeliverableID]
+			,ManagerCode
+			,[CreatedDate]
+			,[CreatedUserID]
+			,[ModifiedDate]
+			,[ModifiedUserID]
+			)
+		SELECT DISTINCT DeliverableID
+			,@ClientID
+			,getdate()
+			,@UserID
+			,getdate()
+			,@UserID
+		FROM @ClientReportPackage
+		WHERE ClientDeliverableID = 0
+			AND Action = 'I'
+
+		UPDATE @ClientReportPackage
+		SET ClientDeliverableID = MgrCodDelv.ManagerCodeDeliverableID
+		FROM TBL_DLV_ManagerCodeDeliverable MgrCodDelv
+		INNER JOIN @ClientReportPackage crp ON crp.DeliverableID = MgrCodDelv.DeliverableID
+		WHERE MgrCodDelv.DeliverableID = crp.DeliverableID
+			AND MgrCodDelv.ManagerCode = @ClientID
+
+		INSERT INTO TBL_DLV_ManagerCodeDeliverableYearType (
+			ManagerCodeDeliverableID
+			,[DeliverableYearTypeID]
+			,OtherMonth
+			,OtherDayofMonth
+			,[CreatedDate]
+			,[CreatedUserID]
+			,[ModifiedDate]
+			,[ModifiedUserID]
+			)
+		SELECT crp.ClientDeliverableID
+			,crp.FrequencyTypeID
+			,crp.OtherMonth
+			,crp.OtherDayOfMonth
+			,getdate()
+			,@UserID
+			,getdate()
+			,@UserID
+		FROM @ClientReportPackage crp
+		WHERE crp.Action = 'I'
+			AND crp.ColumnName = 'YearType'
+
+		INSERT INTO TBL_DLV_ManagerCodeDeliverableFrequency (
+			ManagerCodeDeliverableID
+			,[DeliverableFrequencyID]
+			,[CreatedDate]
+			,[CreatedUserID]
+			,[ModifiedDate]
+			,[ModifiedUserID]
+			)
+		SELECT crp.ClientDeliverableID
+			,crp.FrequencyTypeID
+			,getdate()
+			,@UserID
+			,getdate()
+			,@UserID
+		FROM @ClientReportPackage crp
+		WHERE crp.Action = 'I'
+			AND crp.ColumnName = 'Frequency'
+
+		INSERT INTO TBL_DLV_ManagerCodeDeliverableReportInPackage (
+			ManagerCodeDeliverableID
+			,[DeliverableID]
+			,[CreatedDate]
+			,[CreatedUserID]
+			,[ModifiedDate]
+			,[ModifiedUserID]
+			)
+		SELECT crp.ClientDeliverableID
+			,crp.DeliverableID
+			,getdate()
+			,@UserID
+			,getdate()
+			,@UserID
+		FROM @ClientReportPackage crp
+		WHERE crp.Action = 'I'
+			AND crp.ColumnName = 'ReportInPackage'
+
+		INSERT INTO TBL_DLV_ManagerCodeDeliverableReportInPackage (
+			[ManagerCodeDeliverableID]
+			,[DeliverableID]
+			,[CreatedDate]
+			,[CreatedUserID]
+			,[ModifiedDate]
+			,[ModifiedUserID]
+			)
+		SELECT DISTINCT MgrCodDelv.ManagerCodeDeliverableID
+			,DlvDelv.DeliverableID
+			,getdate()
+			,@UserID
+			,getdate()
+			,@UserID
+		FROM @ClientReportPackage crp
+		INNER JOIN TBL_DLV_Deliverable DlvDelv ON crp.DeliverableID = DlvDelv.Parent_DeliverableID
+			AND crp.Action = 'I'
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrCodDelv ON MgrCodDelv.DeliverableID = DlvDelv.Parent_DeliverableID
+			AND MgrCodDelv.ManagerCode = @ClientID
+		WHERE DlvDelv.DeliverableID NOT IN (
+				SELECT DeliverableID
+				FROM @ClientReportPackage
+				WHERE Action = 'DlvDelv'
+					AND ColumnName = 'ReportInPackage'
+				)
+			AND DlvDelv.DeliverableID NOT IN (
+				SELECT DeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverableReportInPackage
+				WHERE DeliverableID = DlvDelv.DeliverableID
+					AND ManagerCodeDeliverableID = MgrCodDelv.ManagerCodeDeliverableID
+				)
+			AND MgrCodDelv.ManagerCodeDeliverableID NOT IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverableReportInPackage
+				WHERE ManagerCodeDeliverableID = MgrCodDelv.ManagerCodeDeliverableID
+				)
+
+		UPDATE TBL_DLV_ManagerCodeDeliverableYearType
+		SET OtherMonth = dt.OtherMonth
+			,OtherDayofMonth = dt.OtherDayofMonth
+			,ModifiedDate = getdate()
+			,ModifiedUserID = @UserID
+		FROM @ClientYearTypeDate dt
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableYearType MgrCodDelvYrTyp ON dt.ClientDeliverableID = MgrCodDelvYrTyp.ManagerCodeDeliverableID
+			AND MgrCodDelvYrTyp.DeliverableYearTypeID = dbo.FN_GetClientDeliverableValue('Other', 'ClientDeliverableYearType', dt.DeliverableID, @ClientID)
+		WHERE dt.Action = 'U'
+
+		DELETE
+		FROM TBL_DLV_ManagerCodeDeliverableYearType
+		FROM @ClientReportPackage crp
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableYearType MgrCodDelvYrTyp ON MgrCodDelvYrTyp.DeliverableYearTypeID = crp.ClientFrequencyTypeID
+		WHERE crp.Action = 'D'
+			AND crp.ColumnName = 'YearType'
+			AND ManagerCodeDeliverableID IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverable
+				WHERE ManagerCode = @ClientID
+				)
+
+		DELETE
+		FROM TBL_DLV_ManagerCodeDeliverableFrequency
+		FROM @ClientReportPackage crp
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableFrequency MgrCodDelvFreq ON MgrCodDelvFreq.DeliverableFrequencyID = crp.ClientFrequencyTypeID
+		WHERE crp.Action = 'D'
+			AND crp.ColumnName = 'Frequency'
+			AND ManagerCodeDeliverableID IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverable
+				WHERE ManagerCode = @ClientID
+				)
+
+		DELETE
+		FROM TBL_DLV_ManagerCodeDeliverableReportInPackage
+		FROM @ClientReportPackage crp
+		INNER JOIN TBL_DLV_ManagerCodeDeliverableReportInPackage MgrCodDelvRptPkg ON MgrCodDelvRptPkg.ManagerCodeDeliverableLevel2 = crp.ClientFrequencyTypeID
+		WHERE crp.Action = 'D'
+			AND crp.ColumnName = 'ReportInPackage'
+
+		DELETE
+		FROM TBL_DLV_ManagerCodeDeliverable
+		FROM @ClientReportPackage crp
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrCodDelv ON MgrCodDelv.ManagerCodeDeliverableID = crp.ClientDeliverableID
+			AND MgrCodDelv.DeliverableID = crp.DeliverableID
+		WHERE crp.Action = 'D'
+			AND crp.ColumnName = 'ReportInPackage'
+			AND MgrCodDelv.ManagerCode = @ClientID
+
+		DELETE
+		FROM TBL_DLV_ManagerCodeDeliverable
+		FROM TBL_DLV_Deliverable DlvDelv
+		INNER JOIN TBL_DLV_ManagerCodeDeliverable MgrCodDelv ON MgrCodDelv.DeliverableID = DlvDelv.DeliverableID
+			AND isnull(DlvDelv.Parent_DeliverableID, 0) = 0
+		WHERE MgrCodDelv.ManagerCodeDeliverableID NOT IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverableFrequency
+				)
+			AND MgrCodDelv.ManagerCodeDeliverableID NOT IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverableYearType
+				)
+			AND MgrCodDelv.ManagerCodeDeliverableID NOT IN (
+				SELECT ManagerCodeDeliverableID
+				FROM TBL_DLV_ManagerCodeDeliverableEmployee
+				)
+			AND MgrCodDelv.ManagerCodeDeliverableID IN (
+				SELECT ClientDeliverableID
+				FROM @ClientReportPackage
+				)
+
+		COMMIT TRANSACTION
+	END TRY 
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION
+
+		DECLARE @ProcName VARCHAR(60);
+		DECLARE @ErrorMessage NVARCHAR(4000);
+		DECLARE @ErrorSeverity INT;
+		DECLARE @ErrorState INT;
+
+		SET @ProcName = 'USP_EX_SaveDeliverableClientReport';
+
+		DECLARE @ErrorNumber INT;
+
+		SELECT @ErrorMessage = ERROR_MESSAGE()
+			,@ErrorSeverity = ERROR_SEVERITY()
+			,@ErrorState = ERROR_STATE()
+			,@ErrorNumber = ERROR_NUMBER();
+
+		RAISERROR (
+				@ErrorMessage
+				,-- Message text.
+				@ErrorSeverity
+				,-- Severity.
+				@ErrorState -- State.
+				);
+	END CATCH
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_EX_SaveDeliverableClientReport'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_EX_SaveDeliverableClientReport';
+END

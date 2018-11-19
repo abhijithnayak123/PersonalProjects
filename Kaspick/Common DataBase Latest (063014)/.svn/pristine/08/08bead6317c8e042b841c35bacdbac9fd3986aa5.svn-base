@@ -1,0 +1,333 @@
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportConsolidatedRule]    Script Date: Script Date: 05/30/2013 16:49:36 ******/
+IF EXISTS (
+		SELECT 1
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_ReportConsolidatedRule]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	DROP PROCEDURE [dbo].[USP_PP_ReportConsolidatedRule]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_ReportConsolidatedRule]    Script Date: 05/30/2013 16:49:36 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                            
+** Name:     USP_PP_ReportConsolidatedRule                            
+** Short Desc: To Get Consolidated Rule      
+**                            
+** Full Description: To Get Consolidated Rule      
+**                                    
+** Input Arguments:   @ManagerFilterXML,@RuleType      
+**               
+** Sample Call           
+    EXEC USP_PP_ReportConsolidatedRule   
+  '<ReportFilterSubCollection>
+   <ReportFilterSub ManagerCode = "CB" /> 
+   <ReportFilterSub ManagerCode = "CPF" /> 
+   <ReportFilterSub ManagerCode = "DU" /> 
+  </ReportFilterSubCollection>'
+,'All'
+
+    EXEC USP_PP_ReportConsolidatedRule   
+  '<ReportFilterSubCollection>  
+  <ReportFilterSub ManagerCode = "CB" /> 
+   <ReportFilterSub ManagerCode = "CPF" /> 
+   <ReportFilterSub ManagerCode = "DU" /> 
+  </ReportFilterSubCollection>',  
+  'Exception'
+    
+    EXEC USP_PP_ReportConsolidatedRule   
+  '<ReportFilterSubCollection>  
+    <ReportFilterSub ManagerCode = "CB" /> 
+   <ReportFilterSub ManagerCode = "CPF" /> 
+   <ReportFilterSub ManagerCode = "DU" /> 
+  </ReportFilterSubCollection>',  
+  'Exclusion'   
+  
+    EXEC USP_PP_ReportConsolidatedRule   
+  '<ReportFilterSubCollection>  
+   <ReportFilterSub ManagerCode = "SA " />  
+  </ReportFilterSubCollection>',  
+  'Payment'
+  
+**                   
+**                            
+**                            
+** Standard declarations                            
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                            
+**                             
+** Created By: Niveditha Narasimha        
+** Company   : Kaspick & Company                            
+** Project   : BackOffice Integration                            
+** Created DT: 06-Aug-13                       
+**                                        
+*******************************************************************************                      
+**       Change History                            
+*******************************************************************************                      
+** Date:      Author:  Bug #     Description:                                 
+** --------  --------  ------    --------------------------------------       
+** 09-Oct-13 Mohamed Salih      
+** 18-Oct-13 Saravanan Muthu    Fixed Hierarchy issue and commented Contact Role check  
+   10-Nov-13 Saravanan Muthu	Optimized query & Changed Display Sequency	
+   31-Dec-13 Saravanan Muthu	Removed Where Condition for Rule Type. 				
+*******************************************************************************                            
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                            
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                            
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_PP_ReportConsolidatedRule] @ReportFilterXML XML = ''
+	,@RuleType VARCHAR(12)
+AS
+BEGIN
+	SET NOCOUNT ON
+
+	IF EXISTS (SELECT 1 FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpRule]'))
+	BEGIN
+		DROP TABLE [DBO].[#TmpRule]
+	END
+	IF EXISTS (SELECT 1 FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpXMLInput]'))
+	BEGIN
+		DROP TABLE [DBO].[#TmpXMLInput]
+	END
+	
+	
+	DECLARE @ContactRoleCode INT
+	CREATE TABLE #TmpRule (
+		ManagerCode VARCHAR(4)
+		,ManagerDescription VARCHAR(255)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountName VARCHAR(255)
+		,ContactID INT
+		,ContactName VARCHAR(255)
+		,NoofDays VARCHAR(10)
+		,MarkedAsException VARCHAR(10)
+		,ExceptionCode VARCHAR(255)
+		,ExceptionDescription VARCHAR(1000)
+		,Excluded VARCHAR(10)
+		,ExclusionDescription VARCHAR(1000)
+		,Flag INT
+		,TemplateType INT
+		,DisplaySequence INT
+		)
+	CREATE TABLE #TmpXMLInput (
+		ManagerCode VARCHAR(4)
+		,ManagerDescription VARCHAR(255)
+		,CustomerAccountNumber VARCHAR(14)
+		,AccountName VARCHAR(255)
+		,ContactID INT
+		,ContactName VARCHAR(255)
+		)
+
+	-- Contact Role Code Id For Doing Filter
+	SET @ContactRoleCode = 21 --'Beneficiary'
+
+	INSERT INTO #TmpXMLInput
+	SELECT XMLDoc.item.value('@ManagerCode[1]', 'varchar(4)') AS ManagerCode
+		,VPI.ManagerDescription
+		,VPI.CustomerAccountNumber
+		,VPI.AccountName
+		,VPI.ContactID
+		,VPI.ContactName
+	FROM @ReportFilterXML.nodes('//ReportFilterSubCollection/ReportFilterSub') AS XMLDoc(item)
+	INNER JOIN VW_IT_ProfileInfo VPI
+		ON XMLDoc.item.value('@ManagerCode[1]', 'varchar(4)') = VPI.ManagerCode
+	--		AND ContactRoleCode = @ContactRoleCode
+
+	CREATE INDEX TmpXMLInput_ManagerCode ON #TmpXMLInput (ManagerCode,CustomerAccountNumber,ContactID)
+	
+	-- 1. Contact Rule        
+	INSERT INTO #TmpRule  
+	SELECT DISTINCT 
+		XMLInput.ManagerCode  
+		,XMLInput.ManagerDescription  
+		,XMLInput.CustomerAccountNumber  
+		,XMLInput.AccountName  
+		,XMLInput.ContactID  
+		,XMLInput.ContactName  
+		,CASE WHEN ( @RuleType = 'Payment'	OR @RuleType = 'All' )  THEN ContRule.DaysValue				ELSE NULL	END AS NoofDays  
+		,CASE WHEN ( @RuleType = 'Exception'  OR @RuleType = 'All' )	THEN ContRule.IsException			ELSE NULL	END AS MarkedAsException  
+		,CASE WHEN ( @RuleType = 'Exception'  OR @RuleType = 'All' )	THEN ExcepMstr.ExceptionDescription ELSE ''     END AS ExceptionDescription  
+		,CASE WHEN ( @RuleType = 'Exception'  OR @RuleType = 'All' )  THEN ContRule.ExceptionDescription  ELSE ''     END AS ExceptionDescription  
+		,CASE WHEN ( @RuleType = 'Exclusion'  OR @RuleType = 'All' )  THEN ContRule.IsExclusion			ELSE NULL   END AS Excluded  
+		,CASE WHEN ( @RuleType = 'Exclusion'  OR @RuleType = 'All' )  THEN ContRule.ExclusionDescription  ELSE ''     END AS ExclusionDescription  
+		,3 AS Flag  
+		,0 AS TemplateType  
+		,4 AS DisplaySequence  
+	FROM #TmpXMLInput XMLInput  
+		INNER JOIN TBL_PP_ContactRule ContRule  ON ContRule.CustomerAccountNumber = XMLInput.CustomerAccountNumber  
+												AND ContRule.ContactID = XMLInput.ContactID  
+		LEFT JOIN TBL_PP_ExceptionMaster ExcepMstr ON ExcepMstr.ExceptionCode = ContRule.ExceptionCode  
+	--WHERE 	( @RuleType = 'Exception'    AND ContRule.IsException = 1  )  
+	--	OR  ( @RuleType = 'Exclusion'    AND ContRule.IsExclusion = 1  )  
+	--	OR  ( @RuleType = 'Payment'      AND ContRule.DaysValue IS NOT NULL  )  
+	--	OR @RuleType = 'All'  
+
+-- 2. Account Rule        
+-- 2.1 Insert Account level hierarchy if there is no rule set at account level 
+	INSERT INTO #TmpRule  
+	SELECT DISTINCT
+		 XMLInput.ManagerCode  
+		,XMLInput.ManagerDescription  
+		,XMLInput.CustomerAccountNumber  
+		,XMLInput.AccountName  
+		,0 ContactID  
+		,'' ContactName  
+		,NULL AS NoofDays  
+		,NULL AS MarkedAsException  
+		,''   AS ExceptionCode  
+		,''   AS ExceptionDescription  
+		,NULL AS Excluded  
+		,''   AS ExclusionDescription  
+		,2 AS Flag  
+		,0 AS TemplateType  
+		,3 AS DisplaySequence  
+	FROM #TmpXMLInput XMLInput  
+		INNER JOIN #TmpRule TmpRule	ON TmpRule.CustomerAccountNumber = XMLInput.CustomerAccountNumber  
+		LEFT JOIN TBL_PP_AccountRule AcctRule ON AcctRule.CustomerAccountNumber = XMLInput.CustomerAccountNumber  
+	WHERE AcctRule.CustomerAccountNumber IS NULL
+		--OR(	(@RuleType = 'Exception'	AND AcctRule.IsException = 0  )  
+		--	OR	(@RuleType = 'Exclusion'	AND AcctRule.IsExclusion = 0  )  
+		--	OR 	(@RuleType = 'Payment'		AND AcctRule.DaysValue IS NULL)  
+		--	OR  (@RuleType = 'All'  AND AcctRule.IsException = 0 AND AcctRule.IsExclusion = 0  AND AcctRule.DaysValue IS NULL)
+		--	)
+-- 2.2 Insert Account level Rules which are not in Contact level
+	INSERT INTO #TmpRule  
+	SELECT DISTINCT
+		 XMLInput.ManagerCode  
+		,XMLInput.ManagerDescription  
+		,XMLInput.CustomerAccountNumber  
+		,XMLInput.AccountName  
+		,0 ContactID  
+		,'' ContactName  
+		,CASE WHEN (  @RuleType = 'Payment'    OR @RuleType = 'All' ) THEN AcctRule.DaysValue				ELSE NULL   END AS NoofDays  
+		,CASE WHEN (  @RuleType = 'Exception'  OR @RuleType = 'All' ) THEN AcctRule.IsException			ELSE NULL   END AS MarkedAsException  
+		,CASE WHEN (  @RuleType = 'Exception'  OR @RuleType = 'All' ) THEN ExcepMstr.ExceptionDescription ELSE ''     END AS ExceptionCode  
+		,CASE WHEN (  @RuleType = 'Exception'  OR @RuleType = 'All' ) THEN AcctRule.ExceptionDescription  ELSE ''     END AS ExceptionDescription  
+		,CASE WHEN (  @RuleType = 'Exclusion'  OR @RuleType = 'All' ) THEN AcctRule.IsExclusion			ELSE NULL   END AS Excluded  
+		,CASE WHEN (  @RuleType = 'Exclusion'  OR @RuleType = 'All' ) THEN AcctRule.ExclusionDescription  ELSE ''     END AS ExclusionDescription  
+		,2 AS Flag  
+		,0 AS TemplateType  
+		,3 AS DisplaySequence  
+	FROM #TmpXMLInput XMLInput  
+		INNER JOIN TBL_PP_AccountRule AcctRule		ON AcctRule.CustomerAccountNumber = XMLInput.CustomerAccountNumber  
+		LEFT JOIN TBL_PP_ExceptionMaster ExcepMstr ON ExcepMstr.ExceptionCode = AcctRule.ExceptionCode  
+	--WHERE	(@RuleType = 'Exception'	AND AcctRule.IsException = 1  )  
+	--	OR	(@RuleType = 'Exclusion'	AND AcctRule.IsExclusion = 1  ) 
+	--	OR	(@RuleType = 'Payment'		AND AcctRule.DaysValue IS NOT NULL)  
+	--	OR  (@RuleType = 'All'  AND (AcctRule.IsException = 1 OR AcctRule.IsExclusion = 1  OR AcctRule.DaysValue IS NOT NULL))
+		
+-- 3 Manager Rule        
+-- 3.1 Insert Manager level hierarchy if there is no rule set at Manager level
+	INSERT INTO #TmpRule  
+	SELECT DISTINCT 
+		XMLInput.ManagerCode  
+		,XMLInput.ManagerDescription  
+		,'' CustomerAccountNumber  
+		,'' AccountName  
+		,0 ContactID  
+		,'' ContactName  
+		,NULL AS NoofDays  
+		,NULL AS MarkedAsException  
+		,''   AS ExceptionCode  
+		,''   AS ExceptionDescription  
+		,NULL AS Excluded  
+		,''   AS ExclusionDescription  
+		,1 AS Flag  
+		,0 AS TemplateType  
+		,1 AS DisplaySequence  
+	FROM #TmpXMLInput XMLInput  
+		INNER JOIN #TmpRule TmpRule	ON TmpRule.ManagerCode = XMLInput.ManagerCode
+		LEFT JOIN TBL_PP_ManagerRule MgrRule  ON MgrRule.ManagerCode = XMLInput.ManagerCode  
+	WHERE MgrRule.ManagerCode IS NULL
+		--OR (( @RuleType = 'Exception'	AND MgrRule.IsException = 0  )  
+		--	OR ( @RuleType = 'Exclusion'	AND MgrRule.IsExclusion = 0	 )  
+		--	OR ( @RuleType = 'Payment'		AND MgrRule.DaysValue IS NULL )  
+		--	OR ( @RuleType = 'All'  AND MgrRule.IsException = 0 AND MgrRule.IsExclusion = 0  AND MgrRule.DaysValue IS NULL)
+		--	)
+
+-- 3.2 Insert Manager level Rules  which are not in Account level
+    INSERT INTO #TmpRule  
+	SELECT DISTINCT 
+		XMLInput.ManagerCode  
+		,XMLInput.ManagerDescription  
+		,'' CustomerAccountNumber  
+		,'' AccountName  
+		,0 ContactID  
+		,'' ContactName  
+		,CASE	WHEN (	@RuleType = 'Payment'  	OR @RuleType = 'All' )	THEN MgrRule.DaysValue  			ELSE NULL	END AS NoofDays  
+		,CASE	WHEN (  @RuleType = 'Exception'	OR @RuleType = 'All' )  THEN MgrRule.IsException  			ELSE NULL  	END AS MarkedAsException  
+		,CASE   WHEN (  @RuleType = 'Exception' OR @RuleType = 'All' )  THEN ExcepMstr.ExceptionDescription ELSE ''  	END AS ExceptionCode  
+		,CASE   WHEN (  @RuleType = 'Exception' OR @RuleType = 'All' )  THEN MgrRule.ExceptionDescription  	ELSE ''  	END AS ExceptionDescription  
+		,CASE   WHEN (  @RuleType = 'Exclusion' OR @RuleType = 'All' )  THEN MgrRule.IsExclusion  			ELSE NULL 	END AS Excluded  
+		,CASE   WHEN (  @RuleType = 'Exclusion' OR @RuleType = 'All' )  THEN MgrRule.ExclusionDescription  	ELSE ''  	END AS ExclusionDescription  
+		,1 AS Flag  
+		,0 AS TemplateType  
+		,1 AS DisplaySequence  
+	FROM #TmpXMLInput XMLInput  
+		INNER JOIN TBL_PP_ManagerRule MgrRule  ON MgrRule.ManagerCode = XMLInput.ManagerCode  
+		LEFT JOIN TBL_PP_ExceptionMaster ExcepMstr ON ExcepMstr.ExceptionCode = MgrRule.ExceptionCode  
+	--WHERE  ( @RuleType = 'Exception'	AND MgrRule.IsException = 1  )  
+	--	OR ( @RuleType = 'Exclusion'	AND MgrRule.IsExclusion = 1	 )  
+	--	OR ( @RuleType = 'Payment'		AND MgrRule.DaysValue IS NOT NULL )  
+	--	OR ( @RuleType = 'All'  AND (MgrRule.IsException = 1 OR MgrRule.IsExclusion = 1  OR MgrRule.DaysValue IS NOT NULL))
+
+	IF @RuleType = 'Exclusion'  OR @RuleType = 'All'  
+	BEGIN
+		INSERT INTO #TmpRule  
+		SELECT DISTINCT XMLInput.ManagerCode  
+			,XMLInput.ManagerDescription  
+			,'' CustomerAccountNumber  
+			,TemplMstr.TemplateDescription AccountName  
+			,0 ContactID  
+			,'' ContactName  
+			,NULL AS NoofDays  
+			,NULL AS MarkedAsException  
+			,'' AS ExceptionCode  
+			,'' AS ExceptionDescription  
+			,NULL AS Excluded  
+			,'' AS ExclusionDescription  
+			,4 AS Flag  
+			,TemplTypeRule.TemplateCode AS TemplateType  
+			,2 AS DisplaySequence  
+			FROM #TmpXMLInput XMLInput  
+				INNER JOIN TBL_PP_TemplateTypeRule TemplTypeRule	ON XMLInput.ManagerCode = TemplTypeRule.Managercode  
+				INNER JOIN TBL_PP_TemplateMaster TemplMstr  		ON TemplMstr.TemplateCode = TemplTypeRule.TemplateCode  
+    END
+    
+ -- Display rules data        
+	SELECT ManagerCode  
+		,ManagerDescription  
+		,CustomerAccountNumber  
+		,AccountName  
+		,ContactID  
+		,ContactName  
+		,NoofDays  
+		,MarkedAsException  
+		,ExceptionCode  
+		,Excluded  
+		,ExceptionDescription  
+		,ExclusionDescription  
+		,Flag  
+		,TemplateType 
+	FROM #TmpRule  
+	ORDER BY ManagerCode  
+		,CustomerAccountNumber  
+		,DisplaySequence  
+		,ContactID  
+		
+	IF EXISTS (SELECT 1 FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpRule]'))
+	BEGIN
+		DROP TABLE [DBO].[#TmpRule]
+	END
+	IF EXISTS (SELECT 1 FROM TEMPDB.DBO.SYSOBJECTS WHERE ID = OBJECT_ID(N'TEMPDB.[DBO].[#TmpXMLInput]'))
+	BEGIN
+		DROP TABLE [DBO].[#TmpXMLInput]
+	END
+END
+

@@ -1,0 +1,91 @@
+
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetProfilePfa')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetProfilePfa;
+        PRINT 'DROPPED USP_EX_GetProfilePfa';
+    END
+GO
+
+  
+ /**************************************************************************    
+* Procedure Name  : USP_EX_GetProfilePfa  
+* Old Procedure Name  : USP_EIS_EX_PROFILE_PFA_SelProc    
+* Description     : To list out state rules based on Entity Type and ID    
+* Modification Log:                                                 
+*                                
+* Date         Modified By  Description                                                
+*-------------------------------------------------------------------------    
+* 18-Oct-06    Venugopal B  Created        
+* 02-Feb-07    Venugopal B      isnull function applied to ANNUAL_REPORTING_FORM_RULE in select statement.    
+* 21-Apr-07    Venugopal B      Unused value description is commented.    
+* 18-May-06    Venugopal B      Delete_Flag is removed      
+* 18-Apr-14    Sanath           PFA tab in Program module for requirement EXCREQ6.4    
+* 23/05/2014 Mallikarjun  SP Name Renamed and Formatted  
+****************************************************************************/    
+CREATE PROCEDURE [dbo].[USP_EX_GetProfilePfa]     
+@ENTITYTYPE VARCHAR(100),    
+@ENTITYID VARCHAR(15)    
+AS    
+BEGIN    
+    
+   DECLARE @ENTITY_TYPE_ID INT    
+   EXEC USP_EX_GetLISTITEMID
+  @LIST_TYPE_NAME = 'ENTITY',    
+  @LIST_ITEM_NAME = @ENTITYTYPE,    
+  @LIST_ITEM_ID = @ENTITY_TYPE_ID OUTPUT    
+    
+    
+SELECT     
+PFA_ID,    
+SPACE(50) AS STATE,    
+SPACE(50) AS CGA_TYPE,    
+FORM_DUE_DATE,    
+STATE_TYPE_ID,    
+CGATYPE_TYPE_ID,    
+ANNUAL_REPORTING_FORM_RULE    
+INTO #TEMP    
+FROM TBL_BR_ProfilePFA PrflPfa     
+INNER JOIN TBL_BR_CGASetup CgaStp    
+ON PrflPfa.CGA_SETUP_ID = CgaStp.SETUP_ID     
+WHERE PrflPfa.ENTITY_TYPE_ID=@ENTITY_TYPE_ID    
+ AND     
+ (    
+   PrflPfa.ManagerCode=@ENTITYID    
+   OR    
+   PrflPfa.AllianceNumber=@ENTITYID    
+   OR    
+   PrflPfa.CustomerAccountNumber=@ENTITYID    
+ )     
+    
+    
+ UPDATE #TEMP    
+ SET STATE=LstItm.ABBREV    
+ FROM #TEMP T     
+ INNER JOIN TBL_LISTITEM LstItm    
+ ON LstItm.LISTITEMID=T.STATE_TYPE_ID    
+ WHERE LstItm.LISTTYPEID =(SELECT LISTTYPEID FROM TBL_ListType WHERE LISTTYPENAME = 'STATE')    
+    
+ UPDATE #TEMP    
+ SET CGA_TYPE=LstItm.LISTITEMNAME    
+ FROM #TEMP T    
+ INNER JOIN TBL_LISTITEM LstItm    
+ ON LstItm.LISTITEMID=T.CGATYPE_TYPE_ID    
+ WHERE LstItm.LISTTYPEID=(SELECT LISTTYPEID FROM TBL_LISTTYPE WHERE LISTTYPENAME = 'CGA TYPE')    
+    
+ SELECT PFA_ID,STATE,CGA_TYPE,ISNULL(ANNUAL_REPORTING_FORM_RULE,''),ISNULL(FORM_DUE_DATE,'') AS FORM_DUE FROM #TEMP     
+    
+END     
+    
+  
+
+GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetProfilePfa') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetProfilePfa';
+	END

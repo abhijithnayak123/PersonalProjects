@@ -1,0 +1,80 @@
+/****** Object:  StoredProcedure [dbo].[USP_EML_GetEmailsToSend]    Script Date: 04/01/2010 ******/
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_GetEmailsToSend]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+	DROP PROCEDURE [dbo].[USP_EML_GetEmailsToSend]
+	PRINT 'Procedure USP_EML_GetEmailsToSend Dropped.'
+	End
+GO
+
+SET ANSI_NULLS ON
+SET QUOTED_IDENTIFIER OFF
+GO
+
+/******************************************************************************
+** Name:     [USP_EML_GetEmailsToSend]
+** Short Desc:	
+**
+** Full Description
+**        This stored proc is used to get the list of emails to be sent by email engine
+**
+** Sample Call
+	[USP_EML_GetEmailsToSend]
+**
+** Return values: 
+**
+**
+** Standard declarations
+**       SET NOCOUNT             ON
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds
+**	
+**	Created By: Karunakaran
+**	Company	  :	Kaspick & Company
+**	Project	  :	Excelsior
+**	Created DT:	01-April-2010
+**            
+*******************************************************************************
+**       Change History
+*******************************************************************************
+** Date:        Author:  Bug #     Description:                           Rvwd
+** --------     -------- ------    -------------------------------------- --------
+** 04/08/2014    Tanuj				Procedure is modified as per new kaspickDB
+*******************************************************************************
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION
+*******************************************************************************/
+CREATE PROCEDURE [dbo].[USP_EML_GetEmailsToSend]
+AS
+SELECT from_email_address AS FROMADDRESS
+	,reply_to_email_address AS REPLYTOADDRESS
+	,bounce_back_email_address AS BOUNCEBACKADDRESS
+	,to_email_address AS TOADDRESS
+	,cc_email_address AS CCADDRESS
+	,bcc_email_address AS BCCADDRESS
+	,subject AS SUBJECT
+	,body AS BODY
+	,email_id AS EMAILID
+	,is_html_email AS ISHTMLEMAIL
+FROM TBL_EML_EmailQueue
+WHERE is_sent = 0
+
+GO 
+IF EXISTS (
+		SELECT *
+		FROM sys.objects
+		WHERE object_id = OBJECT_ID(N'[dbo].[USP_EML_GetEmailsToSend]')
+			AND type IN (
+				N'P'
+				,N'PC'
+				)
+		)
+	Begin	
+	PRINT 'Procedure USP_EML_GetEmailsToSend Created.'
+	End

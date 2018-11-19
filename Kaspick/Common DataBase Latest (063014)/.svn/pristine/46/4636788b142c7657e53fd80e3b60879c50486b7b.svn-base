@@ -1,0 +1,103 @@
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_Lookup_TrustParticipant]') AND type in (N'P'))
+DROP PROCEDURE [dbo].[USP_Lookup_TrustParticipant]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/*****************************************************************************************************************                                               
+* Procedure Name  : USP_Lookup_TrustParticipant
+* File Name		  : USP_Lookup_TrustParticipant.SQL      
+* Description     : This SP loads the newly added TrustParticipant into the TrustParticipant Lookup Table
+* Created By      : Veera
+* Created Date    : May/8/2014
+*-----------------------------------------------------------------------------------------------------------------          
+** Date:        Author:			Bug #		Description:										Reviewed By
+** ----------   -------------	------		---------------------------------------------------	-----------                                           
+*  
+*******************************************************************************************************************/
+
+CREATE PROCEDURE USP_Lookup_TrustParticipant(@RunID INT)
+AS
+BEGIN
+	SET NOCOUNT ON
+	
+	DECLARE @TableName VARCHAR(100) ='TBL_Lookup_TrustParticipant'
+	DECLARE @RowCount  INT = 0
+	DECLARE @LogMessage varchar(100)
+	
+	BEGIN TRY
+		
+		SET @LogMessage = 'Incremental data load - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Started',0,0,  @LogMessage, @RunID
+
+		--Inserts the TrustParticipant column 
+		--  which are not existing in TrustParticipant lookup table
+		INSERT INTO TBL_Lookup_TrustParticipant(ContactID)
+		SELECT		distinct
+					CAR.ContactID
+								
+		FROM		dbo.SYN_IT_ContactAccountRoles CAR
+		
+		INNER JOIN	dbo.SYN_IT_AccountMaster		A	
+		ON			A.CustomerAccountNumber=CAR.CustomerAccountNumber
+		
+		INNER JOIN	dbo.SYN_IT_ContactRoleCodes	CRC 
+		ON			CAR.ContactRoleCode = CRC.ID
+		
+		INNER JOIN	dbo.SYN_IT_AccountManagerCodes AM	
+		ON			AM.ManagerCode=a.ManagerCode
+		
+		LEFT JOIN	dbo.TBL_Lookup_TrustParticipant LP
+		ON			CAR.ContactID = LP.ContactID
+		
+		WHERE		CRC.ContactRoleCodeDesc IN ('Proxy Recipient', 'Beneficiary', 'Donor', 'Contingent Beneficiary')
+		AND			LP.ContactID IS NULL
+		
+		SET @RowCount=@@RowCount
+		SET @LogMessage = 'Incremental data loaded - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName,'Completed',0,@RowCount, @LogMessage, @RunID  
+		
+		--TBL_Lookup_TrustParticipant_DeletedRecord
+		SET @RowCount=0		
+		SET @TableName ='TBL_Lookup_TrustParticipant_DeletedRecord'
+
+		DELETE		 LP
+		OUTPUT		 Deleted.ContactID
+					,Deleted.ParticipantID
+					,GETDATE() 
+		INTO TBL_Lookup_TrustParticipant_DeletedRecord(ContactID ,ParticipantID,DeletedDate)
+		FROM		dbo.TBL_Lookup_TrustParticipant	LP
+		LEFT JOIN	dbo.SYN_IT_ContactAccountRoles	T 
+					ON	T.ContactID	= LP.ContactID				
+		WHERE		LP.ContactID IS NULL
+				
+		--LOGGING
+		SET @RowCount=@@RowCount
+
+		SET @LogMessage = 'Incremental data loaded - Physical Delete - ' + @TableName 
+		EXEC USP_Lookup_RefreshLog @TableName, 'Completed', 0, @RowCount, @LogMessage, @RunID 
+		
+		RETURN 0
+		
+	END TRY
+	BEGIN CATCH
+		DECLARE @ErrorMessage	NVARCHAR(4000)
+		DECLARE @ErrorSeverity	INT
+		DECLARE @ErrorState		INT
+
+		SET  @ErrorMessage	= 'Incremental data load - [ ' + @TableName + ' ] - Error: ' + Error_Message()
+		SET	 @ErrorSeverity	= ERROR_SEVERITY()
+		SET	 @ErrorState	= ERROR_STATE()
+	    
+		EXEC USP_Lookup_RefreshLog @TableName,'Error',0,0, 'Error' ,@RunID          
+	    
+		RAISERROR (@ErrorMessage,	-- Message text
+				   @ErrorSeverity,	-- Severity
+				   @ErrorState		-- State
+				   );    
+	END CATCH
+END

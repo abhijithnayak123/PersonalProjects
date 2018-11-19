@@ -1,0 +1,60 @@
+IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_EX_GetRptFasbProfileInfoByInstance')
+    BEGIN
+        DROP PROCEDURE USP_EX_GetRptFasbProfileInfoByInstance;
+        PRINT 'DROPPED USP_EX_GetRptFasbProfileInfoByInstance';
+    END
+GO  
+     
+/******************************************************************************                
+** New Name  :   USP_EX_GetRptFasbProfileInfoByInstance
+** Old Name   :   USP_EIS_RPT_FASB_AdventID_By_Instance_SelProc                
+** Short Desc : Selects Advent ID for FASB based on instance id  
+**                
+** Full Description                
+**                    
+**                
+** Return values: NONE                
+**         
+** Sample Call      
+**          
+** EXEC USP_EIS_RPT_FASB_AdventID_SelProc 12           
+**                 
+** Created By : Ganapati          
+** Company  :  Kaspick & Company                
+** Project  :  FASB                
+** Created DT :  Sep/18/2012                
+**                            
+*******************************************************************************                
+**       Change History                
+*******************************************************************************                
+** Date:        Author:  Bug #     Description:                           Rvwd                
+** --------     -------- ------    -------------------------------------- --------                
+**  Sep/18/2012   Ganapati           Created  
+**  Apr/12/2014  Mallikarjun  EXCREQ5.4  Modified     
+** 23/05/2014		Mallikarjun		SP Name Renamed and Formatted
+******************************************************************************                
+** Copyright (C) 2007 Kaspick & Company, All Rights Reserved                
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                
+*******************************************************************************/           
+CREATE PROCEDURE [dbo].[USP_EX_GetRptFasbProfileInfoByInstance] -- 0
+ @InstanceID int  
+   
+  AS  
+      
+SELECT FASB_InstanceID,ManagerCode,InstanceTypeID,ReportingMonth,MarketValueMonth,InstanceLabel,DeliveryDays,
+DeliveryTiming,FixedDate,ExcludedGiftKeys,CustomRequirements,ReportingDate,ModifiedDate,''  
+  FROM TBL_BR_FASBProfileInformation WHERE FASB_InstanceID=@InstanceID       
+SET QUOTED_IDENTIFIER OFF  
+ 
+ GO
+  IF EXISTS (	SELECT *
+			FROM sysobjects
+			WHERE type = 'P'
+			AND name = 'USP_EX_GetRptFasbProfileInfoByInstance') 
+	BEGIN
+			PRINT 'CREATED PROCEDURE USP_EX_GetRptFasbProfileInfoByInstance';
+	END  
+ 

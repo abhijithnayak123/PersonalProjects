@@ -1,0 +1,195 @@
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTReportDate'
+		)
+BEGIN
+	DROP PROCEDURE USP_RP_GetDTReportDate;
+
+	PRINT 'DROPPED USP_RP_GetDTReportDate';
+END
+GO
+
+/******************************************************************************   
+** New SP Name : USP_RP_GetDTReportDate                     
+** Old Name:     GetReportDates    
+                    
+** Short Desc:     
+**                        
+** Full Description:     
+**                                
+** Input Arguments:       
+**           
+** Sample Call       
+ DECLARE @ReportDate DATETIME, @MonEnd INT, @DeliverableFrequency CHAR(1);    
+ DECLARE @R1 VARCHAR(5), @R2 VARCHAR(5), @R3 VARCHAR(5),@R4 VARCHAR(5);    
+ SET @ReportDate = '2011-03-31'; SET @DeliverableFrequency = 'Q';    
+ EXEC USP_EX_DTGetReportDate @ReportDate,@DeliverableFrequency,@R1 OUT, @R2 OUT, @R3 OUT, @R4 OUT;    
+ SELECT R1 = @R1, R2 = @R2, R3 = @R3, R4 = @R4    
+**               
+** Return values: Return Status      
+**                        
+**                        
+** Standard declarations                        
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                        
+**                         
+** Created By: Soorya      
+** Company   : Kaspick & Company                        
+** Project   : Deliverable Tool                        
+** Created DT: 15-Oct-2011                   
+**                                    
+*******************************************************************************                  
+**       Change History                        
+*******************************************************************************                  
+** Date:        Author:  Bug #     Description:                           Rvwd                  
+** --------  -------- ------    -------------------------------------- --------       
+             
+** 20-05-2014 RAJ    Modified SP name and Table then column name with ExcelsiorDB into KaspickDB  
+** 09/06/2014 RAJ	 SP Name Renamed and Formatted of DB Tag conversions
+*******************************************************************************                        
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                        
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                        
+*******************************************************************************/
+CREATE PROCEDURE USP_RP_GetDTReportDate (
+	@ReportDate DATETIME
+	,@DeliverableFrequency CHAR(1)
+	,@R1 VARCHAR(5) = - 1 OUTPUT
+	,@R2 VARCHAR(5) = - 1 OUTPUT
+	,@R3 VARCHAR(5) = - 1 OUTPUT
+	,@R4 VARCHAR(5) = - 1 OUTPUT
+	)
+AS
+BEGIN
+	DECLARE @MonEnd INT;
+
+	SELECT @MonEnd = DATEPART(MONTH, @ReportDate) - DATEPART(MONTH, DATEADD(DAY, 1, @ReportDate))
+
+	IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'Q')
+	BEGIN
+		IF (DATEPART(MONTH, @ReportDate) <= 3)
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 3, @ReportDate)) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 6, @ReportDate)) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 9 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 9, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 9 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 9, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+		ELSE IF (
+				DATEPART(MONTH, @ReportDate) > 3
+				AND DATEPART(MONTH, @ReportDate) <= 6
+				)
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 3, @ReportDate)) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 6, @ReportDate)) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 3, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+		ELSE IF (
+				DATEPART(MONTH, @ReportDate) > 6
+				AND DATEPART(MONTH, @ReportDate) <= 9
+				)
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 3, @ReportDate)) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 3, @ReportDate)) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 6, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) + 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+		ELSE
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 3, @ReportDate)) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 6, @ReportDate)) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 9 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 9, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R4 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R3 = CAST(DATEPART(MONTH, @ReportDate) - 3 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 3, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 9 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 9, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+	END
+	ELSE IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'S')
+	BEGIN
+		IF (DATEPART(MONTH, @ReportDate) <= 6)
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, 6, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) + 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+		ELSE
+		BEGIN
+			IF (@MonEnd = 0)
+			BEGIN
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(MONTH, - 6, @ReportDate)) AS VARCHAR)
+			END
+			ELSE
+			BEGIN
+				SET @R2 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR)
+				SET @R1 = CAST(DATEPART(MONTH, @ReportDate) - 6 AS VARCHAR) + '/' + CAST(DATEPART(DAY, DATEADD(s, - 1, DATEADD(mm, DATEDIFF(m, 0, DATEADD(MONTH, - 6, @ReportDate)) + 1, 0))) AS VARCHAR)
+			END
+		END
+
+		SET @R3 = - 1;
+		SET @R4 = - 1;
+	END
+	ELSE IF (RTRIM(LTRIM(@DeliverableFrequency)) = 'A')
+	BEGIN
+		SET @R1 = CAST(DATEPART(MONTH, @ReportDate) AS VARCHAR) + '/' + CAST(DATEPART(DAY, @ReportDate) AS VARCHAR);
+		SET @R2 = - 1;
+		SET @R3 = - 1;
+		SET @R4 = - 1;
+	END
+END
+GO
+
+IF EXISTS (
+		SELECT *
+		FROM sysobjects
+		WHERE type = 'P'
+			AND NAME = 'USP_RP_GetDTReportDate'
+		)
+BEGIN
+	PRINT 'CREATED PROCEDURE USP_RP_GetDTReportDate';
+END

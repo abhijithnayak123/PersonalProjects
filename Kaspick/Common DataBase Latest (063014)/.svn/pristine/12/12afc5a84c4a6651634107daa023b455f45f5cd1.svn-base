@@ -1,0 +1,1535 @@
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePolicyItem]    Script Date: 07/11/2013 09:22:21 ******/
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[USP_PP_SavePolicyItem]') AND type in (N'P', N'PC'))
+DROP PROCEDURE [dbo].[USP_PP_SavePolicyItem]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_PP_SavePolicyItem]    Script Date: 07/11/2013 09:22:21 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+/******************************************************************************                      
+** Name		 : USP_PP_SavePolicyItem                      
+** Short Desc: To Insert/Update the POLICYITEM table for a particular dimension.
+**                      
+** Full Description: To Insert/Update the POLICYITEM table for a particular dimension.              
+**        
+**                              
+** Input Arguments:  
+		@PolicyDimensionName	VARCHAR(100),
+		@NewPolicyValue	VARCHAR(100),                
+		@PolicyLevel			INT,                
+		@EntityType				VARCHAR(15),              
+		@ManagerCode			VARCHAR(4),
+		@AllianceNumber			VARCHAR(15),
+		@CustomerAccountNumber	VARCHAR(14),                
+		@UserID					INT=NULL          
+ 
+**         
+** Sample Call     
+        
+ EXEC USP_PP_SavePolicyItem  'Check signer',129,300,'Account','ABC','XYZ','EFG',1
+                 
+**                      
+** Standard declarations                      
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                      
+**                       
+** Created By: Debajyoti kalita   
+** Company   : Kaspick & Company                      
+** Project   : BackOffice Integration                      
+** Created DT: 11-Jul-13                 
+**                                  
+*******************************************************************************                
+**       Change History                      
+*******************************************************************************                
+** Date:      Author:	 Bug #     Description:                           
+** --------  --------	 ------    -------------------------------------- 
+** 
+***
+*******************************************************************************                      
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                      
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                      
+*******************************************************************************/ 
+                  
+CREATE PROCEDURE [dbo].[USP_PP_SavePolicyItem]                     
+(                      
+		@PolicyDimensionName	VARCHAR(100),
+		@NewPolicyValue			VARCHAR(100),  -----Contains policydropdownid from Parent sp USP_PP_SavePaymentProfile              
+		@PolicyLevel			INT,                
+		@EntityType				VARCHAR(15),              
+		@ManagerCode			VARCHAR(4),
+		@AllianceNumber			VARCHAR(15),
+		@CustomerAccountNumber	VARCHAR(14),                
+		@UserID					INT=NULL,
+		@XMLAllianceData		XML,
+		@XMLAccountData			XML             
+)                
+AS
+    BEGIN 
+   
+   	--  Initial Set statements  --    
+	SET NOCOUNT ON;
+	SET LOCK_TIMEOUT 30000;-- 30 seconds    
+
+    
+		DECLARE @Value						VARCHAR(100) 
+		DECLARE @PolicyDimensionID			INT
+		DECLARE @DataType					VARCHAR(20)                
+		DECLARE @LogicalData				BIT
+		DECLARE @NumericData				FLOAT
+		DECLARE @IntData					INT
+		DECLARE @DateData					DATETIME
+		DECLARE @OwnerID					VARCHAR(15)
+		DECLARE @PolicyCategoryID			INT 
+		DECLARE @PolicyLevelManager			INT
+		DECLARE @PolicyLevelAlliance		INT
+		DECLARE @PolicyLevelAccount			INT
+
+		DECLARE @HigherLevelValDate			DATETIME    
+		DECLARE	@HigherLevelValList			INT    
+		DECLARE	@HigherLevelValLogical		BIT    
+		DECLARE	@HigherLevelValLNumeric		FLOAT    
+		DECLARE @HigherLevelValLText		VARCHAR(100) 
+		 
+		DECLARE @LowerLevel1ValDate			DATETIME    
+		DECLARE	@LowerLevel1ValList			INT    
+		DECLARE	@LowerLevel1ValLogical		BIT    
+		DECLARE	@LowerLevel1ValNumeric		FLOAT    
+		DECLARE @LowerLevel1ValText			VARCHAR(100)  
+		
+		DECLARE @LowerLevel2ValDate			DATETIME    
+		DECLARE	@LowerLevel2ValList			INT    
+		DECLARE	@LowerLevel2ValLogical		BIT    
+		DECLARE	@LowerLevel2ValNumeric		FLOAT    
+		DECLARE @LowerLevel2ValText			VARCHAR(100)            
+
+		DECLARE @TmpAllianceNumber TABLE (AllianceNumber VARCHAR(15))
+		DECLARE @TmpCustomerAccountNumber TABLE (CustomerAccountNumber VARCHAR(14))
+
+
+		---Inserting input XML into temp table             
+		INSERT INTO @TmpAllianceNumber(AllianceNumber)
+		SELECT x.Item.value('@AllianceNumber[1]', 'VARCHAR(15)') AS AllianceNumber
+		FROM @XMLAllianceData.nodes('/AllianceNumberCollection/SelectList/AllianceNumberItem') AS x(item)
+
+		---Inserting input XML into temp table             
+		INSERT INTO @TmpCustomerAccountNumber(CustomerAccountNumber)
+		SELECT x.Item.value('@CustomerAccountNumber[1]', 'VARCHAR(14)') AS CustomerAccountNumber
+		FROM @XMLAccountData.nodes('/CustomerAccountNumberCollection/SelectList/CustomerAccountNumberItem') AS x(item)
+
+
+		---Selecting PolicyCategoryID from TBL_Policycategory
+		SELECT @PolicyCategoryID	=	PolicyCategoryID 
+		FROM	TBL_Policycategory
+		WHERE	FullName	=	'Paragon'
+		
+		
+		---Get Policy Levels for Manager,Alliance and Account Respectively
+		
+		SELECT @PolicyLevelManager = PolicyLevel ----100
+		FROM dbo.TBL_PolicyLevel
+		WHERE LevelName = 'Manager'
+
+		SELECT @PolicyLevelAlliance = PolicyLevel ---200
+		FROM dbo.TBL_PolicyLevel
+		WHERE LevelName = 'Alliance'
+
+		SELECT @PolicyLevelAccount = PolicyLevel ----300
+		FROM dbo.TBL_PolicyLevel
+		WHERE LevelName = 'Account'
+
+
+
+		----Assigning Value to variable @OwnerID depending on input Entity Type
+		SELECT 	@OwnerID	=	(CASE @EntityType
+									  WHEN 'Manager'  THEN @ManagerCode
+									  WHEN 'Alliance' THEN @AllianceNumber 
+									  WHEN 'Account'  THEN @CustomerAccountNumber	END)
+		
+
+		--- Extracting Datatype,PolicyDimensionID,NumericValue/TextValue/LogicalValue/DateValue/PolicyDropDownID from TBL_PolicyItem 
+		----depending on datatype for a particular OwnerId and Policy Level 
+		EXEC USP_PP_GetPolicyItemValue
+			 @EntityID			=	@OwnerID,
+			 @EntityType		=	@EntityType,
+			 @DimensionFullName	=	@PolicyDimensionName,
+			 @PolicyCategoryID	=	@PolicyCategoryID,
+			 @Value				=	@Value OUTPUT,
+			 @Datatype			=   @Datatype OUTPUT, 
+			 @PolicyDimensionID	=   @PolicyDimensionID OUTPUT
+
+
+		---- Selecting  NumericValue,TextValue,LogicalValue,DateValue,PolicyDropDownID  from TBL_PolicyItem for
+		---- Higher level,e.g. if the input entituType is Alliance then it will retrieve details for Higher level that is Manager 
+		SELECT     
+			@HigherLevelValDate		=	DateValue,    
+			@HigherLevelValList		=	PolicyDropDownID,    
+			@HigherLevelValLogical	=	LogicalValue,    
+			@HigherLevelValLNumeric	=	NumericValue,    
+			@HigherLevelValLText	=	TextValue     
+		FROM	TBL_PolicyItem   
+		WHERE	OwnerID				=	(CASE @EntityType
+										  WHEN 'Manager'  THEN @ManagerCode
+										  WHEN 'Alliance' THEN @ManagerCode 
+										  WHEN 'Account'  THEN @AllianceNumber	END)   
+		AND		PolicyDimensionID	=	@PolicyDimensionID 
+		AND		PolicyLevel			=	(CASE @EntityType
+										  WHEN 'Manager'  THEN 0
+										  WHEN 'Alliance' THEN @PolicyLevelManager 
+										  WHEN 'Account'  THEN @PolicyLevelAlliance	END)  
+ 
+ 
+		---- Selecting  NumericValue,TextValue,LogicalValue,DateValue,PolicyDropDownID  from TBL_PolicyItem for immediate
+		---- Lower level,e.g. if the input entituType is Manager then it will retrieve details for Lower level that is Alliance 
+		SELECT     
+			@LowerLevel1ValDate		=	DateValue,    
+			@LowerLevel1ValList		=	PolicyDropDownID,    
+			@LowerLevel1ValLogical	=	LogicalValue,    
+			@LowerLevel1ValNumeric	=	NumericValue,    
+			@LowerLevel1ValText		=	TextValue     
+		FROM	TBL_PolicyItem   
+		WHERE	OwnerID				=	(CASE @EntityType
+										  WHEN 'Manager'  THEN @AllianceNumber
+										  WHEN 'Alliance' THEN @CustomerAccountNumber 
+										  WHEN 'Account'  THEN @CustomerAccountNumber	END)   
+		AND		PolicyDimensionID	=	@PolicyDimensionID 
+		AND		PolicyLevel			=	(CASE @EntityType
+										  WHEN 'Manager'  THEN @PolicyLevelAlliance
+										  WHEN 'Alliance' THEN @PolicyLevelAccount 
+										  WHEN 'Account'  THEN 0	END)  
+										  
+		
+		---- Selecting  NumericValue,TextValue,LogicalValue,DateValue,PolicyDropDownID  from TBL_PolicyItem for
+		---- Next Lower level,e.g. if the input entituType is Manager then it will retrieve details for 2nd Lower level that is Account 
+		SELECT     
+			@LowerLevel2ValDate		=	DateValue,    
+			@LowerLevel2ValList		=	PolicyDropDownID,    
+			@LowerLevel2ValLogical	=	LogicalValue,    
+			@LowerLevel2ValNumeric	=	NumericValue,    
+			@LowerLevel2ValText		=	TextValue     
+		FROM	TBL_PolicyItem   
+		WHERE	OwnerID				=	(CASE @EntityType
+										  WHEN 'Manager'  THEN @CustomerAccountNumber
+										  WHEN 'Alliance' THEN @AllianceNumber 
+										  WHEN 'Account'  THEN @CustomerAccountNumber	END)   
+		AND		PolicyDimensionID	=	@PolicyDimensionID 
+		AND		PolicyLevel			=	(CASE @EntityType
+										  WHEN 'Manager'  THEN @PolicyLevelAccount
+										  WHEN 'Alliance' THEN 0 
+										  WHEN 'Account'  THEN 0	END) 
+ 
+  --- IF the @Value derived earlier is null or the derived @Value is not the same as input from the parent sp-USP_PP_SavePaymentProfile
+  ---- then enter the loop
+  ---- loop has separate subloop for different datatypes and it will enter only one subloop depending on datatype
+  IF (@Value IS NULL OR ISNULL(@Value,0) <> ISNULL(@NewPolicyValue,0) )      
+  BEGIN     
+           
+	IF(@DataType='LOGICAL')      -----for Logical datatype          
+	BEGIN                
+		SET @LogicalData=CAST(@NewPolicyValue AS BIT)                      
+    
+		IF @EntityType = 'Manager'
+		
+		BEGIN
+			---Check if the data exists in TBL_PolicyItem for this manager code,if not insert
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                     
+		 
+							INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+							VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,@LogicalData,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber 
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		LogicalValue		=	@LogicalData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValLogical,0) = ISNull(@LogicalData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber 
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		LogicalValue		=	@LogicalData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+							
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem then update it with new input value	  
+							UPDATE  dbo.TBL_PolicyItem                     
+							SET		LogicalValue		=	@LogicalData,
+									ModifiedDate		=	GetDate(),
+									ModifiedUserId		=	@UserID                       
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID  
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		LogicalValue		=	@LogicalData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValLogical,0) = ISNull(@LogicalData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		LogicalValue		=	@LogicalData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+							
+				END     
+			END                         
+			ELSE IF @EntityType = 'Alliance'
+			BEGIN
+			---At Alliance level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as Manager 
+			---level,If it is not same then only insert in TBL_PolicyItem
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLogical,0) <> ISNull(@LogicalData,0)	 	
+							BEGIN 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,@LogicalData,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		LogicalValue		=	@LogicalData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+							END
+				END            
+			ELSE                      
+				BEGIN     
+	
+						    ---If the data exists in TBL_PolicyItem and not same as the Manager level,then update
+							IF 	ISNull(@HigherLevelValLogical,0) <> ISNull(@LogicalData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		LogicalValue		=	@LogicalData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		LogicalValue		=	@LogicalData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+								
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the manager level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		LogicalValue		=	@LogicalData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+							END			          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Account'
+			BEGIN
+				---Get the data that from Manager level if at alliance level it does not exists			
+				IF @LogicalData is NULL 
+				BEGIN
+					SELECT @HigherLevelValLogical		=	LogicalValue
+					FROM TBL_PolicyItem
+					WHERE	OwnerID				=	@ManagerCode
+					AND		PolicyDimensionID	=	@PolicyDimensionID 
+					AND		PolicyLevel			=	@PolicyLevelManager
+				END
+
+			---At Account level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as the higher 
+			---level,If it is not same then only insert in TBL_PolicyItem	
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLogical,0) <> ISNull(@LogicalData,0)
+							BEGIN 		 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,@LogicalData,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+							END
+				END            
+			ELSE                      
+				BEGIN
+
+							---If the data exists in TBL_PolicyItem and not same as the Account level,then update
+							IF 	ISNull(@HigherLevelValLogical,0) <> ISNull(@LogicalData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		LogicalValue		=	@LogicalData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END 
+							ELSE
+							BEGIN 
+							---IF the data exists and same as the higher level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END		
+				END
+			END                         
+		END    
+                      
+	ELSE IF(@DataType='NUMERIC')      ----for Numeric datatype                
+	BEGIN          
+		SET @NumericData=CAST(@NewPolicyValue AS FLOAT)  
+		                    
+		IF @EntityType = 'Manager'
+		---Check if the data exists in TBL_PolicyItem for this manager code,if not insert
+		BEGIN
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+		 
+							INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+							VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,@NumericData,NULL,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValNumeric,0) = ISNull(@NumericData,0)
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		NumericValue		=	@NumericData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValNumeric,0) = ISNull(@NumericData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END 
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		NumericValue		=	@NumericData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem then update it with new input value	 	  
+							UPDATE  dbo.TBL_PolicyItem                     
+							SET		NumericValue		=	@NumericData,
+									ModifiedDate		=	GetDate(),
+									ModifiedUserId		=	@UserID                       
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID  
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValNumeric,0) = ISNull(@NumericData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		NumericValue		=	@NumericData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValNumeric,0) = ISNull(@NumericData,0)
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END  
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		NumericValue		=	@NumericData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Alliance'
+			BEGIN
+			---At Alliance level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as Manager 
+			---level,If it is not same then only insert in TBL_PolicyItem
+
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLNumeric,0) <> IsNull(@NumericData,0) 	
+							BEGIN 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,@NumericData,NULL,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValNumeric,0) = ISNull(@NumericData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber 
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		NumericValue		=	@NumericData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+							END
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem and not same as the Manager level,then update
+							IF 	ISNull(@HigherLevelValLNumeric,0) <> IsNull(@NumericData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		NumericValue		=	@NumericData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValNumeric,0) = ISNull(@NumericData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		NumericValue		=	@NumericData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+								
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the manager level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		NumericValue		=	@NumericData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+							END			          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Account'
+			BEGIN
+				---Get the data that from Manager level if at alliance level it does not exists				
+				IF (@HigherLevelValLNumeric is NULL OR @HigherLevelValLNumeric = 0)
+				BEGIN
+					SELECT @HigherLevelValLNumeric		=	NumericValue
+					FROM TBL_PolicyItem
+					WHERE	OwnerID				=	@ManagerCode
+					AND		PolicyDimensionID	=	@PolicyDimensionID 
+					AND		PolicyLevel			=	@PolicyLevelManager
+				END
+
+			---At Account level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as the higher 
+			---level,If it is not same then only insert in TBL_PolicyItem		
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLNumeric,0) <> IsNull(@NumericData,0)	
+							BEGIN 		 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,@NumericData,NULL,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+							END
+				END            
+			ELSE                      
+				BEGIN
+							---If the data exists in TBL_PolicyItem and not same as the Account level,then update
+							IF 	ISNull(@HigherLevelValLNumeric,0) <> IsNull(@NumericData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		NumericValue		=	@NumericData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the higher level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END		
+				END
+			END                         
+		END
+                       
+    ELSE IF(@DataType='LIST')      -----for List datatype                
+	BEGIN       
+
+		SET @IntData=CAST(@NewPolicyValue AS INT)  
+		
+		IF @EntityType = 'Manager'
+		---Check if the data exists in TBL_PolicyItem for this manager code,if not insert
+		BEGIN
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+		 
+							INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+							VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,NULL,@IntData,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for this Alliance
+							IF 	ISNull(@LowerLevel1ValList,0) = ISNull(@IntData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		PolicyDropDownID	=	@IntData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+
+						---IF the same data exists at Account level then remove from TBL_PolicyItem for this Account
+							IF 	ISNull(@LowerLevel2ValList,0) = ISNull(@IntData,0) 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END 
+
+
+						---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		PolicyDropDownID	=	@IntData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem then update it with new input value	 	  
+							UPDATE  dbo.TBL_PolicyItem                     
+							SET		PolicyDropDownID	=	@IntData,
+									ModifiedDate		=	GetDate(),
+									ModifiedUserId		=	@UserID                       
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID  
+							
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for this alliance
+							IF 	ISNull(@LowerLevel1ValList,0) = ISNull(@IntData,0) 
+							BEGIN
+
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber 
+						
+							END
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		PolicyDropDownID	=	@IntData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for this account
+							IF 	ISNull(@LowerLevel2ValList,0) = ISNull(@IntData,0) 
+							BEGIN
+
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber 
+							END 
+
+
+						---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		PolicyDropDownID	=	@IntData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Alliance'
+			BEGIN
+			---At Alliance level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as Manager 
+			---level,If it is not same then only insert in TBL_PolicyItem
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	IsNull(@HigherLevelValList,0) <> IsNull(@IntData,0)	
+							BEGIN 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,NULL,@IntData,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for this account
+								IF 	ISNull(@LowerLevel1ValList,0) = ISNull(@IntData,0)
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber 
+								END
+								
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		PolicyDropDownID	=	@IntData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 								
+							END
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem and not same as the Manager level,then update
+							IF 	IsNull(@HigherLevelValList,0) <> IsNull(@IntData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		PolicyDropDownID	=	@IntData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValList,0) = ISNull(@IntData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber 
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		PolicyDropDownID	=	@IntData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 	
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the manager level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber 
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		PolicyDropDownID	=	@IntData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 	
+								
+							END			          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Account'
+			BEGIN
+				---Get the data that from Manager level if at alliance level it does not exists				
+				IF @HigherLevelValList is NULL
+				BEGIN
+					SELECT @HigherLevelValList = PolicyDropDownID
+					FROM TBL_PolicyItem
+					WHERE	OwnerID				=	@ManagerCode
+					AND		PolicyDimensionID	=	@PolicyDimensionID 
+					AND		PolicyLevel			=	@PolicyLevelManager
+				END
+
+			---At Account level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as the higher 
+			---level,If it is not same then only insert in TBL_PolicyItem		
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	IsNull(@HigherLevelValList,0) <> IsNull(@IntData,0)	
+							BEGIN 		 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,NULL,@IntData,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+							END
+				END            
+			ELSE                      
+				BEGIN
+							---If the data exists in TBL_PolicyItem and not same as the Account level,then update
+							IF 	IsNull(@HigherLevelValList,0) <> IsNull(@IntData,0)
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		PolicyDropDownID	=	@IntData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the higher level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END		
+				END
+			END                         
+		END
+			
+                       
+	ELSE IF(@DataType='TEXT')     -----for Text datatype                 
+	BEGIN          
+		                    
+		IF @EntityType = 'Manager'
+		---Check if the data exists in TBL_PolicyItem for this manager code,if not insert
+		BEGIN
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+		 
+							INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+							VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,@Value,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValText,'') = ISNull(@Value,'') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		TextValue			=	@Value
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValText,'') = ISNull(@Value,'') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END  
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		TextValue			=	@Value
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END  
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem then update it with new input value	 	  
+							UPDATE  dbo.TBL_PolicyItem                     
+							SET		TextValue			=	@Value,
+									ModifiedDate		=	GetDate(),
+									ModifiedUserId		=	@UserID                       
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID   
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValText,'') = ISNull(@Value,'') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		TextValue			=	@Value
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValText,'') = ISNull(@Value,'') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END   
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		TextValue			=	@Value
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END         
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Alliance'
+			BEGIN
+			---At Alliance level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as Manager 
+			---level,If it is not same then only insert in TBL_PolicyItem
+
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLText,'') <> IsNull(@Value,'') 	
+							BEGIN 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,@Value,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValText,'') = ISNull(@Value,'') 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		TextValue			=	@Value
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END  
+							END
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem and not same as the Manager level,then update
+							IF 	ISNull(@HigherLevelValLText,'') <> IsNull(@Value,'')
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		TextValue			=	@Value,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValText,'') = ISNull(@Value,'') 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		TextValue			=	@Value
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END  
+								
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the manager level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		TextValue			=	@Value
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END  
+							END			          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Account'
+			BEGIN
+				---Get the data that from Manager level if at alliance level it does not exists				
+				IF @HigherLevelValLText is NULL
+				BEGIN
+					SELECT @HigherLevelValLText			=	TextValue
+					FROM TBL_PolicyItem
+					WHERE	OwnerID				=	@ManagerCode
+					AND		PolicyDimensionID	=	@PolicyDimensionID 
+					AND		PolicyLevel			=	@PolicyLevelManager
+				END
+
+			---At Account level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as the higher 
+			---level,If it is not same then only insert in TBL_PolicyItem		
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	ISNull(@HigherLevelValLText,'') <> IsNull(@Value,'')	
+							BEGIN 		 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,@Value,0,NULL,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+							END
+				END            
+			ELSE                      
+				BEGIN
+							---If the data exists in TBL_PolicyItem and not same as the Account level,then update
+							IF 	ISNull(@HigherLevelValLText,'') <> IsNull(@Value,'')
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		TextValue			=	@Value,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the higher level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END		
+				END
+			END                         
+		END
+            
+        
+	ELSE IF(@DATATYPE='DATE')        ----for Date datatype             
+	BEGIN          
+		SET @DateData=CAST(@NewPolicyValue AS DATETIME)  
+		                    
+		IF @EntityType = 'Manager'
+		---Check if the data exists in TBL_PolicyItem for this manager code,if not insert
+		BEGIN
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+		 
+							INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+							VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,@DateData,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		DateValue			=	@DateData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END  
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		DateValue			=	@DateData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END 
+
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem then update it with new input value	 	  
+							UPDATE  dbo.TBL_PolicyItem                     
+							SET		DateValue			=	@DateData,
+									ModifiedDate		=	GetDate(),
+									ModifiedUserId		=	@UserID                       
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID    
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel1ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		OwnerID				=	@AllianceNumber
+							END
+							
+							---IF the same data exists at Alliance level then remove from TBL_PolicyItem for all the related alliances
+							IF 	@AllianceNumber ='All'
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAlliance 
+								AND		DateValue			=	@DateData
+								AND		OwnerID	IN (SELECT AllianceNumber FROM @TmpAllianceNumber)
+							END
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem 
+							IF 	ISNull(@LowerLevel2ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		OwnerID				=	@CustomerAccountNumber
+							END   
+							
+							---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+							IF 	@CustomerAccountNumber='All' 
+							BEGIN
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevelAccount 
+								AND		DateValue			=	@DateData
+								AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+							END         
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Alliance'
+			BEGIN
+			---At Alliance level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as Manager 
+			---level,If it is not same then only insert in TBL_PolicyItem
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	IsNull(@HigherLevelValDate,'01/01/9999') <> IsNull(@DateData,'01/01/9999') 	
+							BEGIN 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,@DateData,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		DateValue			=	@DateData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+							END
+				END            
+			ELSE                      
+				BEGIN     
+							---If the data exists in TBL_PolicyItem and not same as the Manager level,then update
+							IF 	IsNull(@HigherLevelValDate,'01/01/9999') <> IsNull(@DateData,'01/01/9999')
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		DateValue			=	@DateData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValDate,'01/01/9999') = ISNull(@DateData,'01/01/9999') 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		DateValue			=	@DateData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+								
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the manager level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+								
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem 
+								IF 	ISNull(@LowerLevel1ValLogical,0) = ISNull(@LogicalData,0) 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		OwnerID				=	@CustomerAccountNumber
+								END
+								
+								---IF the same data exists at Account level then remove from TBL_PolicyItem for all the related Account
+								IF 	@CustomerAccountNumber='All' 
+								BEGIN
+									DELETE  FROM TBL_PolicyItem
+									WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+									AND		PolicyLevel			=	@PolicyLevelAccount 
+									AND		DateValue			=	@DateData
+									AND		OwnerID	IN (SELECT CustomerAccountNumber FROM @TmpCustomerAccountNumber)
+								END 
+								
+							END			          
+    			END     
+			END                         
+			ELSE IF @EntityType = 'Account'
+			BEGIN
+				---Get the data that from Manager level if at alliance level it does not exists				
+				IF @HigherLevelValDate is NULL
+				BEGIN
+					SELECT @HigherLevelValDate	=	DateValue  
+					FROM TBL_PolicyItem
+					WHERE	OwnerID				=	@ManagerCode
+					AND		PolicyDimensionID	=	@PolicyDimensionID 
+					AND		PolicyLevel			=	@PolicyLevelManager
+				END
+
+			---At Account level check if data exists in TBL_PolicyItem,if does not exists check if the input value is same as the higher 
+			---level,If it is not same then only insert in TBL_PolicyItem		
+			IF NOT EXISTS(SELECT  PolicyItemID 
+							FROM	dbo.TBL_PolicyItem 
+							WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+							AND		PolicyLevel			=	@PolicyLevel 
+							AND		OwnerID				=	@OwnerID)
+	                       
+				BEGIN                         
+							IF 	IsNull(@HigherLevelValDate,'01/01/9999') <> IsNull(@DateData,'01/01/9999')	
+							BEGIN 		 
+								INSERT INTO TBL_PolicyItem( PolicyDimensionID, PolicyLevel, OwnerID, NumericValue, TextValue, LogicalValue, DateValue, PolicyDropDownID, Comment,ModifiedDate,ModifiedUserId,CreatedDate,CreatedUserId)                      
+								VALUES( @PolicyDimensionID, @PolicyLevel, @OwnerID,0,NULL,0,@DateData,Null,NULL,Getdate(),@UserID,Getdate(),@UserID) 
+							END
+				END            
+			ELSE                      
+				BEGIN
+							---If the data exists in TBL_PolicyItem and not same as the Account level,then update
+							IF 	IsNull(@HigherLevelValDate,'01/01/9999') <> IsNull(@DateData,'01/01/9999')
+							BEGIN
+								UPDATE  dbo.TBL_PolicyItem                     
+								SET		DateValue			=	@DateData,
+										ModifiedDate		=	GetDate(),
+										ModifiedUserId		=	@UserID                       
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END 
+							ELSE
+							BEGIN 
+								---IF the data exists and same as the higher level then remove from TBL_PolicyItem
+								DELETE  FROM TBL_PolicyItem
+								WHERE	PolicyDimensionID	=	@PolicyDimensionID 
+								AND		PolicyLevel			=	@PolicyLevel 
+								AND		OwnerID				=	@OwnerID 
+							END		
+				END
+			END                         
+		END
+            
+ END   
+
+             
+END   

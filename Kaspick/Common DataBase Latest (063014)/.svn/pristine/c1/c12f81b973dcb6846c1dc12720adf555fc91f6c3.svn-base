@@ -1,0 +1,130 @@
+IF EXISTS (SELECT *
+       FROM   sysobjects 
+       WHERE  type = 'P'
+              AND name = 'USP_RP_UpdBRDTDiagnosticResultAcknowledge')
+BEGIN
+    DROP PROCEDURE USP_RP_UpdBRDTDiagnosticResultAcknowledge;
+    PRINT 'DROPPED USP_RP_UpdBRDTDiagnosticResultAcknowledge';
+END
+GO
+
+/******************************************************************************                    
+** Old Name:     USP_EIS_BR_DT_DiagnosticResultAcknowledge_UpdProc            
+**
+** Name: USP_RP_UpdBRDTDiagnosticResultAcknowledge  
+**                          
+** Short Desc: To fetch data for Diagnostic Console    
+**                    
+** Full Description: To fetch data for Diagnostic Console         
+**                            
+** Input Arguments:   
+**       
+** Sample Call   
+ USP_RP_UpdBRDTDiagnosticResultAcknowledge   
+  @XMLDATA  =   
+**           
+** Return values: Null  
+**                    
+**                    
+** Standard declarations                    
+**       SET LOCK_TIMEOUT         30000   -- 30 seconds                    
+**                     
+** Created By: Saravanan P Muthu  
+** Company   : Kaspick & Company                    
+** Project   : Excelsior  - BeneReport                    
+** Created DT: 09-Sep-09               
+**                                
+*******************************************************************************              
+**       Change History                    
+*******************************************************************************              
+** Date:        Author:  Bug #     Description:                           Rvwd              
+** --------  -------- ------    -------------------------------------- --------   
+** 19-May-2014 Geervani			Made changes in the table names to refer new KASPICK DB  
+*******************************************************************************                    
+** Copyright (C) <CopyrightYear,,Year> Kaspick & Company, All Rights Reserved                    
+** COMPANY CONFIDENTIAL -- NOT FOR DISTRIBUTION                    
+*******************************************************************************/  
+CREATE PROCEDURE [dbo].[USP_RP_UpdBRDTDiagnosticResultAcknowledge]        
+(     
+@XMLDATA XML,  
+@UserID     INT  
+)  
+AS           
+
+	--  Initial Set statements  --          
+	SET NOCOUNT ON;          
+	SET LOCK_TIMEOUT 30000;   -- 30 seconds          
+	SET TRANSACTION ISOLATION LEVEL SNAPSHOT;             
+	SET ARITHABORT ON  
+
+	--  Variable Declarations  --          
+	DECLARE @procname    VARCHAR(60);          
+	DECLARE @ErrorDesc     VARCHAR(1000);          
+	DECLARE @ErrorNumber     INT;     
+
+	-- Variables used for error handling - uncomment if needed          
+	DECLARE @val1      VARCHAR(30);          
+	DECLARE @val2      VARCHAR(30);          
+
+	--  Variable Data Assignment  --          
+	SET @procname = 'USP_RP_UpdBRDTDiagnosticResultAcknowledge';          
+
+	-- Body of procedure  --          
+	--  Temp tables, Cursors, Table Variables  --      
+	DECLARE @ValidationResult_Acknowledge TABLE (    
+	ValidationResultID INT ,    
+	IsAcknowledged  BIT   
+	)    
+
+	--CREATE TABLE #Flag (Exist SmallInt)      
+	--DECLARE  @strFlag    VARCHAR(1000)     
+
+	-- Body of procedure  --        
+	BEGIN TRY        
+		--  Transactions        
+		BEGIN TRANSACTION   
+
+		--Insert to temp table    
+		INSERT INTO @ValidationResult_Acknowledge (ValidationResultID, IsAcknowledged)    
+		SELECT XMLDATA.item.value('@ValidationResultID[1]', 'int') AS ValidationResultID,    
+		XMLDATA.item.value('@IsAcknowledged[1]', 'bit') AS IsAcknowledged  
+		FROM @XMLDATA.nodes('//DiagnosticsConsoleTrackerCollection/UpdateList/DiagnosticsConsoleTracker') AS XMLDATA(item)    
+
+		--Updating the IsAcknowledged field     
+		UPDATE TBL_DLV_ValidationResult    
+		SET	IsAcknowledged = T.IsAcknowledged,  
+		UserID = @UserID    
+		FROM	TBL_DLV_ValidationResult VR
+		INNER JOIN @ValidationResult_Acknowledge T  On VR.ValidationResultID = T.ValidationResultID      
+
+		COMMIT TRANSACTION        
+	SET NOCOUNT OFF       
+	END TRY        
+	BEGIN CATCH        
+		ROLLBACK TRANSACTION    
+		SET @ErrorDesc = ERROR_MESSAGE();        
+		SET @ErrorNumber = ERROR_NUMBER();        
+		SET @val1 = '';        
+		SET @val2 = '';        
+
+		EXEC dbo.spSYS_ErrorHandler @codename = @procname,        
+		@errmsg = @ErrorDesc,         
+		@errnbr = @ErrorNumber,        
+		@val1 = '',         
+		@val1str = 'USP_RP_UpdBRDTDiagnosticResultAcknowledge: Cannot Insert/Update.',         
+		@val2 = '',         
+		@val2str = '';
+	END CATCH        
+--End of procedure    
+
+
+
+
+GO
+ IF EXISTS (SELECT *
+           FROM   sysobjects 
+           WHERE  type = 'P'
+                  AND name = 'USP_RP_UpdBRDTDiagnosticResultAcknowledge')
+    BEGIN
+        PRINT 'CREATED USP_RP_UpdBRDTDiagnosticResultAcknowledge';
+    END
